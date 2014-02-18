@@ -6,14 +6,14 @@
 --                                                                           --
 -------------------------------------------------------------------------------
 -- File: Data.lua 
--- Purpose: Data (singleton) class to provide helpers for defining n
+-- Purpose: Meta-Data (singleton) class to provide helpers for defining 
 --          naturally addressable DataTypes in Lua
 -- Created: Rajive Joshi, 2014 Feb 13
 -------------------------------------------------------------------------------
 
 Data = Data or {}
 
-function Data.struct(field, type) 
+function Data.struct(field, type) -- type is required
 	-- lookup result
 	Data[type] = Data[type] or {}
 	local result = Data[type][field] 
@@ -30,11 +30,15 @@ function Data.struct(field, type)
 	return result
 end
 
-function Data.seq(field) 
+function Data.seq(field, type) -- type is OPTIONAL
 	return function (i)
-		return i and field .. '[' .. i .. ']' or field .. '#'
+		return i and (type and Data.struct(field .. '[' .. i .. ']', type)
+				           or field .. '[' .. i .. ']')
+			     or field .. '#'
 	end
 end
+
+-- TODO: function Data.union(field, type) -- type is required
 
 function Data.len(seq)
 	return seq .. '#'
