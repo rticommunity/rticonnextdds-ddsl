@@ -32,7 +32,7 @@ end
 
 function Data.seq(field) 
 	return function (i)
-		return field .. '[' .. i .. ']'
+		return i and field .. '[' .. i .. ']' or field .. '#'
 	end
 end
 
