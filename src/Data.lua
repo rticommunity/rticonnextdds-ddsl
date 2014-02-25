@@ -13,6 +13,22 @@
 
 Data = Data or {}
 
+function Data.print_model(name, model) 
+	print(name)
+	for field, type in pairs(model) do
+		print(field, type)
+	end
+end
+
+function Data.enum(model) 
+	local result = {}
+	for i, field in ipairs(model) do
+		result[field] = i - 1 -- shift to a 0 based indexing
+	end
+	-- Data.print_model('enum', result)
+	return result
+end
+
 function Data.struct(field, type) -- type is required
 	-- lookup result
 	Data[type] = Data[type] or {}
@@ -38,7 +54,14 @@ function Data.seq(field, type) -- type is OPTIONAL
 	end
 end
 
--- TODO: function Data.union(field, type) -- type is required
+-- TODO: function Data.union(field1, type1, field2, type2, ...) -- types required
+--[[
+function Data.union(field, type, ...) -- type is required
+	local result = Data.struct(field, type)
+	result._d = field .. '#'
+	return result
+end
+--]]
 
 function Data.len(seq)
 	return seq .. '#'
