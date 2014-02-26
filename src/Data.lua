@@ -1,3 +1,4 @@
+#!/usr/local/bin/lua
 -------------------------------------------------------------------------------
 --  (c) 2005-2014 Copyright, Real-Time Innovations, All rights reserved.     --
 --                                                                           --
@@ -11,22 +12,85 @@
 -- Created: Rajive Joshi, 2014 Feb 13
 -------------------------------------------------------------------------------
 
-Data = Data or {}
+Data = Data or {
+	-- type meta-data definitions are closures to ensure immutability ---
+	
+	TYPE      = '__typeinfo', -- name of the type definition closure
+	
+	-- structural types ---
+	MODULE    = function() return 'module', name end,
+	ENUM      = function() return 'enum', name end,
+	STRUCT    = function() return 'struct' end,
+	UNION     = function() return 'union' end,
+	SEQ       = function() return 'seq' end,
+	
+	-- primitive types ---
+	STRING    = function() return 'string' end,
+}
 
-function Data.print_model(name, model) 
-	print(name)
-	for field, type in pairs(model) do
-		print(field, type)
+function Data.print(name, model, indent_string) 
+	local indent_string = indent_string or ''
+	local content_indent_string = indent_string .. '   '
+	local mytypeinfo = model[Data.TYPE] or Data.MODULE -- default type
+	local mytypename = mytypeinfo()
+	local myname = name
+	
+	-- open --
+	print(string.format('%s%s %s {', indent_string, mytypename, myname))
+			
+			
+	-- unknown type => must be a collection/namespace, so print each element ---
+	if Data.MODULE == mytypeinfo then 
+		for field, element in pairs(model) do
+			-- recursively print the contained elements ---
+			if (type(element) == 'table') then
+				Data.print(field, element, content_indent_string)
+			end	
+		end
+	
+	-- one of the known Data.* types ---
+	elseif Data.ENUM == mytypeinfo then 
+		for field, ord in pairs(model) do		
+			if ord ~= mytypeinfo then 
+				print(content_indent_string .. field .. ' = ' .. ord .. ',')
+			end
+		end
+	elseif Data.STRUCT == mytypeinfo then
+		print(mytypename, myname)
 	end
+	
+	
+	-- close --
+	print(string.format('%s};\n', indent_string))
 end
 
+-- creates a new namespace: returns a namespace table 
+function Data.namespace(name) 
+	result = { [Data.TYPE] = Data.NAMESPACE(name) }  
+	return result
+end
+
+-- the 'model' is an array of strings and the ordinal values are assigned 
+-- automatically starting at 0
 function Data.enum(model) 
-	local result = {}
+	local result = { [Data.TYPE] = Data.ENUM }
 	for i, field in ipairs(model) do
 		result[field] = i - 1 -- shift to a 0 based indexing
 	end
-	-- Data.print_model('enum', result)
 	return result
+end
+
+-- the 'model' is a table of 'name = ordinal value' pairs
+function Data.enum2(model) 
+	local result = { [Data.TYPE] = Data.ENUM }
+	for field, value in pairs(model) do
+		result[field] = value
+	end
+	return result
+end
+
+function Data.struct2(model) -- type is required
+	local result = { [Data.TYPE] = Data.STRUCT }
 end
 
 function Data.struct(field, type) -- type is required
@@ -70,3 +134,61 @@ end
 function Data.idx(seq, i, field)
 	return seq .. '[' .. i .. ']' .. (field and ('.' .. field) or '')
 end
+
+--------------------------------------------------------------------------------
+-- TESTS 
+--------------------------------------------------------------------------------
+
+---[[ SKIP TESTS --
+
+local Test = Test or {}
+
+Test.Days = Data.enum{
+	'MON', 'TUE', 'WED', 'THU',
+}
+
+Test.Subtest = {}
+
+Test.Subtest.Colors = Data.enum2{
+	RED   = 5,
+	BLUE  = 7,
+	GREEN = 9,
+}
+
+--[[
+Test.Name = Data.struct2{
+	first   = Data.STRING,
+	last    = Data.STRING,
+}
+
+Test.Address = Data.struct2{
+	name    = Test.Name,
+	street  = Data.STRING,
+	city    = Data.STRING,
+}
+--]]
+
+function Test:test_enum()
+	print('\n--- test enums ---')
+	Data.print('Days', Test.Days)
+	Data.print('Colors', Test.Subtest.Colors)
+end
+
+function Test:test_module()
+	print('\n--- test module ---')
+	Data.print('Test', Test)
+	Data.print('Subtest', Test.Subtest)
+end
+
+function Test:main()
+	for k, v in pairs (self) do
+		if string.sub(k, 1,4) == "test" then
+			v(self) 
+		end
+	end
+end
+
+Test:main()
+ 
+-- SKIP TESTS --]]
+--------------------------------------------------------------------------------
