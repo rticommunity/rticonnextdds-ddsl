@@ -11,6 +11,9 @@
 --          naturally addressable DataTypes in Lua
 -- Created: Rajive Joshi, 2014 Feb 13
 -------------------------------------------------------------------------------
+-- TODO: Design Overview 
+--
+-------------------------------------------------------------------------------
 
 Data = Data or {
 	-- type meta-data definitions are closures to ensure immutability ---
@@ -23,7 +26,7 @@ Data = Data or {
 	STRUCT    = function() return 'struct' end,
 	UNION     = function() return 'union' end,
 	SEQ       = function() return 'seq' end,
-	
+
 	-- primitive types ---
 	STRING    = function() return 'string' end,
 }
@@ -39,7 +42,7 @@ function Data.print(name, model, indent_string)
 	print(string.format('%s%s %s {', indent_string, mytypename, myname))
 			
 			
-	-- unknown type => must be a collection/namespace, so print each element ---
+	-- recursively print each element ---
 	if Data.MODULE == mytypeinfo then 
 		for field, element in pairs(model) do
 			-- recursively print the contained elements ---
@@ -47,18 +50,30 @@ function Data.print(name, model, indent_string)
 				Data.print(field, element, content_indent_string)
 			end	
 		end
-	
-	-- one of the known Data.* types ---
+		
 	elseif Data.ENUM == mytypeinfo then 
 		for field, ord in pairs(model) do		
 			if ord ~= mytypeinfo then 
 				print(content_indent_string .. field .. ' = ' .. ord .. ',')
 			end
 		end
+		
 	elseif Data.STRUCT == mytypeinfo then
-		print(mytypename, myname)
+		for field, element in pairs(model) do	
+			if field ~= Data.TYPE then
+				if type(element) == 'function' then -- primitive type
+					print(content_indent_string .. element() 
+					.. '  ' .. field .. ';')
+				else -- structural type
+					print(content_indent_string .. element[Data.TYPE]() 
+					.. '  ' .. field .. ';')
+				end
+			end
+		end
+		
+	elseif Data.STRING == mytypeinfo then
+		print(content_indent_string .. string .. '   ' .. name .. ',')
 	end
-	
 	
 	-- close --
 	print(string.format('%s};\n', indent_string))
@@ -89,8 +104,9 @@ function Data.enum2(model)
 	return result
 end
 
-function Data.struct2(model) -- type is required
-	local result = { [Data.TYPE] = Data.STRUCT }
+function Data.struct2(model) -- model must be a table
+	model[Data.TYPE] = Data.STRUCT 
+	return model
 end
 
 function Data.struct(field, type) -- type is required
@@ -155,18 +171,23 @@ Test.Subtest.Colors = Data.enum2{
 	GREEN = 9,
 }
 
---[[
 Test.Name = Data.struct2{
 	first   = Data.STRING,
 	last    = Data.STRING,
 }
+
+--[[
+Test:struct3('Name', {
+	first   = Data.STRING,
+	last    = Data.STRING,
+})
+--]]
 
 Test.Address = Data.struct2{
 	name    = Test.Name,
 	street  = Data.STRING,
 	city    = Data.STRING,
 }
---]]
 
 function Test:test_enum()
 	print('\n--- test enums ---')
