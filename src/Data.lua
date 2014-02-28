@@ -260,17 +260,21 @@ end
 
 
 
--- Data:is_user_defined_element() - is table entry (k, v) a user defined 
+-- Data:is_user_defined() - is table entry (k, v) a user defined 
 --        model element?
-function Data.is_user_defined_element(k, v)
-	local type_v =  type(v)
+function Data.is_user_defined(k, v)
+	local type_k, type_v = type(k), type(v)
+	
 	return -- not the top-level module
-		   Data ~= v  and 
+		   Data ~= v and 
+		   
 		   -- not meta-data 
-		   'function' ~= type(k) and 'function' ~=type_v and
+		   'function' ~= type_k and 'function' ~=type_v and
+		   
 		   -- is a user defined model element
-		   (('table' == type_v and v[Data.NAME] ~= nil) or
-		     'string' == type_v)
+		   'string' == type_k and  
+		   ('string' == type_v or  -- leaf 
+		   ('table' == type_v and v[Data.NAME] ~= nil)) -- non-primitive
 end
 
 --------------------------------------------------------------------------------
@@ -407,11 +411,11 @@ function Data.print_idl(model, indent_string)
 		content_indent_string = indent_string .. '   '
 	end
 		
-	-- recursively print each element ---
 	if Data.MODULE == mytype then 
 		for role, element in pairs(model) do
 			-- print('DEBUG print_idl module: ', Data, element, role)
-			if Data.is_user_defined_element(role, element) then
+			if element ~= model and Data.is_user_defined(role, element) then
+				-- recursively print each element ---
 				Data.print_idl(element, content_indent_string)
 			end	
 		end
@@ -452,13 +456,12 @@ function Data.index(model, result)
 	for k, v in pairs(model) do
 		local type_k, type_v = type(k), type(v) 
 		-- skip meta-data attributes
-		if 'function' ~= type_k and 'function' ~= type_v and
-		   'string' == type_k then
-				if 'table' == type_v and Data ~= v then -- composite (nested)
-					result = Data.index(v, result)
-				elseif 'string' == type_v then -- leaf
-					table.insert(result, v) 
-				end
+		if Data.is_user_defined(k, v) then
+			if 'table' == type_v and Data ~= v then -- composite (nested)
+				result = Data.index(v, result)
+			elseif 'string' == type_v then -- leaf
+				table.insert(result, v) 
+			end
 		end
 	end
 	return result
