@@ -2,95 +2,241 @@
 -------------------------------------------------------------------------------
 --  (c) 2005-2014 Copyright, Real-Time Innovations, All rights reserved.     --
 --                                                                           --
---         Permission to modify and use for internal purposes granted.       --
+-- Permission to modify and use for internal purposes granted.               --
 -- This software is provided "as is", without warranty, express or implied.  --
 --                                                                           --
 -------------------------------------------------------------------------------
 -- File: Data.lua 
--- Purpose: Meta-Data (singleton) class to provide helpers for defining 
---          naturally addressable DataTypes in Lua
+-- Purpose: DDSL: Data type definition Domain Specific Language (DSL) in Lua
 -- Created: Rajive Joshi, 2014 Feb 13
 -------------------------------------------------------------------------------
 -- TODO: Design Overview 
+-- TODO: Create a github project for DDSL
 --
 -------------------------------------------------------------------------------
 
+-- Data - singleton meta-data class implementing a semantic data definition 
+--        model equivalent to OMG IDL, and easily mappable to various 
+--        representations (eg OMG IDL, XML etc)
+--
+-- Purpose: 
+-- 	   Serves several purposes
+--     1. Provides a way of defining IDL equivalent data types (aka models) 
+--     2. Provides helper methods to generate equivalent IDL  
+--     3. Provides a natural way of indexing into a dynamic data sample 
+--     4. Provides a way of creating instances of a data type, for example 
+--        to stimulate an interface.
+--     5. Provides the foundation for automated type (model) reasoning & mapping 
+-- 
+-- Usage:
+--    Nomenclature
+--        The nomenclature is used to refer to parts of a data type is illustrated
+--        using the example below:
+--           struct Model {
+--              Element1 role1;       // field1
+--              Element2 role2;       // field2
+--              seq<Element3> role3;  // field3
+--           }   
+--        where Element may be recursively defined as a Model with other parts.
+--
+--    Every user defined (model) is a table with the following meta-data keys
+--        Data.NAME
+--        Data.TYPE
+--        Data.META
+--        Data.INSTANCE
+--    The leaf elements of the table give a fully qualified string to address a
+--    field in a dynamic data sample in Lua. 
+--
+--    Thus, an element definition in Lua:
+-- 		 UserModule:Struct('UserType',
+--          Data.has(user_role1, Data.String),
+--          Data.contains(user_role2, UserModule.UserType2),
+--          Data.contains(user_role3, UserModule.UserType3),
+--          Data.has_list(user_role_seq, UserModule.UserTypeSeq),
+--          :
+--       )
+--    results in the following table ('model') being defined:
+--       UserModule.UserType = {
+--          [Data.NAME] = 'UserType'     -- name of this model 
+--          [Data.TYPE] = Data.STRUCT    -- one of Data.* type definitions
+--          [Data.META] = {              -- meta-data for the contained elements
+--              user_role1    = Data.String,
+--              user_role2    = UserModule.UserType2,
+--				user_role3    = UserModule.UserType3,
+--				user_role_seq = UserModule.UserTypeSeq,
+--          }             
+--          [Data.INSTANCE] = {}       -- table of instances of this model 
+--                 
+--          -- instance fields --
+--          user_role1 = 'user_role1'  -- name used to index this 'leaf' field
+--          user_role2 = Data.struct('user_role2', UserModule.UserType2)
+--          user_role3 = Data.struct('user_role3', UserModule.UserType3)
+--          user_role_seq = Data.seq('user_role_seq', UserModule.UserTypeSeq)
+--          :
+--       }
+--    and also returns the above table.
+--
+--    The default UserModule is 'Data' (this class/table). A user defined
+--    module is instantiated as follows
+--       Data:Module('UserModule')
+--    Submodules can be defined in a similar manner.
+--       UserModule:Module('UserSubmodule')
+--   
+--    Note that if a definition already exists, it is cleared and re-defined.
+--
+--    To create an instance named 'i1' from a structure named 'Model'
+--          i1 = Data.struct('i1', Model)
+--    Now, one can instance all the fields of the resulting table
+--          i1.role1 = 'i1.role1'
+--    or 
+--          Model[Data.INSTANCE].i1.role1
+-- 
+-- Implementation:
+--    The meta-model pre-defines the following meta-data 
+--    attributes for a model element:
+--
+--       Data.TYPE
+--          Every model element 'model' is represented as a table with a 
+--          non-nil key
+--             model[Data.TYPE] = one of the Data.* type definitions
+--
+--       Data.NAME
+--          For named i.e. composite model elements
+--             model[Data.NAME] = name of the model element
+--          For primitive/atomic model elements 
+--             model[Data.NAME] = nil
+--          This property can be used to determine if a model element is 
+--			primitive.
+--   
+--       Data.META
+--          For storing the child element info
+--              model[Data.META][role] = role model element 
+--
+--       Data.INSTANCE
+--          For storing instances of this model element, indexed by instance name
+--              model[Data.META].user = one of the instances of this model
+--          where 'user' is the name of instance (in a container model element)
+--
+--    Note that instances do not have these predefined meta-data attributes.
+--
+--    The rest of the attributes are user defined fields of the model, as if 
+--    it were a top-level instance:
+--       <role i.e user_field>
+--          Either a primitive field
+--              model.role = 'role'
+--          Or a composite field 
+--              model.role = Data.struct('role', RoleModel)
+--          or a sequence
+--              model.role = Data.seq('role', RoleModel)
+--
+--    Note that all the meta-data attributes are functions, so it is 
+--    straightforward to skip them, when traversing a model table.
 Data = Data or {
-	-- type meta-data definitions are closures to ensure immutability ---
-	
-	TYPE      = '__typeinfo', -- name of the type definition closure
-	
-	-- structural types ---
+	-- every 'model' table has these keys defined 
+	NAME      = function() end,  -- table key for 'model name'	
+	TYPE      = function() end,  -- table key for the 'model type name' 
+	META      = function() end,  -- table key for element meta-data
+	INSTANCE  = function() end,  -- table key for instances of this model
+		
+	-- type definitions: closures implement a meta-data enum ---
+	-- these are the possible 'model[Data.TYPE]' values
 	MODULE    = function() return 'module', name end,
-	ENUM      = function() return 'enum', name end,
 	STRUCT    = function() return 'struct' end,
 	UNION     = function() return 'union' end,
-	SEQ       = function() return 'seq' end,
-
-	-- primitive types ---
+	ENUM      = function() return 'enum', name end,
 	STRING    = function() return 'string' end,
+
+	-- annotation (qualifier) on the base type definitions ---
+	SEQ       = function() return 'seq' end,
 }
 
-function Data.print(name, model, indent_string) 
-	local indent_string = indent_string or ''
-	local content_indent_string = indent_string .. '   '
-	local mytypeinfo = model[Data.TYPE] or Data.MODULE -- default type
-	local mytypename = mytypeinfo()
-	local myname = name
+--------------------------------------------------------------------------------
+-- Model Element Definitions - Primitive
+-- NOTE: [Data.NAME] = nil i.e. primitive model elements do not have a name
+--------------------------------------------------------------------------------
+
+Data.String = {
+	-- [Data.NAME] = nil, -- for primitive/atomic model elements
+	[Data.TYPE] = Data.STRING,
+}  
+
+--------------------------------------------------------------------------------
+-- Model Element Definitions - Composite
+--------------------------------------------------------------------------------
+
+-- Data:Module() - creates a new module
+-- Purpose:
+--    Create a user defined namespace, that inherits from the 'Data' namespace
+-- Parameters:
+-- 	  <<in>> name - module name to be created
+--    <<returns>> the newly created namespace, also inserted into the calling
+--                namespace
+-- Usage:
+--    To define a module called 'UserModule'
+--       Data:Module('UserModule')
+--    which results in the following being defined and returned
+--       Data.UserModule = {
+--          [Data.NAME] = 'UserModule'
+--          [Data.TYPE] = Data.MODULE 
+--       }
+--   The UserModule table extends the 'Data' table, and inherits all the methods.
+--   User defined types defined in the 'UserModule' will live in that table
+--   namespace.
+function Data:Module(name) 
+	local model = { 
+		[Data.NAME] = name,
+		[Data.TYPE] = Data.MODULE,
+		[Data.META] = {}, -- can hold primitive elements, e.g. consts
+	}  
 	
-	-- open --
-	print(string.format('%s%s %s {', indent_string, mytypename, myname))
-			
-			
-	-- recursively print each element ---
-	if Data.MODULE == mytypeinfo then 
-		for field, element in pairs(model) do
-			-- recursively print the contained elements ---
-			if (type(element) == 'table') then
-				Data.print(field, element, content_indent_string)
-			end	
-		end
-		
-	elseif Data.ENUM == mytypeinfo then 
-		for field, ord in pairs(model) do		
-			if ord ~= mytypeinfo then 
-				print(content_indent_string .. field .. ' = ' .. ord .. ',')
-			end
-		end
-		
-	elseif Data.STRUCT == mytypeinfo then
-		for field, element in pairs(model) do	
-			if field ~= Data.TYPE then
-				if type(element) == 'function' then -- primitive type
-					print(content_indent_string .. element() 
-					.. '  ' .. field .. ';')
-				else -- structural type
-					print(content_indent_string .. element[Data.TYPE]() 
-					.. '  ' .. field .. ';')
-				end
-			end
-		end
-		
-	elseif Data.STRING == mytypeinfo then
-		print(content_indent_string .. string .. '   ' .. name .. ',')
-	end
+	-- inherit
+	setmetatable(model, self)
+	self.__index = self
+
+	-- add it to the container module
+	self[name] = model
 	
-	-- close --
-	print(string.format('%s};\n', indent_string))
+	return model
 end
 
--- creates a new namespace: returns a namespace table 
-function Data.namespace(name) 
-	result = { [Data.TYPE] = Data.NAMESPACE(name) }  
-	return result
+function Data:Struct(name, ...) 
+	local model = { 
+		[Data.NAME] = name,
+		[Data.TYPE] = Data.STRUCT,
+		[Data.META] = {},
+	}
+	
+	-- populate the model table
+	for i, field in ipairs{...} do	
+		local role, element, seq_max_size = field[1], field[2], field[3]		
+		local element_type = element[Data.TYPE]
+		
+		-- save the meta-data
+		model[Data.META][role] = element
+		
+		-- populate the top-level instance fields
+		if Data.STRUCT == element_type then -- composite type
+			model[role] = Data.struct(role, element)
+		elseif Data.SEQ == element_type then -- sequences
+			model[role] = Data.seq(role, element)
+		else -- enum or primitive 
+			model[role] = role -- leaf is the role name
+		end
+	end
+	
+	-- add/replace the definition in the container model (module)
+	self[name] = model
+		
+	return model
 end
+
 
 -- the 'model' is an array of strings and the ordinal values are assigned 
 -- automatically starting at 0
 function Data.enum(model) 
 	local result = { [Data.TYPE] = Data.ENUM }
-	for i, field in ipairs(model) do
-		result[field] = i - 1 -- shift to a 0 based indexing
+	for i, element in ipairs(model) do
+		result[element] = i - 1 -- shift to a 0 based indexing
 	end
 	return result
 end
@@ -98,8 +244,8 @@ end
 -- the 'model' is a table of 'name = ordinal value' pairs
 function Data.enum2(model) 
 	local result = { [Data.TYPE] = Data.ENUM }
-	for field, value in pairs(model) do
-		result[field] = value
+	for element, value in pairs(model) do
+		result[element] = value
 	end
 	return result
 end
@@ -109,46 +255,181 @@ function Data.struct2(model) -- model must be a table
 	return model
 end
 
-function Data.struct(field, type) -- type is required
-	-- lookup result
-	Data[type] = Data[type] or {}
-	local result = Data[type][field] 
+--------------------------------------------------------------------------------
+-- Relationship Definitions
+--------------------------------------------------------------------------------
+
+-- Data:has() - containment relationship
+-- Purpose:
+--    Create a nested model element
+-- Parameters:
+--    <<in>> name - name used to refer to the contained model element
+--    <<in>> model - the contained  model element
+--    <<return>> a table containing the name and a table that can be used 
+--               to index into the 
+-- Usage:
+--    To define a contained element
+--       Data.has('name', model)
+--    which results in the following being defined and returned
+--       { name, model_instance_table_for_indexing_using_name }
+--
+--    Thus, for example, if 
+--       model = { 
+--                 first = 'first',
+--                 last  = 'last',
+--                  :  
+--               }
+--    the returned value will be an array of two elements:
+--      t =   { 'name',  { 
+--                           first = 'name.first',
+--                           last  = 'name.last',
+--                            :  
+--                        } 
+--             }
+--   such that in the returned table can index the nested elements:
+--       t[2].first = 'name.first'
+--       t[2].last  = 'name.last'
+--  and so on. 
+function Data.has(name, model)
+	return {name, model}
+end
+
+function Data.has_list(name, model, n)
+	return { name, model, Data.SEQ, n }
+end 
+
+--------------------------------------------------------------------------------
+-- Model Element Instances  ---
+--------------------------------------------------------------------------------
+
+-- Data.struct() - creates an instance of a structure model element
+-- Purpose:
+--    Define a table that can be used to index into an instance of a model
+-- Parameters:
+-- 	  <<in>> role  - the role|instance name
+-- 	  <<in>> model - the model element (table) to be instantiated
+--    <<returns>> the newly created instance that supports indexing by 'role'
+-- Usage:
+-- TODO:
+function Data.struct(role, model) -- type is required
+	model[Data.INSTANCE] = model[Data.INSTANCE] or {}
+	local result = model[Data.INSTANCE][role]
 	
 	-- cache the result, so that we can reuse it the next time!
 	if not result then 
 		result = {}
-		for k, v in pairs(type) do
-			result[k] = field .. '.' .. v
+		for k, v in pairs(model) do
+			-- skip meta-data attributes
+			if type(k) ~= 'function' then 
+				result[k] = role .. '.' .. v
+			end
 		end
-		Data[type][field] = result
+		model[Data.INSTANCE][role] = result
 	end
 	
 	return result
 end
 
-function Data.seq(field, type) -- type is OPTIONAL
+function Data.seq(role, model) -- type is OPTIONAL
 	return function (i)
-		return i and (type and Data.struct(field .. '[' .. i .. ']', type)
-				           or field .. '[' .. i .. ']')
-			     or field .. '#'
+		return i and (model and Data.struct(role .. '[' .. i .. ']', model)
+				            or role .. '[' .. i .. ']')
+			     or role .. '#'
 	end
 end
 
--- TODO: function Data.union(field1, type1, field2, type2, ...) -- types required
+-- TODO: function Data.union(role1, type1, role2, type2, ...) -- types required
 --[[
-function Data.union(field, type, ...) -- type is required
-	local result = Data.struct(field, type)
-	result._d = field .. '#'
+function Data.union(role, type, ...) -- type is required
+	local result = Data.struct(role, type)
+	result._d = role .. '#'
 	return result
 end
 --]]
 
+-- TODO: remove
 function Data.len(seq)
 	return seq .. '#'
 end
+-- TODO: remove
+function Data.idx(seq, i, role)
+	return seq .. '[' .. i .. ']' .. (role and ('.' .. role) or '')
+end
 
-function Data.idx(seq, i, field)
-	return seq .. '[' .. i .. ']' .. (field and ('.' .. field) or '')
+--------------------------------------------------------------------------------
+-- Helpers
+--------------------------------------------------------------------------------
+
+-- Data.print_IDL() - prints ILD representation of a data model
+--
+-- Purpose:
+-- 		Generate equivalent OMG IDL representation from a data model
+-- Parameters:
+--    <<in>> model - the data model element
+--    <<in>> indent_string - the indentation string to apply
+--    <<return>> model, indent_string for chaining
+-- Usage:
+--         Data.print_IDL(model) 
+--           or
+--         Data.print_IDL(model, '   ')
+function Data.print_IDL(model, indent_string) 
+	local indent_string = indent_string or ''
+	local content_indent_string = indent_string .. '   '
+	local mytype = model[Data.TYPE]
+	local myname = model[Data.NAME]
+	local mymeta = model[Data.META]
+		
+	-- open --
+	print(string.format('%s%s %s {', indent_string, mytype(), myname))
+			
+	-- recursively print each element ---
+	if Data.MODULE == mytype then 
+		for role, element in pairs(model) do
+			-- recursively print the nested model elements ---
+			if (type(element) == 'table') then
+				Data.print_IDL(role, element, content_indent_string)
+			end	
+		end
+		
+	elseif Data.STRUCT == mytype then
+		for role, element in pairs(mymeta) do	
+			print(table.concat({
+				content_indent_string, element[Data.TYPE](), '  ', role, ';'
+			}))
+
+		end
+
+	elseif Data.ENUM == mytype then 
+		for role, ord in pairs(model) do		
+			if ord ~= mytype then 
+				print(content_indent_string .. role .. ' = ' .. ord .. ',')
+			end
+		end
+		
+	elseif Data.STRING == mytype then
+		print(content_indent_string .. string .. '   ' .. name .. ',')
+	end
+	
+	-- close --
+	print(string.format('%s};\n', indent_string))
+	
+	return model, indent_string
+end
+
+
+function Data.index(model, result) 
+	local result = result or {}
+	
+	for k, v in pairs(model) do
+		if type(k) ~= 'function' then -- skip meta-data attributes
+			if type(v) == 'table' then -- nested
+				result = Data.index(v, result)
+			else -- leaf
+				table.insert(result, v) 
+			end
+		end
+	end
+	return result
 end
 
 --------------------------------------------------------------------------------
@@ -157,6 +438,114 @@ end
 
 ---[[ SKIP TESTS --
 
+-- Equivalent to:
+--    Data.Test = {
+--        [Data.TYPE] = Data.MODULE 
+--        [Data.NAME] = 'Test'
+--    }
+-- NOTE: if you want Test to be local, declare it as a local first
+--       eg:
+--           local Test
+--           Data:Module('Test')
+local Test = Data:Module('Test')
+
+--[[
+--
+-- Equivalent to:
+--    Test.Month = {
+--        [Data.NAME] = 'Month'
+--        [Data.TYPE] = Data.ENUM 
+--        MON         = 0
+--        TUE         = 1
+--		  WED         = 2
+--    }
+Test:Enum{'Days', 
+	'MON', 'TUE', 'WED', -- ' THU', 'FRI', 'SAT', 'SUN'
+}
+
+Test:Module("Subtest")
+
+Test.Subtest:Enum{'Colors', 
+	RED   = 5,
+	BLUE  = 7,
+	GREEN = 9,
+}
+
+--]]
+
+-- Equivalent to:
+--    Test.Name = {
+--        [Data.NAME] = 'Name'
+--        [Data.TYPE] = Data.STRUCT 
+--        first       = 'first'
+--        last        = 'last'
+--        favorite    = 'favorite'
+--    }  
+Test:Struct('Name', 
+	{'first', Data.String}, --	{ first = Data.String },
+	{'last',  Data.String},
+	{'nicknames',  Data.String, Data.SEQ, 3},
+	{'aliases',  Data.String, Data.SEQ}
+	-- Data.has('favorite', Test.Subtest.Colors),
+)
+
+
+-- Equivalent to:
+--    Test.Address = {
+--        [Data.NAME] = 'Address'
+--        [Data.TYPE] = Data.STRUCT 
+--        name        = Data.struct('name', Test.Name)
+--        street      = 'street'
+--        city        = 'city'
+--    }  
+
+Test:Struct('Address',
+	Data.has('name', Test.Name),
+	Data.has('street', Data.String),
+	Data.has('city',  Data.String)
+)
+
+--[[
+-- Equivalent to:
+--    Test.FullName = {
+--        [Data.NAME] = 'FullName'
+--        [Data.TYPE] = Data.STRUCT 
+--        first       = 'first'
+--        last        = 'last'
+--        middle      = 'middle'
+--    }  
+Test:Struct{'FullName',
+	Data.extends(Test.Name),  -- extends base type
+	Data.has('middle',  Data.String),
+}
+
+-- Equivalent to:
+--    Test.NameOrAddress = {
+--        [Data.NAME] = 'NameOrAddress'
+--        [Data.TYPE] = Data.UNION 
+--        name        = Data.struct('name', Test.Name)
+--        address     = Data.struct('address', Test.Address)
+--    }  
+Test:Union{'NameOrAddress',
+	Data.contains('name', Test.Name),
+	Data.contains('address', Test.Address),
+}
+
+-- Equivalent to:
+--    Test.Directory = {
+--        [Data.NAME] = 'Company'
+--        [Data.TYPE] = Data.STRUCT 
+--        info        = Data.union('info', Test.NameOrAddress)
+--        employees   = Data.seq('employees', Test.Name)
+--        coord       = Data.seq('coord', Data.String)
+--    }  
+Test:Struct{'Company',
+	Data.contains('info', Test.NameOrAddress),
+	Data.has_list('employees', Test.Name),
+	Data.has_list('coord', Data.String),
+}
+
+--[[
 local Test = Test or {}
 
 Test.Days = Data.enum{
@@ -172,44 +561,74 @@ Test.Subtest.Colors = Data.enum2{
 }
 
 Test.Name = Data.struct2{
-	first   = Data.STRING,
-	last    = Data.STRING,
+	first = Data.STRING,
+	last  = Data.STRING,
 }
 
---[[
-Test:struct3('Name', {
-	first   = Data.STRING,
-	last    = Data.STRING,
-})
---]]
-
 Test.Address = Data.struct2{
-	name    = Test.Name,
+	name    = Data.struct('name', Test.Name),
 	street  = Data.STRING,
 	city    = Data.STRING,
 }
+--]]
 
-function Test:test_enum()
-	print('\n--- test enums ---')
-	Data.print('Days', Test.Days)
-	Data.print('Colors', Test.Subtest.Colors)
+function Test:print_and_index(model)
+	Data.print_IDL(model)	
+
+	print(model[Data.TYPE]() .. ' ' .. model[Data.NAME] .. ' index:')
+	for i, v in ipairs(Data.index(model)) do
+		print('   ', v)	
+	end
 end
 
-function Test:test_module()
-	print('\n--- test module ---')
-	Data.print('Test', Test)
-	Data.print('Subtest', Test.Subtest)
+function Test:test_struct_basic()
+	self:print_and_index(Test.Name)
+end
+function Test:test_struct_composite()
+	self:print_and_index(Test.Address)
+end
+
+function Test:Xtest_struct_inheritance()
+	-- Inheritance
+	print(Test.FullName[Data.NAME])
+	for i, v in ipairs(Data.index(Test.FullName)) do
+		print(v)	
+	end
+		
+	-- Union
+	print(Test.NameOrAddress[Data.NAME])
+	for i, v in ipairs(Data.index(Test.NameOrAddress)) do
+		print(v)	
+	end
+	
+	-- Sequences and Unions
+	print(Test.Company[Data.NAME])
+	for i, v in ipairs(Data.index(Test.Company)) do
+		print(v)	
+	end
+	--]]
+end
+
+function Test:Xtest_enum()
+	Data.print_IDL(Test.Days)
+	Data.print_IDL(Test.Subtest.Colors)
+end
+
+function Test:Xtest_module()
+	Data.print_IDL(Test)
+	Data.print_IDL(Test.Subtest)
 end
 
 function Test:main()
 	for k, v in pairs (self) do
-		if string.sub(k, 1,4) == "test" then
+		if type(k) == "string" and string.sub(k, 1,4) == "test" then
+			print('\n--- ' .. k .. ' ---')
 			v(self) 
 		end
 	end
 end
 
-Test:main()
+-- Test:main()
  
 -- SKIP TESTS --]]
 --------------------------------------------------------------------------------
