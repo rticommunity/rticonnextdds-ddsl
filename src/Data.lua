@@ -30,8 +30,8 @@
 -- 
 -- Usage:
 --    Nomenclature
---        The nomenclature is used to refer to parts of a data type is illustrated
---        using the example below:
+--        The nomenclature is used to refer to parts of a data type is 
+--        illustrated using the example below:
 --           struct Model {
 --              Element1 role1;       // field1
 --              Element2 role2;       // field2
@@ -117,7 +117,7 @@
 --              model[Data.META].user = one of the instances of this model
 --          where 'user' is the name of instance (in a container model element)
 --
---    Note that instances do not have these predefined meta-data attributes.
+--    Note that instances do not have these the last two meta-data attributes.
 --
 --    The rest of the attributes are user defined fields of the model, as if 
 --    it were a top-level instance:
@@ -156,13 +156,17 @@ Data = Data or {
 --------------------------------------------------------------------------------
 
 Data.String = {
-	-- [Data.NAME] = nil, -- for primitive/atomic model elements
+	[Data.NAME] = nil, -- for primitive/atomic model elements
 	[Data.TYPE] = Data.STRING,
 }  
 
 --------------------------------------------------------------------------------
 -- Model Element Definitions - Composite
 --------------------------------------------------------------------------------
+
+-- Instantiate a top-level (default) module -- 
+Data[Data.NAME] = nil -- un-named top-level module
+Data[Data.TYPE] = Data.MODULE
 
 -- Data:Module() - creates a new module
 -- Purpose:
@@ -186,7 +190,6 @@ function Data:Module(name)
 	local model = { 
 		[Data.NAME] = name,
 		[Data.TYPE] = Data.MODULE,
-		[Data.META] = {}, -- can hold primitive elements, e.g. consts
 	}  
 	
 	-- inherit
@@ -255,6 +258,21 @@ function Data.struct2(model) -- model must be a table
 	return model
 end
 
+
+
+-- Data:is_user_defined_element() - is table entry (k, v) a user defined 
+--        model element?
+function Data.is_user_defined_element(k, v)
+	local type_v =  type(v)
+	return -- not the top-level module
+		   Data ~= v  and 
+		   -- not meta-data 
+		   'function' ~= type(k) and 'function' ~=type_v and
+		   -- is a user defined model element
+		   (('table' == type_v and v[Data.NAME] ~= nil) or
+		     'string' == type_v)
+end
+
 --------------------------------------------------------------------------------
 -- Relationship Definitions
 --------------------------------------------------------------------------------
@@ -317,7 +335,9 @@ function Data.struct(role, model) -- type is required
 	
 	-- cache the result, so that we can reuse it the next time!
 	if not result then 
-		result = {}
+		result = { [Data.NAME] = model[Data.NAME],
+				   [Data.TYPE] = model[Data.TYPE]
+		}
 		for k, v in pairs(model) do
 			-- skip meta-data attributes
 			if type(k) ~= 'function' then 
@@ -360,7 +380,7 @@ end
 -- Helpers
 --------------------------------------------------------------------------------
 
--- Data.print_IDL() - prints ILD representation of a data model
+-- Data.print_idl() - prints OMG IDL representation of a data model
 --
 -- Purpose:
 -- 		Generate equivalent OMG IDL representation from a data model
@@ -369,64 +389,76 @@ end
 --    <<in>> indent_string - the indentation string to apply
 --    <<return>> model, indent_string for chaining
 -- Usage:
---         Data.print_IDL(model) 
+--         Data.print_idl(model) 
 --           or
---         Data.print_IDL(model, '   ')
-function Data.print_IDL(model, indent_string) 
+--         Data.print_idl(model, '   ')
+function Data.print_idl(model, indent_string) 
 	local indent_string = indent_string or ''
-	local content_indent_string = indent_string .. '   '
+	local content_indent_string = indent_string
 	local mytype = model[Data.TYPE]
 	local myname = model[Data.NAME]
 	local mymeta = model[Data.META]
 		
+	-- print('DEBUG print_idl: ', Data, model, mytype(), myname)
+	
 	-- open --
-	print(string.format('%s%s %s {', indent_string, mytype(), myname))
-			
+	if (Data ~= model) then -- not top-level
+		print(string.format('\n%s%s %s {', indent_string, mytype(), myname))
+		content_indent_string = indent_string .. '   '
+	end
+		
 	-- recursively print each element ---
 	if Data.MODULE == mytype then 
 		for role, element in pairs(model) do
-			-- recursively print the nested model elements ---
-			if (type(element) == 'table') then
-				Data.print_IDL(role, element, content_indent_string)
+			-- print('DEBUG print_idl module: ', Data, element, role)
+			if Data.is_user_defined_element(role, element) then
+				Data.print_idl(element, content_indent_string)
 			end	
 		end
 		
 	elseif Data.STRUCT == mytype then
 		for role, element in pairs(mymeta) do	
-			print(table.concat({
-				content_indent_string, element[Data.TYPE](), '  ', role, ';'
-			}))
-
+			print(string.format('%s%s %s;', content_indent_string, 
+								            element[Data.TYPE](), role))
 		end
 
 	elseif Data.ENUM == mytype then 
 		for role, ord in pairs(model) do		
 			if ord ~= mytype then 
-				print(content_indent_string .. role .. ' = ' .. ord .. ',')
+				print(string.format('%s%s = %s,', content_indent_string, 
+												  role, ord))
 			end
 		end
-		
-	elseif Data.STRING == mytype then
-		print(content_indent_string .. string .. '   ' .. name .. ',')
 	end
 	
 	-- close --
-	print(string.format('%s};\n', indent_string))
+	if (Data ~= model) then -- not top-level
+		print(string.format('%s};', indent_string))
+	end
 	
 	return model, indent_string
 end
 
 
 function Data.index(model, result) 
-	local result = result or {}
+	local mytype = model[Data.TYPE]
 	
+	-- only meaningful for top-level types that can be instantiated:
+	if (Data.STRUCT ~= mytype and Data.UNION ~= mytype) then
+		return result
+	end
+
+	local result = result or {}	-- must be a top-level type, ie a struct or union	
 	for k, v in pairs(model) do
-		if type(k) ~= 'function' then -- skip meta-data attributes
-			if type(v) == 'table' then -- nested
-				result = Data.index(v, result)
-			else -- leaf
-				table.insert(result, v) 
-			end
+		local type_k, type_v = type(k), type(v) 
+		-- skip meta-data attributes
+		if 'function' ~= type_k and 'function' ~= type_v and
+		   'string' == type_k then
+				if 'table' == type_v and Data ~= v then -- composite (nested)
+					result = Data.index(v, result)
+				elseif 'string' == type_v then -- leaf
+					table.insert(result, v) 
+				end
 		end
 	end
 	return result
@@ -572,21 +604,41 @@ Test.Address = Data.struct2{
 }
 --]]
 
-function Test:print_and_index(model)
-	Data.print_IDL(model)	
-
-	print(model[Data.TYPE]() .. ' ' .. model[Data.NAME] .. ' index:')
-	for i, v in ipairs(Data.index(model)) do
+function Test.print_index(model)
+	local result = Data.index(model)
+	if result == nil then return end
+	
+	print('\nindex:')
+	for i, v in ipairs(result) do
 		print('   ', v)	
 	end
 end
 
+function Test:print(model)
+	Data.print_idl(model)
+	self.print_index(model)
+end
+
 function Test:test_struct_basic()
-	self:print_and_index(Test.Name)
+	self:print(Test.Name)
 end
+
 function Test:test_struct_composite()
-	self:print_and_index(Test.Address)
+	self:print(Test.Address)
 end
+
+function Test:test_module()
+	self:print(Test)
+end
+
+function Test:test_root()
+	self:print(Data)
+end
+
+function Test:Xtest_submodule()
+	self:print(Test.Submodule)
+end
+
 
 function Test:Xtest_struct_inheritance()
 	-- Inheritance
@@ -610,25 +662,29 @@ function Test:Xtest_struct_inheritance()
 end
 
 function Test:Xtest_enum()
-	Data.print_IDL(Test.Days)
-	Data.print_IDL(Test.Subtest.Colors)
+	Data.print_idl(Test.Days)
+	Data.print_idl(Test.Subtest.Colors)
 end
 
-function Test:Xtest_module()
-	Data.print_IDL(Test)
-	Data.print_IDL(Test.Subtest)
-end
-
+-- main() - run the list of tests passed on the command line
+--          if no command line arguments are passed in, run all the tests
 function Test:main()
-	for k, v in pairs (self) do
-		if type(k) == "string" and string.sub(k, 1,4) == "test" then
-			print('\n--- ' .. k .. ' ---')
-			v(self) 
+	if #arg > 0 then -- run selected tests passed in from the command line
+		for i, test in ipairs (arg) do
+			print('\n--- ' .. test .. ' ---')
+			Test[test](Test) -- run the test
+		end
+	else -- run all  the tests
+		for k, v in pairs (self) do
+			if type(k) == "string" and string.sub(k, 1,4) == "test" then
+				print('\n--- ' .. k .. ' ---')
+				v(self) 
+			end
 		end
 	end
 end
 
--- Test:main()
+Test:main()
  
 -- SKIP TESTS --]]
 --------------------------------------------------------------------------------
