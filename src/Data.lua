@@ -340,20 +340,25 @@ function Data.struct(role, model) -- type is required
 	model[Data.INSTANCE] = model[Data.INSTANCE] or {}
 	local result = model[Data.INSTANCE][role]
 	
+	-- print('DEBUG Data.struct: ', role, model[Data.NAME], model[Data.TYPE]())
+	
 	-- cache the result, so that we can reuse it the next time!
 	if not result then 
 		result = { [Data.NAME] = model[Data.NAME],
 				   [Data.TYPE] = model[Data.TYPE],
 		}
 		for k, v in pairs(model) do
+			local type_v = type(v)
 			-- skip meta-data attributes
 			if type(k) ~= 'function' then 
-				if type(v) == 'function' then -- seq: prefix the field name
+				if type_v == 'function' then -- seq: prefix the field name
 					result[k] = function(i, prefix) 
 									local prefix = prefix or ''
 									return v(i, prefix .. role .. '.') 
 								end
-				else -- struct: prefix the field names
+				elseif type_v == 'table' then -- nested struct: prefix the field names
+					result[k] = Data.struct(role, v) -- recursively create an instance
+				else -- simple struct: prefix the field names
 					result[k] = role .. '.' .. v
 				end
 			end
@@ -365,7 +370,7 @@ function Data.struct(role, model) -- type is required
 end
 
 function Data.seq(role, model) -- type is OPTIONAL
-	-- print('DEBUG seq', role, model[Data.TYPE](), model[Data.NAME])
+	-- print('DEBUG Data.seq', role, model[Data.TYPE](), model[Data.NAME])
 	return function (i, prefix)
 		local prefix = prefix or ''
 		return i -- index 
