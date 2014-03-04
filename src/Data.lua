@@ -49,7 +49,7 @@
 --
 --    Thus, an element definition in Lua:
 -- 		 UserModule:Struct('UserType',
---          Data.has(user_role1, Data.String),
+--          Data.has(user_role1, Data.string),
 --          Data.contains(user_role2, UserModule.UserType2),
 --          Data.contains(user_role3, UserModule.UserType3),
 --          Data.has_list(user_role_seq, UserModule.UserTypeSeq),
@@ -60,7 +60,7 @@
 --          [Data.NAME] = 'UserType'     -- name of this model 
 --          [Data.TYPE] = Data.STRUCT    -- one of Data.* type definitions
 --          [Data.DEFN] = {              -- meta-data for the contained elements
---              user_role1    = Data.String,
+--              user_role1    = Data.string,
 --              user_role2    = UserModule.UserType2,
 --				user_role3    = UserModule.UserType3,
 --				user_role_seq = UserModule.UserTypeSeq,
@@ -415,7 +415,7 @@ end
 
 -- Data:Atom('double')
 
-Data:Atom('String')
+Data:Atom('string')
 Data:Atom('double')
 
 -- Disallow user defined atoms!
@@ -586,10 +586,10 @@ Test.Subtest:Enum{'Colors',
 --        favorite    = 'favorite'
 --    }  
 Test:Struct('Name', 
-	{'first', Data.String}, --	{ first = Data.String },
-	{'last',  Data.String},
-	{'nicknames',  Data.String, Data.SEQ(3) },
-	{'aliases',  Data.String, Data.SEQ() }
+	{'first', Data.string}, --	{ first = Data.string },
+	{'last',  Data.string},
+	{'nicknames',  Data.string, Data.SEQ(3) },
+	{'aliases',  Data.string, Data.SEQ() }
 	-- Data.has('favorite', Test.Subtest.Colors),
 )
 
@@ -605,8 +605,8 @@ Test:Struct('Name',
 
 Test:Struct('Address',
 	Data.has('name', Test.Name),
-	Data.has('street', Data.String),
-	Data.has('city',  Data.String)
+	Data.has('street', Data.string),
+	Data.has('city',  Data.string)
 )
 
 -- Equivalent to:
@@ -615,13 +615,13 @@ Test:Struct('Address',
 --        [Data.TYPE] = Data.STRUCT 
 --        info        = Data.union('info', Test.NameOrAddress)
 --        employees   = Data.seq('employees', Test.Name)
---        coord       = Data.seq('coord', Data.String)
+--        coord       = Data.seq('coord', Data.string)
 --    }  
 Test:Struct('Company',
 	-- {'info', Test.NameOrAddress),
 	{ 'offices', Test.Address, Data.SEQ(10) },
 	{ 'employees', Test.Name, Data.SEQ() },
-	{ 'hq', Data.String, Data.SEQ(2) }
+	{ 'hq', Data.string, Data.SEQ(2) }
 )
 
 --[[
@@ -635,7 +635,7 @@ Test:Struct('Company',
 --    }  
 Test:Struct{'FullName',
 	Data.extends(Test.Name),  -- extends base type
-	Data.has('middle',  Data.String),
+	Data.has('middle',  Data.string),
 }
 
 -- Equivalent to:
