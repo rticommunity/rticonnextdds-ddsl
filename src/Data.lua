@@ -203,6 +203,8 @@ function Data:Module(name)
 	local model = { 
 		[Data.NAME] = name,
 		[Data.TYPE] = Data.MODULE,
+		[Data.DEFN] = nil,   
+		[Data.INSTANCE] = nil,
 	}  
 	
 	-- inherit
@@ -219,7 +221,8 @@ function Data:Struct(name, ...)
 	local model = { 
 		[Data.NAME] = name,
 		[Data.TYPE] = Data.STRUCT,
-		[Data.DEFN] = {},
+		[Data.DEFN] = {},     -- will be populated as model elements are defined 
+		[Data.INSTANCE] = nil,-- will be populated as instances are defined
 	}
 	
 	-- populate the model table
@@ -266,13 +269,6 @@ function Data.enum2(model)
 	return result
 end
 
-function Data.struct2(model) -- model must be a table
-	model[Data.TYPE] = Data.STRUCT 
-	return model
-end
-
-
-
 -- Data:is_user_defined() - is table entry (k, v) a user defined 
 --        model element?
 function Data.is_user_defined(k, v)
@@ -288,7 +284,7 @@ function Data.is_user_defined(k, v)
 		   'string' == type_k and  
 		   ('string' == type_v or  -- leaf 
 		    'function' == type_v or -- sequence
-		   ('table' == type_v and v[Data.NAME] ~= nil)) -- non-primitive
+		   ('table' == type_v and v[Data.TYPE] ~= Data.ATOM)) -- non-primitive
 end
 
 --------------------------------------------------------------------------------
@@ -384,11 +380,11 @@ function Data.seq(role, model) -- type is OPTIONAL
 	return function (i, prefix)
 		local prefix = prefix or ''
 		return i -- index 
-				 and (model[Data.NAME] 
+				 and (model[Data.TYPE] == Data.ATOM
+					  -- primitive
+				      and string.format('%s%s[%d]', prefix, role, i)
 					  -- composite
-					  and Data.struct(string.format('%s%s[%d]', prefix, role, i), model)
-				      -- primitive
-				      or string.format('%s%s[%d]', prefix, role, i)) 
+					  or Data.struct(string.format('%s%s[%d]', prefix, role, i), model))
 				 -- length
 			     or string.format('%s%s#', prefix, role)
 	end
@@ -419,15 +415,8 @@ end
 
 -- Data:Atom('double')
 
--- TODO: 
--- Data:Atom('String')
-
-Data.String = {
-	[Data.NAME] = nil,
-	[Data.TYPE] = function() return 'string' end,
-	[Data.DEFN] = nil,      -- for primitive/atomic model elements
-	[Data.INSTANCE] = nil,
-}  
+Data:Atom('String')
+Data:Atom('double')
 
 -- Disallow user defined atoms!
 Data.Atom = nil
@@ -482,11 +471,11 @@ function Data.print_idl(model, indent_string)
 												element[Data.TYPE](), role))
 			elseif seq_max_size < 0 then -- unbounded sequence
 				print(string.format('%sseq<%s> %s;', content_indent_string, 
-								element[Data.NAME] or element[Data.TYPE](), 
+								element[Data.NAME], 
 								role))
 			else -- bounded sequence
 				print(string.format('%sseq<%s,%d> %s;', content_indent_string, 
-							   element[Data.NAME] or element[Data.TYPE](), 
+							   element[Data.NAME], 
 							   seq_max_size,
 							   role))
 
