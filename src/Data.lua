@@ -154,6 +154,12 @@ Data = Data or {
 	-- return the length of the sequence or -1 for unbounded sequences
 	SEQ       = function(n) return n == nil and -1 or 
 							      (assert(type(n)=='number') and n) end,
+							      
+							     
+	-- This top-level container is special in that:
+	--  1. It defines the atomic types
+	--  2. Provides an unnamed name-space ('root') that acts like a module
+    --  3. But is technically not a user-defined module
 }
 
 --------------------------------------------------------------------------------
@@ -221,7 +227,10 @@ function Data:Struct(name, ...)
 		local element_type = element[Data.TYPE]
 				
 		-- save the meta-data
+		-- as an array to get the correct ordering:
 		model[Data.DEFN][i] = { role, element, seq_capacity } -- skip the rest 
+		-- as a table to get lookup the definition of a field
+		model[Data.DEFN][role] = model[Data.DEFN][i] 
 		
 		-- populate the instance/role fields
 		if seq_capacity then -- sequence
@@ -443,7 +452,7 @@ function Data.print_idl(model, indent_string)
 
 			if seq_max_size == nil then 
 				print(string.format('%s%s %s;', content_indent_string, 
-												element[Data.TYPE](), role))
+												element[Data.NAME], role))
 			elseif seq_max_size < 0 then -- unbounded sequence
 				print(string.format('%sseq<%s> %s;', content_indent_string, 
 								element[Data.NAME], 
