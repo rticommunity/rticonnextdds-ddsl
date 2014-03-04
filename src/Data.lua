@@ -146,8 +146,10 @@ Data = Data or {
 	ENUM      = function() return 'enum', name end,
 	STRING    = function() return 'string' end,
 
-	-- annotation (qualifier) on the base type definitions ---
-	SEQ       = function() return 'seq' end,
+	-- sequence annotation (qualifier) on the base type definitions ---
+	-- return the length of the sequence or -1 for unbounded sequences
+	SEQ       = function(n) return n == nil and -1 or 
+							      (assert(type(n)=='number') and n) end,
 }
 
 --------------------------------------------------------------------------------
@@ -211,17 +213,17 @@ function Data:Struct(name, ...)
 	
 	-- populate the model table
 	for i, field in ipairs{...} do	
-		local role, element, seq_max_size = field[1], field[2], field[3]		
+		local role, element, seq_capacity = field[1], field[2], field[3]		
 		local element_type = element[Data.TYPE]
-		
+				
 		-- save the meta-data
-		model[Data.META][role] = element
+		model[Data.META][i] = { role, element, seq_capacity } -- skip the rest 
 		
-		-- populate the top-level instance fields
-		if Data.STRUCT == element_type then -- composite type
-			model[role] = Data.struct(role, element)
-		elseif Data.SEQ == element_type then -- sequences
+		-- populate the instance/role fields
+		if seq_capacity then -- sequence
 			model[role] = Data.seq(role, element)
+		elseif Data.STRUCT == element_type then -- composite type
+			model[role] = Data.struct(role, element)
 		else -- enum or primitive 
 			model[role] = role -- leaf is the role name
 		end
@@ -269,11 +271,12 @@ function Data.is_user_defined(k, v)
 		   Data ~= v and 
 		   
 		   -- not meta-data 
-		   'function' ~= type_k and 'function' ~=type_v and
+		   'function' ~= type_k and -- 'function' ~=type_v and
 		   
 		   -- is a user defined model element
 		   'string' == type_k and  
 		   ('string' == type_v or  -- leaf 
+		    'function' == type_v or -- sequence
 		   ('table' == type_v and v[Data.NAME] ~= nil)) -- non-primitive
 end
 
@@ -340,12 +343,19 @@ function Data.struct(role, model) -- type is required
 	-- cache the result, so that we can reuse it the next time!
 	if not result then 
 		result = { [Data.NAME] = model[Data.NAME],
-				   [Data.TYPE] = model[Data.TYPE]
+				   [Data.TYPE] = model[Data.TYPE],
 		}
 		for k, v in pairs(model) do
 			-- skip meta-data attributes
 			if type(k) ~= 'function' then 
-				result[k] = role .. '.' .. v
+				if type(v) == 'function' then -- seq: prefix the field name
+					result[k] = function(i, prefix) 
+									local prefix = prefix or ''
+									return v(i, prefix .. role .. '.') 
+								end
+				else -- struct: prefix the field names
+					result[k] = role .. '.' .. v
+				end
 			end
 		end
 		model[Data.INSTANCE][role] = result
@@ -355,10 +365,17 @@ function Data.struct(role, model) -- type is required
 end
 
 function Data.seq(role, model) -- type is OPTIONAL
-	return function (i)
-		return i and (model and Data.struct(role .. '[' .. i .. ']', model)
-				            or role .. '[' .. i .. ']')
-			     or role .. '#'
+	-- print('DEBUG seq', role, model[Data.TYPE](), model[Data.NAME])
+	return function (i, prefix)
+		local prefix = prefix or ''
+		return i -- index 
+				 and (model[Data.NAME] 
+					  -- composite
+					  and Data.struct(string.format('%s%s[%d]', prefix, role, i), model)
+				      -- primitive
+				      or string.format('%s%s[%d]', prefix, role, i)) 
+				 -- length
+			     or string.format('%s%s#', prefix, role)
 	end
 end
 
@@ -414,16 +431,31 @@ function Data.print_idl(model, indent_string)
 	if Data.MODULE == mytype then 
 		for role, element in pairs(model) do
 			-- print('DEBUG print_idl module: ', Data, element, role)
-			if element ~= model and Data.is_user_defined(role, element) then
+			if 'function' ~= type(element) and -- skip user-defined functions
+				Data.is_user_defined(role, element) then
 				-- recursively print each element ---
 				Data.print_idl(element, content_indent_string)
 			end	
 		end
 		
 	elseif Data.STRUCT == mytype then
-		for role, element in pairs(mymeta) do	
-			print(string.format('%s%s %s;', content_indent_string, 
-								            element[Data.TYPE](), role))
+		for i, field in ipairs(mymeta) do
+			local role, element, seq_max_size = field[1], field[2], field[3]		
+
+			if seq_max_size == nil then 
+				print(string.format('%s%s %s;', content_indent_string, 
+												element[Data.TYPE](), role))
+			elseif seq_max_size < 0 then -- unbounded sequence
+				print(string.format('%sseq<%s> %s;', content_indent_string, 
+								element[Data.NAME] or element[Data.TYPE](), 
+								role))
+			else -- bounded sequence
+				print(string.format('%sseq<%s,%d> %s;', content_indent_string, 
+							   element[Data.NAME] or element[Data.TYPE](), 
+							   seq_max_size,
+							   role))
+
+			end
 		end
 
 	elseif Data.ENUM == mytype then 
@@ -459,6 +491,19 @@ function Data.index(model, result)
 		if Data.is_user_defined(k, v) then
 			if 'table' == type_v and Data ~= v then -- composite (nested)
 				result = Data.index(v, result)
+				
+			elseif 'function' == type_v then -- sequence
+			
+				-- length operator
+				table.insert(result, v())
+				
+				-- index 1 for illustration
+				if 'table' == type(v(1)) then -- composite sequence
+					Data.index(v(1), result) -- recurse for the 1st element
+				else -- primitive sequence
+					table.insert(result, v(1))
+				end
+			
 			elseif 'string' == type_v then -- leaf
 				table.insert(result, v) 
 			end
@@ -519,8 +564,8 @@ Test.Subtest:Enum{'Colors',
 Test:Struct('Name', 
 	{'first', Data.String}, --	{ first = Data.String },
 	{'last',  Data.String},
-	{'nicknames',  Data.String, Data.SEQ, 3},
-	{'aliases',  Data.String, Data.SEQ}
+	{'nicknames',  Data.String, Data.SEQ(3) },
+	{'aliases',  Data.String, Data.SEQ() }
 	-- Data.has('favorite', Test.Subtest.Colors),
 )
 
@@ -538,6 +583,21 @@ Test:Struct('Address',
 	Data.has('name', Test.Name),
 	Data.has('street', Data.String),
 	Data.has('city',  Data.String)
+)
+
+-- Equivalent to:
+--    Test.Directory = {
+--        [Data.NAME] = 'Company'
+--        [Data.TYPE] = Data.STRUCT 
+--        info        = Data.union('info', Test.NameOrAddress)
+--        employees   = Data.seq('employees', Test.Name)
+--        coord       = Data.seq('coord', Data.String)
+--    }  
+Test:Struct('Company',
+	-- {'info', Test.NameOrAddress),
+	{ 'offices', Test.Address, Data.SEQ(10) },
+	{ 'employees', Test.Name, Data.SEQ() },
+	{ 'hq', Data.String, Data.SEQ(2) }
 )
 
 --[[
@@ -564,20 +624,6 @@ Test:Struct{'FullName',
 Test:Union{'NameOrAddress',
 	Data.contains('name', Test.Name),
 	Data.contains('address', Test.Address),
-}
-
--- Equivalent to:
---    Test.Directory = {
---        [Data.NAME] = 'Company'
---        [Data.TYPE] = Data.STRUCT 
---        info        = Data.union('info', Test.NameOrAddress)
---        employees   = Data.seq('employees', Test.Name)
---        coord       = Data.seq('coord', Data.String)
---    }  
-Test:Struct{'Company',
-	Data.contains('info', Test.NameOrAddress),
-	Data.has_list('employees', Test.Name),
-	Data.has_list('coord', Data.String),
 }
 
 --[[
@@ -628,6 +674,10 @@ end
 
 function Test:test_struct_composite()
 	self:print(Test.Address)
+end
+
+function Test:test_struct_seq()
+	self:print(Test.Company)
 end
 
 function Test:test_module()
