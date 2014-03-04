@@ -157,16 +157,6 @@ Data = Data or {
 }
 
 --------------------------------------------------------------------------------
--- Root ---
---------------------------------------------------------------------------------
-
--- Instantiate 'Data' as a top-level (default) unnamed module -- 
-Data[Data.NAME] = nil -- un-named top-level module
-Data[Data.TYPE] = Data.MODULE
-Data[Data.DEFN] = nil
-Data[Data.INSTANCE] = nil
-
---------------------------------------------------------------------------------
 -- Model Element Definitions 
 --------------------------------------------------------------------------------
 
@@ -267,24 +257,6 @@ function Data.enum2(model)
 		result[element] = value
 	end
 	return result
-end
-
--- Data:is_user_defined() - is table entry (k, v) a user defined 
---        model element?
-function Data.is_user_defined(k, v)
-	local type_k, type_v = type(k), type(v)
-	
-	return -- not the top-level module
-		   Data ~= v and 
-		   
-		   -- not meta-data 
-		   'function' ~= type_k and -- 'function' ~=type_v and
-		   
-		   -- is a user defined model element
-		   'string' == type_k and  
-		   ('string' == type_v or  -- leaf 
-		    'function' == type_v or -- sequence
-		   ('table' == type_v and v[Data.TYPE] ~= Data.ATOM)) -- non-primitive
 end
 
 --------------------------------------------------------------------------------
@@ -438,6 +410,7 @@ Data.Atom = nil
 --           or
 --         Data.print_idl(model, '   ')
 function Data.print_idl(model, indent_string) 
+	local model = model or Data  -- treat nil model as top-level 'Data'
 	local indent_string = indent_string or ''
 	local content_indent_string = indent_string
 	local mytype = model[Data.TYPE]
@@ -452,14 +425,16 @@ function Data.print_idl(model, indent_string)
 		content_indent_string = indent_string .. '   '
 	end
 		
-	if Data.MODULE == mytype then 
-		for role, element in pairs(model) do
-			-- print('DEBUG print_idl module: ', Data, element, role)
-			if 'function' ~= type(element) and -- skip user-defined functions
-				Data.is_user_defined(role, element) then
-				-- recursively print each element ---
-				Data.print_idl(element, content_indent_string)
-			end	
+	if Data == model or -- top-level
+	   Data.MODULE == mytype then 
+		for k, v in pairs(model) do
+			-- print('DEBUG print_idl module: ', Data, k, v)
+			if 'string' == type(k) and 'table' == type(v) and 
+			    nil ~= v[Data.TYPE] and -- skip entries that are not model elements
+			   	Data.ATOM ~=v[Data.TYPE] then -- skip atomic types
+				-- print each model element ---
+				Data.print_idl(v, content_indent_string)
+			end
 		end
 		
 	elseif Data.STRUCT == mytype then
@@ -512,8 +487,9 @@ function Data.index(model, result)
 	for k, v in pairs(model) do
 		local type_k, type_v = type(k), type(v) 
 		-- skip meta-data attributes
-		if Data.is_user_defined(k, v) then
-			if 'table' == type_v and Data ~= v then -- composite (nested)
+		
+		if 'string' == type(k) then
+			if 'table' == type_v then -- composite (nested)
 				result = Data.index(v, result)
 				
 			elseif 'function' == type_v then -- sequence
