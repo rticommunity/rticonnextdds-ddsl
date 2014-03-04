@@ -42,7 +42,7 @@
 --    Every user defined (model) is a table with the following meta-data keys
 --        Data.NAME
 --        Data.TYPE
---        Data.META
+--        Data.DEFN
 --        Data.INSTANCE
 --    The leaf elements of the table give a fully qualified string to address a
 --    field in a dynamic data sample in Lua. 
@@ -59,7 +59,7 @@
 --       UserModule.UserType = {
 --          [Data.NAME] = 'UserType'     -- name of this model 
 --          [Data.TYPE] = Data.STRUCT    -- one of Data.* type definitions
---          [Data.META] = {              -- meta-data for the contained elements
+--          [Data.DEFN] = {              -- meta-data for the contained elements
 --              user_role1    = Data.String,
 --              user_role2    = UserModule.UserType2,
 --				user_role3    = UserModule.UserType3,
@@ -108,13 +108,13 @@
 --          This property can be used to determine if a model element is 
 --			primitive.
 --   
---       Data.META
+--       Data.DEFN
 --          For storing the child element info
---              model[Data.META][role] = role model element 
+--              model[Data.DEFN][role] = role model element 
 --
 --       Data.INSTANCE
 --          For storing instances of this model element, indexed by instance name
---              model[Data.META].user = one of the instances of this model
+--              model[Data.DEFN].user = one of the instances of this model
 --          where 'user' is the name of instance (in a container model element)
 --
 --    Note that instances do not have these the last two meta-data attributes.
@@ -132,43 +132,54 @@
 --    Note that all the meta-data attributes are functions, so it is 
 --    straightforward to skip them, when traversing a model table.
 Data = Data or {
+	-- meta-data attributes ---
 	-- every 'model' table has these keys defined 
 	NAME      = function() end,  -- table key for 'model name'	
 	TYPE      = function() end,  -- table key for the 'model type name' 
-	META      = function() end,  -- table key for element meta-data
+	DEFN      = function() end,  -- table key for element meta-data
 	INSTANCE  = function() end,  -- table key for instances of this model
+	
 		
-	-- type definitions: closures implement a meta-data enum ---
-	-- these are the possible 'model[Data.TYPE]' values
-	MODULE    = function() return 'module', name end,
+	-- meta-data types - i.e. list of possible user defined types ---
+	-- possible 'model[Data.TYPE]' values implemented as closures
+	MODULE    = function() return 'module' end,
 	STRUCT    = function() return 'struct' end,
 	UNION     = function() return 'union' end,
-	ENUM      = function() return 'enum', name end,
-	STRING    = function() return 'string' end,
+	ENUM      = function() return 'enum' end,
+	ATOM      = function() return '' end,
 
-	-- sequence annotation (qualifier) on the base type definitions ---
+
+	-- meta-data annotations ---
+	-- sequence annotation (qualifier) on the base user-defined types
 	-- return the length of the sequence or -1 for unbounded sequences
 	SEQ       = function(n) return n == nil and -1 or 
 							      (assert(type(n)=='number') and n) end,
 }
 
 --------------------------------------------------------------------------------
--- Model Element Definitions - Primitive
--- NOTE: [Data.NAME] = nil i.e. primitive model elements do not have a name
+-- Root ---
 --------------------------------------------------------------------------------
 
-Data.String = {
-	[Data.NAME] = nil, -- for primitive/atomic model elements
-	[Data.TYPE] = Data.STRING,
-}  
-
---------------------------------------------------------------------------------
--- Model Element Definitions - Composite
---------------------------------------------------------------------------------
-
--- Instantiate a top-level (default) module -- 
+-- Instantiate 'Data' as a top-level (default) unnamed module -- 
 Data[Data.NAME] = nil -- un-named top-level module
 Data[Data.TYPE] = Data.MODULE
+Data[Data.DEFN] = nil
+Data[Data.INSTANCE] = nil
+
+--------------------------------------------------------------------------------
+-- Model Element Definitions 
+--------------------------------------------------------------------------------
+
+function Data:Atom(name) 
+	local model = {
+		[Data.NAME] = name, 
+		[Data.TYPE] = Data.ATOM,
+		[Data.DEFN] = nil,   
+		[Data.INSTANCE] = nil,
+	}  
+	self[name] = model -- add it to the namespace
+	return model
+end
 
 -- Data:Module() - creates a new module
 -- Purpose:
@@ -208,7 +219,7 @@ function Data:Struct(name, ...)
 	local model = { 
 		[Data.NAME] = name,
 		[Data.TYPE] = Data.STRUCT,
-		[Data.META] = {},
+		[Data.DEFN] = {},
 	}
 	
 	-- populate the model table
@@ -217,7 +228,7 @@ function Data:Struct(name, ...)
 		local element_type = element[Data.TYPE]
 				
 		-- save the meta-data
-		model[Data.META][i] = { role, element, seq_capacity } -- skip the rest 
+		model[Data.DEFN][i] = { role, element, seq_capacity } -- skip the rest 
 		
 		-- populate the instance/role fields
 		if seq_capacity then -- sequence
@@ -352,12 +363,11 @@ function Data.struct(role, model) -- type is required
 			-- skip meta-data attributes
 			if type(k) ~= 'function' then 
 				if type_v == 'function' then -- seq: prefix the field name
-					result[k] = function(i, prefix) 
-									local prefix = prefix or ''
-									return v(i, prefix .. role .. '.') 
+					result[k] = function(i, prefix) -- allow further prefixing
+									return v(i, prefix or '' .. role .. '.') 
 								end
-				elseif type_v == 'table' then -- nested struct: prefix the field names
-					result[k] = Data.struct(role, v) -- recursively create an instance
+				elseif type_v == 'table' then -- nested struct: prefix field names
+					result[k] = Data.struct(role, v) -- create from instance
 				else -- simple struct: prefix the field names
 					result[k] = role .. '.' .. v
 				end
@@ -402,6 +412,26 @@ function Data.idx(seq, i, role)
 	return seq .. '[' .. i .. ']' .. (role and ('.' .. role) or '')
 end
 
+
+--------------------------------------------------------------------------------
+-- Predefined Types
+--------------------------------------------------------------------------------
+
+-- Data:Atom('double')
+
+-- TODO: 
+-- Data:Atom('String')
+
+Data.String = {
+	[Data.NAME] = nil,
+	[Data.TYPE] = function() return 'string' end,
+	[Data.DEFN] = nil,      -- for primitive/atomic model elements
+	[Data.INSTANCE] = nil,
+}  
+
+-- Disallow user defined atoms!
+Data.Atom = nil
+
 --------------------------------------------------------------------------------
 -- Helpers
 --------------------------------------------------------------------------------
@@ -423,7 +453,7 @@ function Data.print_idl(model, indent_string)
 	local content_indent_string = indent_string
 	local mytype = model[Data.TYPE]
 	local myname = model[Data.NAME]
-	local mymeta = model[Data.META]
+	local mymeta = model[Data.DEFN]
 		
 	-- print('DEBUG print_idl: ', Data, model, mytype(), myname)
 	
@@ -742,7 +772,7 @@ function Test:main()
 	end
 end
 
--- Test:main()
+Test:main()
  
 -- SKIP TESTS --]]
 --------------------------------------------------------------------------------
