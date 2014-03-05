@@ -306,12 +306,12 @@ function Data.struct(name, template) -- type is required
 			if 'string' == type(k) then 
 				if 'function' == type_v then -- seq: prefix the field name
 					result[k] = function(i, prefix) -- allow further prefixing
-									return v(i, (prefix or '') .. name .. '.') 
+									return v(i, table.concat({prefix or '', name, '.'})) 
 								end
 				elseif 'table' == type_v then -- nested struct: prefix field names
 					result[k] = Data.struct(name, v) -- create from instance
 				else -- atom|primitive: prefix the field names
-					result[k] = name .. '.' .. v
+					result[k] = table.concat({name, '.', v})
 				end
 			end
 		end
