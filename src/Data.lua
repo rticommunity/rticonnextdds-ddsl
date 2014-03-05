@@ -146,7 +146,7 @@ Data = Data or {
 	STRUCT    = function() return 'struct' end,
 	UNION     = function() return 'union' end,
 	ENUM      = function() return 'enum' end,
-	ATOM      = function() return '' end,
+	ATOM      = function() return 'atom' end,
 
 
 	-- meta-data annotations ---
@@ -269,50 +269,7 @@ function Data.enum2(model)
 end
 
 --------------------------------------------------------------------------------
--- Relationship Definitions
---------------------------------------------------------------------------------
-
--- Data:has() - containment relationship
--- Purpose:
---    Create a nested model element
--- Parameters:
---    <<in>> name - name used to refer to the contained model element
---    <<in>> model - the contained  model element
---    <<return>> a table containing the name and a table that can be used 
---               to index into the 
--- Usage:
---    To define a contained element
---       Data.has('name', model)
---    which results in the following being defined and returned
---       { name, model_instance_table_for_indexing_using_name }
---
---    Thus, for example, if 
---       model = { 
---                 first = 'first',
---                 last  = 'last',
---                  :  
---               }
---    the returned value will be an array of two elements:
---      t =   { 'name',  { 
---                           first = 'name.first',
---                           last  = 'name.last',
---                            :  
---                        } 
---             }
---   such that in the returned table can index the nested elements:
---       t[2].first = 'name.first'
---       t[2].last  = 'name.last'
---  and so on. 
-function Data.has(name, model)
-	return {name, model}
-end
-
-function Data.has_list(name, model, n)
-	return { name, model, Data.SEQ, n }
-end 
-
---------------------------------------------------------------------------------
--- Model Element Instances  ---
+-- Model Instances  ---
 --------------------------------------------------------------------------------
 
 -- Data.struct() - creates an instance of a structure model element
@@ -324,33 +281,43 @@ end
 --    <<returns>> the newly created instance that supports indexing by 'role'
 -- Usage:
 -- TODO:
-function Data.struct(role, model) -- type is required
-	model[Data.INSTANCE] = model[Data.INSTANCE] or {}
-	local result = model[Data.INSTANCE][role]
+function Data.struct(name, template) -- type is required
+	-- print('DEBUG Data.instance: ', role, model[Data.NAME], model[Data.TYPE]())
+
+	-- skip if template is not a model element or an instance
+	assert(template and template[Data.TYPE])
+
+	-- try to retrieve the instance from the template
+	template[Data.INSTANCE] = template[Data.INSTANCE] or {}
+	local result = template[Data.INSTANCE][name]
 	
-	-- print('DEBUG Data.struct: ', role, model[Data.NAME], model[Data.TYPE]())
-	
-	-- cache the result, so that we can reuse it the next time!
+	-- not found => create the instance:
 	if not result then 
-		result = { [Data.NAME] = model[Data.NAME],
-				   [Data.TYPE] = model[Data.TYPE],
+		result = {		
+			-- [Data.NAME] = name, -- how the template refers to this instance
+			[Data.TYPE] = template[Data.TYPE], -- the template could be another instance
+			-- [Data.DEFN] = template[Data.DEFN], -- the underlying structure
+			-- [Data.INSTANCE] = nil, -- populated when instance used as a template
 		}
-		for k, v in pairs(model) do
+		for k, v in pairs(template) do
 			local type_v = type(v)
+			
 			-- skip meta-data attributes
-			if type(k) ~= 'function' then 
-				if type_v == 'function' then -- seq: prefix the field name
+			if 'string' == type(k) then 
+				if 'function' == type_v then -- seq: prefix the field name
 					result[k] = function(i, prefix) -- allow further prefixing
-									return v(i, prefix or '' .. role .. '.') 
+									return v(i, (prefix or '') .. name .. '.') 
 								end
-				elseif type_v == 'table' then -- nested struct: prefix field names
-					result[k] = Data.struct(role, v) -- create from instance
-				else -- simple struct: prefix the field names
-					result[k] = role .. '.' .. v
+				elseif 'table' == type_v then -- nested struct: prefix field names
+					result[k] = Data.struct(name, v) -- create from instance
+				else -- atom|primitive: prefix the field names
+					result[k] = name .. '.' .. v
 				end
 			end
 		end
-		model[Data.INSTANCE][role] = result
+		
+		-- cache the result, so that we can reuse it the next time!
+		template[Data.INSTANCE][name] = result
 	end
 	
 	return result
@@ -398,9 +365,54 @@ end
 
 Data:Atom('string')
 Data:Atom('double')
+Data:Atom('long')
+Data:Atom('boolean')
 
 -- Disallow user defined atoms!
 Data.Atom = nil
+
+--------------------------------------------------------------------------------
+-- Relationship Definitions
+--------------------------------------------------------------------------------
+
+-- Data:has() - containment relationship
+-- Purpose:
+--    Create a nested model element
+-- Parameters:
+--    <<in>> name - name used to refer to the contained model element
+--    <<in>> model - the contained  model element
+--    <<return>> a table containing the name and a table that can be used 
+--               to index into the 
+-- Usage:
+--    To define a contained element
+--       Data.has('name', model)
+--    which results in the following being defined and returned
+--       { name, model_instance_table_for_indexing_using_name }
+--
+--    Thus, for example, if 
+--       model = { 
+--                 first = 'first',
+--                 last  = 'last',
+--                  :  
+--               }
+--    the returned value will be an array of two elements:
+--      t =   { 'name',  { 
+--                           first = 'name.first',
+--                           last  = 'name.last',
+--                            :  
+--                        } 
+--             }
+--   such that in the returned table can index the nested elements:
+--       t[2].first = 'name.first'
+--       t[2].last  = 'name.last'
+--  and so on. 
+function Data.has(name, model)
+	return {name, model}
+end
+
+function Data.has_list(name, model, n)
+	return { name, model, Data.SEQ, n }
+end 
 
 --------------------------------------------------------------------------------
 -- Helpers
