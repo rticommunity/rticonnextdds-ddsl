@@ -171,9 +171,10 @@ Data = Data or {
 -- Model Definitions -- 
 --------------------------------------------------------------------------------
 
--- Bootstrap the type-system
---    The Data table acts as un-named module (i.e. namespace) instance
---    Here is the underlying model definition for it.
+-- Root Module/namespace:
+--    Bootstrap the type-system
+--      The Data table acts as un-named module (i.e. namespace) instance
+--      Here is the underlying model definition for it.
 Data[Data.MODEL] = { 
 	[Data.NAME] = nil,     -- unnamed root module
 	[Data.TYPE] = Data.MODULE,
@@ -200,7 +201,7 @@ Data[Data.MODEL] = {
 --   User defined types defined in the 'UserModule' will live in that table
 --   namespace.
 function Data:Module(name) 
-	assert(type(name) == 'string', table.concat{'expected string: ', name})
+	assert(type(name) == 'string', table.concat{'invalid module name: ', name})
 	local model = { 
 		[Data.NAME] = name,
 		[Data.TYPE] = Data.MODULE,
@@ -223,7 +224,7 @@ end
 
 -- Install an atomic type in the module
 function Data:Atom(name) 
-	assert(type(name) == 'string', table.concat{'expected string: ', name})
+	assert(type(name) == 'string', table.concat{'invalid atom name: ', name})
 	local model = {
 		[Data.NAME] = name, 
 		[Data.TYPE] = Data.ATOM,
@@ -241,7 +242,7 @@ function Data:Atom(name)
 end
 
 function Data:Struct(name, ...) 
-	assert(type(name) == 'string', table.concat{'expected string: ', name})
+	assert(type(name) == 'string', table.concat{'invalid struct name: ', name})
 	local model = { -- meta-data defining the struct
 		[Data.NAME] = name,
 		[Data.TYPE] = Data.STRUCT,
@@ -256,8 +257,12 @@ function Data:Struct(name, ...)
 	for i, field in ipairs{...} do	
 		local role, element, seq_capacity = field[1], field[2], field[3]		
 
-		assert(type(role) == 'string', table.concat{'expected string: ', role})
-		assert(element[Data.MODEL] ~= nil, table.concat{'undefined type for: ', role})
+		assert(type(role) == 'string', 
+						table.concat{'invalid member name: ', role})
+		assert('table' == type(element), 
+						table.concat{'undefined type for member "', role, '"'})
+		assert(nil ~= element[Data.MODEL], 
+						table.concat{'invalid type for member "', role, '"'})
 	
 		local element_type = element[Data.MODEL][Data.TYPE]
 		
@@ -287,7 +292,9 @@ end
 -- return the length of the sequence or -1 for unbounded sequences
 function Data.Seq(n) 
 	return n == nil and -1 
-	                or (assert(type(n)=='number') and n) 
+	                or (assert(type(n)=='number', 
+	                    table.concat{'invalid sequence capacity: ', tostring(n)}) 
+	                    and n) 
 end
 						   
 -- the 'model' is an array of strings and the ordinal values are assigned 
@@ -323,13 +330,14 @@ end
 -- Usage:
 function Data.struct(name, template) 
 	-- print('DEBUG Data.struct: ', name, template[Data.MODEL][Data.NAME])
-	assert(type(name) == 'string', 'instance name must be a string')
+	assert(type(name) == 'string', 'invalid instance name')
 	
 	-- ensure valid template
-	assert(template and template[Data.MODEL] and 
+	assert('table' == type(template), 'template missing!')
+	assert(template[Data.MODEL] and 
 		   (Data.STRUCT == template[Data.MODEL][Data.TYPE] or 
 		    Data.UNION == template[Data.MODEL][Data.TYPE]),
-		    table.concat{'instance template is not a struct or union: ', name})
+		    table.concat{'invalid template for struct: ', name})
 
 	-- try to retrieve the instance from the template
 	template[Data.INSTANCE] = template[Data.INSTANCE] or {}
@@ -368,16 +376,16 @@ end
 
 function Data.seq(name, template) 
 	-- print('DEBUG Data.seq', name, template[Data.MODEL][Data.NAME])
-	assert(type(name) == 'string', 'instance name must be a string')
+	assert(type(name) == 'string', 'invalid instance name')
 	
 	-- ensure valid template
-	assert(template and template[Data.MODEL] and 
+	assert('table' == type(template), 'template missing!')
+	assert(template[Data.MODEL] and 
 		   (Data.STRUCT == template[Data.MODEL][Data.TYPE] or 
 		    Data.UNION == template[Data.MODEL][Data.TYPE] or
 		  	Data.ENUM == template[Data.MODEL][Data.TYPE] or
 		    Data.ATOM == template[Data.MODEL][Data.TYPE]),
-		    table.concat{'instance template is not a struct or ',
-		    			 'union or enum or a primitive type: ', name})
+		    table.concat{'invalid template for seq: ', name})
 		  
 	return function (i, prefix)
 		local prefix = prefix or ''
@@ -488,8 +496,9 @@ end
 --         Data.print_idl(model, '   ')
 function Data.print_idl(instance, indent_string)
 	-- ensure valid instance
-	assert(instance and instance[Data.MODEL], 'not an instance')
-		    			 
+	assert('table' == type(instance), 'instance missing!')
+	assert(instance[Data.MODEL], 'invalid instance')
+
 	local indent_string = indent_string or ''
 	local content_indent_string = indent_string
 	local model = instance[Data.MODEL]
@@ -555,18 +564,17 @@ end
 
 function Data.index(instance, result) 
 	-- ensure valid instance
-	assert(instance and instance[Data.MODEL], 'not an instance')
+	assert('table' == type(instance), 'instance missing!')
+	assert(instance[Data.MODEL], 'invalid instance')
 	local mytype = instance[Data.MODEL][Data.TYPE]
 	
-	-- only meaningful for top-level types that can be instantiated:
-	if (Data.STRUCT ~= mytype and Data.UNION ~= mytype) then
-		return result
-	end
-
-	local result = result or {}	-- must be a top-level type	
 	local mydefn = instance[Data.MODEL][Data.DEFN]
 	
+	-- skip if there is no model definition (eg MODULE, ATOM, etc) 
+	if nil == mydefn then return result end
+	
 	-- preserve the order of model definition
+	local result = result or {}	-- must be a top-level type	
 	for i, field in ipairs(mydefn) do -- walk through the model definition
 		local role, element, seq_max_size = field[1], field[2], field[3]		
 		local instance_member = instance[role]
