@@ -27,6 +27,11 @@
 --     4. Provides a way of creating instances of a data type, for example 
 --        to stimulate an interface.
 --     5. Provides the foundation for automated type (model) reasoning & mapping 
+--     6. Can be used to automatically serialize and de-serialize a sample
+--     7. Multiple styles to specify a type
+--     8. Can easily add new (meta-data) types and annotations in the meta-model
+--     9. Can be used for custom code generation
+--    10. Can be used to generate TypeObject/TypeCode on the wire
 -- 
 -- Usage:
 --    Nomenclature
@@ -131,9 +136,22 @@
 --
 --    Note that all the meta-data attributes are functions, so it is 
 --    straightforward to skip them, when traversing a model table.
+--
+-- 
+--    This top-level container is special in that:
+--    	 1. It defines the atomic types
+-- 		 2. Provides an unnamed name-space ('root') that acts like a module
+--       3. But is technically not a user-defined module
+--
 Data = Data or {
-	-- meta-data attributes ---
-	-- every 'model' table has these keys defined 
+	-- instance attributes ---
+	-- every 'instance' table has this meta-data key defined
+	-- the rest of the keys are fields of the instance
+	MODEL      = function() end,  -- table key for 'model' meta-data	
+	
+		
+	-- model meta-data attributes ---
+	-- every 'model' meta-data table has these keys defined 
 	NAME      = function() end,  -- table key for 'model name'	
 	TYPE      = function() end,  -- table key for the 'model type name' 
 	DEFN      = function() end,  -- table key for element meta-data
@@ -147,35 +165,21 @@ Data = Data or {
 	UNION     = function() return 'union' end,
 	ENUM      = function() return 'enum' end,
 	ATOM      = function() return 'atom' end,
-
-
-	-- meta-data annotations ---
-	-- sequence annotation (qualifier) on the base user-defined types
-	-- return the length of the sequence or -1 for unbounded sequences
-	SEQ       = function(n) return n == nil and -1 or 
-							      (assert(type(n)=='number') and n) end,
-							      
-							     
-	-- This top-level container is special in that:
-	--  1. It defines the atomic types
-	--  2. Provides an unnamed name-space ('root') that acts like a module
-    --  3. But is technically not a user-defined module
 }
 
 --------------------------------------------------------------------------------
--- Model Element Definitions 
+-- Model Definitions -- 
 --------------------------------------------------------------------------------
 
-function Data:Atom(name) 
-	local model = {
-		[Data.NAME] = name, 
-		[Data.TYPE] = Data.ATOM,
-		[Data.DEFN] = nil,   
-		[Data.INSTANCE] = nil,
-	}  
-	self[name] = model -- add it to the namespace
-	return model
-end
+-- Bootstrap the type-system
+--    The Data table acts as un-named module (i.e. namespace) instance
+--    Here is the underlying model definition for it.
+Data[Data.MODEL] = { 
+	[Data.NAME] = nil,     -- unnamed root module
+	[Data.TYPE] = Data.MODULE,
+	[Data.DEFN] = nil,     -- always nil, definition is implicit
+	[Data.INSTANCE] = nil, -- always nil
+}
 
 -- Data:Module() - creates a new module
 -- Purpose:
@@ -196,76 +200,113 @@ end
 --   User defined types defined in the 'UserModule' will live in that table
 --   namespace.
 function Data:Module(name) 
+	assert(type(name) == 'string', table.concat{'expected string: ', name})
 	local model = { 
 		[Data.NAME] = name,
 		[Data.TYPE] = Data.MODULE,
-		[Data.DEFN] = nil,   
-		[Data.INSTANCE] = nil,
+		[Data.DEFN] = nil,     -- always nil
+		[Data.INSTANCE] = nil, -- always nil
 	}  
+	local instance = { -- top-level instance to be installed in the module
+		[Data.MODEL] = model,
+	}
 	
-	-- inherit
-	setmetatable(model, self)
+	-- inherit from container module
+	setmetatable(instance, self)
 	self.__index = self
 
-	-- add it to the container module
-	self[name] = model
+	-- add/replace the definition in the container module
+	self[name] = instance
 	
-	return model
+	return instance
+end
+
+-- Install an atomic type in the module
+function Data:Atom(name) 
+	assert(type(name) == 'string', table.concat{'expected string: ', name})
+	local model = {
+		[Data.NAME] = name, 
+		[Data.TYPE] = Data.ATOM,
+		[Data.DEFN] = nil,      -- always nil
+		[Data.INSTANCE] = nil,  -- always nil
+	}  
+	local instance = { -- top-level instance to be installed in the module
+		[Data.MODEL] = model,
+	}
+
+	-- add/replace the definition in the container module
+	self[name] = instance
+	
+	return instance
 end
 
 function Data:Struct(name, ...) 
-	local model = { 
+	assert(type(name) == 'string', table.concat{'expected string: ', name})
+	local model = { -- meta-data defining the struct
 		[Data.NAME] = name,
 		[Data.TYPE] = Data.STRUCT,
 		[Data.DEFN] = {},     -- will be populated as model elements are defined 
 		[Data.INSTANCE] = nil,-- will be populated as instances are defined
 	}
+	local instance = { -- top-level instance to be installed in the module
+		[Data.MODEL] = model,
+	}
 	
 	-- populate the model table
 	for i, field in ipairs{...} do	
 		local role, element, seq_capacity = field[1], field[2], field[3]		
-		local element_type = element[Data.TYPE]
-				
+
+		assert(type(role) == 'string', table.concat{'expected string: ', role})
+		assert(element[Data.MODEL] ~= nil, table.concat{'undefined type for: ', role})
+	
+		local element_type = element[Data.MODEL][Data.TYPE]
+		
 		-- save the meta-data
 		-- as an array to get the correct ordering:
 		model[Data.DEFN][i] = { role, element, seq_capacity } -- skip the rest 
-		-- as a table to get lookup the definition of a field
-		model[Data.DEFN][role] = model[Data.DEFN][i] 
-		
+
 		-- populate the instance/role fields
 		if seq_capacity then -- sequence
-			model[role] = Data.seq(role, element)
+			instance[role] = Data.seq(role, element)
 		elseif Data.STRUCT == element_type then -- composite type
-			model[role] = Data.struct(role, element)
+			instance[role] = Data.struct(role, element)
 		else -- enum or primitive 
-			model[role] = role -- leaf is the role name
+			instance[role] = role -- leaf is the role name
 		end
 	end
 	
-	-- add/replace the definition in the container model (module)
-	self[name] = model
+	-- add/replace the definition in the container module
+	self[name] = instance
 		
-	return model
+	return instance
 end
 
 
+-- meta-data annotations ---
+-- sequence annotation (qualifier) on the base user-defined types
+-- return the length of the sequence or -1 for unbounded sequences
+function Data.Seq(n) 
+	return n == nil and -1 
+	                or (assert(type(n)=='number') and n) 
+end
+						   
 -- the 'model' is an array of strings and the ordinal values are assigned 
 -- automatically starting at 0
 function Data.enum(model) 
-	local result = { [Data.TYPE] = Data.ENUM }
+	local instance = { [Data.TYPE] = Data.ENUM }
 	for i, element in ipairs(model) do
-		result[element] = i - 1 -- shift to a 0 based indexing
+		instance[element] = i - 1 -- shift to a 0 based indexing
 	end
-	return result
+	return instance
 end
 
 -- the 'model' is a table of 'name = ordinal value' pairs
 function Data.enum2(model) 
-	local result = { [Data.TYPE] = Data.ENUM }
+	local instance = { [Data.TYPE] = Data.ENUM }
 	for element, value in pairs(model) do
-		result[element] = value
+		instance[element] = value
 	end
-	return result
+	return instance
 end
 
 --------------------------------------------------------------------------------
@@ -280,70 +321,84 @@ end
 -- 	  <<in>> model - the model element (table) to be instantiated
 --    <<returns>> the newly created instance that supports indexing by 'role'
 -- Usage:
--- TODO:
-function Data.struct(name, template) -- type is required
-	-- print('DEBUG Data.instance: ', role, model[Data.NAME], model[Data.TYPE]())
-
-	-- skip if template is not a model element or an instance
-	assert(template and template[Data.TYPE])
+function Data.struct(name, template) 
+	-- print('DEBUG Data.struct: ', name, template[Data.MODEL][Data.NAME])
+	assert(type(name) == 'string', 'instance name must be a string')
+	
+	-- ensure valid template
+	assert(template and template[Data.MODEL] and 
+		   (Data.STRUCT == template[Data.MODEL][Data.TYPE] or 
+		    Data.UNION == template[Data.MODEL][Data.TYPE]),
+		    table.concat{'instance template is not a struct or union: ', name})
 
 	-- try to retrieve the instance from the template
 	template[Data.INSTANCE] = template[Data.INSTANCE] or {}
-	local result = template[Data.INSTANCE][name]
+	local instance = template[Data.INSTANCE][name]
 	
 	-- not found => create the instance:
-	if not result then 
-		result = {		
-			-- [Data.NAME] = name, -- how the template refers to this instance
-			[Data.TYPE] = template[Data.TYPE], -- the template could be another instance
-			-- [Data.DEFN] = template[Data.DEFN], -- the underlying structure
-			-- [Data.INSTANCE] = nil, -- populated when instance used as a template
+	if not instance then 
+		instance = { -- the underlying model, of which this is an instance 
+			[Data.MODEL] = template[Data.MODEL], 		
 		}
 		for k, v in pairs(template) do
 			local type_v = type(v)
 			
 			-- skip meta-data attributes
 			if 'string' == type(k) then 
-				if 'function' == type_v then -- seq: prefix the field name
-					result[k] = function(i, prefix) -- allow further prefixing
-									return v(i, table.concat({prefix or '', name, '.'})) 
-								end
-				elseif 'table' == type_v then -- nested struct: prefix field names
-					result[k] = Data.struct(name, v) -- create from instance
-				else -- atom|primitive: prefix the field names
-					result[k] = table.concat({name, '.', v})
+				-- prefix the member names
+				if 'function' == type_v then -- seq
+					instance[k] = -- use member as a closure template
+						function(i, prefix) -- allow further prefixing
+							return v(i, table.concat{prefix or '', name, '.'}) 
+						end
+				elseif 'table' == type_v then -- struct
+					instance[k] = Data.struct(name, v) -- use member as template
+				elseif 'string' == type_v then -- atom
+					instance[k] = table.concat{name, '.', v}
 				end
 			end
 		end
 		
-		-- cache the result, so that we can reuse it the next time!
-		template[Data.INSTANCE][name] = result
+		-- cache the instance, so that we can reuse it the next time!
+		template[Data.INSTANCE][name] = instance
 	end
 	
-	return result
+	return instance
 end
 
-function Data.seq(role, model) -- type is OPTIONAL
-	-- print('DEBUG Data.seq', role, model[Data.TYPE](), model[Data.NAME])
+function Data.seq(name, template) 
+	-- print('DEBUG Data.seq', name, template[Data.MODEL][Data.NAME])
+	assert(type(name) == 'string', 'instance name must be a string')
+	
+	-- ensure valid template
+	assert(template and template[Data.MODEL] and 
+		   (Data.STRUCT == template[Data.MODEL][Data.TYPE] or 
+		    Data.UNION == template[Data.MODEL][Data.TYPE] or
+		  	Data.ENUM == template[Data.MODEL][Data.TYPE] or
+		    Data.ATOM == template[Data.MODEL][Data.TYPE]),
+		    table.concat{'instance template is not a struct or ',
+		    			 'union or enum or a primitive type: ', name})
+		  
 	return function (i, prefix)
 		local prefix = prefix or ''
 		return i -- index 
-				 and (model[Data.TYPE] == Data.ATOM
+				 and (template[Data.MODEL][Data.TYPE] == Data.ATOM
 					  -- primitive
-				      and string.format('%s%s[%d]', prefix, role, i)
+				      and string.format('%s%s[%d]', prefix, name, i)
 					  -- composite
-					  or Data.struct(string.format('%s%s[%d]', prefix, role, i), model))
+					  or Data.struct(string.format('%s%s[%d]', prefix, name, i), 
+					  				 template))
 				 -- length
-			     or string.format('%s%s#', prefix, role)
+			     or string.format('%s%s#', prefix, name)
 	end
 end
 
 -- TODO: function Data.union(role1, type1, role2, type2, ...) -- types required
 --[[
 function Data.union(role, type, ...) -- type is required
-	local result = Data.struct(role, type)
-	result._d = role .. '#'
-	return result
+	local instance = Data.struct(role, type)
+	instance._d = role .. '#'
+	return instance
 end
 --]]
 
@@ -355,6 +410,7 @@ end
 function Data.idx(seq, i, role)
 	return seq .. '[' .. i .. ']' .. (role and ('.' .. role) or '')
 end
+
 
 
 --------------------------------------------------------------------------------
@@ -411,7 +467,7 @@ function Data.has(name, model)
 end
 
 function Data.has_list(name, model, n)
-	return { name, model, Data.SEQ, n }
+	return { name, model, Data.Seq, n }
 end 
 
 --------------------------------------------------------------------------------
@@ -430,56 +486,57 @@ end
 --         Data.print_idl(model) 
 --           or
 --         Data.print_idl(model, '   ')
-function Data.print_idl(model, indent_string) 
-	local model = model or Data  -- treat nil model as top-level 'Data'
+function Data.print_idl(instance, indent_string)
+	-- ensure valid instance
+	assert(instance and instance[Data.MODEL], 'not an instance')
+		    			 
 	local indent_string = indent_string or ''
 	local content_indent_string = indent_string
-	local mytype = model[Data.TYPE]
+	local model = instance[Data.MODEL]
 	local myname = model[Data.NAME]
-	local mymeta = model[Data.DEFN]
+	local mytype = model[Data.TYPE]
+	local mydefn = model[Data.DEFN]
 		
 	-- print('DEBUG print_idl: ', Data, model, mytype(), myname)
 	
 	-- open --
-	if (Data ~= model) then -- not top-level
+	if (nil ~= myname) then -- not top-level
 		print(string.format('\n%s%s %s {', indent_string, mytype(), myname))
 		content_indent_string = indent_string .. '   '
 	end
 		
-	if Data == model or -- top-level
-	   Data.MODULE == mytype then 
-		for k, v in pairs(model) do
+	if Data.MODULE == mytype then 
+		for k, v in pairs(instance) do -- walk through the module (singleton) instance
 			-- print('DEBUG print_idl module: ', Data, k, v)
-			if 'string' == type(k) and 'table' == type(v) and 
-			    nil ~= v[Data.TYPE] and -- skip entries that are not model elements
-			   	Data.ATOM ~=v[Data.TYPE] then -- skip atomic types
+			
+			if 	instance ~= v and -- skip if it is us (terminate recursion)
+				'string' == type(k) and 'table' == type(v) and 
+			    nil ~= v[Data.MODEL] and -- skip if not a model element
+			   	Data.ATOM ~=v[Data.MODEL][Data.TYPE] then -- skip atomic types 
+			   	
 				-- print each model element ---
 				Data.print_idl(v, content_indent_string)
 			end
 		end
 		
-	elseif Data.STRUCT == mytype then
-		for i, field in ipairs(mymeta) do
+	elseif Data.STRUCT == mytype then 
+		for i, field in ipairs(mydefn) do -- walk through the model definition
 			local role, element, seq_max_size = field[1], field[2], field[3]		
 
 			if seq_max_size == nil then 
 				print(string.format('%s%s %s;', content_indent_string, 
-												element[Data.NAME], role))
+									element[Data.MODEL][Data.NAME], role))
 			elseif seq_max_size < 0 then -- unbounded sequence
 				print(string.format('%sseq<%s> %s;', content_indent_string, 
-								element[Data.NAME], 
-								role))
+									element[Data.MODEL][Data.NAME], role))
 			else -- bounded sequence
 				print(string.format('%sseq<%s,%d> %s;', content_indent_string, 
-							   element[Data.NAME], 
-							   seq_max_size,
-							   role))
-
+						    element[Data.MODEL][Data.NAME], seq_max_size, role))
 			end
 		end
 
-	elseif Data.ENUM == mytype then 
-		for role, ord in pairs(model) do		
+	elseif Data.ENUM == mytype then -- TODO: walk in order: ipairs()
+		for role, ord in pairs(mydefn) do -- walk through the model definition	
 			if ord ~= mytype then 
 				print(string.format('%s%s = %s,', content_indent_string, 
 												  role, ord))
@@ -488,7 +545,7 @@ function Data.print_idl(model, indent_string)
 	end
 	
 	-- close --
-	if (Data ~= model) then -- not top-level
+	if (nil ~= myname) then -- not top-level
 		print(string.format('%s};', indent_string))
 	end
 	
@@ -496,20 +553,23 @@ function Data.print_idl(model, indent_string)
 end
 
 
-function Data.index(model, result) 
-	local mytype = model[Data.TYPE]
+function Data.index(instance, result) 
+	-- ensure valid instance
+	assert(instance and instance[Data.MODEL], 'not an instance')
+	local mytype = instance[Data.MODEL][Data.TYPE]
 	
 	-- only meaningful for top-level types that can be instantiated:
 	if (Data.STRUCT ~= mytype and Data.UNION ~= mytype) then
 		return result
 	end
 
-	local result = result or {}	-- must be a top-level type, ie a struct or union	
-	for k, v in pairs(model) do
+	local result = result or {}	-- must be a top-level type	
+	for k, v in pairs(instance) do
 		local type_k, type_v = type(k), type(v) 
-		-- skip meta-data attributes
 		
+		-- only process data model attributes
 		if 'string' == type(k) then
+		
 			if 'table' == type_v then -- composite (nested)
 				result = Data.index(v, result)
 				
@@ -518,9 +578,9 @@ function Data.index(model, result)
 				-- length operator
 				table.insert(result, v())
 				
-				-- index 1 for illustration
+				-- index 1st element for illustration
 				if 'table' == type(v(1)) then -- composite sequence
-					Data.index(v(1), result) -- recurse for the 1st element
+					Data.index(v(1), result) -- index the 1st element instance
 				else -- primitive sequence
 					table.insert(result, v(1))
 				end
@@ -585,8 +645,8 @@ Test.Subtest:Enum{'Colors',
 Test:Struct('Name', 
 	{'first', Data.string}, --	{ first = Data.string },
 	{'last',  Data.string},
-	{'nicknames',  Data.string, Data.SEQ(3) },
-	{'aliases',  Data.string, Data.SEQ() }
+	{'nicknames',  Data.string, Data.Seq(3) },
+	{'aliases',  Data.string, Data.Seq() }
 	-- Data.has('favorite', Test.Subtest.Colors),
 )
 
@@ -616,9 +676,9 @@ Test:Struct('Address',
 --    }  
 Test:Struct('Company',
 	-- {'info', Test.NameOrAddress),
-	{ 'offices', Test.Address, Data.SEQ(10) },
-	{ 'employees', Test.Name, Data.SEQ() },
-	{ 'hq', Data.string, Data.SEQ(2) }
+	{ 'offices', Test.Address, Data.Seq(10) },
+	{ 'employees', Test.Name, Data.Seq() },
+	{ 'hq', Data.string, Data.Seq(2) }
 )
 
 --[[
@@ -674,19 +734,19 @@ Test.Address = Data.struct2{
 }
 --]]
 
-function Test.print_index(model)
-	local result = Data.index(model)
-	if result == nil then return end
+function Test.print_index(instance)
+	local instance = Data.index(instance)
+	if instance == nil then return end
 	
 	print('\nindex:')
-	for i, v in ipairs(result) do
+	for i, v in ipairs(instance) do
 		print('   ', v)	
 	end
 end
 
-function Test:print(model)
-	Data.print_idl(model)
-	self.print_index(model)
+function Test:print(instance)
+	Data.print_idl(instance)
+	self.print_index(instance)
 end
 
 function Test:test_struct_basic()
