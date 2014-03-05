@@ -523,7 +523,7 @@ function Data.print_idl(instance, indent_string)
 		for i, field in ipairs(mydefn) do -- walk through the model definition
 			local role, element, seq_max_size = field[1], field[2], field[3]		
 
-			if seq_max_size == nil then 
+			if seq_max_size == nil then -- not a sequence
 				print(string.format('%s%s %s;', content_indent_string, 
 									element[Data.MODEL][Data.NAME], role))
 			elseif seq_max_size < 0 then -- unbounded sequence
@@ -564,32 +564,32 @@ function Data.index(instance, result)
 	end
 
 	local result = result or {}	-- must be a top-level type	
-	for k, v in pairs(instance) do
-		local type_k, type_v = type(k), type(v) 
+	local mydefn = instance[Data.MODEL][Data.DEFN]
+	
+	-- preserve the order of model definition
+	for i, field in ipairs(mydefn) do -- walk through the model definition
+		local role, element, seq_max_size = field[1], field[2], field[3]		
+		local instance_member = instance[role]
 		
-		-- only process data model attributes
-		if 'string' == type(k) then
-		
-			if 'table' == type_v then -- composite (nested)
-				result = Data.index(v, result)
-				
-			elseif 'function' == type_v then -- sequence
-			
-				-- length operator
-				table.insert(result, v())
-				
-				-- index 1st element for illustration
-				if 'table' == type(v(1)) then -- composite sequence
-					Data.index(v(1), result) -- index the 1st element instance
-				else -- primitive sequence
-					table.insert(result, v(1))
-				end
-			
-			elseif 'string' == type_v then -- leaf
-				table.insert(result, v) 
+		if seq_max_size == nil then -- not a sequence
+			if 'table' == type(instance_member) then -- composite (nested)
+				result = Data.index(instance_member, result)
+			else -- atom (leaf)
+				table.insert(result, instance_member) 
+			end
+		else -- sequence
+			-- length operator
+			table.insert(result, instance_member())
+
+			-- index 1st element for illustration
+			if 'table' == type(instance_member(1)) then -- composite sequence
+				Data.index(instance_member(1), result) -- index the 1st element 
+			else -- primitive sequence
+				table.insert(result, instance_member(1))
 			end
 		end
 	end
+
 	return result
 end
 
