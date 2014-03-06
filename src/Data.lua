@@ -290,6 +290,44 @@ function Data:Struct(name, ...)
 end
 
 
+function Data:Enum(name, ...) 
+	assert(type(name) == 'string', table.concat{'invalid enum name: ', name})
+	local model = { -- meta-data defining the struct
+		[Data.NAME] = name,
+		[Data.TYPE] = Data.ENUM,
+		[Data.DEFN] = {},     -- will be populated as enumerations
+		[Data.INSTANCE] = nil,-- always nil
+	}
+	local instance = { -- top-level instance to be installed in the module
+		[Data.MODEL] = model,
+	}
+	
+	-- populate the model table
+	for i, field in ipairs{...} do	
+		local name, ordinal = field[1], field[2]	
+
+		assert(type(name) == 'string', 
+						table.concat{'invalid enum name: ', name})
+		assert(nil == ordinal or 'number' == type(ordinal), 
+						table.concat{'invalid ordinal value: ', ordinal })
+		
+		-- populate the enum elements
+		ordinal = ordinal or (i - 1) -- starts at 0 
+		instance[name] = ordinal
+		
+		-- save the meta-data
+		-- as an array to get the correct ordering
+		table.insert(model[Data.DEFN], { name, ordinal }) 
+	end
+	
+	-- add/replace the definition in the container module
+	self[name] = instance
+	table.insert(self[Data.MODEL][Data.DEFN], instance)
+		
+	return instance
+end
+		
+		
 -- meta-data annotations ---
 -- sequence annotation (qualifier) on the base user-defined types
 -- return the length of the sequence or -1 for unbounded sequences
@@ -299,7 +337,7 @@ function Data.Seq(n)
 	                    table.concat{'invalid sequence capacity: ', tostring(n)}) 
 	                    and n) 
 end
-						   
+				   
 -- the 'model' is an array of strings and the ordinal values are assigned 
 -- automatically starting at 0
 function Data.enum(model) 
@@ -541,12 +579,10 @@ function Data.print_idl(instance, indent_string)
 			end
 		end
 
-	elseif Data.ENUM == mytype then -- TODO: walk in order: ipairs()
-		for role, ord in pairs(mydefn) do -- walk through the model definition	
-			if ord ~= mytype then 
-				print(string.format('%s%s = %s,', content_indent_string, 
-												  role, ord))
-			end
+	elseif Data.ENUM == mytype then
+		for i, field in ipairs(mydefn) do -- walk through the model definition	
+			local name, ordinal = field[1], field[2]
+			print(string.format('%s%s = %s,', content_indent_string, name, ordinal))
 		end
 	end
 	
@@ -615,7 +651,7 @@ end
 --           Data:Module('Test')
 local Test = Data:Module('Test')
 
---[[
+
 --
 -- Equivalent to:
 --    Test.Month = {
@@ -625,9 +661,16 @@ local Test = Data:Module('Test')
 --        TUE         = 1
 --		  WED         = 2
 --    }
-Test:Enum{'Days', 
-	'MON', 'TUE', 'WED', -- ' THU', 'FRI', 'SAT', 'SUN'
-}
+Test:Enum('Days', 
+	{'MON'}, {'TUE'}, {'WED'}  -- ' THU', 'FRI', 'SAT', 'SUN'
+)
+
+--[[
+Test:Enum('Month', 
+	{ JAN = 1 },
+	{ FEB = 2 },
+	{ MAR = 3 }
+)
 
 Test:Module("Subtest")
 
