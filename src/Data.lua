@@ -201,7 +201,8 @@ Data[Data.MODEL] = {
 --   User defined types defined in the 'UserModule' will live in that table
 --   namespace.
 function Data:Module(name) 
-	assert(type(name) == 'string', table.concat{'invalid module name: ', name})
+	assert(type(name) == 'string', 
+		   table.concat{'invalid module name: ', tostring(name)})
 	local model = { 
 		[Data.NAME] = name,
 		[Data.TYPE] = Data.MODULE,
@@ -225,7 +226,8 @@ end
 
 -- Install an atomic type in the module
 function Data:Atom(name) 
-	assert(type(name) == 'string', table.concat{'invalid atom name: ', name})
+	assert(type(name) == 'string', 
+		   table.concat{'invalid atom name: ', tostring(name)})
 	local model = {
 		[Data.NAME] = name, 
 		[Data.TYPE] = Data.ATOM,
@@ -244,7 +246,8 @@ function Data:Atom(name)
 end
 
 function Data:Struct(name, ...) 
-	assert(type(name) == 'string', table.concat{'invalid struct name: ', name})
+	assert(type(name) == 'string', 
+		   table.concat{'invalid struct name: ', tostring(name)})
 	local model = { -- meta-data defining the struct
 		[Data.NAME] = name,
 		[Data.TYPE] = Data.STRUCT,
@@ -260,11 +263,11 @@ function Data:Struct(name, ...)
 		local role, element, seq_capacity = field[1], field[2], field[3]		
 
 		assert(type(role) == 'string', 
-						table.concat{'invalid member name: ', role})
+						table.concat{'invalid member name: ', tostring(role)})
 		assert('table' == type(element), 
-						table.concat{'undefined type for member "', role, '"'})
+			table.concat{'undefined type for member "', tostring(role), '"'})
 		assert(nil ~= element[Data.MODEL], 
-						table.concat{'invalid type for member "', role, '"'})
+				table.concat{'invalid type for member "', tostring(role), '"'})
 	
 		local element_type = element[Data.MODEL][Data.TYPE]
 		
@@ -291,7 +294,8 @@ end
 
 
 function Data:Enum(name, ...) 
-	assert(type(name) == 'string', table.concat{'invalid enum name: ', name})
+	assert(type(name) == 'string', 
+		   table.concat{'invalid enum name: ', tostring(name)})
 	local model = { -- meta-data defining the struct
 		[Data.NAME] = name,
 		[Data.TYPE] = Data.ENUM,
@@ -307,9 +311,9 @@ function Data:Enum(name, ...)
 		local name, ordinal = field[1], field[2]	
 
 		assert(type(name) == 'string', 
-						table.concat{'invalid enum name: ', name})
+				table.concat{'invalid enum name: ', tostring(name)})
 		assert(nil == ordinal or 'number' == type(ordinal), 
-						table.concat{'invalid ordinal value: ', ordinal })
+				table.concat{'invalid ordinal value: ', tostring(ordinal) })
 		
 		-- populate the enum elements
 		ordinal = ordinal or (i - 1) -- starts at 0 
@@ -371,14 +375,15 @@ end
 -- Usage:
 function Data.struct(name, template) 
 	-- print('DEBUG Data.struct: ', name, template[Data.MODEL][Data.NAME])
-	assert(type(name) == 'string', 'invalid instance name')
+	assert(type(name) == 'string', 
+		   table.concat{'invalid instance name: ', tostring(name)})
 	
 	-- ensure valid template
 	assert('table' == type(template), 'template missing!')
 	assert(template[Data.MODEL] and 
 		   (Data.STRUCT == template[Data.MODEL][Data.TYPE] or 
 		    Data.UNION == template[Data.MODEL][Data.TYPE]),
-		    table.concat{'invalid template for struct: ', name})
+		    table.concat{'invalid template for struct: ', tostring(name)})
 
 	-- try to retrieve the instance from the template
 	template[Data.INSTANCE] = template[Data.INSTANCE] or {}
@@ -417,7 +422,8 @@ end
 
 function Data.seq(name, template) 
 	-- print('DEBUG Data.seq', name, template[Data.MODEL][Data.NAME])
-	assert(type(name) == 'string', 'invalid instance name')
+	assert(type(name) == 'string', 
+		   table.concat{'invalid instance name', tostring(name)})
 	
 	-- ensure valid template
 	assert('table' == type(template), 'template missing!')
@@ -426,7 +432,7 @@ function Data.seq(name, template)
 		    Data.UNION == template[Data.MODEL][Data.TYPE] or
 		  	Data.ENUM == template[Data.MODEL][Data.TYPE] or
 		    Data.ATOM == template[Data.MODEL][Data.TYPE]),
-		    table.concat{'invalid template for seq: ', name})
+		    table.concat{'invalid template for seq: ', tostring(name)})
 		  
 	return function (i, prefix)
 		local prefix = prefix or ''
