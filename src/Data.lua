@@ -263,11 +263,11 @@ function Data:Struct(name, ...)
 		local role, element, seq_capacity = field[1], field[2], field[3]		
 
 		assert(type(role) == 'string', 
-						table.concat{'invalid member name: ', tostring(role)})
+		  table.concat{'invalid struct member name: ', tostring(role)})
 		assert('table' == type(element), 
-			table.concat{'undefined type for member "', tostring(role), '"'})
+		  table.concat{'undefined type for struct member "', tostring(role), '"'})
 		assert(nil ~= element[Data.MODEL], 
-				table.concat{'invalid type for member "', tostring(role), '"'})
+		  table.concat{'invalid type for struct member "', tostring(role), '"'})
 	
 		local element_type = element[Data.MODEL][Data.TYPE]
 		
@@ -308,20 +308,26 @@ function Data:Enum(name, ...)
 	
 	-- populate the model table
 	for i, field in ipairs{...} do	
-		local name, ordinal = field[1], field[2]	
+		local role, ordinal = field[1], field[2]	
 
-		assert(type(name) == 'string', 
-				table.concat{'invalid enum name: ', tostring(name)})
+		assert(type(role) == 'string', 
+				table.concat{'invalid enum member: ', tostring(role)})
 		assert(nil == ordinal or 'number' == type(ordinal), 
-				table.concat{'invalid ordinal value: ', tostring(ordinal) })
-		
+		     table.concat{'invalid enum ordinal value: ', tostring(ordinal) })
+				
+		if ordinal then
+			assert(math.floor(ordinal) == ordinal, -- integer 
+			 table.concat{'enum ordinal not an integer: ', tostring(ordinal) }) 
+		else 
+			ordinal = i - 1 -- ordinals start at 0				
+		end
+			
 		-- populate the enum elements
-		ordinal = ordinal or (i - 1) -- starts at 0 
-		instance[name] = ordinal
+		instance[role] = ordinal
 		
 		-- save the meta-data
 		-- as an array to get the correct ordering
-		table.insert(model[Data.DEFN], { name, ordinal }) 
+		table.insert(model[Data.DEFN], { role, ordinal }) 
 	end
 	
 	-- add/replace the definition in the container module
@@ -646,88 +652,41 @@ end
 
 ---[[ SKIP TESTS --
 
--- Equivalent to:
---    Data.Test = {
---        [Data.TYPE] = Data.MODULE 
---        [Data.NAME] = 'Test'
---    }
--- NOTE: if you want Test to be local, declare it as a local first
---       eg:
---           local Test
---           Data:Module('Test')
 local Test = Data:Module('Test')
 
-
---
--- Equivalent to:
---    Test.Month = {
---        [Data.NAME] = 'Month'
---        [Data.TYPE] = Data.ENUM 
---        MON         = 0
---        TUE         = 1
---		  WED         = 2
---    }
 Test:Enum('Days', 
 	{'MON'}, {'TUE'}, {'WED'}  -- ' THU', 'FRI', 'SAT', 'SUN'
 )
 
---[[
 Test:Enum('Month', 
-	{ JAN = 1 },
-	{ FEB = 2 },
-	{ MAR = 3 }
+	{ 'JAN', 1 },
+	{ 'FEB', 2 },
+	{ 'MAR', 3 }
 )
 
 Test:Module("Subtest")
 
-Test.Subtest:Enum{'Colors', 
-	RED   = 5,
-	BLUE  = 7,
-	GREEN = 9,
-}
+Test.Subtest:Enum('Colors', 
+	{ 'RED',   -5 },
+	{ 'BLUE',  7 },
+	{ 'GREEN', -9 },
+	{ 'PINK' }
+)
 
---]]
-
--- Equivalent to:
---    Test.Name = {
---        [Data.NAME] = 'Name'
---        [Data.TYPE] = Data.STRUCT 
---        first       = 'first'
---        last        = 'last'
---        favorite    = 'favorite'
---    }  
 Test:Struct('Name', 
 	{'first', Data.string}, --	{ first = Data.string },
 	{'last',  Data.string},
 	{'nicknames',  Data.string, Data.Seq(3) },
 	{'aliases',  Data.string, Data.Seq() }
-	-- Data.has('favorite', Test.Subtest.Colors),
+	-- {'favorite', Test.Subtest.Colors, Data.Seq(2) }
 )
-
-
--- Equivalent to:
---    Test.Address = {
---        [Data.NAME] = 'Address'
---        [Data.TYPE] = Data.STRUCT 
---        name        = Data.struct('name', Test.Name)
---        street      = 'street'
---        city        = 'city'
---    }  
 
 Test:Struct('Address',
 	Data.has('name', Test.Name),
 	Data.has('street', Data.string),
 	Data.has('city',  Data.string)
 )
-
--- Equivalent to:
---    Test.Directory = {
---        [Data.NAME] = 'Company'
---        [Data.TYPE] = Data.STRUCT 
---        info        = Data.union('info', Test.NameOrAddress)
---        employees   = Data.seq('employees', Test.Name)
---        coord       = Data.seq('coord', Data.string)
---    }  
+ 
 Test:Struct('Company',
 	-- {'info', Test.NameOrAddress),
 	{ 'offices', Test.Address, Data.Seq(10) },
@@ -736,26 +695,12 @@ Test:Struct('Company',
 )
 
 --[[
--- Equivalent to:
---    Test.FullName = {
---        [Data.NAME] = 'FullName'
---        [Data.TYPE] = Data.STRUCT 
---        first       = 'first'
---        last        = 'last'
---        middle      = 'middle'
---    }  
+  
 Test:Struct{'FullName',
 	Data.extends(Test.Name),  -- extends base type
 	Data.has('middle',  Data.string),
 }
-
--- Equivalent to:
---    Test.NameOrAddress = {
---        [Data.NAME] = 'NameOrAddress'
---        [Data.TYPE] = Data.UNION 
---        name        = Data.struct('name', Test.Name)
---        address     = Data.struct('address', Test.Address)
---    }  
+ 
 Test:Union{'NameOrAddress',
 	Data.contains('name', Test.Name),
 	Data.contains('address', Test.Address),
