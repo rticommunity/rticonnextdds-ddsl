@@ -309,7 +309,6 @@ function Data:Enum(name, ...)
 	-- populate the model table
 	for i, field in ipairs{...} do	
 		local role, ordinal = field[1], field[2]	
-
 		assert(type(role) == 'string', 
 				table.concat{'invalid enum member: ', tostring(role)})
 		assert(nil == ordinal or 'number' == type(ordinal), 
@@ -318,15 +317,14 @@ function Data:Enum(name, ...)
 		if ordinal then
 			assert(math.floor(ordinal) == ordinal, -- integer 
 			 table.concat{'enum ordinal not an integer: ', tostring(ordinal) }) 
-		else 
-			ordinal = i - 1 -- ordinals start at 0				
 		end
-			
+					
 		-- populate the enum elements
-		instance[role] = ordinal
+		local myordinal = ordinal or (i - 1) -- ordinals start at 0		
+		instance[role] = myordinal
 		
-		-- save the meta-data
-		-- as an array to get the correct ordering
+		-- save the meta-data specification
+		-- as an array to get the correct ordering when printing/visiting
 		table.insert(model[Data.DEFN], { role, ordinal }) 
 	end
 	
@@ -347,25 +345,6 @@ function Data.Seq(n)
 	                    table.concat{'invalid sequence capacity: ', tostring(n)}) 
 	                    and n) 
 end
-				   
--- the 'model' is an array of strings and the ordinal values are assigned 
--- automatically starting at 0
-function Data.enum(model) 
-	local instance = { [Data.TYPE] = Data.ENUM }
-	for i, element in ipairs(model) do
-		instance[element] = i - 1 -- shift to a 0 based indexing
-	end
-	return instance
-end
-
--- the 'model' is a table of 'name = ordinal value' pairs
-function Data.enum2(model) 
-	local instance = { [Data.TYPE] = Data.ENUM }
-	for element, value in pairs(model) do
-		instance[element] = value
-	end
-	return instance
-end
 
 --------------------------------------------------------------------------------
 -- Model Instances  ---
@@ -380,7 +359,7 @@ end
 --    <<returns>> the newly created instance that supports indexing by 'role'
 -- Usage:
 function Data.struct(name, template) 
-	-- print('DEBUG Data.struct: ', name, template[Data.MODEL][Data.NAME])
+	print('DEBUG Data.struct: ', name, template[Data.MODEL][Data.NAME])
 	assert(type(name) == 'string', 
 		   table.concat{'invalid instance name: ', tostring(name)})
 	
@@ -440,39 +419,25 @@ function Data.seq(name, template)
 		    Data.ATOM == template[Data.MODEL][Data.TYPE]),
 		    table.concat{'invalid template for seq: ', tostring(name)})
 		  
+	-- return a closure that will generate the correct index string for 'name'
+	--    if no argument is provided then generate the length operator string
+	--    else generate the element i access string
 	return function (i, prefix)
+	
 		local prefix = prefix or ''
 		return i -- index 
-				 and (template[Data.MODEL][Data.TYPE] == Data.ATOM
-					  -- primitive
-				      and string.format('%s%s[%d]', prefix, name, i)
+				 and ((Data.STRUCT == template[Data.MODEL][Data.TYPE] or 
+		   			   Data.UNION == template[Data.MODEL][Data.TYPE])
 					  -- composite
-					  or Data.struct(string.format('%s%s[%d]', prefix, name, i), 
-					  				 template))
+					  and 
+					  	Data.struct(string.format('%s%s[%d]', prefix, name, i), 
+					  				 template)
+					  or -- primitive
+				      	string.format('%s%s[%d]', prefix, name, i))
 				 -- length
 			     or string.format('%s%s#', prefix, name)
 	end
 end
-
--- TODO: function Data.union(role1, type1, role2, type2, ...) -- types required
---[[
-function Data.union(role, type, ...) -- type is required
-	local instance = Data.struct(role, type)
-	instance._d = role .. '#'
-	return instance
-end
---]]
-
--- TODO: remove
-function Data.len(seq)
-	return seq .. '#'
-end
--- TODO: remove
-function Data.idx(seq, i, role)
-	return seq .. '[' .. i .. ']' .. (role and ('.' .. role) or '')
-end
-
-
 
 --------------------------------------------------------------------------------
 -- Predefined Types
@@ -593,8 +558,13 @@ function Data.print_idl(instance, indent_string)
 
 	elseif Data.ENUM == mytype then
 		for i, field in ipairs(mydefn) do -- walk through the model definition	
-			local name, ordinal = field[1], field[2]
-			print(string.format('%s%s = %s,', content_indent_string, name, ordinal))
+			local role, ordinal = field[1], field[2]
+			if ordinal then
+				print(string.format('%s%s = %s,', content_indent_string, role, 
+								    ordinal))
+			else
+				print(string.format('%s%s,', content_indent_string, role))
+			end
 		end
 	end
 	
@@ -655,10 +625,10 @@ end
 local Test = Data:Module('Test')
 
 Test:Enum('Days', 
-	{'MON'}, {'TUE'}, {'WED'}  -- ' THU', 'FRI', 'SAT', 'SUN'
+	{'MON'}, {'TUE'}, {'WED'}, {'THU'}, {'FRI'}, {'SAT'}, {'SUN'}
 )
 
-Test:Enum('Month', 
+Test:Enum('Months', 
 	{ 'JAN', 1 },
 	{ 'FEB', 2 },
 	{ 'MAR', 3 }
@@ -673,12 +643,18 @@ Test.Subtest:Enum('Colors',
 	{ 'PINK' }
 )
 
+Test.Subtest:Struct('Fruit', 
+	{ 'weight', Data.double },
+	{ 'color' , Test.Subtest.Colors}
+)
+
 Test:Struct('Name', 
-	{'first', Data.string}, --	{ first = Data.string },
+	{'first', Data.string},
 	{'last',  Data.string},
 	{'nicknames',  Data.string, Data.Seq(3) },
-	{'aliases',  Data.string, Data.Seq() }
-	-- {'favorite', Test.Subtest.Colors, Data.Seq(2) }
+	{'aliases',  Data.string, Data.Seq() },
+	{'birthday', Test.Days },
+	{'favorite', Test.Subtest.Colors, Data.Seq(2) }
 )
 
 Test:Struct('Address',
@@ -686,7 +662,7 @@ Test:Struct('Address',
 	Data.has('street', Data.string),
 	Data.has('city',  Data.string)
 )
- 
+
 Test:Struct('Company',
 	-- {'info', Test.NameOrAddress),
 	{ 'offices', Test.Address, Data.Seq(10) },
@@ -764,14 +740,19 @@ function Test:test_module()
 	self:print(Test)
 end
 
+function Test:test_submodule()
+	self:print(Test.Subtest)
+end
+
 function Test:test_root()
 	self:print(Data)
 end
 
-function Test:Xtest_submodule()
-	self:print(Test.Submodule)
+function Test:test_enum()
+	Data.print_idl(Test.Days)
+	Data.print_idl(Test.Months)
+	Data.print_idl(Test.Subtest.Colors)
 end
-
 
 function Test:Xtest_struct_inheritance()
 	-- Inheritance
@@ -792,11 +773,6 @@ function Test:Xtest_struct_inheritance()
 		print(v)	
 	end
 	--]]
-end
-
-function Test:Xtest_enum()
-	Data.print_idl(Test.Days)
-	Data.print_idl(Test.Subtest.Colors)
 end
 
 -- main() - run the list of tests passed on the command line
