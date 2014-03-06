@@ -178,7 +178,7 @@ Data = Data or {
 Data[Data.MODEL] = { 
 	[Data.NAME] = nil,     -- unnamed root module
 	[Data.TYPE] = Data.MODULE,
-	[Data.DEFN] = nil,     -- always nil, definition is implicit
+	[Data.DEFN] = {},      -- empty
 	[Data.INSTANCE] = nil, -- always nil
 }
 
@@ -205,7 +205,7 @@ function Data:Module(name)
 	local model = { 
 		[Data.NAME] = name,
 		[Data.TYPE] = Data.MODULE,
-		[Data.DEFN] = nil,     -- always nil
+		[Data.DEFN] = {},      -- empty  
 		[Data.INSTANCE] = nil, -- always nil
 	}  
 	local instance = { -- top-level instance to be installed in the module
@@ -218,6 +218,7 @@ function Data:Module(name)
 
 	-- add/replace the definition in the container module
 	self[name] = instance
+	table.insert(self[Data.MODEL][Data.DEFN], instance)
 	
 	return instance
 end
@@ -237,6 +238,7 @@ function Data:Atom(name)
 
 	-- add/replace the definition in the container module
 	self[name] = instance
+	table.insert(self[Data.MODEL][Data.DEFN], instance)
 	
 	return instance
 end
@@ -266,10 +268,6 @@ function Data:Struct(name, ...)
 	
 		local element_type = element[Data.MODEL][Data.TYPE]
 		
-		-- save the meta-data
-		-- as an array to get the correct ordering:
-		model[Data.DEFN][i] = { role, element, seq_capacity } -- skip the rest 
-
 		-- populate the instance/role fields
 		if seq_capacity then -- sequence
 			instance[role] = Data.seq(role, element)
@@ -278,10 +276,15 @@ function Data:Struct(name, ...)
 		else -- enum or primitive 
 			instance[role] = role -- leaf is the role name
 		end
+		
+		-- save the meta-data
+		-- as an array to get the correct ordering
+		table.insert(model[Data.DEFN], { role, element, seq_capacity }) 
 	end
 	
 	-- add/replace the definition in the container module
 	self[name] = instance
+	table.insert(self[Data.MODEL][Data.DEFN], instance)
 		
 	return instance
 end
@@ -508,6 +511,9 @@ function Data.print_idl(instance, indent_string)
 		
 	-- print('DEBUG print_idl: ', Data, model, mytype(), myname)
 	
+	-- skip atomic types
+	if Data.ATOM == mytype then return result, indent_string end
+	
 	-- open --
 	if (nil ~= myname) then -- not top-level
 		print(string.format('\n%s%s %s {', indent_string, mytype(), myname))
@@ -515,17 +521,8 @@ function Data.print_idl(instance, indent_string)
 	end
 		
 	if Data.MODULE == mytype then 
-		for k, v in pairs(instance) do -- walk through the module (singleton) instance
-			-- print('DEBUG print_idl module: ', Data, k, v)
-			
-			if 	instance ~= v and -- skip if it is us (terminate recursion)
-				'string' == type(k) and 'table' == type(v) and 
-			    nil ~= v[Data.MODEL] and -- skip if not a model element
-			   	Data.ATOM ~=v[Data.MODEL][Data.TYPE] then -- skip atomic types 
-			   	
-				-- print each model element ---
-				Data.print_idl(v, content_indent_string)
-			end
+		for i, member in ipairs(mydefn) do -- walk through the module definition
+			Data.print_idl(member, content_indent_string)
 		end
 		
 	elseif Data.STRUCT == mytype then 
@@ -558,7 +555,7 @@ function Data.print_idl(instance, indent_string)
 		print(string.format('%s};', indent_string))
 	end
 	
-	return model, indent_string
+	return instance, indent_string
 end
 
 
@@ -570,8 +567,8 @@ function Data.index(instance, result)
 	
 	local mydefn = instance[Data.MODEL][Data.DEFN]
 	
-	-- skip if there is no model definition (eg MODULE, ATOM, etc) 
-	if nil == mydefn then return result end
+	-- skip if not an indexable type:
+	if Data.STRUCT ~= mytype and Data.UNION ~= mytype then return result end
 	
 	-- preserve the order of model definition
 	local result = result or {}	-- must be a top-level type	
