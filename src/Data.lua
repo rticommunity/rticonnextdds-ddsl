@@ -317,11 +317,12 @@ function Data:Union(param)
 	local instance = { -- top-level instance to be installed in the module
 		[Data.MODEL] = model,
 	}
-	
+	model[Data.DEFN]._d = discriminator
+
 	-- populate the model table
 	-- print('DEBUG Union 1: ', name, discriminator[Data.MODEL][Data.TYPE](), discriminator[Data.MODEL][Data.NAME])			
 	for i, spec in ipairs(param) do	
-		local case, defn = nil
+		local case = nil
 		if #spec > 1 then case = spec[1]  table.remove(spec, 1) end -- case
 		
 		local role, element, seq_capacity = spec[1][1], spec[1][2], spec[1][3]
@@ -350,6 +351,7 @@ function Data:Union(param)
 				
 		-- save the meta-data
 		-- as an array to get the correct ordering
+		-- NOTE: default case is stored a 'nil'
 		table.insert(model[Data.DEFN], { case, {role, element, seq_capacity} }) 
 	end
 	
@@ -508,7 +510,7 @@ function Data.seq(name, template)
 	end
 end
 
-function Data.union(name, template) 
+function Data.union(name, template)
 	local instance = Data.struct(name, template)
 	
 	-- add a discriminator field
@@ -618,7 +620,12 @@ function Data.print_idl(instance, indent_string)
 	
 	-- open --
 	if (nil ~= myname) then -- not top-level
-		print(string.format('\n%s%s %s {', indent_string, mytype(), myname))
+		if Data.UNION == mytype then
+			print(string.format('\n%s%s %s switch (%s) {', indent_string, 
+						mytype(), myname, mydefn._d[Data.MODEL][Data.NAME]))
+		else
+			print(string.format('\n%s%s %s {', indent_string, mytype(), myname))
+		end
 		content_indent_string = indent_string .. '   '
 	end
 		
@@ -643,6 +650,32 @@ function Data.print_idl(instance, indent_string)
 			end
 		end
 
+	elseif Data.UNION == mytype then 
+		for i, spec in ipairs(mydefn) do -- walk through the model definition
+			local case = spec[1]
+			local role, element, seq_max_size = spec[2][1], spec[2][2], spec[2][3]		
+
+			-- case
+			local case_string = (nil == case) and 'default' or tostring(case)
+			if (Data.char == mydefn._d and nil ~= case) then
+				print(string.format("case '%s' :", case_string))
+			else
+				print(string.format("case %s :", case_string))
+			end
+			
+			-- definition
+			if seq_max_size == nil then -- not a sequence
+				print(string.format('   %s%s %s;', content_indent_string, 
+									element[Data.MODEL][Data.NAME], role))
+			elseif seq_max_size < 0 then -- unbounded sequence
+				print(string.format('   %sseq<%s> %s;', content_indent_string, 
+									element[Data.MODEL][Data.NAME], role))
+			else -- bounded sequence
+				print(string.format('   %sseq<%s,%d> %s;', content_indent_string, 
+						    element[Data.MODEL][Data.NAME], seq_max_size, role))
+			end
+		end
+		
 	elseif Data.ENUM == mytype then
 		for i, spec in ipairs(mydefn) do -- walk through the model definition	
 			local role, ordinal = spec[1], spec[2]
