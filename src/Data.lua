@@ -8,11 +8,10 @@
 -------------------------------------------------------------------------------
 -- File: Data.lua 
 -- Purpose: DDSL: Data type definition Domain Specific Language (DSL) in Lua
--- Created: Rajive Joshi, 2014 Feb 13
+-- Created: Rajive Joshi, 2014 Feb 14
 -------------------------------------------------------------------------------
 -- TODO: Design Overview 
 -- TODO: Create a github project for DDSL
---
 -------------------------------------------------------------------------------
 
 -- Data - singleton meta-data class implementing a semantic data definition 
@@ -218,6 +217,7 @@ function Data:Module(name)
 	self.__index = self
 
 	-- add/replace the definition in the container module
+	if self[name] then print('WARNING: replacing ', name) end
 	self[name] = instance
 	table.insert(self[Data.MODEL][Data.DEFN], instance)
 	
@@ -239,6 +239,7 @@ function Data:Atom(name)
 	}
 
 	-- add/replace the definition in the container module
+	if self[name] then print('WARNING: replacing ', name) end
 	self[name] = instance
 	table.insert(self[Data.MODEL][Data.DEFN], instance)
 	
@@ -259,8 +260,8 @@ function Data:Struct(name, ...)
 	}
 	
 	-- populate the model table
-	for i, field in ipairs{...} do	
-		local role, element, seq_capacity = field[1], field[2], field[3]		
+	for i, spec in ipairs{...} do	
+		local role, element, seq_capacity = spec[1], spec[2], spec[3]		
 
 		assert(type(role) == 'string', 
 		  table.concat{'invalid struct member name: ', tostring(role)})
@@ -286,12 +287,79 @@ function Data:Struct(name, ...)
 	end
 	
 	-- add/replace the definition in the container module
+	if self[name] then print('WARNING: replacing ', name) end
 	self[name] = instance
 	table.insert(self[Data.MODEL][Data.DEFN], instance)
 		
 	return instance
 end
 
+function Data:Union(param) 
+	assert('table' ~= param, 
+		   table.concat{'invalid union specification: ', tostring(param)})
+
+	local name = param[1]   table.remove(param, 1)
+	assert('string' == type(name), 
+		   table.concat{'invalid union name: ', tostring(name)})
+		   
+	local discriminator = param[1]   table.remove(param, 1)
+	assert('table' ~= discriminator, 
+			table.concat{'invalid union discriminator', name})
+	assert(nil ~= discriminator[Data.MODEL], 
+			table.concat{'undefined union discriminator type: ', name})
+			
+	local model = { -- meta-data defining the struct
+		[Data.NAME] = name,
+		[Data.TYPE] = Data.UNION,
+		[Data.DEFN] = {},     -- will be populated as model elements are defined 
+		[Data.INSTANCE] = nil,-- will be populated as instances are defined
+	}
+	local instance = { -- top-level instance to be installed in the module
+		[Data.MODEL] = model,
+	}
+	
+	-- populate the model table
+	-- print('DEBUG Union 1: ', name, discriminator[Data.MODEL][Data.TYPE](), discriminator[Data.MODEL][Data.NAME])			
+	for i, spec in ipairs(param) do	
+		local case, defn = nil
+		if #spec > 1 then case = spec[1]  table.remove(spec, 1) end -- case
+		
+		local role, element, seq_capacity = spec[1][1], spec[1][2], spec[1][3]
+		-- print('DEBUG Union 2: ', case, role, element, seq_capacity)
+				
+		Data.assert_case(case, discriminator)
+		assert(type(role) == 'string', 
+		  table.concat{'invalid union member name: ', tostring(role)})
+		assert('table' == type(element), 
+		  table.concat{'undefined type for union member "', tostring(role), '"'})
+		assert(nil ~= element[Data.MODEL], 
+		  table.concat{'invalid type for union member "', tostring(role), '"'})
+	
+		local element_type = element[Data.MODEL][Data.TYPE]
+		
+		-- populate the instance/role fields
+		if seq_capacity then -- sequence
+			instance[role] = Data.seq(role, element)
+		elseif Data.STRUCT == element_type then -- composite struct type
+			instance[role] = Data.struct(role, element)
+		elseif Data.UNION == element_type then -- composite union type
+			instance[role] = Data.union(role, element)
+		else -- enum or atom 
+			instance[role] = role -- leaf is the role name
+		end
+				
+		-- save the meta-data
+		-- as an array to get the correct ordering
+		table.insert(model[Data.DEFN], { case, {role, element, seq_capacity} }) 
+	end
+	
+	-- add/replace the definition in the container module
+	if self[name] then print('WARNING: replacing ', name) end
+	self[name] = instance
+	table.insert(self[Data.MODEL][Data.DEFN], instance)
+		
+	return instance
+end
 
 function Data:Enum(name, ...) 
 	assert(type(name) == 'string', 
@@ -307,8 +375,8 @@ function Data:Enum(name, ...)
 	}
 	
 	-- populate the model table
-	for i, field in ipairs{...} do	
-		local role, ordinal = field[1], field[2]	
+	for i, spec in ipairs{...} do	
+		local role, ordinal = spec[1], spec[2]	
 		assert(type(role) == 'string', 
 				table.concat{'invalid enum member: ', tostring(role)})
 		assert(nil == ordinal or 'number' == type(ordinal), 
@@ -329,6 +397,7 @@ function Data:Enum(name, ...)
 	end
 	
 	-- add/replace the definition in the container module
+	if self[name] then print('WARNING: replacing ', name) end
 	self[name] = instance
 	table.insert(self[Data.MODEL][Data.DEFN], instance)
 		
@@ -359,7 +428,7 @@ end
 --    <<returns>> the newly created instance that supports indexing by 'role'
 -- Usage:
 function Data.struct(name, template) 
-	print('DEBUG Data.struct: ', name, template[Data.MODEL][Data.NAME])
+	-- print('DEBUG Data.struct: ', name, template[Data.MODEL][Data.NAME])
 	assert(type(name) == 'string', 
 		   table.concat{'invalid instance name: ', tostring(name)})
 	
@@ -439,6 +508,21 @@ function Data.seq(name, template)
 	end
 end
 
+function Data.union(name, template) 
+	local instance = Data.struct(name, template)
+	
+	-- add a discriminator field
+	instance._d = '#'
+	
+	return instance
+end
+
+-- Ensure that case is a valid discriminator value
+function Data.assert_case(case, discriminator)
+	-- TODO: implement assert_case
+	return case
+end
+		
 --------------------------------------------------------------------------------
 -- Predefined Types
 --------------------------------------------------------------------------------
@@ -448,11 +532,14 @@ end
 Data:Atom('string')
 Data:Atom('double')
 Data:Atom('long')
+Data:Atom('short')
 Data:Atom('boolean')
+Data:Atom('char')
+Data:Atom('octet')
 
 -- Disallow user defined atoms!
 Data.Atom = nil
-
+	
 --------------------------------------------------------------------------------
 -- Relationship Definitions
 --------------------------------------------------------------------------------
@@ -488,12 +575,12 @@ Data.Atom = nil
 --       t[2].first = 'name.first'
 --       t[2].last  = 'name.last'
 --  and so on. 
-function Data.has(name, model)
-	return {name, model}
+function Data.has(name, model, sequence)
+	return { name, model, sequence }
 end
 
-function Data.has_list(name, model, n)
-	return { name, model, Data.Seq, n }
+function Data.case(value, name, model)
+	return { value, name, model }
 end 
 
 --------------------------------------------------------------------------------
@@ -541,8 +628,8 @@ function Data.print_idl(instance, indent_string)
 		end
 		
 	elseif Data.STRUCT == mytype then 
-		for i, field in ipairs(mydefn) do -- walk through the model definition
-			local role, element, seq_max_size = field[1], field[2], field[3]		
+		for i, spec in ipairs(mydefn) do -- walk through the model definition
+			local role, element, seq_max_size = spec[1], spec[2], spec[3]		
 
 			if seq_max_size == nil then -- not a sequence
 				print(string.format('%s%s %s;', content_indent_string, 
@@ -557,8 +644,8 @@ function Data.print_idl(instance, indent_string)
 		end
 
 	elseif Data.ENUM == mytype then
-		for i, field in ipairs(mydefn) do -- walk through the model definition	
-			local role, ordinal = field[1], field[2]
+		for i, spec in ipairs(mydefn) do -- walk through the model definition	
+			local role, ordinal = spec[1], spec[2]
 			if ordinal then
 				print(string.format('%s%s = %s,', content_indent_string, role, 
 								    ordinal))
@@ -590,8 +677,8 @@ function Data.index(instance, result)
 	
 	-- preserve the order of model definition
 	local result = result or {}	-- must be a top-level type	
-	for i, field in ipairs(mydefn) do -- walk through the model definition
-		local role, element, seq_max_size = field[1], field[2], field[3]		
+	for i, spec in ipairs(mydefn) do -- walk through the model definition
+		local role, element, seq_max_size = spec[1], spec[2], spec[3]		
 		local instance_member = instance[role]
 		
 		if seq_max_size == nil then -- not a sequence
@@ -670,16 +757,36 @@ Test:Struct('Company',
 	{ 'hq', Data.string, Data.Seq(2) }
 )
 
+Test:Union{'Chores', Test.Days,
+	{ 'MON', 
+		{'name', Test.Name}},
+	{ 'TUE', 
+		{'address', Test.Address}},
+	{ -- default
+		{'x', Data.double}},		
+}
+
+Test:Union{'Track', Data.boolean,
+	{ true, 
+		{'name', Test.Name}},
+	{ false, 
+		{'address', Test.Address}},
+}
+
+Test:Union{'Track2', Data.char,
+	{ 'c', 
+		{'name', Test.Name}},
+	{ 'a', 
+		{'address', Test.Address}},
+	{ -- default
+		{'x', Data.double}},
+}
+
 --[[
   
 Test:Struct{'FullName',
 	Data.extends(Test.Name),  -- extends base type
 	Data.has('middle',  Data.string),
-}
- 
-Test:Union{'NameOrAddress',
-	Data.contains('name', Test.Name),
-	Data.contains('address', Test.Address),
 }
 
 --[[
@@ -730,6 +837,12 @@ end
 
 function Test:test_struct_composite()
 	self:print(Test.Address)
+end
+
+function Test:test_union()
+	self:print(Test.Chores)
+	self:print(Test.Track)
+	self:print(Test.Track2)
 end
 
 function Test:test_struct_seq()
