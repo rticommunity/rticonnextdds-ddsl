@@ -655,9 +655,9 @@ function Data.print_idl(instance, indent_string)
 			-- case
 			local case_string = (nil == case) and 'default' or tostring(case)
 			if (Data.char == mydefn._d and nil ~= case) then
-				print(string.format("case '%s' :", case_string))
+				print(string.format("%scase '%s' :", content_indent_string, case_string))
 			else
-				print(string.format("case %s :", case_string))
+				print(string.format("%scase %s :", content_indent_string, case_string))
 			end
 			
 			-- definition
