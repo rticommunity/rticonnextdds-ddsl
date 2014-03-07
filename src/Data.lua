@@ -275,7 +275,7 @@ function Data:Struct(name, ...)
 		-- populate the instance/role fields
 		if seq_capacity then -- sequence
 			instance[role] = Data.seq(role, element)
-		elseif Data.STRUCT == element_type then -- composite type
+		elseif Data.STRUCT == element_type or Data.UNION == element_type then
 			instance[role] = Data.struct(role, element)
 		else -- enum or primitive 
 			instance[role] = role -- leaf is the role name
@@ -317,7 +317,10 @@ function Data:Union(param)
 	local instance = { -- top-level instance to be installed in the module
 		[Data.MODEL] = model,
 	}
+	
+	-- add the discriminator
 	model[Data.DEFN]._d = discriminator
+	instance._d = '#'
 
 	-- populate the model table
 	-- print('DEBUG Union 1: ', name, discriminator[Data.MODEL][Data.TYPE](), discriminator[Data.MODEL][Data.NAME])			
@@ -341,10 +344,8 @@ function Data:Union(param)
 		-- populate the instance/role fields
 		if seq_capacity then -- sequence
 			instance[role] = Data.seq(role, element)
-		elseif Data.STRUCT == element_type then -- composite struct type
+		elseif Data.STRUCT == element_type or Data.UNION == element_type then 
 			instance[role] = Data.struct(role, element)
-		elseif Data.UNION == element_type then -- composite union type
-			instance[role] = Data.union(role, element)
 		else -- enum or atom 
 			instance[role] = role -- leaf is the role name
 		end
@@ -436,10 +437,11 @@ function Data.struct(name, template)
 	
 	-- ensure valid template
 	assert('table' == type(template), 'template missing!')
-	assert(template[Data.MODEL] and 
-		   (Data.STRUCT == template[Data.MODEL][Data.TYPE] or 
-		    Data.UNION == template[Data.MODEL][Data.TYPE]),
-		    table.concat{'invalid template for struct: ', tostring(name)})
+	assert(template[Data.MODEL],
+		   table.concat{'invalid instance template: ', tostring(name)})
+	assert(Data.STRUCT == template[Data.MODEL][Data.TYPE] or 
+		   Data.UNION == template[Data.MODEL][Data.TYPE],
+		   table.concat{'template must be a struct or union: ', tostring(name)})
 
 	-- try to retrieve the instance from the template
 	template[Data.INSTANCE] = template[Data.INSTANCE] or {}
@@ -463,8 +465,12 @@ function Data.struct(name, template)
 						end
 				elseif 'table' == type_v then -- struct
 					instance[k] = Data.struct(name, v) -- use member as template
-				elseif 'string' == type_v then -- atom
-					instance[k] = table.concat{name, '.', v}
+				elseif 'string' == type_v then -- atom/leaf
+					if '#' == v then -- _d: leaf level union discriminator
+						instance[k] = table.concat{name, '', v} -- no dot separator
+					else
+						instance[k] = table.concat{name, '.', v}
+					end
 				end
 			end
 		end
@@ -508,15 +514,6 @@ function Data.seq(name, template)
 				 -- length
 			     or string.format('%s%s#', prefix, name)
 	end
-end
-
-function Data.union(name, template)
-	local instance = Data.struct(name, template)
-	
-	-- add a discriminator field
-	instance._d = '#'
-	
-	return instance
 end
 
 -- Ensure that case is a valid discriminator value
@@ -708,12 +705,27 @@ function Data.index(instance, result)
 	-- skip if not an indexable type:
 	if Data.STRUCT ~= mytype and Data.UNION ~= mytype then return result end
 	
+	-- print('DEBUG index: ', mytype(), instance[Data.MODEL][Data.NAME])
+			
 	-- preserve the order of model definition
 	local result = result or {}	-- must be a top-level type	
-	for i, spec in ipairs(mydefn) do -- walk through the model definition
-		local role, element, seq_max_size = spec[1], spec[2], spec[3]		
-		local instance_member = instance[role]
+	
+	-- discriminator
+	if Data.UNION == mytype then
+		table.insert(result, instance._d) 
+	end
+	
+	-- walk through the body of the model definition	
+	for i, spec in ipairs(mydefn) do 
+		local role, element, seq_max_size 
 		
+		if Data.STRUCT == mytype then
+			 role, element, seq_max_size = spec[1], spec[2], spec[3]
+		elseif Data.UNION == mytype then
+			 role, element, seq_max_size = spec[2][1], spec[2][2], spec[2][3]
+		end
+		
+		local instance_member = instance[role]
 		if seq_max_size == nil then -- not a sequence
 			if 'table' == type(instance_member) then -- composite (nested)
 				result = Data.index(instance_member, result)
@@ -783,13 +795,6 @@ Test:Struct('Address',
 	Data.has('city',  Data.string)
 )
 
-Test:Struct('Company',
-	-- {'info', Test.NameOrAddress),
-	{ 'offices', Test.Address, Data.Seq(10) },
-	{ 'employees', Test.Name, Data.Seq() },
-	{ 'hq', Data.string, Data.Seq(2) }
-)
-
 Test:Union{'Chores', Test.Days,
 	{ 'MON', 
 		{'name', Test.Name}},
@@ -799,14 +804,7 @@ Test:Union{'Chores', Test.Days,
 		{'x', Data.double}},		
 }
 
-Test:Union{'Track', Data.boolean,
-	{ true, 
-		{'name', Test.Name}},
-	{ false, 
-		{'address', Test.Address}},
-}
-
-Test:Union{'Track2', Data.char,
+Test:Union{'TestUnion1', Data.char,
 	{ 'c', 
 		{'name', Test.Name}},
 	{ 'a', 
@@ -814,6 +812,34 @@ Test:Union{'Track2', Data.char,
 	{ -- default
 		{'x', Data.double}},
 }
+
+Test:Union{'TestUnion2', Data.short,
+	{ 1, 
+		{'x', Data.string}},
+	{ 2, 
+		{'y', Data.double}},
+	{ -- default
+		{'z', Data.boolean}},
+}
+
+Test:Union{'NameOrAddress', Data.boolean,
+	{ true, 
+		{'name', Test.Name}},
+	{ false, 
+		{'address', Test.Address}},
+}
+
+Test:Struct('Company',
+	{ 'entity', Test.NameOrAddress},
+	{ 'hq', Data.string, Data.Seq(2) },
+	{ 'offices', Test.Address, Data.Seq(10) },
+	{ 'employees', Test.Name, Data.Seq() }
+)
+
+Test:Struct('BigCompany',
+	{ 'parent', Test.Company},
+	{ 'divisions', Test.Company, Data.Seq()}
+)
 
 --[[
   
@@ -874,12 +900,14 @@ end
 
 function Test:test_union()
 	self:print(Test.Chores)
-	self:print(Test.Track)
-	self:print(Test.Track2)
+	self:print(Test.TestUnion1)
+	self:print(Test.TestUnion2)
+	self:print(Test.NameOrAddress)
 end
 
-function Test:test_struct_seq()
+function Test:test_struct_complex()
 	self:print(Test.Company)
+	self:print(Test.BigCompany)
 end
 
 function Test:test_module()
