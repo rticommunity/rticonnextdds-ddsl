@@ -73,8 +73,8 @@
 --                 
 --          -- instance fields --
 --          user_role1 = 'user_role1'  -- name used to index this 'leaf' field
---          user_role2 = Data.struct('user_role2', UserModule.UserType2)
---          user_role3 = Data.struct('user_role3', UserModule.UserType3)
+--          user_role2 = Data.instance('user_role2', UserModule.UserType2)
+--          user_role3 = Data.instance('user_role3', UserModule.UserType3)
 --          user_role_seq = Data.seq('user_role_seq', UserModule.UserTypeSeq)
 --          :
 --       }
@@ -89,7 +89,7 @@
 --    Note that if a definition already exists, it is cleared and re-defined.
 --
 --    To create an instance named 'i1' from a structure named 'Model'
---          i1 = Data.struct('i1', Model)
+--          i1 = Data.instance('i1', Model)
 --    Now, one can instance all the fields of the resulting table
 --          i1.role1 = 'i1.role1'
 --    or 
@@ -129,7 +129,7 @@
 --          Either a primitive field
 --              model.role = 'role'
 --          Or a composite field 
---              model.role = Data.struct('role', RoleModel)
+--              model.role = Data.instance('role', RoleModel)
 --          or a sequence
 --              model.role = Data.seq('role', RoleModel)
 --
@@ -276,7 +276,7 @@ function Data:Struct(name, ...)
 		if seq_capacity then -- sequence
 			instance[role] = Data.seq(role, element)
 		elseif Data.STRUCT == element_type or Data.UNION == element_type then
-			instance[role] = Data.struct(role, element)
+			instance[role] = Data.instance(role, element)
 		else -- enum or primitive 
 			instance[role] = role -- leaf is the role name
 		end
@@ -345,7 +345,7 @@ function Data:Union(param)
 		if seq_capacity then -- sequence
 			instance[role] = Data.seq(role, element)
 		elseif Data.STRUCT == element_type or Data.UNION == element_type then 
-			instance[role] = Data.struct(role, element)
+			instance[role] = Data.instance(role, element)
 		else -- enum or atom 
 			instance[role] = role -- leaf is the role name
 		end
@@ -422,7 +422,7 @@ end
 -- Model Instances  ---
 --------------------------------------------------------------------------------
 
--- Data.struct() - creates an instance of a structure model element
+-- Data.instance() - creates an instance, using another instance as a template
 -- Purpose:
 --    Define a table that can be used to index into an instance of a model
 -- Parameters:
@@ -430,8 +430,8 @@ end
 -- 	  <<in>> model - the model element (table) to be instantiated
 --    <<returns>> the newly created instance that supports indexing by 'role'
 -- Usage:
-function Data.struct(name, template) 
-	-- print('DEBUG Data.struct: ', name, template[Data.MODEL][Data.NAME])
+function Data.instance(name, template) 
+	-- print('DEBUG Data.instance: ', name, template[Data.MODEL][Data.NAME])
 	assert(type(name) == 'string', 
 		   table.concat{'invalid instance name: ', tostring(name)})
 	
@@ -464,7 +464,7 @@ function Data.struct(name, template)
 							return v(i, table.concat{prefix or '', name, '.'}) 
 						end
 				elseif 'table' == type_v then -- struct
-					instance[k] = Data.struct(name, v) -- use member as template
+					instance[k] = Data.instance(name, v) -- use member as template
 				elseif 'string' == type_v then -- atom/leaf
 					if '#' == v then -- _d: leaf level union discriminator
 						instance[k] = table.concat{name, '', v} -- no dot separator
@@ -507,7 +507,7 @@ function Data.seq(name, template)
 		   			   Data.UNION == template[Data.MODEL][Data.TYPE])
 					  -- composite
 					  and 
-					  	Data.struct(string.format('%s%s[%d]', prefix, name, i), 
+					  	Data.instance(string.format('%s%s[%d]', prefix, name, i), 
 					  				 template)
 					  or -- primitive
 				      	string.format('%s%s[%d]', prefix, name, i))
@@ -863,13 +863,13 @@ Test.Subtest.Colors = Data.enum2{
 	GREEN = 9,
 }
 
-Test.Name = Data.struct2{
+Test.Name = Data.instance2{
 	first = Data.STRING,
 	last  = Data.STRING,
 }
 
-Test.Address = Data.struct2{
-	name    = Data.struct('name', Test.Name),
+Test.Address = Data.instance2{
+	name    = Data.instance('name', Test.Name),
 	street  = Data.STRING,
 	city    = Data.STRING,
 }
