@@ -201,6 +201,8 @@ Data[Data.MODEL] = {
 --   User defined types defined in the 'UserModule' will live in that table
 --   namespace.
 function Data:Module(name) 
+	local name = name[1] or name -- accept a table containing a string or a string
+	
 	assert(type(name) == 'string', 
 		   table.concat{'invalid module name: ', tostring(name)})
 	local model = { 
@@ -227,6 +229,8 @@ end
 
 -- Install an atomic type in the module
 function Data:Atom(name) 
+	local name = name[1] or name -- accept a table containing a string or a string
+
 	assert(type(name) == 'string', 
 		   table.concat{'invalid atom name: ', tostring(name)})
 	local model = {
@@ -586,13 +590,13 @@ end
 
 -- Data:Atom('double')
 
-Data:Atom('string')
-Data:Atom('double')
-Data:Atom('long')
-Data:Atom('short')
-Data:Atom('boolean')
-Data:Atom('char')
-Data:Atom('octet')
+Data:Atom{'string'}
+Data:Atom{'double'}
+Data:Atom{'long'}
+Data:Atom{'short'}
+Data:Atom{'boolean'}
+Data:Atom{'char'}
+Data:Atom{'octet'}
 
 -- Disallow user defined atoms!
 Data.Atom = nil
@@ -857,7 +861,7 @@ Test.Address = Data.instance2{
 
 ---[[ SKIP TESTS --
 
-local Test = Data:Module('Test')
+local Test = Data:Module{'Test'}
 
 Test:Enum{'Days', 
 	{'MON'}, {'TUE'}, {'WED'}, {'THU'}, {'FRI'}, {'SAT'}, {'SUN'}
@@ -869,7 +873,7 @@ Test:Enum{'Months',
 	{ 'MAR', 3 }
 }
 
-Test:Module("Subtest")
+Test:Module('Subtest') -- alternate syntax
 
 Test.Subtest:Enum{'Colors', 
 	{ 'RED',   -5 },
