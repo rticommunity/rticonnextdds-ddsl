@@ -398,9 +398,15 @@ function Data:Union(param)
 	return instance
 end
 
-function Data:Enum(name, ...) 
-	assert(type(name) == 'string', 
+function Data:Enum(param) 
+	assert('table' ~= param, 
+		   table.concat{'invalid enum specification: ', tostring(param)})
+
+	-- pop the name
+	local name = param[1]   table.remove(param, 1)
+	assert('string' == type(name), 
 		   table.concat{'invalid enum name: ', tostring(name)})
+
 	local model = { -- meta-data defining the struct
 		[Data.NAME] = name,
 		[Data.TYPE] = Data.ENUM,
@@ -412,7 +418,7 @@ function Data:Enum(name, ...)
 	}
 	
 	-- populate the model table
-	for i, spec in ipairs{...} do	
+	for i, spec in ipairs(param) do	
 		local role, ordinal = spec[1], spec[2]	
 		assert(type(role) == 'string', 
 				table.concat{'invalid enum member: ', tostring(role)})
@@ -853,24 +859,24 @@ Test.Address = Data.instance2{
 
 local Test = Data:Module('Test')
 
-Test:Enum('Days', 
+Test:Enum{'Days', 
 	{'MON'}, {'TUE'}, {'WED'}, {'THU'}, {'FRI'}, {'SAT'}, {'SUN'}
-)
+}
 
-Test:Enum('Months', 
+Test:Enum{'Months', 
 	{ 'JAN', 1 },
 	{ 'FEB', 2 },
 	{ 'MAR', 3 }
-)
+}
 
 Test:Module("Subtest")
 
-Test.Subtest:Enum('Colors', 
+Test.Subtest:Enum{'Colors', 
 	{ 'RED',   -5 },
 	{ 'BLUE',  7 },
 	{ 'GREEN', -9 },
 	{ 'PINK' }
-)
+}
 
 Test.Subtest:Struct{'Fruit', 
 	{ 'weight', Data.double },
