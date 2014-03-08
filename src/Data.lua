@@ -306,7 +306,7 @@ function Data:Struct(param)
 		
 		-- check for conflicting  member fields
 		assert(nil == instance[role], 
-			table.concat{'member conflict with base type member: ', role})
+			table.concat{'member name already defined: ', role})
 				
 		-- populate the instance/role fields
 		if seq_capacity then -- sequence
@@ -721,9 +721,11 @@ function Data.print_idl(instance, indent_string)
 			-- case
 			local case_string = (nil == case) and 'default' or tostring(case)
 			if (Data.char == mydefn._d and nil ~= case) then
-				print(string.format("%scase '%s' :", content_indent_string, case_string))
+				print(string.format("%scase '%s' :", 
+					content_indent_string, case_string))
 			else
-				print(string.format("%scase %s :", content_indent_string, case_string))
+				print(string.format("%scase %s :", 
+					content_indent_string, case_string))
 			end
 			
 			-- definition
