@@ -20,7 +20,8 @@
 --
 -- Purpose: 
 -- 	   Serves several purposes
---     1. Provides a way of defining IDL equivalent data types (aka models) 
+--     1. Provides a way of defining IDL equivalent data types (aka models). Does
+--        error checking to ensure well-formed type definitions.  
 --     2. Provides helper methods to generate equivalent IDL  
 --     3. Provides a natural way of indexing into a dynamic data sample 
 --     4. Provides a way of creating instances of a data type, for example 
@@ -323,7 +324,7 @@ function Data:Union(param)
 	instance._d = '#'
 
 	-- populate the model table
-	-- print('DEBUG Union 1: ', name, discriminator[Data.MODEL][Data.TYPE](), discriminator[Data.MODEL][Data.NAME])			
+    -- print('DEBUG Union 1: ', name, discriminator[Data.MODEL][Data.TYPE](), discriminator[Data.MODEL][Data.NAME])			
 	for i, spec in ipairs(param) do	
 		local case = nil
 		if #spec > 1 then case = spec[1]  table.remove(spec, 1) end -- case
@@ -518,10 +519,27 @@ end
 
 -- Ensure that case is a valid discriminator value
 function Data.assert_case(case, discriminator)
-	-- TODO: implement assert_case
-	return case
+	if nil == case then return case end -- default case 
+
+	local err_msg = table.concat{'invalid case value: ', tostring(case)}
+	
+	if Data.long == discriminator or -- integral type
+	   Data.short == discriminator or 
+	   Data.octet == discriminator then
+		assert(tonumber(case) and math.floor(case) == case, err_msg)	   
+	 elseif Data.char == discriminator then -- character
+	 	assert('string' == type(case) and 1 == string.len(case), err_msg)	
+	 elseif Data.boolean == discriminator then -- boolean
+		assert(true == case or false == case, err_msg)
+	 elseif Data.ENUM == discriminator[Data.MODEL][Data.TYPE] then -- enum
+	 	assert(discriminator[case], err_msg)
+	 else -- invalid 
+	 	assert(false, err_msg)
+	 end
+	
+	 return case
 end
-		
+
 --------------------------------------------------------------------------------
 -- Predefined Types
 --------------------------------------------------------------------------------
@@ -752,6 +770,33 @@ end
 -- TESTS 
 --------------------------------------------------------------------------------
 
+--[[
+local Test = Test or {}
+
+Test.Days = Data.enum{
+	'MON', 'TUE', 'WED', 'THU',
+}
+
+Test.Subtest = {}
+
+Test.Subtest.Colors = Data.enum2{
+	RED   = 5,
+	BLUE  = 7,
+	GREEN = 9,
+}
+
+Test.Name = Data.instance2{
+	first = Data.STRING,
+	last  = Data.STRING,
+}
+
+Test.Address = Data.instance2{
+	name    = Data.instance('name', Test.Name),
+	street  = Data.STRING,
+	city    = Data.STRING,
+}
+--]]
+
 ---[[ SKIP TESTS --
 
 local Test = Data:Module('Test')
@@ -841,39 +886,14 @@ Test:Struct('BigCompany',
 	{ 'divisions', Test.Company, Data.Seq()}
 )
 
---[[
-  
-Test:Struct{'FullName',
-	Data.extends(Test.Name),  -- extends base type
-	Data.has('middle',  Data.string),
-}
+Test:Struct('FullName', -- Test.Name,
+	{ 'middle',  Data.string }
+)
 
---[[
-local Test = Test or {}
-
-Test.Days = Data.enum{
-	'MON', 'TUE', 'WED', 'THU',
-}
-
-Test.Subtest = {}
-
-Test.Subtest.Colors = Data.enum2{
-	RED   = 5,
-	BLUE  = 7,
-	GREEN = 9,
-}
-
-Test.Name = Data.instance2{
-	first = Data.STRING,
-	last  = Data.STRING,
-}
-
-Test.Address = Data.instance2{
-	name    = Data.instance('name', Test.Name),
-	street  = Data.STRING,
-	city    = Data.STRING,
-}
---]]
+Test:Struct('FullAddress',
+	{ 'fullname',  Test.FullName },
+	{ 'country',  Data.string }
+)
 
 function Test.print_index(instance)
 	local instance = Data.index(instance)
@@ -898,18 +918,6 @@ function Test:test_struct_composite()
 	self:print(Test.Address)
 end
 
-function Test:test_union()
-	self:print(Test.Chores)
-	self:print(Test.TestUnion1)
-	self:print(Test.TestUnion2)
-	self:print(Test.NameOrAddress)
-end
-
-function Test:test_struct_complex()
-	self:print(Test.Company)
-	self:print(Test.BigCompany)
-end
-
 function Test:test_module()
 	self:print(Test)
 end
@@ -928,25 +936,20 @@ function Test:test_enum()
 	Data.print_idl(Test.Subtest.Colors)
 end
 
-function Test:Xtest_struct_inheritance()
-	-- Inheritance
-	print(Test.FullName[Data.NAME])
-	for i, v in ipairs(Data.index(Test.FullName)) do
-		print(v)	
-	end
-		
-	-- Union
-	print(Test.NameOrAddress[Data.NAME])
-	for i, v in ipairs(Data.index(Test.NameOrAddress)) do
-		print(v)	
-	end
-	
-	-- Sequences and Unions
-	print(Test.Company[Data.NAME])
-	for i, v in ipairs(Data.index(Test.Company)) do
-		print(v)	
-	end
-	--]]
+function Test:test_union()
+	self:print(Test.Chores)
+	self:print(Test.TestUnion1)
+	self:print(Test.TestUnion2)
+	self:print(Test.NameOrAddress)
+end
+
+function Test:test_struct_complex()
+	self:print(Test.Company)
+	self:print(Test.BigCompany)
+end
+
+function Test:test_struct_inheritance()
+	self:print(Test.FullName)
 end
 
 -- main() - run the list of tests passed on the command line
