@@ -147,15 +147,15 @@ Data = Data or {
 	-- instance attributes ---
 	-- every 'instance' table has this meta-data key defined
 	-- the rest of the keys are fields of the instance
-	MODEL      = function() end,  -- table key for 'model' meta-data	
+	MODEL      = function() return 'MODEL' end,-- table key for 'model' meta-data	
 	
 		
 	-- model meta-data attributes ---
 	-- every 'model' meta-data table has these keys defined 
-	NAME      = function() end,  -- table key for 'model name'	
-	TYPE      = function() end,  -- table key for the 'model type name' 
-	DEFN      = function() end,  -- table key for element meta-data
-	INSTANCE  = function() end,  -- table key for instances of this model
+	NAME      = function() return 'NAME' end,  -- table key for 'model name'	
+	TYPE      = function() return 'TYPE' end,  -- table key for the 'model type name' 
+	DEFN      = function() return 'DEFN' end,  -- table key for element meta-data
+	INSTANCE  = function() return 'INSTANCE' end,-- table key for instances of this model
 	
 		
 	-- meta-data types - i.e. list of possible user defined types ---
@@ -247,9 +247,23 @@ function Data:Atom(name)
 	return instance
 end
 
-function Data:Struct(name, ...) 
-	assert(type(name) == 'string', 
+function Data:Struct(param) 
+	assert('table' ~= param, 
+		   table.concat{'invalid struct specification: ', tostring(param)})
+
+	-- pop the name
+	local name = param[1]   table.remove(param, 1)
+	assert('string' == type(name), 
 		   table.concat{'invalid struct name: ', tostring(name)})
+		   
+	-- OPTIONAL base: pop the next element if it is a base model element
+	local base
+	if 'table' == type(param[1]) and nil ~= param[1][Data.MODEL] then
+		base = param[1]   table.remove(param, 1)
+		assert(Data.STRUCT == base[Data.MODEL][Data.TYPE], 
+			table.concat{'base type must be a struct: ', name})
+	end
+
 	local model = { -- meta-data defining the struct
 		[Data.NAME] = name,
 		[Data.TYPE] = Data.STRUCT,
@@ -260,8 +274,21 @@ function Data:Struct(name, ...)
 		[Data.MODEL] = model,
 	}
 	
+	-- add the base
+	if base then
+		-- install base class:
+		model[Data.DEFN]._base = base
+		
+		-- populate the instance fields from the base type
+		for k, v in pairs(base) do
+			if 'string' == type(k) then -- copy only the base type instance fields 
+				instance[k] = v
+			end
+		end
+	end
+	
 	-- populate the model table
-	for i, spec in ipairs{...} do	
+	for i, spec in ipairs(param) do	
 		local role, element, seq_capacity = spec[1], spec[2], spec[3]		
 
 		assert(type(role) == 'string', 
@@ -273,6 +300,10 @@ function Data:Struct(name, ...)
 	
 		local element_type = element[Data.MODEL][Data.TYPE]
 		
+		-- check for conflicting  member fields
+		assert(nil == instance[role], 
+			table.concat{'member conflict with base type member: ', role})
+				
 		-- populate the instance/role fields
 		if seq_capacity then -- sequence
 			instance[role] = Data.seq(role, element)
@@ -299,16 +330,18 @@ function Data:Union(param)
 	assert('table' ~= param, 
 		   table.concat{'invalid union specification: ', tostring(param)})
 
+	-- pop the name
 	local name = param[1]   table.remove(param, 1)
 	assert('string' == type(name), 
 		   table.concat{'invalid union name: ', tostring(name)})
 		   
+	-- pop the discriminator
 	local discriminator = param[1]   table.remove(param, 1)
 	assert('table' ~= discriminator, 
 			table.concat{'invalid union discriminator', name})
 	assert(nil ~= discriminator[Data.MODEL], 
 			table.concat{'undefined union discriminator type: ', name})
-			
+		
 	local model = { -- meta-data defining the struct
 		[Data.NAME] = name,
 		[Data.TYPE] = Data.UNION,
@@ -445,8 +478,9 @@ function Data.instance(name, template)
 		   table.concat{'template must be a struct or union: ', tostring(name)})
 
 	-- try to retrieve the instance from the template
-	template[Data.INSTANCE] = template[Data.INSTANCE] or {}
-	local instance = template[Data.INSTANCE][name]
+	local model = template[Data.MODEL]
+	model[Data.INSTANCE] = model[Data.INSTANCE] or {}
+	local instance = model[Data.INSTANCE][name]
 	
 	-- not found => create the instance:
 	if not instance then 
@@ -477,7 +511,7 @@ function Data.instance(name, template)
 		end
 		
 		-- cache the instance, so that we can reuse it the next time!
-		template[Data.INSTANCE][name] = instance
+		model[Data.INSTANCE][name] = instance
 	end
 	
 	return instance
@@ -638,6 +672,9 @@ function Data.print_idl(instance, indent_string)
 		if Data.UNION == mytype then
 			print(string.format('\n%s%s %s switch (%s) {', indent_string, 
 						mytype(), myname, mydefn._d[Data.MODEL][Data.NAME]))
+		elseif Data.STRUCT == mytype and model[Data.DEFN]._base then
+			print(string.format('\n%s%s %s : %s {', indent_string, mytype(), 
+					myname, model[Data.DEFN]._base[Data.MODEL][Data.NAME]))
 		else
 			print(string.format('\n%s%s %s {', indent_string, mytype(), myname))
 		end
@@ -649,7 +686,8 @@ function Data.print_idl(instance, indent_string)
 			Data.print_idl(member, content_indent_string)
 		end
 		
-	elseif Data.STRUCT == mytype then 
+	elseif Data.STRUCT == mytype then
+	 
 		for i, spec in ipairs(mydefn) do -- walk through the model definition
 			local role, element, seq_max_size = spec[1], spec[2], spec[3]		
 
@@ -711,14 +749,20 @@ function Data.print_idl(instance, indent_string)
 	return instance, indent_string
 end
 
-
-function Data.index(instance, result) 
+-- @function Data.index Visit the fields in the instance that are specified 
+--           in the model
+-- @param instance the instance to index
+-- @param result OPTIONAL the index table to which the results are appended
+-- @param model OPTIONAL nil means use the instance's model;
+--              needed to support inheritance
+-- @result the cumulative index, that can be passed to another call to this method
+function Data.index(instance, result, model) 
 	-- ensure valid instance
 	assert('table' == type(instance), 'instance missing!')
 	assert(instance[Data.MODEL], 'invalid instance')
 	local mytype = instance[Data.MODEL][Data.TYPE]
-	
-	local mydefn = instance[Data.MODEL][Data.DEFN]
+	local model = model or instance[Data.MODEL]
+	local mydefn = model[Data.DEFN]
 	
 	-- skip if not an indexable type:
 	if Data.STRUCT ~= mytype and Data.UNION ~= mytype then return result end
@@ -728,15 +772,23 @@ function Data.index(instance, result)
 	-- preserve the order of model definition
 	local result = result or {}	-- must be a top-level type	
 	
-	-- discriminator
+	
+	-- union discriminator, if any
 	if Data.UNION == mytype then
 		table.insert(result, instance._d) 
+	end
+	
+	-- struct base type, if any
+	local base = mydefn._base
+	if nil ~= base then
+		result = Data.index(instance, result, base[Data.MODEL])	
 	end
 	
 	-- walk through the body of the model definition	
 	for i, spec in ipairs(mydefn) do 
 		local role, element, seq_max_size 
 		
+		-- walk through the elements in the order of definition:
 		if Data.STRUCT == mytype then
 			 role, element, seq_max_size = spec[1], spec[2], spec[3]
 		elseif Data.UNION == mytype then
@@ -820,27 +872,27 @@ Test.Subtest:Enum('Colors',
 	{ 'PINK' }
 )
 
-Test.Subtest:Struct('Fruit', 
+Test.Subtest:Struct{'Fruit', 
 	{ 'weight', Data.double },
 	{ 'color' , Test.Subtest.Colors}
-)
+}
 
-Test:Struct('Name', 
+Test:Struct{'Name', 
 	{'first', Data.string},
 	{'last',  Data.string},
 	{'nicknames',  Data.string, Data.Seq(3) },
 	{'aliases',  Data.string, Data.Seq() },
 	{'birthday', Test.Days },
 	{'favorite', Test.Subtest.Colors, Data.Seq(2) }
-)
+}
 
-Test:Struct('Address',
+Test:Struct{'Address',
 	Data.has('name', Test.Name),
 	Data.has('street', Data.string),
 	Data.has('city',  Data.string)
-)
+}
 
-Test:Union{'Chores', Test.Days,
+Test:Union{'TestUnion1', Test.Days,
 	{ 'MON', 
 		{'name', Test.Name}},
 	{ 'TUE', 
@@ -849,7 +901,7 @@ Test:Union{'Chores', Test.Days,
 		{'x', Data.double}},		
 }
 
-Test:Union{'TestUnion1', Data.char,
+Test:Union{'TestUnion2', Data.char,
 	{ 'c', 
 		{'name', Test.Name}},
 	{ 'a', 
@@ -858,7 +910,7 @@ Test:Union{'TestUnion1', Data.char,
 		{'x', Data.double}},
 }
 
-Test:Union{'TestUnion2', Data.short,
+Test:Union{'TestUnion3', Data.short,
 	{ 1, 
 		{'x', Data.string}},
 	{ 2, 
@@ -874,26 +926,36 @@ Test:Union{'NameOrAddress', Data.boolean,
 		{'address', Test.Address}},
 }
 
-Test:Struct('Company',
+Test:Struct{'Company',
 	{ 'entity', Test.NameOrAddress},
 	{ 'hq', Data.string, Data.Seq(2) },
 	{ 'offices', Test.Address, Data.Seq(10) },
 	{ 'employees', Test.Name, Data.Seq() }
-)
+}
 
-Test:Struct('BigCompany',
+Test:Struct{'BigCompany',
 	{ 'parent', Test.Company},
 	{ 'divisions', Test.Company, Data.Seq()}
-)
+}
 
-Test:Struct('FullName', -- Test.Name,
+Test:Struct{'FullName', Test.Name,
 	{ 'middle',  Data.string }
-)
+}
 
-Test:Struct('FullAddress',
-	{ 'fullname',  Test.FullName },
-	{ 'country',  Data.string }
-)
+Test:Struct{'Contact', Test.FullName,
+	{ 'address',  Test.Address },
+	{ 'email',  Data.string },
+}
+
+Test:Struct{'Tasks',
+	{ 'contact',  Test.Contact },
+	{ 'day',  Test.Days },
+}
+
+Test:Struct{'Calendar',
+	{ 'tasks',  Test.Tasks, Data.Seq() },
+}
+
 
 function Test.print_index(instance)
 	local instance = Data.index(instance)
@@ -914,7 +976,7 @@ function Test:test_struct_basic()
 	self:print(Test.Name)
 end
 
-function Test:test_struct_composite()
+function Test:test_struct_nested()
 	self:print(Test.Address)
 end
 
@@ -937,9 +999,9 @@ function Test:test_enum()
 end
 
 function Test:test_union()
-	self:print(Test.Chores)
 	self:print(Test.TestUnion1)
 	self:print(Test.TestUnion2)
+	self:print(Test.TestUnion3)
 	self:print(Test.NameOrAddress)
 end
 
@@ -950,6 +1012,9 @@ end
 
 function Test:test_struct_inheritance()
 	self:print(Test.FullName)
+	self:print(Test.Contact)
+	self:print(Test.Tasks)
+	self:print(Test.Calendar)
 end
 
 -- main() - run the list of tests passed on the command line
