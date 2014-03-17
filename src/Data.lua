@@ -252,7 +252,7 @@ function Data:Atom(name)
 end
 
 function Data:Struct(param) 
-	assert('table' ~= param, 
+	assert('table' == type(param), 
 		   table.concat{'invalid struct specification: ', tostring(param)})
 
 	-- pop the name
@@ -331,7 +331,7 @@ function Data:Struct(param)
 end
 
 function Data:Union(param) 
-	assert('table' ~= param, 
+	assert('table' == type(param), 
 		   table.concat{'invalid union specification: ', tostring(param)})
 
 	-- pop the name
@@ -341,7 +341,7 @@ function Data:Union(param)
 		   
 	-- pop the discriminator
 	local discriminator = param[1]   table.remove(param, 1)
-	assert('table' ~= discriminator, 
+	assert('table' == type(discriminator), 
 			table.concat{'invalid union discriminator', name})
 	assert(nil ~= discriminator[Data.MODEL], 
 			table.concat{'undefined union discriminator type: ', name})
@@ -403,7 +403,7 @@ function Data:Union(param)
 end
 
 function Data:Enum(param) 
-	assert('table' ~= param, 
+	assert('table' == type(param), 
 		   table.concat{'invalid enum specification: ', tostring(param)})
 
 	-- pop the name
@@ -859,6 +859,36 @@ Test.Address = Data.instance2{
 	street  = Data.STRING,
 	city    = Data.STRING,
 }
+--]]
+
+--[[ ALTERNATE Syntax:
+local MyTest = Data:Module('MyTest')
+
+MyTest:Struct('Address') {
+-- MyTest:Struct{Address = {
+	{ name = Test.Name },
+	{ street = Data.string },
+	{ city = Data.string },
+	{ coord = Data.Seq(Data.double, 2) },
+}-- }
+
+MyTest:Union('TestUnion1')(Test.Days) {
+-- MyTest:Union{TestUnion1 = Data.switch(Test.Days) {
+
+	{ 'MON', 
+		{name = Test.Name},
+	{ 'TUE', 
+		{address = Test.Address}},
+	{ -- default
+		{x = Data.double}},		
+}-- }
+
+MyTest:Enum('Months') { 
+-- MyTest:Enum{Months = { 
+	{ JAN = 1 },
+	{ FEB = 2 },
+	{ MAR = 3 },
+}--}
 --]]
 
 ---[[ SKIP TESTS --
