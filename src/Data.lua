@@ -54,7 +54,7 @@
 --
 --    Thus, an element definition in Lua:
 -- 		 UserModule:Struct('UserType',
---          Data.has(user_role1, Data.string),
+--          Data.has(user_role1, Data.String()),
 --          Data.contains(user_role2, UserModule.UserType2),
 --          Data.contains(user_role3, UserModule.UserType3),
 --          Data.has_list(user_role_seq, UserModule.UserTypeSeq),
@@ -65,7 +65,7 @@
 --          [Data.NAME] = 'UserType'     -- name of this model 
 --          [Data.TYPE] = Data.STRUCT    -- one of Data.* type definitions
 --          [Data.DEFN] = {              -- meta-data for the contained elements
---              user_role1    = Data.string,
+--              user_role1    = Data.String(),
 --              user_role2    = UserModule.UserType2,
 --				user_role3    = UserModule.UserType3,
 --				user_role_seq = UserModule.UserTypeSeq,
@@ -458,9 +458,36 @@ end
 function Data.Seq(n) 
 	return n == nil and -1 
 	                or (assert(type(n)=='number', 
-	                    table.concat{'invalid sequence capacity: ', tostring(n)}) 
-	                    and n) 
+	                           table.concat{'invalid sequence capacity: ', 
+	                                        tostring(n)}) 
+	                    and (assert(n > 0, 
+		                         table.concat{'sequence capacity must be > 0: ', 
+		                         tostring(n)})
+		                     and n))
 end
+
+
+-- String of length n (i.e. string<n>) is an Atom
+function Data.String(n)
+	local name = 'string'
+		
+	if nil ~= n then
+		assert(type(n)=='number', 
+	           table.concat{'invalid string capacity: ', tostring(n)})
+		assert(n > 0, 
+		       table.concat{'string capacity must be > 0: ', tostring(n)})
+	    name = table.concat{'string<', n, '>'}
+	end
+	            	
+	-- lookup the name
+	local instance = Data[name]
+	if nil == instance then
+		-- not found => create it
+		instance = Data:Atom{name}
+	end	 
+	
+	return instance
+end 
 
 --------------------------------------------------------------------------------
 -- Model Instances  ---
@@ -588,9 +615,6 @@ end
 -- Predefined Types
 --------------------------------------------------------------------------------
 
--- Data:Atom('double')
-
-Data:Atom{'string'}
 Data:Atom{'double'}
 Data:Atom{'long'}
 Data:Atom{'short'}
@@ -598,9 +622,6 @@ Data:Atom{'boolean'}
 Data:Atom{'char'}
 Data:Atom{'octet'}
 
--- Disallow user defined atoms!
-Data.Atom = nil
-	
 --------------------------------------------------------------------------------
 -- Relationship Definitions
 --------------------------------------------------------------------------------
@@ -867,8 +888,8 @@ local MyTest = Data:Module('MyTest')
 MyTest:Struct('Address') {
 -- MyTest:Struct{Address = {
 	{ name = Test.Name },
-	{ street = Data.string },
-	{ city = Data.string },
+	{ street = Data.String() },
+	{ city = Data.String() },
 	{ coord = Data.Seq(Data.double, 2) },
 }-- }
 
@@ -920,18 +941,18 @@ Test.Subtest:Struct{'Fruit',
 }
 
 Test:Struct{'Name', 
-	{'first', Data.string},
-	{'last',  Data.string},
-	{'nicknames',  Data.string, Data.Seq(3) },
-	{'aliases',  Data.string, Data.Seq() },
+	{'first', Data.String(10) }, --  bounded string
+	{'last',  Data.String() }, -- unbounded string
+	{'nicknames',  Data.String(10), Data.Seq(3) },
+	{'aliases',  Data.String(5), Data.Seq() },
 	{'birthday', Test.Days },
 	{'favorite', Test.Subtest.Colors, Data.Seq(2) }
 }
 
 Test:Struct{'Address',
 	Data.has('name', Test.Name),
-	Data.has('street', Data.string),
-	Data.has('city',  Data.string)
+	Data.has('street', Data.String()),
+	Data.has('city',  Data.String())
 }
 
 Test:Union{'TestUnion1', Test.Days,
@@ -954,7 +975,7 @@ Test:Union{'TestUnion2', Data.char,
 
 Test:Union{'TestUnion3', Data.short,
 	{ 1, 
-		{'x', Data.string}},
+		{'x', Data.String()}},
 	{ 2, 
 		{'y', Data.double}},
 	{ -- default
@@ -970,7 +991,7 @@ Test:Union{'NameOrAddress', Data.boolean,
 
 Test:Struct{'Company',
 	{ 'entity', Test.NameOrAddress},
-	{ 'hq', Data.string, Data.Seq(2) },
+	{ 'hq', Data.String(), Data.Seq(2) },
 	{ 'offices', Test.Address, Data.Seq(10) },
 	{ 'employees', Test.Name, Data.Seq() }
 }
@@ -981,12 +1002,12 @@ Test:Struct{'BigCompany',
 }
 
 Test:Struct{'FullName', Test.Name,
-	{ 'middle',  Data.string }
+	{ 'middle',  Data.String() }
 }
 
 Test:Struct{'Contact', Test.FullName,
 	{ 'address',  Test.Address },
-	{ 'email',  Data.string },
+	{ 'email',  Data.String() },
 }
 
 Test:Struct{'Tasks',
