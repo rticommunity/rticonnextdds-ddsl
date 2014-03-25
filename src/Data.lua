@@ -657,10 +657,10 @@ Data:Atom{'octet'}
 --       t[2].first = 'name.first'
 --       t[2].last  = 'name.last'
 --  and so on. 
+-- TODO: delete?
 function Data.has(name, model, sequence)
 	return { name, model, sequence }
 end
-
 function Data.case(value, name, model)
 	return { value, name, model }
 end 
@@ -941,8 +941,8 @@ Test.Subtest:Struct{'Fruit',
 }
 
 Test:Struct{'Name', 
-	{'first', Data.String(10) }, --  bounded string
-	{'last',  Data.String() }, -- unbounded string
+	{'first', Data.String(10) }, --  keyed
+	{'last',  Data.String() }, 
 	{'nicknames',  Data.String(10), Data.Seq(3) },
 	{'aliases',  Data.String(5), Data.Seq() },
 	{'birthday', Test.Days },
@@ -950,9 +950,9 @@ Test:Struct{'Name',
 }
 
 Test:Struct{'Address',
-	Data.has('name', Test.Name),
-	Data.has('street', Data.String()),
-	Data.has('city',  Data.String())
+	{ 'name', Test.Name },
+	{ 'street', Data.String() },
+	{ 'city',  Data.String() },
 }
 
 Test:Union{'TestUnion1', Test.Days,
