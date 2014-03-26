@@ -343,46 +343,52 @@ function Data:Struct(param)
 	
 	-- populate the model table
 	for i, decl in ipairs(param) do	
-		local role, element = decl[1], decl[2]	
-
-		assert('string' == type(role), 
-		  table.concat{'invalid struct member name: ', tostring(role)})
-		assert('table' == type(element), 
-		  table.concat{'undefined type for struct member "', tostring(role), '"'})
-		assert(nil ~= element[Data.MODEL], 
-		  table.concat{'invalid type for struct member "', tostring(role), '"'})
 	
-		local element_type = element[Data.MODEL][Data.TYPE]
+		if decl[Data.MODEL] then -- annotation
+			assert(Data.ANNOTATION == decl[Data.MODEL][Data.TYPE],
+					table.concat{'not an annotation: ', tostring(decl)})		
+		else -- struct member definition
+			local role, element = decl[1], decl[2]	
+	
+			assert('string' == type(role), 
+			  table.concat{'invalid struct member name: ', tostring(role)})
+			assert('table' == type(element), 
+			  table.concat{'undefined type for struct member "', tostring(role), '"'})
+			assert(nil ~= element[Data.MODEL], 
+			  table.concat{'invalid type for struct member "', tostring(role), '"'})
 		
-		-- check for conflicting  member fields
-		assert(nil == instance[role], 
-			table.concat{'member name already defined: ', role})
-				
-	
-		-- decide if the 3rd entry is a sequence length or not?
-		local seq_capacity = 'number' == type(decl[3]) and decl[3] or nil
-				
-		-- ensure that the rest of the declaration entries are annotations	
-		-- start with the 3rd or the 4th entry depending upon whether it 
-		-- was a sequence or not:
-		for j = (seq_capacity and 4 or 3), #decl do
-			assert('table' == type(decl[j]),
-				table.concat{'annotation expected: ', tostring(role), 
-							 ' : ', tostring(decl[j])})
-			assert(Data.ANNOTATION == decl[j][Data.MODEL][Data.TYPE],
-				table.concat{'not an annotation: ', tostring(role), 
-							 ' : ', tostring(decl[j])})		
+			local element_type = element[Data.MODEL][Data.TYPE]
+			
+			-- check for conflicting  member fields
+			assert(nil == instance[role], 
+				table.concat{'member name already defined: ', role})
+					
+		
+			-- decide if the 3rd entry is a sequence length or not?
+			local seq_capacity = 'number' == type(decl[3]) and decl[3] or nil
+					
+			-- ensure that the rest of the declaration entries are annotations:	
+			-- start with the 3rd or the 4th entry depending upon whether it 
+			-- was a sequence or not:
+			for j = (seq_capacity and 4 or 3), #decl do
+				assert('table' == type(decl[j]),
+					table.concat{'annotation expected: ', tostring(role), 
+								 ' : ', tostring(decl[j])})
+				assert(Data.ANNOTATION == decl[j][Data.MODEL][Data.TYPE],
+					table.concat{'not an annotation: ', tostring(role), 
+								 ' : ', tostring(decl[j])})		
+			end
+					
+			-- populate the instance/role fields
+			if seq_capacity then -- sequence
+				instance[role] = Data.seq(role, element)
+			elseif Data.STRUCT == element_type or Data.UNION == element_type then
+				instance[role] = Data.instance(role, element)
+			else -- enum or primitive 
+				instance[role] = role -- leaf is the role name
+			end
 		end
-				
-		-- populate the instance/role fields
-		if seq_capacity then -- sequence
-			instance[role] = Data.seq(role, element)
-		elseif Data.STRUCT == element_type or Data.UNION == element_type then
-			instance[role] = Data.instance(role, element)
-		else -- enum or primitive 
-			instance[role] = role -- leaf is the role name
-		end
-				
+		
 		-- save the meta-data
 		-- as an array to get the correct ordering
 		table.insert(model[Data.DEFN], decl) 
@@ -429,52 +435,61 @@ function Data:Union(param)
 	-- populate the model table
     -- print('DEBUG Union 1: ', name, discriminator[Data.MODEL][Data.TYPE](), discriminator[Data.MODEL][Data.NAME])			
 	for i, decl in ipairs(param) do	
-		local case = nil
-		if #decl > 1 then case = decl[1]  table.remove(decl, 1) end -- case
-		
-		local role, element = decl[1][1], decl[1][2]
-		-- print('DEBUG Union 2: ', case, role, element)
+
+		if decl[Data.MODEL] then -- annotation
+			assert(Data.ANNOTATION == decl[Data.MODEL][Data.TYPE],
+					table.concat{'not an annotation: ', tostring(decl)})
+			-- save the meta-data
+			table.insert(model[Data.DEFN], decl) 	
 				
-		Data.assert_case(case, discriminator)
-		assert('string' == type(role), 
-		  table.concat{'invalid union member name: ', tostring(role)})
-		assert('table' == type(element), 
-		  table.concat{'undefined type for union member "', tostring(role), '"'})
-		assert(nil ~= element[Data.MODEL], 
-		  table.concat{'invalid type for union member "', tostring(role), '"'})
-	
-		local element_type = element[Data.MODEL][Data.TYPE]
+		else -- union member definition
+			local case = nil
+			if #decl > 1 then case = decl[1]  table.remove(decl, 1) end -- case
+			
+			local role, element = decl[1][1], decl[1][2]
+			-- print('DEBUG Union 2: ', case, role, element)
+					
+			Data.assert_case(case, discriminator)
+			assert('string' == type(role), 
+			  table.concat{'invalid union member name: ', tostring(role)})
+			assert('table' == type(element), 
+			  table.concat{'undefined type for union member "', tostring(role), '"'})
+			assert(nil ~= element[Data.MODEL], 
+			  table.concat{'invalid type for union member "', tostring(role), '"'})
 		
-	
-		-- decide if the 3rd entry is a sequence length or not?
-		local seq_capacity = 'number' == type(decl[1][3]) and decl[1][3] or nil
-				
-		-- ensure that the rest of the declaration entries are annotations	
-		-- start with the 3rd or the 4th entry depending upon whether it 
-		-- was a sequence or not:
-		for j = (seq_capacity and 4 or 3), #decl do
-			assert('table' == type(decl[1][j]),
-				table.concat{'annotation expected: ', tostring(role), 
-							 ' : ', tostring(decl[1][j])})
-			assert(Data.ANNOTATION == decl[1][j][Data.MODEL][Data.TYPE],
-				table.concat{'not an annotation: ', tostring(role), 
-							 ' : ', tostring(decl[1][j])})		
+			local element_type = element[Data.MODEL][Data.TYPE]
+			
+		
+			-- decide if the 3rd entry is a sequence length or not?
+			local seq_capacity = 'number' == type(decl[1][3]) and decl[1][3] or nil
+					
+			-- ensure that the rest of the declaration entries are annotations	
+			-- start with the 3rd or the 4th entry depending upon whether it 
+			-- was a sequence or not:
+			for j = (seq_capacity and 4 or 3), #decl do
+				assert('table' == type(decl[1][j]),
+					table.concat{'annotation expected: ', tostring(role), 
+								 ' : ', tostring(decl[1][j])})
+				assert(Data.ANNOTATION == decl[1][j][Data.MODEL][Data.TYPE],
+					table.concat{'not an annotation: ', tostring(role), 
+								 ' : ', tostring(decl[1][j])})		
+			end
+			
+			
+			-- populate the instance/role fields
+			if seq_capacity then -- sequence
+				instance[role] = Data.seq(role, element)
+			elseif Data.STRUCT == element_type or Data.UNION == element_type then 
+				instance[role] = Data.instance(role, element)
+			else -- enum or atom 
+				instance[role] = role -- leaf is the role name
+			end
+
+			-- save the meta-data
+			-- as an array to get the correct ordering
+			-- NOTE: default case is stored as a 'nil'
+			table.insert(model[Data.DEFN], { case, decl[1] }) 
 		end
-		
-		
-		-- populate the instance/role fields
-		if seq_capacity then -- sequence
-			instance[role] = Data.seq(role, element)
-		elseif Data.STRUCT == element_type or Data.UNION == element_type then 
-			instance[role] = Data.instance(role, element)
-		else -- enum or atom 
-			instance[role] = role -- leaf is the role name
-		end
-				
-		-- save the meta-data
-		-- as an array to get the correct ordering
-		-- NOTE: default case is stored as a 'nil'
-		table.insert(model[Data.DEFN], { case, decl[1] }) 
 	end
 	
 	-- add/replace the definition in the container module
@@ -821,52 +836,56 @@ function Data.print_idl(instance, indent_string)
 	elseif Data.STRUCT == mytype then
 	 
 		for i, decl in ipairs(mydefn) do -- walk through the model definition
-			local role, element = decl[1], decl[2]
-			local seq_capacity = 'number' == type(decl[3]) and decl[3] or nil
-							
-			if seq_capacity == nil then -- not a sequence
-				print(string.format('%s%s %s;', content_indent_string, 
-									element[Data.MODEL][Data.NAME], role))
-			elseif seq_capacity < 0 then -- unbounded sequence
-				print(string.format('%sseq<%s> %s;', content_indent_string, 
-									element[Data.MODEL][Data.NAME], role))
-			else -- bounded sequence
-				print(string.format('%sseq<%s,%d> %s;', content_indent_string, 
-						    element[Data.MODEL][Data.NAME], seq_capacity, role))
+			if not decl[Data.MODEL] then -- skip annotations
+				local role, element = decl[1], decl[2]
+				local seq_capacity = 'number' == type(decl[3]) and decl[3] or nil
+								
+				if seq_capacity == nil then -- not a sequence
+					print(string.format('%s%s %s;', content_indent_string, 
+										element[Data.MODEL][Data.NAME], role))
+				elseif seq_capacity < 0 then -- unbounded sequence
+					print(string.format('%sseq<%s> %s;', content_indent_string, 
+										element[Data.MODEL][Data.NAME], role))
+				else -- bounded sequence
+					print(string.format('%sseq<%s,%d> %s;', content_indent_string, 
+							    element[Data.MODEL][Data.NAME], seq_capacity, role))
+				end
+					
+				-- member annotation:	
+				--   start with the 3rd or the 4th entry depending upon whether it 
+				--   was a sequence or not:
+				-- for j = (seq_capacity and 4 or 3), #decl do
 			end
-
-			-- annotations:	
-			--   start with the 3rd or the 4th entry depending upon whether it 
-			--   was a sequence or not:
-			-- for j = (seq_capacity and 4 or 3), #decl do
 			
 		end
 
 	elseif Data.UNION == mytype then 
 		for i, decl in ipairs(mydefn) do -- walk through the model definition
-			local case = decl[1]
-			local role, element, seq_capacity = decl[2][1], decl[2][2], decl[2][3]		
-
-			-- case
-			local case_string = (nil == case) and 'default' or tostring(case)
-			if (Data.char == mydefn._d and nil ~= case) then
-				print(string.format("%scase '%s' :", 
-					content_indent_string, case_string))
-			else
-				print(string.format("%scase %s :", 
-					content_indent_string, case_string))
-			end
-			
-			-- definition
-			if seq_capacity == nil then -- not a sequence
-				print(string.format('   %s%s %s;', content_indent_string, 
-									element[Data.MODEL][Data.NAME], role))
-			elseif seq_capacity < 0 then -- unbounded sequence
-				print(string.format('   %sseq<%s> %s;', content_indent_string, 
-									element[Data.MODEL][Data.NAME], role))
-			else -- bounded sequence
-				print(string.format('   %sseq<%s,%d> %s;', content_indent_string, 
-						    element[Data.MODEL][Data.NAME], seq_capacity, role))
+			if not decl[Data.MODEL] then -- skip annotations
+				local case = decl[1]
+				local role, element, seq_capacity = decl[2][1], decl[2][2], decl[2][3]		
+	
+				-- case
+				local case_string = (nil == case) and 'default' or tostring(case)
+				if (Data.char == mydefn._d and nil ~= case) then
+					print(string.format("%scase '%s' :", 
+						content_indent_string, case_string))
+				else
+					print(string.format("%scase %s :", 
+						content_indent_string, case_string))
+				end
+				
+				-- definition
+				if seq_capacity == nil then -- not a sequence
+					print(string.format('   %s%s %s;', content_indent_string, 
+										element[Data.MODEL][Data.NAME], role))
+				elseif seq_capacity < 0 then -- unbounded sequence
+					print(string.format('   %sseq<%s> %s;', content_indent_string, 
+										element[Data.MODEL][Data.NAME], role))
+				else -- bounded sequence
+					print(string.format('   %sseq<%s,%d> %s;', content_indent_string, 
+							    element[Data.MODEL][Data.NAME], seq_capacity, role))
+				end
 			end
 		end
 		
@@ -929,31 +948,34 @@ function Data.index(instance, result, model)
 	for i, decl in ipairs(mydefn) do 
 		local role, element, seq_capacity 
 		
-		-- walk through the elements in the order of definition:
-		if Data.STRUCT == mytype then
-			 role, element = decl[1], decl[2]
-			 seq_capacity = 'number' == type(decl[3]) and decl[3] or nil
-		elseif Data.UNION == mytype then
-			role, element = decl[2][1], decl[2][2]
-			seq_capacity = 'number' == type(decl[2][3]) and decl[2][3] or nil
-		end
-		
-		local instance_member = instance[role]
-		if nil == seq_capacity then -- not a sequence
-			if 'table' == type(instance_member) then -- composite (nested)
-				result = Data.index(instance_member, result)
-			else -- atom (leaf)
-				table.insert(result, instance_member) 
+		-- skip annotations
+		if not decl[Data.MODEL] then
+			-- walk through the member elements in the order of definition:
+			if Data.STRUCT == mytype then
+				 role, element = decl[1], decl[2]
+				 seq_capacity = 'number' == type(decl[3]) and decl[3] or nil
+			elseif Data.UNION == mytype then
+				role, element = decl[2][1], decl[2][2]
+				seq_capacity = 'number' == type(decl[2][3]) and decl[2][3] or nil
 			end
-		else -- sequence
-			-- length operator
-			table.insert(result, instance_member())
-
-			-- index 1st element for illustration
-			if 'table' == type(instance_member(1)) then -- composite sequence
-				Data.index(instance_member(1), result) -- index the 1st element 
-			else -- primitive sequence
-				table.insert(result, instance_member(1))
+			
+			local instance_member = instance[role]
+			if nil == seq_capacity then -- not a sequence
+				if 'table' == type(instance_member) then -- composite (nested)
+					result = Data.index(instance_member, result)
+				else -- atom (leaf)
+					table.insert(result, instance_member) 
+				end
+			else -- sequence
+				-- length operator
+				table.insert(result, instance_member())
+	
+				-- index 1st element for illustration
+				if 'table' == type(instance_member(1)) then -- composite sequence
+					Data.index(instance_member(1), result) -- index the 1st element 
+				else -- primitive sequence
+					table.insert(result, instance_member(1))
+				end
 			end
 		end
 	end
@@ -1062,11 +1084,11 @@ Test:Struct{'Name',
 -- user defined annotation
 Data:Annotation('MyAnnotation', {value1 = 42, value2 = 42.0})
 
--- Data.Extensibility{'MUTABLE_EXTENSIBILITY'}
 Test:Struct{'Address',
 	{ 'name', Test.Name },
 	{ 'street', Data.String() },
 	{ 'city',  Data.String(), Data._.MyAnnotation{value1 = 42, value2 = 42.0} },
+	Data._.Extensibility{'EXTENSIBLE_EXTENSIBILITY'},
 }
 
 Test:Union{'TestUnion1', Test.Days,
@@ -1076,6 +1098,7 @@ Test:Union{'TestUnion1', Test.Days,
 		{'address', Test.Address}},
 	{ -- default
 		{'x', Data.double}},		
+	Data._.Extensibility{'EXTENSIBLE_EXTENSIBILITY'},
 }
 
 Test:Union{'TestUnion2', Data.char,
