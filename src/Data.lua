@@ -167,6 +167,10 @@ Data = Data or {
 	ENUM       = function() return 'enum' end,
 	ATOM       = function() return 'atom' end,
 	ANNOTATION = function() return 'annotation' end,
+	
+	-- name-space and meta-table for annotations (to avoid name collisions)
+	-- NOTE: ALl of the above could go inside this table
+	_		   = {}  
 }
 
 --------------------------------------------------------------------------------
@@ -286,6 +290,7 @@ function Data:Annotation(name, ...)
 		end
 		local instance = attributes or {}
 		instance[Data.MODEL] = model
+		setmetatable(instance, Data._) -- for the __tostring() function
 		return instance			
 	end
 	
@@ -709,6 +714,28 @@ function Data.assert_case(case, discriminator)
 	 return case
 end
 
+-- Print an annotation
+function Data._.__tostring(annotation)
+	-- output the attributes if any
+	local output = nil
+	for k, v in pairs(annotation) do
+		if 'string' == type(k) then
+			output = string.format('%s%s%s=%s', 
+						output or '', -- output or nothing
+						output and ',' or '', -- put a comma or not?
+						tostring(k), tostring(v))
+		end
+	end
+	
+	if output then
+		output = string.format('@%s{%s}', annotation[Data.MODEL][Data.NAME], output)	
+	else
+		output = string.format('@%s', annotation[Data.MODEL][Data.NAME])
+	end
+	
+	return output
+end
+
 --------------------------------------------------------------------------------
 -- Predefined Types
 --------------------------------------------------------------------------------
@@ -836,35 +863,16 @@ function Data.print_idl(instance, indent_string)
 	elseif Data.STRUCT == mytype then
 	 
 		for i, decl in ipairs(mydefn) do -- walk through the model definition
-			if not decl[Data.MODEL] then -- skip annotations
-				local role, element = decl[1], decl[2]
-				local seq_capacity = 'number' == type(decl[3]) and decl[3] or nil
-								
-				if seq_capacity == nil then -- not a sequence
-					print(string.format('%s%s %s;', content_indent_string, 
-										element[Data.MODEL][Data.NAME], role))
-				elseif seq_capacity < 0 then -- unbounded sequence
-					print(string.format('%sseq<%s> %s;', content_indent_string, 
-										element[Data.MODEL][Data.NAME], role))
-				else -- bounded sequence
-					print(string.format('%sseq<%s,%d> %s;', content_indent_string, 
-							    element[Data.MODEL][Data.NAME], seq_capacity, role))
-				end
-					
-				-- member annotation:	
-				--   start with the 3rd or the 4th entry depending upon whether it 
-				--   was a sequence or not:
-				-- for j = (seq_capacity and 4 or 3), #decl do
+			if not decl[Data.MODEL] then -- skip struct level annotations
+				Data.print_idl_member(decl, content_indent_string)
 			end
-			
 		end
 
 	elseif Data.UNION == mytype then 
 		for i, decl in ipairs(mydefn) do -- walk through the model definition
-			if not decl[Data.MODEL] then -- skip annotations
+			if not decl[Data.MODEL] then -- skip union level annotations
 				local case = decl[1]
-				local role, element, seq_capacity = decl[2][1], decl[2][2], decl[2][3]		
-	
+				
 				-- case
 				local case_string = (nil == case) and 'default' or tostring(case)
 				if (Data.char == mydefn._d and nil ~= case) then
@@ -875,17 +883,8 @@ function Data.print_idl(instance, indent_string)
 						content_indent_string, case_string))
 				end
 				
-				-- definition
-				if seq_capacity == nil then -- not a sequence
-					print(string.format('   %s%s %s;', content_indent_string, 
-										element[Data.MODEL][Data.NAME], role))
-				elseif seq_capacity < 0 then -- unbounded sequence
-					print(string.format('   %sseq<%s> %s;', content_indent_string, 
-										element[Data.MODEL][Data.NAME], role))
-				else -- bounded sequence
-					print(string.format('   %sseq<%s,%d> %s;', content_indent_string, 
-							    element[Data.MODEL][Data.NAME], seq_capacity, role))
-				end
+				-- member element
+				Data.print_idl_member(decl[2], content_indent_string .. '   ')
 			end
 		end
 		
@@ -909,6 +908,45 @@ function Data.print_idl(instance, indent_string)
 	return instance, indent_string
 end
 
+
+-- Helper method
+-- Given a member declaration, print the equivalent IDL
+-- decl is { role, element, [seq_capacity,] [annotation1, annotation2, ...] }
+function Data.print_idl_member(decl, content_indent_string)
+	
+	local role, element = decl[1], decl[2]
+	local seq_capacity = 'number' == type(decl[3]) and decl[3] or nil
+	
+	local output_member = ''		
+	if seq_capacity == nil then -- not a sequence
+		output_member = string.format('%s%s %s;', content_indent_string, 
+		element[Data.MODEL][Data.NAME], role)
+	elseif seq_capacity < 0 then -- unbounded sequence
+		output_member = string.format('%sseq<%s> %s;', content_indent_string, 
+		element[Data.MODEL][Data.NAME], role)
+	else -- bounded sequence
+		output_member = string.format('%sseq<%s,%d> %s;', content_indent_string, 
+		element[Data.MODEL][Data.NAME], seq_capacity, role)
+	end
+
+	-- member annotations:	
+	--   start with the 3rd or the 4th entry depending upon whether it 
+	--   was a sequence or not:
+	local output_annotations = nil
+	for j = (seq_capacity and 4 or 3), #decl do
+		output_annotations = string.format('%s%s ', 
+		output_annotations or '', 
+		tostring(decl[j]))	
+	end
+
+	if output_annotations then
+		print(string.format('%s //%s', output_member, output_annotations))
+	else
+		print(output_member)
+	end
+end
+
+				
 -- @function Data.index Visit the fields in the instance that are specified 
 --           in the model
 -- @param instance the instance to index
@@ -950,7 +988,7 @@ function Data.index(instance, result, model)
 		
 		-- skip annotations
 		if not decl[Data.MODEL] then
-			-- walk through the member elements in the order of definition:
+			-- walk through the elements in the order of definition:
 			if Data.STRUCT == mytype then
 				 role, element = decl[1], decl[2]
 				 seq_capacity = 'number' == type(decl[3]) and decl[3] or nil
@@ -1103,7 +1141,7 @@ Test:Union{'TestUnion1', Test.Days,
 
 Test:Union{'TestUnion2', Data.char,
 	{ 'c', 
-		{'name', Test.Name}},
+		{'name', Test.Name, Data._.Key{} }},
 	{ 'a', 
 		{'address', Test.Address}},
 	{ -- default
