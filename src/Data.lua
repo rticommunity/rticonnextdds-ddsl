@@ -150,7 +150,7 @@ Data = Data or {
 	-- the rest of the keys are fields of the instance
 	MODEL      = function() return 'MODEL' end,-- table key for 'model' meta-data	
 	
-		
+
 	-- model meta-data attributes ---
 	-- every 'model' meta-data table has these keys defined 
 	NAME      = function() return 'NAME' end,  -- table key for 'model name'	
@@ -285,7 +285,7 @@ function Data:Annotation(name, ...)
 	local instance_fn = function (attributes) -- parameters to the annotation
 		if attributes then
 			assert('table' == type(attributes), 
-		   		    table.concat{'table with {name=value} expected: ', 
+		   		    table.concat{'table with {name=value} and/or assertions expected: ', 
 		   		    tostring(attributes)})
 		end
 		local instance = attributes or {}
@@ -349,7 +349,7 @@ function Data:Struct(param)
 	-- populate the model table
 	for i, decl in ipairs(param) do	
 	
-		if decl[Data.MODEL] then -- annotation
+		if decl[Data.MODEL] then -- annotation at the Struct level
 			assert(Data.ANNOTATION == decl[Data.MODEL][Data.TYPE],
 					table.concat{'not an annotation: ', tostring(decl)})		
 		else -- struct member definition
@@ -441,7 +441,7 @@ function Data:Union(param)
     -- print('DEBUG Union 1: ', name, discriminator[Data.MODEL][Data.TYPE](), discriminator[Data.MODEL][Data.NAME])			
 	for i, decl in ipairs(param) do	
 
-		if decl[Data.MODEL] then -- annotation
+		if decl[Data.MODEL] then -- annotation at the Union level
 			assert(Data.ANNOTATION == decl[Data.MODEL][Data.TYPE],
 					table.concat{'not an annotation: ', tostring(decl)})
 			-- save the meta-data
@@ -718,6 +718,18 @@ end
 function Data._.__tostring(annotation)
 	-- output the attributes if any
 	local output = nil
+
+	-- assertions
+	for i, v in ipairs(annotation) do
+		if 'string' == type(v) then
+			output = string.format('%s%s%s', 
+			output or '', -- output or nothing
+			output and ',' or '', -- put a comma or not?
+			tostring(v))
+		end
+	end
+	
+	-- name value pairs {name=value}
 	for k, v in pairs(annotation) do
 		if 'string' == type(k) then
 			output = string.format('%s%s%s=%s', 
@@ -728,7 +740,7 @@ function Data._.__tostring(annotation)
 	end
 	
 	if output then
-		output = string.format('@%s{%s}', annotation[Data.MODEL][Data.NAME], output)	
+		output = string.format('@%s(%s)', annotation[Data.MODEL][Data.NAME], output)	
 	else
 		output = string.format('@%s', annotation[Data.MODEL][Data.NAME])
 	end
@@ -843,14 +855,22 @@ function Data.print_idl(instance, indent_string)
 	
 	-- open --
 	if (nil ~= myname) then -- not top-level
+	
+		-- print the annotations
+		for i, decl in ipairs(mydefn) do
+			if decl[Data.MODEL] and Data.ANNOTATION == decl[Data.MODEL][Data.TYPE] then
+				print(tostring(decl))
+			end
+		end
+	
 		if Data.UNION == mytype then
-			print(string.format('\n%s%s %s switch (%s) {', indent_string, 
+			print(string.format('%s%s %s switch (%s) {', indent_string, 
 						mytype(), myname, mydefn._d[Data.MODEL][Data.NAME]))
 		elseif Data.STRUCT == mytype and model[Data.DEFN]._base then
-			print(string.format('\n%s%s %s : %s {', indent_string, mytype(), 
+			print(string.format('%s%s %s : %s {', indent_string, mytype(), 
 					myname, model[Data.DEFN]._base[Data.MODEL][Data.NAME]))
 		else
-			print(string.format('\n%s%s %s {', indent_string, mytype(), myname))
+			print(string.format('%s%s %s {', indent_string, mytype(), myname))
 		end
 		content_indent_string = indent_string .. '   '
 	end
@@ -1125,7 +1145,7 @@ Data:Annotation('MyAnnotation', {value1 = 42, value2 = 42.0})
 Test:Struct{'Address',
 	{ 'name', Test.Name },
 	{ 'street', Data.String() },
-	{ 'city',  Data.String(), Data._.MyAnnotation{value1 = 42, value2 = 42.0} },
+	{ 'city',  Data.String(), Data._.MyAnnotation{value1 = 10, value2 = 17} },
 	Data._.Extensibility{'EXTENSIBLE_EXTENSIBILITY'},
 }
 
@@ -1136,7 +1156,7 @@ Test:Union{'TestUnion1', Test.Days,
 		{'address', Test.Address}},
 	{ -- default
 		{'x', Data.double}},		
-	Data._.Extensibility{'EXTENSIBLE_EXTENSIBILITY'},
+	Data._.Extensibility{'EXTENSIBLE_EXTENSIBILITY',domain=5},
 }
 
 Test:Union{'TestUnion2', Data.char,
