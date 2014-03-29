@@ -167,7 +167,8 @@ Data = Data or {
 	ENUM       = function() return 'enum' end,
 	ATOM       = function() return 'atom' end,
 	ANNOTATION = function() return 'annotation' end,
-	
+	TYPEDEF    = function() return 'typedef' end,
+		
 	-- name-space and meta-table for annotations (to avoid name collisions)
 	-- NOTE: ALl of the above could go inside this table
 	_		   = {}  
@@ -285,16 +286,17 @@ function Data:Annotation(name, ...)
 	local instance_fn = function (attributes) -- parameters to the annotation
 		if attributes then
 			assert('table' == type(attributes), 
-		   		    table.concat{'table with {name=value} and/or assertions expected: ', 
+		   table.concat{'table with {name=value} and/or assertions expected: ', 
 		   		    tostring(attributes)})
 		end
 		local instance = attributes or {}
 		instance[Data.MODEL] = model
 		setmetatable(instance, Data._) -- for the __tostring() function
-		return instance			
+		-- instance.__tostring = Data._.__tostring
+		return instance		
 	end
 	
-	-- put all the annotatoon definitions in a local namespace: _
+	-- put all the annotation definitions in a local namespace: _
 	-- so that the annotation names do not conflict with user defined types	
 	local _ = self._ or {}       self._ = _
 	
@@ -361,8 +363,6 @@ function Data:Struct(param)
 			  table.concat{'undefined type for struct member "', tostring(role), '"'})
 			assert(nil ~= element[Data.MODEL], 
 			  table.concat{'invalid type for struct member "', tostring(role), '"'})
-		
-			local element_type = element[Data.MODEL][Data.TYPE]
 			
 			-- check for conflicting  member fields
 			assert(nil == instance[role], 
@@ -383,14 +383,12 @@ function Data:Struct(param)
 					table.concat{'not an annotation: ', tostring(role), 
 								 ' : ', tostring(decl[j])})		
 			end
-					
+				
 			-- populate the instance/role fields
-			if seq_capacity then -- sequence
+			if seq_capacity then
 				instance[role] = Data.seq(role, element)
-			elseif Data.STRUCT == element_type or Data.UNION == element_type then
+			else
 				instance[role] = Data.instance(role, element)
-			else -- enum or primitive 
-				instance[role] = role -- leaf is the role name
 			end
 		end
 		
@@ -462,9 +460,7 @@ function Data:Union(param)
 			assert(nil ~= element[Data.MODEL], 
 			  table.concat{'invalid type for union member "', tostring(role), '"'})
 		
-			local element_type = element[Data.MODEL][Data.TYPE]
 			
-		
 			-- decide if the 3rd entry is a sequence length or not?
 			local seq_capacity = 'number' == type(decl[1][3]) and decl[1][3] or nil
 					
@@ -480,14 +476,11 @@ function Data:Union(param)
 								 ' : ', tostring(decl[1][j])})		
 			end
 			
-			
 			-- populate the instance/role fields
-			if seq_capacity then -- sequence
+			if seq_capacity then
 				instance[role] = Data.seq(role, element)
-			elseif Data.STRUCT == element_type or Data.UNION == element_type then 
+			else
 				instance[role] = Data.instance(role, element)
-			else -- enum or atom 
-				instance[role] = role -- leaf is the role name
 			end
 
 			-- save the meta-data
@@ -553,8 +546,47 @@ function Data:Enum(param)
 		
 	return instance
 end
+
+--[[
+	IDL: typedef seq<MyStruct> MyStructSeq
+	Lua: Data:Typedef{'MyStructSeq', Data.MyStruct, Data.Seq() }
+--]]
+function Data:Typedef(param) 
+	assert('table' == type(param), 
+		   table.concat{'invalid typedef specification: ', tostring(param)})
+
+	-- ensure proper specification
+	local name, base, seq_capacity = param[1], param[2], param[3]
+	assert('string' == type(name), 
+			table.concat{'invalid typedef name: ', tostring(name)})
+	assert('table' == type(base), 
+		table.concat{'undefined base type for typedef: "', tostring(name), '"'})
+	assert(nil ~= base[Data.MODEL], 
+		table.concat{'invalid base type for typedef "', tostring(name), '"'})
+	assert(nil == seq_capacity or 'number' == type(seq_capacity),
+		table.concat{'invalid sequence capacity for typedef "', tostring(name), '"'})
+
+	local model = { -- meta-data defining the typedef
+		[Data.NAME] = name,
+		[Data.TYPE] = Data.TYPEDEF,
+		[Data.DEFN] = { _alias = base, _alias_seq_capacity = seq_capacity }, 
+		[Data.INSTANCE] = nil,-- always nil
+	}
+	local instance = { -- top-level instance to be installed in the module
+		[Data.MODEL] = model,
+	}
+	
+	-- like and atomic type, typedefs don't have instance members
+	-- these will be defined by the underlying aliased type
+					
+	-- add/replace the definition in the container module
+	if self[name] then print('WARNING: replacing ', name) end
+	self[name] = instance
+	table.insert(self[Data.MODEL][Data.DEFN], instance)
 		
-		
+	return instance
+end
+
 -- meta-data annotations ---
 -- sequence annotation (qualifier) on the base user-defined types
 -- return the length of the sequence or -1 for unbounded sequences
@@ -600,12 +632,30 @@ end
 -- Purpose:
 --    Define a table that can be used to index into an instance of a model
 -- Parameters:
--- 	  <<in>> role  - the role|instance name
--- 	  <<in>> model - the model element (table) to be instantiated
---    <<returns>> the newly created instance that supports indexing by 'role'
+-- 	  <<in>> name  - the role|instance name
+-- 	  <<in>> template - the template to use for creating an instance
+--    <<returns>> the newly created instance (seq) that supports 
+--                indexing by 'name'
 -- Usage:
+--    -- As an index into sample[]
+--    local myInstance = Data.instance("my", template)
+--    local member = sample[myInstance.member] 
+--    for i = 1, sample[myInstance.memberSeq()] do -- length of the sequence
+--       local element_i = sample[memberSeq(i-1)] -- access the i-th element
+--    end  
+--
+--    -- As a sample itself
+--    local myInstance = Data.instance("my", template)
+--    myInstance.member = "value"
+--
+--    -- NOTE: Assignment not yet supported for sequences:
+--    myInstance.memberSeq() = 10 -- length
+--    for i = 1, myInstance.memberSeq() do -- length of the sequence
+--       memberSeq(i-1) = "element_i"
+--    end  
+--
 function Data.instance(name, template) 
-	-- print('DEBUG Data.instance: ', name, template[Data.MODEL][Data.NAME])
+	-- print('DEBUG Data.instance 1: ', name, template[Data.MODEL][Data.NAME])
 	assert(type(name) == 'string', 
 		   table.concat{'invalid instance name: ', tostring(name)})
 	
@@ -613,12 +663,83 @@ function Data.instance(name, template)
 	assert('table' == type(template), 'template missing!')
 	assert(template[Data.MODEL],
 		   table.concat{'invalid instance template: ', tostring(name)})
-	assert(Data.STRUCT == template[Data.MODEL][Data.TYPE] or 
-		   Data.UNION == template[Data.MODEL][Data.TYPE],
-		   table.concat{'template must be a struct or union: ', tostring(name)})
+	local template_type = template[Data.MODEL][Data.TYPE]
+	assert(Data.STRUCT == template_type or 
+		   Data.UNION == template_type or
+		   Data.ATOM == template_type or
+		   Data.ENUM == template_type or
+		   Data.TYPEDEF == template_type,
+		   table.concat{'template must be a struct|union|atom|enum|typedef: ', 
+		   				 tostring(name)})
+	local instance = nil
 
-	-- try to retrieve the instance from the template
+	---------------------------------------------------------------------------
+	-- typedef? => get the underlying template:
+	---------------------------------------------------------------------------
+
+	local alias_type = template[Data.MODEL][Data.DEFN] and 
+			     template[Data.MODEL][Data.DEFN]._alias and 
+				 template[Data.MODEL][Data.DEFN]._alias[Data.MODEL][Data.TYPE]
+	local alias_sequence = template[Data.MODEL][Data.DEFN] and 
+	                  template[Data.MODEL][Data.DEFN]._alias_seq_capacity
+
+	if alias_type then 
+		template = template[Data.MODEL][Data.DEFN]._alias
+	end
+
+	---------------------------------------------------------------------------
+	-- recursive typedefs, i.e. aliases
+	---------------------------------------------------------------------------
+
+	-- recursive typedefs:
+	-- NOTE: other cases (below) terminate the recursion
+	if Data.TYPEDEF == template_type and
+	   Data.TYPEDEF == alias_type then -- recursive
+		--[[
+		print('DEBUG Data.instance 2: ', name, 
+			template[Data.MODEL][Data.DEFN]._alias[Data.MODEL][Data.NAME], 
+			alias_sequence)
+		--]]	
+		if alias_sequence then
+			instance = Data.seq(name, template)
+		else
+			instance = Data.instance(name, template)
+		end
+
+		return instance
+	end
+
+	---------------------------------------------------------------------------
+	-- not a recursive typedef
+	---------------------------------------------------------------------------
+	
+	-- sequence of underlying type (which is not a typedef)
+	if alias_sequence then -- the sequence of alias elements
+		instance = Data.seq(name, template) 
+		return instance
+	end
+	
+	---------------------------------------------------------------------------
+	-- leaf instances
+	---------------------------------------------------------------------------
+
+	if Data.ATOM == template_type or Data.ENUM == template_type or 
+	   Data.ATOM == alias_type or Data.ENUM == alias_type then
+		instance = name 
+		return instance
+	end
+	
+	---------------------------------------------------------------------------
+	-- composite instances 
+	---------------------------------------------------------------------------
+	-- Data.STRUCT or Data.UNION
+	
+	-- Establish the underlying model definition to create an instance
+	-- NOTE: typedef's do not hold any instances; the instances are held by the
+	--       underlying concrete (non-typdef) alias type
 	local model = template[Data.MODEL]
+
+	-- try to retrieve the instance from the underlying model
 	model[Data.INSTANCE] = model[Data.INSTANCE] or {}
 	local instance = model[Data.INSTANCE][name]
 	
@@ -635,10 +756,10 @@ function Data.instance(name, template)
 				-- prefix the member names
 				if 'function' == type_v then -- seq
 					instance[k] = -- use member as a closure template
-						function(i, prefix) -- allow further prefixing
-							return v(i, table.concat{prefix or '', name, '.'}) 
+						function(j, prefix_j) -- allow further prefixing
+							return v(j, table.concat{prefix_j or '', name, '.'}) 
 						end
-				elseif 'table' == type_v then -- struct
+				elseif 'table' == type_v then -- struct or union
 					instance[k] = Data.instance(name, v) -- use member as template
 				elseif 'string' == type_v then -- atom/leaf
 					if '#' == v then -- _d: leaf level union discriminator
@@ -657,37 +778,71 @@ function Data.instance(name, template)
 	return instance
 end
 
+-- Name: 
+--    Data.seq() - creates a sequence, of elements specified by the template
+-- Purpose:
+--    Define a sequence iterator (closure) for indexing
+-- Parameters:
+-- 	  <<in>> name  - the role or instance name
+-- 	  <<in>> template - the template to use for creating an instance
+--    <<returns>> the newly created closure for indexing a sequence of 
+--          of template elements
+-- Usage:
+--    local mySeq = Data.seq("my", template)
+--    for i = 1, sample[mySeq()] do -- length of the sequence
+--       local element_i = sample[mySeq(i-1)] -- access the i-th element
+--    end    
 function Data.seq(name, template) 
-	-- print('DEBUG Data.seq', name, template[Data.MODEL][Data.NAME])
+
+	-- print('DEBUG Data.seq', name, template)
+
 	assert(type(name) == 'string', 
-		   table.concat{'invalid instance name', tostring(name)})
+		   table.concat{'sequence name must be a string: ', tostring(name)})
 	
 	-- ensure valid template
-	assert('table' == type(template), 'template missing!')
-	assert(template[Data.MODEL] and 
-		   (Data.STRUCT == template[Data.MODEL][Data.TYPE] or 
-		    Data.UNION == template[Data.MODEL][Data.TYPE] or
-		  	Data.ENUM == template[Data.MODEL][Data.TYPE] or
-		    Data.ATOM == template[Data.MODEL][Data.TYPE]),
-		    table.concat{'invalid template for seq: ', tostring(name)})
-		  
+	local type_template = type(template)
+	assert('table' == type_template and template[Data.MODEL] or 
+	       'function' == type_template, 
+		   	  table.concat{'sequence template invalid; ',
+		   	  			   'must be an instance for a sequence: ',
+		   	 			   tostring(name)})
+	if 'table' == type_template then
+		local element_type = template[Data.MODEL][Data.TYPE]
+		assert(Data.STRUCT == element_type or 
+			   Data.UNION == element_type or
+			   Data.ENUM == element_type or
+			   Data.ATOM == element_type or
+			   Data.TYPEDEF == element_type,
+			   table.concat{'sequence template must be a ', 
+			   				'struct|union|atom|enum}sequence|typedef: ', 
+			   				 tostring(name)})
+	end
+
+	---------------------------------------------------------------------------
 	-- return a closure that will generate the correct index string for 'name'
+	---------------------------------------------------------------------------
+	-- closure behavior:
 	--    if no argument is provided then generate the length operator string
 	--    else generate the element i access string
-	return function (i, prefix)
+	return function (i, prefix_i)
 	
-		local prefix = prefix or ''
+		local prefix_i = prefix_i or ''
 		return i -- index 
-				 and ((Data.STRUCT == template[Data.MODEL][Data.TYPE] or 
-		   			   Data.UNION == template[Data.MODEL][Data.TYPE])
+				 and (('table' == type_template)
 					  -- composite
 					  and 
-					  	Data.instance(string.format('%s%s[%d]', prefix, name, i), 
-					  				 template)
-					  or -- primitive
-				      	string.format('%s%s[%d]', prefix, name, i))
+					  	Data.instance(string.format('%s%s[%d]', prefix_i, name, i), 
+					  				  template)
+					  or (('function' == type_template
+					       and 
+					         function(j, prefix_j) -- allow further prefixing
+							     return template(j, 
+				  	               string.format('%s%s[%d]', prefix_i, name, i))
+								 end
+					       or -- primitive
+				      	     string.format('%s%s[%d]', prefix_i, name, i))))
 				 -- length
-			     or string.format('%s%s#', prefix, name)
+			     or string.format('%s%s#', prefix_i, name)
 	end
 end
 
@@ -850,7 +1005,22 @@ function Data.print_idl(instance, indent_string)
 	-- skip: atomic types, annotations
 	if Data.ATOM == mytype or
 	   Data.ANNOTATION == mytype then 
-	   return result, indent_string 
+	   return instance, indent_string 
+	end
+	
+	if Data.TYPEDEF == mytype then
+		local base, seq_capacity = mydefn._alias, mydefn._alias_seq_capacity
+		if seq_capacity then
+			print(string.format('%s%s seq<%s%s> %s;', indent_string, mytype(), 
+							    base[Data.MODEL][Data.NAME], 
+							    seq_capacity == -1 and '' or ',' .. seq_capacity,
+							    myname))
+		else
+			print(string.format('%s%s %s %s;', indent_string, mytype(), 
+							    base[Data.MODEL][Data.NAME], 
+							    myname))
+		end
+		return instance, indent_string 
 	end
 	
 	-- open --
@@ -859,7 +1029,7 @@ function Data.print_idl(instance, indent_string)
 		-- print the annotations
 		for i, decl in ipairs(mydefn) do
 			if decl[Data.MODEL] and Data.ANNOTATION == decl[Data.MODEL][Data.TYPE] then
-				print(tostring(decl))
+				print(string.format('%s%s', indent_string, tostring(decl)))
 			end
 		end
 	
@@ -972,37 +1142,53 @@ end
 -- @param instance the instance to index
 -- @param result OPTIONAL the index table to which the results are appended
 -- @param model OPTIONAL nil means use the instance's model;
---              needed to support inheritance
+--              needed to support inheritance and typedefs
 -- @result the cumulative index, that can be passed to another call to this method
 function Data.index(instance, result, model) 
 	-- ensure valid instance
-	assert('table' == type(instance), 'instance missing!')
-	assert(instance[Data.MODEL], 'invalid instance')
+	local type_instance = type(instance) 
+	assert('table' == type_instance and instance[Data.MODEL] or 
+	       'function' == type_instance, 
+		   'invalid instance!')
+	
+	-- sequence iterator
+	if 'function' == type_instance then
+		table.insert(result, instance())
+		return Data.index(instance(1), result)		
+	end
+	
+	-- struct or union
 	local mytype = instance[Data.MODEL][Data.TYPE]
 	local model = model or instance[Data.MODEL]
 	local mydefn = model[Data.DEFN]
+
+	-- print('DEBUG index 1: ', mytype(), instance[Data.MODEL][Data.NAME])
+			
+	-- recursive typedefs (i.e. defined in terms of other typedefs)
+	--[[if Data.TYPEDEF == mytype and mydefn and mydefn._alias then
+		return Data.index(instance, result, mydefn._alias[Data.MODEL])
+	end
+	--]]
 	
 	-- skip if not an indexable type:
-	if Data.STRUCT ~= mytype and Data.UNION ~= mytype then return result end
-	
-	-- print('DEBUG index: ', mytype(), instance[Data.MODEL][Data.NAME])
-			
+	if Data.STRUCT ~= mytype and Data.UNION ~= mytype then return nil end
+
 	-- preserve the order of model definition
 	local result = result or {}	-- must be a top-level type	
-	
-	
+					
 	-- union discriminator, if any
 	if Data.UNION == mytype then
 		table.insert(result, instance._d) 
 	end
-	
+		
 	-- struct base type, if any
 	local base = mydefn._base
 	if nil ~= base then
 		result = Data.index(instance, result, base[Data.MODEL])	
 	end
 	
-	-- walk through the body of the model definition	
+	-- walk through the body of the model definition
+	-- NOTE: typedefs don't have an array of members	
 	for i, decl in ipairs(mydefn) do 
 		local role, element, seq_capacity 
 		
@@ -1016,24 +1202,26 @@ function Data.index(instance, result, model)
 				role, element = decl[2][1], decl[2][2]
 				seq_capacity = 'number' == type(decl[2][3]) and decl[2][3] or nil
 			end
-			
+				
 			local instance_member = instance[role]
-			if nil == seq_capacity then -- not a sequence
-				if 'table' == type(instance_member) then -- composite (nested)
+			-- print('DEBUG index 3: ', role, seq_capacity, instance_member)
+
+			if 'table' == type(instance_member) then -- composite (nested)
 					result = Data.index(instance_member, result)
-				else -- atom (leaf)
-					table.insert(result, instance_member) 
-				end
-			else -- sequence
+			elseif 'function' == type(instance_member) then -- sequence
 				-- length operator
 				table.insert(result, instance_member())
 	
 				-- index 1st element for illustration
 				if 'table' == type(instance_member(1)) then -- composite sequence
 					Data.index(instance_member(1), result) -- index the 1st element 
+				elseif 'function' == type(instance_member(1)) then -- sequence of sequence
+					Data.index(instance_member(1), result)
 				else -- primitive sequence
 					table.insert(result, instance_member(1))
 				end
+			else -- atom or enum (leaf)
+				table.insert(result, instance_member) 
 			end
 		end
 	end
@@ -1214,6 +1402,156 @@ Test:Struct{'Calendar',
 	{ 'tasks',  Test.Tasks, Data.Seq() },
 }
 
+-- typedefs
+
+Test:Typedef{'MyDouble', Data.double}
+Test:Typedef{'MyDouble2', Test.MyDouble}
+Test:Typedef{'MyString', Data.String(10)}
+
+Test:Typedef{'MyName', Test.Name }
+Test:Typedef{'MyName2', Test.MyName }
+
+Test:Typedef{'MyAddress', Test.Address }
+Test:Typedef{'MyAddress2', Test.MyAddress }
+
+Test:Struct{'MyTypedef',
+	{ 'rawDouble', Data.double },
+	{ 'myDouble', Test.MyDouble },
+	{ 'myDouble2', Test.MyDouble2 },
+	
+	{ 'name',  Test.Name },
+	{ 'myName',  Test.MyName },
+	{ 'myName2',  Test.MyName2 },
+	
+	{ 'address', Test.Address },
+	{ 'myAddress', Test.MyAddress },
+	{ 'myAddress2', Test.MyAddress2 },
+}
+
+
+function Test:test_typedef()	
+	self:print(self.MyDouble)
+	self:print(self.MyDouble2)	
+	self:print(self.MyString)
+				
+	self:print(self.MyName)
+	self:print(self.MyName2)
+	
+	self:print(self.MyAddress)
+	self:print(self.MyAddress2)
+	
+	self:print(self.MyTypedef)
+end
+
+
+Test:Typedef{'MyDoubleSeq', Test.MyDouble, Data.Seq() }
+Test:Typedef{'MyStringSeq', Test.MyString, Data.Seq(10) }
+
+Test:Typedef{'NameSeq', Test.Name, Data.Seq(10) }
+Test:Typedef{'NameSeqSeq', Test.NameSeq, Data.Seq(10) }
+
+Test:Typedef{'MyNameSeq', Test.MyName, Data.Seq(10) }
+Test:Typedef{'MyNameSeqSeq', Test.MyNameSeq, Data.Seq(10) }
+
+Test:Struct{'MyTypedefSeq',
+    { 'myDoubleSeq', Test.MyDouble, Data.Seq() },
+	{ 'myDoubleSeqA', Test.MyDoubleSeq },
+	{ 'myStringSeqA', Test.MyStringSeq },
+	
+	{ 'nameSeq', Test.Name, Data.Seq() },
+	{ 'nameSeqA', Test.NameSeq },
+	{ 'nameSeqSeq', Test.NameSeq, Data.Seq() },
+	{ 'nameSeqSeqA', Test.NameSeqSeq },
+	{ 'nameSeqSeqASeq', Test.NameSeqSeq, Data.Seq() },
+
+	{ 'myNameSeq', Test.MyName, Data.Seq() },
+	{ 'myNameSeqA', Test.MyNameSeq },
+	{ 'myNameSeqSeq', Test.MyNameSeq, Data.Seq() },
+	{ 'myNameSeqSeqA', Test.MyNameSeqSeq },
+	{ 'myNameSeqSeqASeq', Test.MyNameSeqSeq, Data.Seq() },
+}
+
+
+function Test:test_typedef_seq()	
+	self:print(self.MyDoubleSeq)
+	self:print(self.MyStringSeq)
+	
+	self:print(self.NameSeq)
+	self:print(self.NameSeqSeq)
+
+	self:print(self.MyNameSeq)
+	self:print(self.MyNameSeqSeq)
+	
+	self:print(self.MyTypedefSeq)
+	
+	-- nameSeq
+	assert(Test.MyTypedefSeq.nameSeq() == 'nameSeq#')
+	assert(Test.MyTypedefSeq.nameSeq(1).first == 'nameSeq[1].first')	
+	assert(Test.MyTypedefSeq.nameSeq(1).nicknames() == 'nameSeq[1].nicknames#')	
+	assert(Test.MyTypedefSeq.nameSeq(1).nicknames(1) == 'nameSeq[1].nicknames[1]')	
+
+	-- nameSeqA
+	assert(Test.MyTypedefSeq.nameSeqA() == 'nameSeqA#')
+	assert(Test.MyTypedefSeq.nameSeqA(1).first == 'nameSeqA[1].first')	
+	assert(Test.MyTypedefSeq.nameSeqA(1).nicknames() == 'nameSeqA[1].nicknames#')	
+	assert(Test.MyTypedefSeq.nameSeqA(1).nicknames(1) == 'nameSeqA[1].nicknames[1]')	
+
+	-- nameSeqSeq
+	assert(Test.MyTypedefSeq.nameSeqSeq() == 'nameSeqSeq#')	
+	assert(Test.MyTypedefSeq.nameSeqSeq(1)() == 'nameSeqSeq[1]#')
+	assert(Test.MyTypedefSeq.nameSeqSeq(1)(1).first == 'nameSeqSeq[1][1].first')
+	assert(Test.MyTypedefSeq.nameSeqSeq(1)(1).nicknames() == 'nameSeqSeq[1][1].nicknames#')
+	assert(Test.MyTypedefSeq.nameSeqSeq(1)(1).nicknames(1) == 'nameSeqSeq[1][1].nicknames[1]')
+	
+	-- nameSeqSeqA
+	assert(Test.MyTypedefSeq.nameSeqSeqA() == 'nameSeqSeqA#')	
+	assert(Test.MyTypedefSeq.nameSeqSeqA(1)() == 'nameSeqSeqA[1]#')
+	assert(Test.MyTypedefSeq.nameSeqSeqA(1)(1).first == 'nameSeqSeqA[1][1].first')
+	assert(Test.MyTypedefSeq.nameSeqSeqA(1)(1).nicknames() == 'nameSeqSeqA[1][1].nicknames#')
+	assert(Test.MyTypedefSeq.nameSeqSeqA(1)(1).nicknames(1) == 'nameSeqSeqA[1][1].nicknames[1]')
+
+	-- nameSeqSeqASeq
+	assert(Test.MyTypedefSeq.nameSeqSeqASeq() == 'nameSeqSeqASeq#')	
+	assert(Test.MyTypedefSeq.nameSeqSeqASeq(1)() == 'nameSeqSeqASeq[1]#')
+	assert(Test.MyTypedefSeq.nameSeqSeqASeq(1)(1)() == 'nameSeqSeqASeq[1][1]#')
+	assert(Test.MyTypedefSeq.nameSeqSeqASeq(1)(1)(1).first == 'nameSeqSeqASeq[1][1][1].first')
+	assert(Test.MyTypedefSeq.nameSeqSeqASeq(1)(1)(1).nicknames() == 'nameSeqSeqASeq[1][1][1].nicknames#')
+	assert(Test.MyTypedefSeq.nameSeqSeqASeq(1)(1)(1).nicknames(1) == 'nameSeqSeqASeq[1][1][1].nicknames[1]')
+
+	-- myNameSeq
+	assert(Test.MyTypedefSeq.myNameSeq() == 'myNameSeq#')
+	assert(Test.MyTypedefSeq.myNameSeq(1).first == 'myNameSeq[1].first')	
+	assert(Test.MyTypedefSeq.myNameSeq(1).nicknames() == 'myNameSeq[1].nicknames#')	
+	assert(Test.MyTypedefSeq.myNameSeq(1).nicknames(1) == 'myNameSeq[1].nicknames[1]')	
+
+	-- myNameSeqA
+	assert(Test.MyTypedefSeq.myNameSeqA() == 'myNameSeqA#')
+	assert(Test.MyTypedefSeq.myNameSeqA(1).first == 'myNameSeqA[1].first')	
+	assert(Test.MyTypedefSeq.myNameSeqA(1).nicknames() == 'myNameSeqA[1].nicknames#')	
+	assert(Test.MyTypedefSeq.myNameSeqA(1).nicknames(1) == 'myNameSeqA[1].nicknames[1]')	
+
+	-- myNameSeqSeq
+	assert(Test.MyTypedefSeq.myNameSeqSeq() == 'myNameSeqSeq#')	
+	assert(Test.MyTypedefSeq.myNameSeqSeq(1)() == 'myNameSeqSeq[1]#')
+	assert(Test.MyTypedefSeq.myNameSeqSeq(1)(1).first == 'myNameSeqSeq[1][1].first')
+	assert(Test.MyTypedefSeq.myNameSeqSeq(1)(1).nicknames() == 'myNameSeqSeq[1][1].nicknames#')
+	assert(Test.MyTypedefSeq.myNameSeqSeq(1)(1).nicknames(1) == 'myNameSeqSeq[1][1].nicknames[1]')
+	
+	-- myNameSeqSeqA
+	assert(Test.MyTypedefSeq.myNameSeqSeqA() == 'myNameSeqSeqA#')	
+	assert(Test.MyTypedefSeq.myNameSeqSeqA(1)() == 'myNameSeqSeqA[1]#')
+	assert(Test.MyTypedefSeq.myNameSeqSeqA(1)(1).first == 'myNameSeqSeqA[1][1].first')
+	assert(Test.MyTypedefSeq.myNameSeqSeqA(1)(1).nicknames() == 'myNameSeqSeqA[1][1].nicknames#')
+	assert(Test.MyTypedefSeq.myNameSeqSeqA(1)(1).nicknames(1) == 'myNameSeqSeqA[1][1].nicknames[1]')
+
+	-- myNameSeqSeqASeq
+	assert(Test.MyTypedefSeq.myNameSeqSeqASeq() == 'myNameSeqSeqASeq#')	
+	assert(Test.MyTypedefSeq.myNameSeqSeqASeq(1)() == 'myNameSeqSeqASeq[1]#')
+	assert(Test.MyTypedefSeq.myNameSeqSeqASeq(1)(1)() == 'myNameSeqSeqASeq[1][1]#')
+	assert(Test.MyTypedefSeq.myNameSeqSeqASeq(1)(1)(1).first == 'myNameSeqSeqASeq[1][1][1].first')
+	assert(Test.MyTypedefSeq.myNameSeqSeqASeq(1)(1)(1).nicknames() == 'myNameSeqSeqASeq[1][1][1].nicknames#')
+	assert(Test.MyTypedefSeq.myNameSeqSeqASeq(1)(1)(1).nicknames(1) == 'myNameSeqSeqASeq[1][1][1].nicknames[1]')
+end
 
 function Test.print_index(instance)
 	local instance = Data.index(instance)
