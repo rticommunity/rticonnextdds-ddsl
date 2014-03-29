@@ -802,7 +802,7 @@ function Data.seq(name, template)
 	-- ensure valid template
 	local type_template = type(template)
 	assert('table' == type_template and template[Data.MODEL] or 
-	       'function' == type_template, 
+	       'function' == type_template, -- sequence iterator
 		   	  table.concat{'sequence template invalid; ',
 		   	  			   'must be an instance for a sequence: ',
 		   	 			   tostring(name)})
@@ -814,7 +814,7 @@ function Data.seq(name, template)
 			   Data.ATOM == element_type or
 			   Data.TYPEDEF == element_type,
 			   table.concat{'sequence template must be a ', 
-			   				'struct|union|atom|enum}sequence|typedef: ', 
+			   				'struct|union|atom|enum|sequence|typedef: ', 
 			   				 tostring(name)})
 	end
 
@@ -913,7 +913,6 @@ Data:Atom{'short'}
 Data:Atom{'boolean'}
 Data:Atom{'char'}
 Data:Atom{'octet'}
-
 
 --------------------------------------------------------------------------------
 -- Predefined Annotations
@@ -1148,7 +1147,7 @@ function Data.index(instance, result, model)
 	-- ensure valid instance
 	local type_instance = type(instance) 
 	assert('table' == type_instance and instance[Data.MODEL] or 
-	       'function' == type_instance, 
+	       'function' == type_instance, -- sequence iterator
 		   'invalid instance!')
 	
 	-- sequence iterator
@@ -1164,12 +1163,6 @@ function Data.index(instance, result, model)
 
 	-- print('DEBUG index 1: ', mytype(), instance[Data.MODEL][Data.NAME])
 			
-	-- recursive typedefs (i.e. defined in terms of other typedefs)
-	--[[if Data.TYPEDEF == mytype and mydefn and mydefn._alias then
-		return Data.index(instance, result, mydefn._alias[Data.MODEL])
-	end
-	--]]
-	
 	-- skip if not an indexable type:
 	if Data.STRUCT ~= mytype and Data.UNION ~= mytype then return nil end
 
