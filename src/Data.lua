@@ -144,6 +144,11 @@
 -- 		 2. Provides an unnamed name-space ('root') that acts like a module
 --       3. But is technically not a user-defined module
 --
+-- NOTES
+--    Self-recursive definitions require a forward declaration, and generate a
+--    warning. To create a forward declaration, install the same name twice,
+--    first as an empty definition, and then as a full definition. Ignore the warning!
+--
 Data = Data or {
 	-- instance attributes ---
 	-- every 'instance' table has this meta-data key defined
@@ -360,9 +365,11 @@ function Data:Struct(param)
 			assert('string' == type(role), 
 			  table.concat{'invalid struct member name: ', tostring(role)})
 			assert('table' == type(element), 
-			  table.concat{'undefined type for struct member "', tostring(role), '"'})
+			  table.concat{'undefined type for struct member "', 
+			  		tostring(role), '": ', tostring(element)})
 			assert(nil ~= element[Data.MODEL], 
-			  table.concat{'invalid type for struct member "', tostring(role), '"'})
+			  table.concat{'invalid type for struct member "', 
+			  		tostring(role), '"'})
 			
 			-- check for conflicting  member fields
 			assert(nil == instance[role], 
@@ -456,9 +463,11 @@ function Data:Union(param)
 			assert('string' == type(role), 
 			  table.concat{'invalid union member name: ', tostring(role)})
 			assert('table' == type(element), 
-			  table.concat{'undefined type for union member "', tostring(role), '"'})
+			  table.concat{'undefined type for union member "', 
+			  		tostring(role), '": ', tostring(element)})
 			assert(nil ~= element[Data.MODEL], 
-			  table.concat{'invalid type for union member "', tostring(role), '"'})
+			  table.concat{'invalid type for union member "', 
+			  		tostring(role), '"'})
 		
 			
 			-- decide if the 3rd entry is a sequence length or not?
@@ -913,6 +922,7 @@ Data:Atom{'short'}
 Data:Atom{'boolean'}
 Data:Atom{'char'}
 Data:Atom{'octet'}
+Data:Atom{'long_long'}
 
 --------------------------------------------------------------------------------
 -- Predefined Annotations
@@ -927,6 +937,7 @@ Data:Annotation('Shared')
 Data:Annotation('BitBound')
 Data:Annotation('BitSet')
 Data:Annotation('Nested')
+Data:Annotation('top_level') -- legacy
 
 --------------------------------------------------------------------------------
 -- Relationship Definitions
@@ -1010,12 +1021,12 @@ function Data.print_idl(instance, indent_string)
 	if Data.TYPEDEF == mytype then
 		local base, seq_capacity = mydefn._alias, mydefn._alias_seq_capacity
 		if seq_capacity then
-			print(string.format('%s%s seq<%s%s> %s;', indent_string, mytype(), 
+			print(string.format('%s%s seq<%s%s> %s;\n', indent_string, mytype(), 
 							    base[Data.MODEL][Data.NAME], 
 							    seq_capacity == -1 and '' or ',' .. seq_capacity,
 							    myname))
 		else
-			print(string.format('%s%s %s %s;', indent_string, mytype(), 
+			print(string.format('%s%s %s %s;\n', indent_string, mytype(), 
 							    base[Data.MODEL][Data.NAME], 
 							    myname))
 		end
@@ -1091,7 +1102,7 @@ function Data.print_idl(instance, indent_string)
 	
 	-- close --
 	if (nil ~= myname) then -- not top-level
-		print(string.format('%s};', indent_string))
+		print(string.format('%s};\n', indent_string))
 	end
 	
 	return instance, indent_string
