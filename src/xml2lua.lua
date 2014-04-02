@@ -117,7 +117,7 @@ xmlTable = collect(xmlString)
 print('*** xml -> lua ***')
 
 -- @result the cumulative result, that can be passed to another call to this method
-function xml_visitor(xml, data, indent_string) 
+function xml_visitor(xml, data) 
 	data = data or Data -- global unnamed name-space called 'Data'
 	indent_string = indent_string or ''
 	
@@ -137,10 +137,13 @@ function xml_visitor(xml, data, indent_string)
 				result = emit_struct(data, v.xarg, v)
 			else 
 				-- recurse into the XML until on of the above is found
-				xml_visitor(v, data, indent_string .. '   ')
+				xml_visitor(v, data)
 			end
 			
-			if result then Data.print_idl(result) end
+			if result then 
+				Data.print_idl(result) 
+				-- Test:print(result) 
+			end
 		end
 	end
 end
