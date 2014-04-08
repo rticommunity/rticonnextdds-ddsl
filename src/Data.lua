@@ -173,7 +173,7 @@ Data = Data or {
 	ATOM       = function() return 'atom' end,
 	ANNOTATION = function() return 'annotation' end,
 	TYPEDEF    = function() return 'typedef' end,
-		
+	
 	-- name-space and meta-table for annotations (to avoid name collisions)
 	-- NOTE: ALl of the above could go inside this table
 	_		   = {}  
@@ -264,9 +264,10 @@ function Data:Atom(name)
 end
 
 -- Annotations are modeled like Atomic types, expect that 
---    - the are installed in a nested name space '_' to avoid conflicts
+--    - are installed in a nested name space '_' to avoid conflicts
 --      with user defined types, and also to stand out in the declarations
 --    - are installed as closures so that user can pass in custom attributes
+--    - attributes are not interpreted, and are preserved i.e. kept intact 
 --
 -- Examples:
 --        IDL:      @Key
@@ -285,6 +286,8 @@ function Data:Annotation(name, ...)
 	}  
 
 	-- top-level instance function (closure) to be installed in the module
+	-- NOTE: the attributes passed to the annotation are not interpreted,
+	--       and are kept intact; we simply add the MODEL definition
 	--   A function that returns a model table, with user defined 
 	--   annotation attributes passed as a table of {name = value} pairs
 	--      eg: Data._.MyAnnotation{value1 = 42, value2 = 42.0}
@@ -324,7 +327,9 @@ function Data:Struct(param)
 		   
 	-- OPTIONAL base: pop the next element if it is a base model element
 	local base
-	if 'table' == type(param[1]) and nil ~= param[1][Data.MODEL] then
+	if 'table' == type(param[1]) 
+		and nil ~= param[1][Data.MODEL]
+		and Data.ANNOTATION ~= param[1][Data.MODEL][Data.TYPE] then
 		base = param[1]   table.remove(param, 1)
 		assert(Data.STRUCT == base[Data.MODEL][Data.TYPE], 
 			table.concat{'base type must be a struct: ', name})
@@ -1346,10 +1351,11 @@ Test:Struct{'Name',
 Data:Annotation('MyAnnotation', {value1 = 42, value2 = 42.0})
 
 Test:Struct{'Address',
+	Data._.Extensibility{'EXTENSIBLE_EXTENSIBILITY'},
 	{ 'name', Test.Name },
 	{ 'street', Data.String() },
 	{ 'city',  Data.String(), Data._.MyAnnotation{value1 = 10, value2 = 17} },
-	Data._.Extensibility{'EXTENSIBLE_EXTENSIBILITY'},
+	-- Data._.Extensibility{'EXTENSIBLE_EXTENSIBILITY'},
 }
 
 Test:Union{'TestUnion1', Test.Days,
@@ -1400,7 +1406,8 @@ Test:Struct{'BigCompany',
 }
 
 Test:Struct{'FullName', Test.Name,
-	{ 'middle',  Data.String() }
+	{ 'middle',  Data.String() },
+	Data._.Extensibility{'EXTENSIBLE_EXTENSIBILITY'},
 }
 
 Test:Struct{'Contact', Test.FullName,
@@ -1646,7 +1653,7 @@ function Test:main()
 	end
 end
 
--- Test:main()
+Test:main()
  
 -- SKIP TESTS --]]
 --------------------------------------------------------------------------------
