@@ -375,7 +375,16 @@ function Data:Struct(param)
 			assert(nil ~= element[Data.MODEL], 
 			  table.concat{'invalid type for struct member "', 
 			  		tostring(role), '"'})
-			
+			  		
+			local element_type = element[Data.MODEL][Data.TYPE]
+			assert(Data.STRUCT == element_type or 
+			   Data.UNION == element_type or
+			   Data.ATOM == element_type or
+			   Data.ENUM == element_type or
+			   Data.TYPEDEF == element_type,
+			   table.concat{'member must be a struct|union|atom|enum|typedef: ', 
+			   				 tostring(name)})
+			  		
 			-- check for conflicting  member fields
 			assert(nil == instance[role], 
 				table.concat{'member name already defined: ', role})
@@ -384,6 +393,8 @@ function Data:Struct(param)
 			-- decide if the 3rd entry is a sequence length or not?
 			local seq_capacity = 'number' == type(decl[3]) and decl[3] or nil
 					
+			local array = nil
+			
 			-- ensure that the rest of the declaration entries are annotations:	
 			-- start with the 3rd or the 4th entry depending upon whether it 
 			-- was a sequence or not:
@@ -393,11 +404,22 @@ function Data:Struct(param)
 								 ' : ', tostring(decl[j])})
 				assert(Data.ANNOTATION == decl[j][Data.MODEL][Data.TYPE],
 					table.concat{'not an annotation: ', tostring(role), 
-								 ' : ', tostring(decl[j])})		
+								 ' : ', tostring(decl[j])})	
+								 
+				-- is this an array?
+				if 'Array' == decl[j][Data.MODEL][Data.NAME] then
+					array = decl[j]
+				end
 			end
 				
 			-- populate the instance/role fields
-			if seq_capacity then
+			if array then
+				local template = element
+				for i = 1, #array - 1  do -- create iterator for inner dimensions
+					template = Data.seq('', template) -- unnamed iterator
+				end
+				instance[role] = Data.seq(role, template)
+			elseif seq_capacity then
 				instance[role] = Data.seq(role, element)
 			else
 				instance[role] = Data.instance(role, element)
@@ -473,7 +495,15 @@ function Data:Union(param)
 			assert(nil ~= element[Data.MODEL], 
 			  table.concat{'invalid type for union member "', 
 			  		tostring(role), '"'})
-		
+			 
+			local element_type = element[Data.MODEL][Data.TYPE]
+			assert(Data.STRUCT == element_type or 
+			   Data.UNION == element_type or
+			   Data.ATOM == element_type or
+			   Data.ENUM == element_type or
+			   Data.TYPEDEF == element_type,
+			   table.concat{'member must be a struct|union|atom|enum|typedef: ', 
+			   				 tostring(name)})
 			
 			-- decide if the 3rd entry is a sequence length or not?
 			local seq_capacity = 'number' == type(decl[1][3]) and decl[1][3] or nil
@@ -615,11 +645,31 @@ function Data.Seq(n)
 		                     and n))
 end
 
+-- An array is implemented as a special annotation, whose attributes are 
+-- positive integer constants, which specify the array dimensions
+Data:Annotation('Array')
+function Data.Array(n, ...)
+
+	-- ensure that we have an array of positive numbers
+	local dimensions = {...}
+	table.insert(dimensions, 1, n) -- insert n at the begining
+	for i, v in ipairs(dimensions) do
+		assert(type(v)=='number',  
+			table.concat{'invalid array bound: ', tostring(v)})
+		assert(v >= 0,  
+			table.concat{'array bound must be > 0: ', v})
+	end
+	
+	-- return the predefined Array annotation instance, wose attributes are 
+	-- the array dimensions
+	return Data._.Array(dimensions)
+end
 
 -- String of length n (i.e. string<n>) is an Atom
 function Data.String(n)
 	local name = 'string'
 		
+	-- construct name of the atom: 'string<n>'
 	if nil ~= n then
 		assert(type(n)=='number', 
 	           table.concat{'invalid string capacity: ', tostring(n)})
@@ -628,7 +678,7 @@ function Data.String(n)
 	    name = table.concat{'string<', n, '>'}
 	end
 	            	
-	-- lookup the name
+	-- lookup the atom name
 	local instance = Data[name]
 	if nil == instance then
 		-- not found => create it
@@ -655,7 +705,7 @@ end
 --    local myInstance = Data.instance("my", template)
 --    local member = sample[myInstance.member] 
 --    for i = 1, sample[myInstance.memberSeq()] do -- length of the sequence
---       local element_i = sample[memberSeq(i-1)] -- access the i-th element
+--       local element_i = sample[memberSeq(i)] -- access the i-th element
 --    end  
 --
 --    -- As a sample itself
@@ -665,7 +715,7 @@ end
 --    -- NOTE: Assignment not yet supported for sequences:
 --    myInstance.memberSeq() = 10 -- length
 --    for i = 1, myInstance.memberSeq() do -- length of the sequence
---       memberSeq(i-1) = "element_i"
+--       memberSeq(i) = "element_i"
 --    end  
 --
 function Data.instance(name, template) 
@@ -732,7 +782,7 @@ function Data.instance(name, template)
 		instance = Data.seq(name, template) 
 		return instance
 	end
-	
+
 	---------------------------------------------------------------------------
 	-- leaf instances
 	---------------------------------------------------------------------------
@@ -799,12 +849,14 @@ end
 -- Parameters:
 -- 	  <<in>> name  - the role or instance name
 -- 	  <<in>> template - the template to use for creating an instance
+--                          may be a table when it is an non-collection type OR
+--                          may be a closure for collections (sequences/arrays)
 --    <<returns>> the newly created closure for indexing a sequence of 
 --          of template elements
 -- Usage:
 --    local mySeq = Data.seq("my", template)
 --    for i = 1, sample[mySeq()] do -- length of the sequence
---       local element_i = sample[mySeq(i-1)] -- access the i-th element
+--       local element_i = sample[mySeq(i)] -- access the i-th element
 --    end    
 function Data.seq(name, template) 
 
@@ -816,7 +868,7 @@ function Data.seq(name, template)
 	-- ensure valid template
 	local type_template = type(template)
 	assert('table' == type_template and template[Data.MODEL] or 
-	       'function' == type_template, -- sequence iterator
+	       'function' == type_template, -- collection iterator
 		   	  table.concat{'sequence template invalid; ',
 		   	  			   'must be an instance for a sequence: ',
 		   	 			   tostring(name)})
@@ -828,7 +880,7 @@ function Data.seq(name, template)
 			   Data.ATOM == element_type or
 			   Data.TYPEDEF == element_type,
 			   table.concat{'sequence template must be a ', 
-			   				'struct|union|atom|enum|sequence|typedef: ', 
+			   				'struct|union|atom|enum|typedef: ', 
 			   				 tostring(name)})
 	end
 
@@ -842,12 +894,11 @@ function Data.seq(name, template)
 	
 		local prefix_i = prefix_i or ''
 		return i -- index 
-				 and (('table' == type_template)
-					  -- composite
+				 and (('table' == type_template) -- composite
 					  and 
 					  	Data.instance(string.format('%s%s[%d]', prefix_i, name, i), 
 					  				  template)
-					  or (('function' == type_template
+					  or (('function' == type_template -- collection
 					       and 
 					         function(j, prefix_j) -- allow further prefixing
 							     return template(j, 
@@ -890,12 +941,10 @@ function Data._.__tostring(annotation)
 
 	-- assertions
 	for i, v in ipairs(annotation) do
-		if 'string' == type(v) then
-			output = string.format('%s%s%s', 
-			output or '', -- output or nothing
-			output and ',' or '', -- put a comma or not?
-			tostring(v))
-		end
+		output = string.format('%s%s%s', 
+							output or '', -- output or nothing
+							output and ',' or '', -- put a comma or not?
+							tostring(v))
 	end
 	
 	-- name value pairs {name=value}
@@ -1167,15 +1216,25 @@ end
 -- @result the cumulative index, that can be passed to another call to this method
 function Data.index(instance, result, model) 
 	-- ensure valid instance
-	local type_instance = type(instance) 
+	local type_instance = type(instance)
+	-- print('DEBUG Data.index 1: ', instance) 
 	assert('table' == type_instance and instance[Data.MODEL] or 
 	       'function' == type_instance, -- sequence iterator
-		   'invalid instance!')
+		   table.concat{'invalid instance: ', tostring(instance)})
 	
 	-- sequence iterator
 	if 'function' == type_instance then
 		table.insert(result, instance())
-		return Data.index(instance(1), result)		
+		
+		-- index 1st element for illustration
+		if 'table' == type(instance(1)) then -- composite sequence
+			Data.index(instance(1), result) -- index the 1st element 
+		elseif 'function' == type(instance(1)) then -- sequence of sequence
+			Data.index(instance(1), result)
+		else -- primitive sequence
+			table.insert(result, instance(1))
+		end
+		return result
 	end
 	
 	-- struct or union
@@ -1219,11 +1278,12 @@ function Data.index(instance, result, model)
 			end
 				
 			local instance_member = instance[role]
+			local instance_member_type = type(instance_member)
 			-- print('DEBUG index 3: ', role, seq_capacity, instance_member)
 
-			if 'table' == type(instance_member) then -- composite (nested)
+			if 'table' == instance_member_type then -- composite (nested)
 					result = Data.index(instance_member, result)
-			elseif 'function' == type(instance_member) then -- sequence
+			elseif 'function' == instance_member_type then -- sequence
 				-- length operator
 				table.insert(result, instance_member())
 	
@@ -1493,7 +1553,6 @@ Test:Struct{'MyTypedefSeq',
 	{ 'myNameSeqSeqASeq', Test.MyNameSeqSeq, Data.Seq() },
 }
 
-
 function Test:test_typedef_seq()	
 	self:print(self.MyDoubleSeq)
 	self:print(self.MyStringSeq)
@@ -1573,6 +1632,36 @@ function Test:test_typedef_seq()
 	assert(Test.MyTypedefSeq.myNameSeqSeqASeq(1)(1)(1).first == 'myNameSeqSeqASeq[1][1][1].first')
 	assert(Test.MyTypedefSeq.myNameSeqSeqASeq(1)(1)(1).nicknames() == 'myNameSeqSeqASeq[1][1][1].nicknames#')
 	assert(Test.MyTypedefSeq.myNameSeqSeqASeq(1)(1)(1).nicknames(1) == 'myNameSeqSeqASeq[1][1][1].nicknames[1]')
+end
+
+-- Arrays
+Test:Struct{'MyArray',
+	-- 1-D
+	{ 'ints', Data.double, Data.Array(3) },
+
+	-- 2-D
+	{ 'days', Test.Days, Data.Array(6, 9) },
+	
+	-- 3-D
+	{ 'names', Test.Name, Data.Array(12, 15, 18) },
+}
+
+function Test:test_arrays()
+	self:print(Test.MyArray)
+	
+	assert(Test.MyArray.ints() == 'ints#')
+	assert(Test.MyArray.ints(1) == 'ints[1]')
+	
+	assert(Test.MyArray.days() == 'days#')
+	assert(Test.MyArray.days(1)() == 'days[1]#')
+	assert(Test.MyArray.days(1)(1) == 'days[1][1]')
+	
+	assert(Test.MyArray.names() == 'names#')
+	assert(Test.MyArray.names(1)() == 'names[1]#')
+	assert(Test.MyArray.names(1)(1)() == 'names[1][1]#')
+	assert(Test.MyArray.names(1)(1)(1).first == 'names[1][1][1].first')
+	assert(Test.MyArray.names(1)(1)(1).nicknames() == 'names[1][1][1].nicknames#')
+	assert(Test.MyArray.names(1)(1)(1).nicknames(1) == 'names[1][1][1].nicknames[1]')
 end
 
 function Test.print_index(instance)
