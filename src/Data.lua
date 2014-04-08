@@ -916,13 +916,19 @@ end
 -- Predefined Types
 --------------------------------------------------------------------------------
 
+Data:Atom{'float'}
 Data:Atom{'double'}
+
 Data:Atom{'long'}
+Data:Atom{'unsigned_long'}
+Data:Atom{'long_long'}
+
 Data:Atom{'short'}
-Data:Atom{'boolean'}
+Data:Atom{'unsigned_short'}
+
 Data:Atom{'char'}
 Data:Atom{'octet'}
-Data:Atom{'long_long'}
+Data:Atom{'boolean'}
 
 --------------------------------------------------------------------------------
 -- Predefined Annotations
@@ -1297,7 +1303,12 @@ MyTest:Enum('Months') {
 ---[[ SKIP TESTS --
 
 local Test = Data:Module{'Test'}
-
+--[[
+local testModule = Data:create_module();
+local testEnum   = testModule:create_enum();
+Test:add()
+--]]
+ 
 Test:Enum{'Days', 
 	{'MON'}, {'TUE'}, {'WED'}, {'THU'}, {'FRI'}, {'SAT'}, {'SUN'}
 }

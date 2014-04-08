@@ -185,6 +185,8 @@ function emit_member(data, xarg)
 	local kind = xarg.type
 	if 'string' == xarg.type then
 		kind = Data.String(tonumber(xarg.stringMaxLength))
+	elseif 'boolean' == xarg.type then
+		kind = Data.boolean
 	elseif 'char' == xarg.type then
 		kind = Data.char
 	elseif 'octet' == xarg.type then
@@ -193,12 +195,16 @@ function emit_member(data, xarg)
 		kind = Data.short
 	elseif 'long' == xarg.type then
 		kind = Data.long
+	elseif 'float' == xarg.type then
+		kind = Data.float
 	elseif 'double' == xarg.type then
 		kind = Data.double
+	elseif 'unsignedShort' == xarg.type then
+		kind = Data.unsigned_short
+	elseif 'unsignedLong' == xarg.type then
+		kind = Data.unsigned_long
 	elseif 'longLong' == xarg.type then
 		kind = Data.long_long
-	elseif 'boolean' == xarg.type then
-		kind = Data.boolean
 	elseif 'nonBasic' == xarg.type then
 		kind = data[xarg.nonBasicTypeName]
 	end
