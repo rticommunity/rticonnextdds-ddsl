@@ -14,7 +14,7 @@
 -- TODO: Create a github project for DDSL
 -------------------------------------------------------------------------------
 
--- Data - singleton meta-data class implementing a semantic data definition 
+-- Data - meta-data (meta-table) class implementing a semantic data definition 
 --        model equivalent to OMG IDL, and easily mappable to various 
 --        representations (eg OMG IDL, XML etc)
 --
@@ -1092,12 +1092,14 @@ function Data.print_idl(instance, indent_string)
 	if (nil ~= myname) then -- not top-level
 	
 		-- print the annotations
-		for i, decl in ipairs(mydefn) do
-			if decl[Data.MODEL] and Data.ANNOTATION == decl[Data.MODEL][Data.TYPE] then
-				print(string.format('%s%s', indent_string, tostring(decl)))
+		if nil ~=mydefn then
+			for i, decl in ipairs(mydefn) do
+				if decl[Data.MODEL] and Data.ANNOTATION == decl[Data.MODEL][Data.TYPE] then
+					print(string.format('%s%s', indent_string, tostring(decl)))
+				end
 			end
 		end
-	
+		
 		if Data.UNION == mytype then
 			print(string.format('%s%s %s switch (%s) {', indent_string, 
 						mytype(), myname, mydefn._d[Data.MODEL][Data.NAME]))
@@ -1309,5 +1311,6 @@ function Data.index(instance, result, model)
 end
 
 --------------------------------------------------------------------------------
-return Data
+return Data:Module{''} -- global module (unnamed)
+--return Data
 --------------------------------------------------------------------------------
