@@ -70,8 +70,6 @@ MyTest:Enum('Months') {
 }--}
 --]]
 
----[[ SKIP TESTS --
-
 local Test = Data:Module{'Test'}
 --[[
 local testModule = Data:create_module();
@@ -190,7 +188,6 @@ Test:Struct{'Calendar',
 }
 
 -- typedefs
-
 Test:Typedef{'MyDouble', Data.double}
 Test:Typedef{'MyDouble2', Test.MyDouble}
 Test:Typedef{'MyString', Data.String(10)}
@@ -214,23 +211,7 @@ Test:Struct{'MyTypedef',
 	{ 'myAddress', Test.MyAddress },
 	{ 'myAddress2', Test.MyAddress2 },
 }
-
-
-function Test:test_typedef()	
-	self:print(self.MyDouble)
-	self:print(self.MyDouble2)	
-	self:print(self.MyString)
-				
-	self:print(self.MyName)
-	self:print(self.MyName2)
-	
-	self:print(self.MyAddress)
-	self:print(self.MyAddress2)
-	
-	self:print(self.MyTypedef)
-end
-
-
+			
 Test:Typedef{'MyDoubleSeq', Test.MyDouble, Data.Seq() }
 Test:Typedef{'MyStringSeq', Test.MyString, Data.Seq(10) }
 
@@ -258,17 +239,134 @@ Test:Struct{'MyTypedefSeq',
 	{ 'myNameSeqSeqASeq', Test.MyNameSeqSeq, Data.Seq() },
 }
 
-function Test:test_typedef_seq()	
-	self:print(self.MyDoubleSeq)
-	self:print(self.MyStringSeq)
-	
-	self:print(self.NameSeq)
-	self:print(self.NameSeqSeq)
+-- Arrays
+Test:Struct{'MyArrays1',
+	-- 1-D
+	{ 'ints', Data.double, Data.Array(3) },
 
-	self:print(self.MyNameSeq)
-	self:print(self.MyNameSeqSeq)
+	-- 2-D
+	{ 'days', Test.Days, Data.Array(6, 9) },
 	
-	self:print(self.MyTypedefSeq)
+	-- 3-D
+	{ 'names', Test.Name, Data.Array(12, 15, 18) },
+}
+
+
+Test:Union{'MyArrays2', Test.Days,
+	-- 1-D
+	{ 'MON',
+		{'ints', Data.double, Data.Array(3) }},
+
+	-- 2-D
+	{ 'TUE',
+		{ 'days', Test.Days, Data.Array(6, 9) }},
+	
+	-- 3-D
+	{--
+		{ 'names', Test.Name, Data.Array(12, 15, 18) }},	
+}
+
+--------------------------------------------------------------------------------
+-- Tester - the unit tests
+--------------------------------------------------------------------------------
+
+local Tester = {} -- array of test functions
+
+-- print - helper method to print the IDL and the index for an data definition
+function Tester:print(instance)
+	Data.print_idl(instance)
+
+	-- print index
+	local instance = Data.index(instance)
+	if instance == nil then return end
+	
+	print('index:')
+	for i, v in ipairs(instance) do
+		print('   ', v)	
+	end
+end
+
+Tester[#Tester+1] = 'test_struct_basic'
+function Tester:test_struct_basic()
+	self:print(Test.Name)
+end
+
+Tester[#Tester+1] = 'test_struct_nested'
+function Tester:test_struct_nested()
+	self:print(Test.Address)
+end
+
+Tester[#Tester+1] = 'test_module'
+function Tester:test_module()
+		self:print(Test)
+end
+
+Tester[#Tester+1] = 'test_submodule'
+function Tester:test_submodule()
+	self:print(Test.Subtest)
+end
+
+Tester[#Tester+1] = 'test_root'
+function Tester:test_root()
+	self:print(Data)
+end
+
+Tester[#Tester+1] = 'test_enum'
+function Tester:test_enum()
+	Data.print_idl(Test.Days)
+	Data.print_idl(Test.Months)
+	Data.print_idl(Test.Subtest.Colors)
+end
+
+Tester[#Tester+1] = 'test_union'
+function Tester:test_union()
+	self:print(Test.TestUnion1)
+	self:print(Test.TestUnion2)
+	self:print(Test.TestUnion3)
+	self:print(Test.NameOrAddress)
+end
+
+Tester[#Tester+1] = 'test_struct_complex'
+function Tester:test_struct_complex()
+	self:print(Test.Company)
+	self:print(Test.BigCompany)
+end
+
+Tester[#Tester+1] = 'test_struct_inheritance'
+function Tester:test_struct_inheritance()
+	self:print(Test.FullName)
+	self:print(Test.Contact)
+	self:print(Test.Tasks)
+	self:print(Test.Calendar)
+end
+
+Tester[#Tester+1] = 'test_typedef'
+function Tester:test_typedef()	
+	self:print(Test.MyDouble)
+	self:print(Test.MyDouble2)	
+	self:print(Test.MyString)
+				
+	self:print(Test.MyName)
+	self:print(Test.MyName2)
+	
+	self:print(Test.MyAddress)
+	self:print(Test.MyAddress2)
+	
+	self:print(Test.MyTypedef)
+end
+
+Tester[#Tester+1] = 'test_typedef_seq'
+function Tester:test_typedef_seq()	
+	self:print(Test.MyDoubleSeq)
+	self:print(Test.MyStringSeq)
+	
+	self:print(Test.NameSeq)
+	self:print(Test.NameSeqSeq)
+
+	self:print(Test.MyNameSeq)
+	self:print(Test.MyNameSeqSeq)
+	
+	self:print(Test.MyTypedefSeq)
 	
 	-- nameSeq
 	assert(Test.MyTypedefSeq.nameSeq() == 'nameSeq#')
@@ -339,19 +437,8 @@ function Test:test_typedef_seq()
 	assert(Test.MyTypedefSeq.myNameSeqSeqASeq(1)(1)(1).nicknames(1) == 'myNameSeqSeqASeq[1][1][1].nicknames[1]')
 end
 
--- Arrays
-Test:Struct{'MyArrays1',
-	-- 1-D
-	{ 'ints', Data.double, Data.Array(3) },
-
-	-- 2-D
-	{ 'days', Test.Days, Data.Array(6, 9) },
-	
-	-- 3-D
-	{ 'names', Test.Name, Data.Array(12, 15, 18) },
-}
-
-function Test:test_arrays1()
+Tester[#Tester+1] = 'test_arrays1'
+function Tester:test_arrays1()
 	-- structure with arrays
 	self:print(Test.MyArrays1)
 	
@@ -370,21 +457,8 @@ function Test:test_arrays1()
 	assert(Test.MyArrays1.names(1)(1)(1).nicknames(1) == 'names[1][1][1].nicknames[1]')
 end
 
-Test:Union{'MyArrays2', Test.Days,
-	-- 1-D
-	{ 'MON',
-		{'ints', Data.double, Data.Array(3) }},
-
-	-- 2-D
-	{ 'TUE',
-		{ 'days', Test.Days, Data.Array(6, 9) }},
-	
-	-- 3-D
-	{--
-		{ 'names', Test.Name, Data.Array(12, 15, 18) }},	
-}
-
-function Test:test_arrays2()
+Tester[#Tester+1] = 'test_arrays2'
+function Tester:test_arrays2()
 	-- union with arrays
 	self:print(Test.MyArrays2)
 	
@@ -403,7 +477,8 @@ function Test:test_arrays2()
 	assert(Test.MyArrays2.names(1)(1)(1).nicknames(1) == 'names[1][1][1].nicknames[1]')
 end
 
-function Test:Xtest_arrays3()
+Tester[#Tester+1] = 'test_arrays3'
+function Tester:Xtest_arrays3()
 	Test:Typedef{'MyNameArray', Test.Name, Data.Array(10) }
 	Test:Typedef{'MyNameArray2', Test.Name, Data.Array(10, 10) }
 
@@ -425,88 +500,24 @@ function Test:Xtest_arrays3()
 	}
 
 	self:print(Test.MyArrays3)
-	
-end
-
-function Test.print_index(instance)
-	local instance = Data.index(instance)
-	if instance == nil then return end
-	
-	print('\nindex:')
-	for i, v in ipairs(instance) do
-		print('   ', v)	
-	end
-end
-
-function Test:print(instance)
-	Data.print_idl(instance)
-	self.print_index(instance)
-end
-
-function Test:test_struct_basic()
-	self:print(Test.Name)
-end
-
-function Test:test_struct_nested()
-	self:print(Test.Address)
-end
-
-function Test:test_module()
-	self:print(Test)
-end
-
-function Test:test_submodule()
-	self:print(Test.Subtest)
-end
-
-function Test:test_root()
-	self:print(Data)
-end
-
-function Test:test_enum()
-	Data.print_idl(Test.Days)
-	Data.print_idl(Test.Months)
-	Data.print_idl(Test.Subtest.Colors)
-end
-
-function Test:test_union()
-	self:print(Test.TestUnion1)
-	self:print(Test.TestUnion2)
-	self:print(Test.TestUnion3)
-	self:print(Test.NameOrAddress)
-end
-
-function Test:test_struct_complex()
-	self:print(Test.Company)
-	self:print(Test.BigCompany)
-end
-
-function Test:test_struct_inheritance()
-	self:print(Test.FullName)
-	self:print(Test.Contact)
-	self:print(Test.Tasks)
-	self:print(Test.Calendar)
 end
 
 -- main() - run the list of tests passed on the command line
 --          if no command line arguments are passed in, run all the tests
-function Test:main()
+function Tester:main()
 	if #arg > 0 then -- run selected tests passed in from the command line
 		for i, test in ipairs (arg) do
 			print('\n--- ' .. test .. ' ---')
-			Test[test](Test) -- run the test
+			self[test](self) -- run the test
 		end
 	else -- run all  the tests
-		for k, v in pairs (self) do
-			if type(k) == "string" and string.sub(k, 1,4) == "test" then
-				print('\n--- ' .. k .. ' ---')
-				v(self) 
-			end
+		for k, v in ipairs (self) do
+			print('\n--- Test ' .. k .. ' : ' .. v .. ' ---')
+			if self[v] then self[v](self) end 
 		end
 	end
 end
 
-Test:main()
- 
--- SKIP TESTS --]]
+Tester:main()
+
 --------------------------------------------------------------------------------
