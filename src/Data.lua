@@ -316,246 +316,6 @@ function Data:Annotation(name, ...)
 	return instance_fn
 end
 
-function Data:Struct(param) 
-	assert('table' == type(param), 
-		   table.concat{'invalid struct specification: ', tostring(param)})
-
-	-- pop the name
-	local name = param[1]   table.remove(param, 1)
-	assert('string' == type(name), 
-		   table.concat{'invalid struct name: ', tostring(name)})
-		   
-	-- OPTIONAL base: pop the next element if it is a base model element
-	local base
-	if 'table' == type(param[1]) 
-		and nil ~= param[1][Data.MODEL]
-		and Data.ANNOTATION ~= param[1][Data.MODEL][Data.TYPE] then
-		base = param[1]   table.remove(param, 1)
-		assert(Data.STRUCT == base[Data.MODEL][Data.TYPE], 
-			table.concat{'base type must be a struct: ', name})
-	end
-
-	local model = { -- meta-data defining the struct
-		[Data.NAME] = name,
-		[Data.TYPE] = Data.STRUCT,
-		[Data.DEFN] = {},     -- will be populated as model elements are defined 
-		[Data.INSTANCE] = nil,-- will be populated as instances are defined
-	}
-	local instance = { -- top-level instance to be installed in the module
-		[Data.MODEL] = model,
-	}
-	
-	-- add the base
-	if base then
-		-- install base class:
-		model[Data.DEFN]._base = base
-		
-		-- populate the instance fields from the base type
-		for k, v in pairs(base) do
-			if 'string' == type(k) then -- copy only the base type instance fields 
-				instance[k] = v
-			end
-		end
-	end
-	
-	-- populate the model table
-	for i, decl in ipairs(param) do	
-	
-		if decl[Data.MODEL] then -- annotation at the Struct level
-			assert(Data.ANNOTATION == decl[Data.MODEL][Data.TYPE],
-					table.concat{'not an annotation: ', tostring(decl)})		
-		else -- struct member definition
-			local role, element = decl[1], decl[2]	
-	
-			assert('string' == type(role), 
-			  table.concat{'invalid struct member name: ', tostring(role)})
-			assert('table' == type(element), 
-			  table.concat{'undefined type for struct member "', 
-			  		tostring(role), '": ', tostring(element)})
-			assert(nil ~= element[Data.MODEL], 
-			  table.concat{'invalid type for struct member "', 
-			  		tostring(role), '"'})
-			  		
-			local element_type = element[Data.MODEL][Data.TYPE]
-			assert(Data.STRUCT == element_type or 
-			   Data.UNION == element_type or
-			   Data.ATOM == element_type or
-			   Data.ENUM == element_type or
-			   Data.TYPEDEF == element_type,
-			   table.concat{'member must be a struct|union|atom|enum|typedef: ', 
-			   				 tostring(name)})
-			  		
-			-- check for conflicting  member fields
-			assert(nil == instance[role], 
-				table.concat{'member name already defined: ', role})
-					
-		
-			-- decide if the 3rd entry is a sequence length or not?
-			local seq_capacity = 'number' == type(decl[3]) and decl[3] or nil
-					
-			local collection = nil
-			
-			-- ensure that the rest of the declaration entries are annotations:	
-			-- start with the 3rd or the 4th entry depending upon whether it 
-			-- was a sequence or not:
-			for j = (seq_capacity and 4 or 3), #decl do
-				assert('table' == type(decl[j]),
-					table.concat{'annotation expected: ', tostring(role), 
-								 ' : ', tostring(decl[j])})
-				assert(Data.ANNOTATION == decl[j][Data.MODEL][Data.TYPE],
-					table.concat{'not an annotation: ', tostring(role), 
-								 ' : ', tostring(decl[j])})	
-								 
-				-- is this an array?
-				if 'Array' == decl[j][Data.MODEL][Data.NAME] then
-					collection = decl[j]
-				end
-			end
-				
-			-- populate the instance/role fields
-			if collection then
-				local template = element
-				for i = 1, #collection - 1  do -- create iterator for inner dimensions
-					template = Data.seq('', template) -- unnamed iterator
-				end
-				instance[role] = Data.seq(role, template)
-			elseif seq_capacity then
-				instance[role] = Data.seq(role, element)
-			else
-				instance[role] = Data.instance(role, element)
-			end
-		end
-		
-		-- save the meta-data
-		-- as an array to get the correct ordering
-		table.insert(model[Data.DEFN], decl) 
-	end
-	
-	-- add/replace the definition in the container module
-	if self[name] then print('WARNING: replacing ', name) end
-	self[name] = instance
-	table.insert(self[Data.MODEL][Data.DEFN], instance)
-		
-	return instance
-end
-
-function Data:Union(param) 
-	assert('table' == type(param), 
-		   table.concat{'invalid union specification: ', tostring(param)})
-
-	-- pop the name
-	local name = param[1]   table.remove(param, 1)
-	assert('string' == type(name), 
-		   table.concat{'invalid union name: ', tostring(name)})
-		   
-	-- pop the discriminator
-	local discriminator = param[1]   table.remove(param, 1)
-	assert('table' == type(discriminator), 
-			table.concat{'invalid union discriminator', name})
-	assert(nil ~= discriminator[Data.MODEL], 
-			table.concat{'undefined union discriminator type: ', name})
-		
-	local model = { -- meta-data defining the struct
-		[Data.NAME] = name,
-		[Data.TYPE] = Data.UNION,
-		[Data.DEFN] = {},     -- will be populated as model elements are defined 
-		[Data.INSTANCE] = nil,-- will be populated as instances are defined
-	}
-	local instance = { -- top-level instance to be installed in the module
-		[Data.MODEL] = model,
-	}
-	
-	-- add the discriminator
-	model[Data.DEFN]._d = discriminator
-	instance._d = '#'
-
-	-- populate the model table
-    -- print('DEBUG Union 1: ', name, discriminator[Data.MODEL][Data.TYPE](), discriminator[Data.MODEL][Data.NAME])			
-	for i, decl in ipairs(param) do	
-
-		if decl[Data.MODEL] then -- annotation at the Union level
-			assert(Data.ANNOTATION == decl[Data.MODEL][Data.TYPE],
-					table.concat{'not an annotation: ', tostring(decl)})
-			-- save the meta-data
-			table.insert(model[Data.DEFN], decl) 	
-				
-		else -- union member definition
-			local case = nil
-			if #decl > 1 then case = decl[1]  table.remove(decl, 1) end -- case
-			
-			local role, element = decl[1][1], decl[1][2]
-			-- print('DEBUG Union 2: ', case, role, element)
-					
-			Data.assert_case(case, discriminator)
-			assert('string' == type(role), 
-			  table.concat{'invalid union member name: ', tostring(role)})
-			assert('table' == type(element), 
-			  table.concat{'undefined type for union member "', 
-			  		tostring(role), '": ', tostring(element)})
-			assert(nil ~= element[Data.MODEL], 
-			  table.concat{'invalid type for union member "', 
-			  		tostring(role), '"'})
-			 
-			local element_type = element[Data.MODEL][Data.TYPE]
-			assert(Data.STRUCT == element_type or 
-			   Data.UNION == element_type or
-			   Data.ATOM == element_type or
-			   Data.ENUM == element_type or
-			   Data.TYPEDEF == element_type,
-			   table.concat{'member must be a struct|union|atom|enum|typedef: ', 
-			   				 tostring(name)})
-			
-			-- decide if the 3rd entry is a sequence length or not?
-			local seq_capacity = 'number' == type(decl[1][3]) and decl[1][3] or nil
-
-			local collection = nil
-				
-			-- ensure that the rest of the declaration entries are annotations	
-			-- start with the 3rd or the 4th entry depending upon whether it 
-			-- was a sequence or not:
-			for j = (seq_capacity and 4 or 3), #decl[1] do
-								
-				assert('table' == type(decl[1][j]),
-					table.concat{'annotation expected: ', tostring(role), 
-								 ' : ', tostring(decl[1][j])})
-				assert(Data.ANNOTATION == decl[1][j][Data.MODEL][Data.TYPE],
-					table.concat{'not an annotation: ', tostring(role), 
-								 ' : ', tostring(decl[1][j])})		
-			
-				-- is this an array?
-				if 'Array' == decl[1][j][Data.MODEL][Data.NAME] then
-					collection = decl[1][j]
-				end
-			end
-				
-			-- populate the instance/role fields
-			if collection then
-				local template = element
-				for i = 1, #collection - 1  do -- create iterator for inner dimensions
-					template = Data.seq('', template) -- unnamed iterator
-				end
-				instance[role] = Data.seq(role, template)
-			elseif seq_capacity then
-				instance[role] = Data.seq(role, element)
-			else
-				instance[role] = Data.instance(role, element)
-			end
-
-			-- save the meta-data
-			-- as an array to get the correct ordering
-			-- NOTE: default case is stored as a 'nil'
-			table.insert(model[Data.DEFN], { case, decl[1] }) 
-		end
-	end
-	
-	-- add/replace the definition in the container module
-	if self[name] then print('WARNING: replacing ', name) end
-	self[name] = instance
-	table.insert(self[Data.MODEL][Data.DEFN], instance)
-		
-	return instance
-end
-
 function Data:Enum(param) 
 	assert('table' == type(param), 
 		   table.concat{'invalid enum specification: ', tostring(param)})
@@ -605,6 +365,152 @@ function Data:Enum(param)
 	return instance
 end
 
+function Data:Struct(param) 
+	assert('table' == type(param), 
+		   table.concat{'invalid struct specification: ', tostring(param)})
+
+	-- pop the name
+	local name = param[1]   table.remove(param, 1)
+	assert('string' == type(name), 
+		   table.concat{'invalid struct name: ', tostring(name)})
+		   
+	-- OPTIONAL base: pop the next element if it is a base model element
+	local base
+	if 'table' == type(param[1]) 
+		and nil ~= param[1][Data.MODEL]
+		and Data.ANNOTATION ~= param[1][Data.MODEL][Data.TYPE] then
+		base = param[1]   table.remove(param, 1)
+		assert(Data.STRUCT == base[Data.MODEL][Data.TYPE], 
+			table.concat{'base type must be a struct: ', name})
+	end
+
+	local model = { -- meta-data defining the struct
+		[Data.NAME] = name,
+		[Data.TYPE] = Data.STRUCT,
+		[Data.DEFN] = {},     -- will be populated as model elements are defined 
+		[Data.INSTANCE] = nil,-- will be populated as instances are defined
+	}
+	local instance = { -- top-level instance to be installed in the module
+		[Data.MODEL] = model,
+	}
+	
+	-- add the base
+	if base then
+		-- install base class:
+		model[Data.DEFN]._base = base
+		
+		-- populate the instance fields from the base type
+		for k, v in pairs(base) do
+			if 'string' == type(k) then -- copy only the base type instance fields 
+				instance[k] = v
+			end
+		end
+	end
+	
+	-- populate the model table
+	for i, decl in ipairs(param) do	
+	
+		if decl[Data.MODEL] then -- annotation at the Struct level
+			assert(Data.ANNOTATION == decl[Data.MODEL][Data.TYPE],
+					table.concat{'not an annotation: ', tostring(decl)})
+
+			-- save the meta-data
+			table.insert(model[Data.DEFN], decl) 		
+		else -- struct member definition
+			local role, template = decl[1], decl[2]
+			local member_instance, member_definition = Data.create_member(decl)
+		
+			-- check for conflicting  member fields
+			assert(nil == instance[role], 
+			  	   table.concat{'member name already defined: ', role})
+	
+			-- insert the role
+			instance[role] = member_instance
+			
+			-- save the meta-data
+			-- as an array to get the correct ordering
+			table.insert(model[Data.DEFN], member_definition) 
+		end
+	end
+	
+	-- add/replace the definition in the container module
+	if self[name] then print('WARNING: replacing ', name) end
+	self[name] = instance
+	table.insert(self[Data.MODEL][Data.DEFN], instance)
+		
+	return instance
+end
+
+function Data:Union(param) 
+	assert('table' == type(param), 
+		   table.concat{'invalid union specification: ', tostring(param)})
+
+	-- pop the name
+	local name = param[1]   table.remove(param, 1)
+	assert('string' == type(name), 
+		   table.concat{'invalid union name: ', tostring(name)})
+		   
+	-- pop the discriminator
+	local discriminator = param[1]   table.remove(param, 1)
+	assert('table' == type(discriminator), 
+			table.concat{'invalid union discriminator', name})
+	assert(nil ~= discriminator[Data.MODEL], 
+			table.concat{'undefined union discriminator type: ', name})
+		
+	local model = { -- meta-data defining the struct
+		[Data.NAME] = name,
+		[Data.TYPE] = Data.UNION,
+		[Data.DEFN] = {},     -- will be populated as model elements are defined 
+		[Data.INSTANCE] = nil,-- will be populated as instances are defined
+	}
+	local instance = { -- top-level instance to be installed in the module
+		[Data.MODEL] = model,
+	}
+	
+	-- add the discriminator
+	model[Data.DEFN]._d = discriminator
+	instance._d = '#'
+
+	-- populate the model table
+    -- print('DEBUG Union 1: ', name, discriminator[Data.MODEL][Data.TYPE](), discriminator[Data.MODEL][Data.NAME])			
+	for i, decl in ipairs(param) do	
+
+		if decl[Data.MODEL] then -- annotation at the Union level
+			assert(Data.ANNOTATION == decl[Data.MODEL][Data.TYPE],
+					table.concat{'not an annotation: ', tostring(decl)})
+			
+			-- save the meta-data
+			table.insert(model[Data.DEFN], decl) 	
+				
+		else -- union member definition
+			local case = nil
+			if #decl > 1 then case = decl[1]  table.remove(decl, 1) end -- case
+			
+			local role, element = decl[1][1], decl[1][2]
+			-- print('DEBUG Union 2: ', case, role, element)
+					
+			Data.assert_case(case, discriminator)
+			
+			local member_instance, member_definition = Data.create_member(decl[1])
+
+			-- insert the role
+			instance[role] = member_instance
+			
+			-- save the meta-data
+			-- as an array to get the correct ordering
+			-- NOTE: default case is stored as a 'nil'
+			table.insert(model[Data.DEFN], { case, member_definition }) 
+		end
+	end
+	
+	-- add/replace the definition in the container module
+	if self[name] then print('WARNING: replacing ', name) end
+	self[name] = instance
+	table.insert(self[Data.MODEL][Data.DEFN], instance)
+		
+	return instance
+end
+
 --[[
 	IDL: typedef seq<MyStruct> MyStructSeq
 	Lua: Data:Typedef{'MyStructSeq', Data.MyStruct, Data.Seq() }
@@ -643,6 +549,76 @@ function Data:Typedef(param)
 	table.insert(self[Data.MODEL][Data.DEFN], instance)
 		
 	return instance
+end
+
+-- create_member() - define a struct or union member (without the case)
+-- @param member_definition - array consists of entries in the following order:
+--           role     - the member role to instantiate
+--           template - the kind of member to instantiate (previously defined)
+--           ...      - optional list of annotations including whether the member is an 
+--                      array or sequence    
+-- @return the member instance and the member definition
+function Data.create_member(member_definition)
+	local role, template = member_definition[1], member_definition[2]
+	
+	-- ensure pre-conditions
+	assert('string' == type(role), 
+			table.concat{'invalid member name: ', tostring(role)})
+	assert('table' == type(template), 
+			table.concat{'undefined type for member "', 
+						  tostring(role), '": ', tostring(template)})
+	assert(nil ~= template[Data.MODEL], 
+		   table.concat{'invalid type for struct member "', 
+		   tostring(role), '"'})
+
+	local template_type = template[Data.MODEL][Data.TYPE]
+	assert(Data.STRUCT == template_type or 
+		   Data.UNION == template_type or
+		   Data.ATOM == template_type or
+		   Data.ENUM == template_type or
+		   Data.TYPEDEF == template_type,
+		   table.concat{'member "', tostring(role), 
+					    '" must be a struct|union|atom|enum|typedef: '})
+
+	-- decide if the 1st entry is a sequence length or not?
+	local seq_capacity = 
+		'number' == type(member_definition[3]) and member_definition[3] or nil
+
+	local collection = nil
+
+	-- ensure that the rest of the member definition entries are annotations:	
+	--
+	-- start with the 3rd or the 4th entry depending upon whether it 
+	-- was a sequence or not:
+	for j = (seq_capacity and 4 or 3), #member_definition do
+		assert('table' == type(member_definition[j]),
+				table.concat{'annotation expected "', tostring(role), 
+						     '" : ', tostring(member_definition[j])})
+		assert(Data.ANNOTATION == member_definition[j][Data.MODEL][Data.TYPE],
+				table.concat{'not an annotation: "', tostring(role), 
+							'" : ', tostring(member_definition[j])})	
+
+		-- is this an array?
+		if 'Array' == member_definition[j][Data.MODEL][Data.NAME] then
+			collection = member_definition[j]
+		end
+	end
+
+	-- populate the member_instance fields
+	local member_instance = nil
+	if collection then
+		local iterator = template
+		for i = 1, #collection - 1  do -- create iterator for inner dimensions
+			iterator = Data.seq('', iterator) -- unnamed iterator
+		end
+		member_instance = Data.seq(role, iterator)
+	elseif seq_capacity then
+		member_instance = Data.seq(role, template)
+	else
+		member_instance = Data.instance(role, template)
+	end
+
+	return member_instance, member_definition
 end
 
 -- meta-data annotations ---
