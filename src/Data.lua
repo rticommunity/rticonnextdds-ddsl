@@ -563,8 +563,8 @@ function Data:Typedef(param)
 	local model = { -- meta-data defining the typedef
 		[Data.NAME] = name,
 		[Data.TYPE] = Data.TYPEDEF,
-		[Data.DEFN] = { _alias = alias, _alias_seq_capacity = tonumber(collection) }, 
-		[Data.INSTANCE] = nil,-- always nil
+		[Data.DEFN] = {}, -- exactly 1 entry: '', underlying alias, array/sequence
+		[Data.INSTANCE] = nil,
 	}
 	local instance = { -- top-level instance to be installed in the module
 		[Data.MODEL] = model,
@@ -576,7 +576,7 @@ function Data:Typedef(param)
 							Data.create_member{ role, alias, collection }
 	
 	-- insert the role
-	instance[role] = member_instance
+	-- instance[role] = member_instance
 	
 	--[[
 	print('DEBUG Data.Typedef 1: ', name, alias[Data.MODEL][Data.NAME],
@@ -788,14 +788,14 @@ function Data.instance(name, template)
 		alias = decl[2]
 		alias_type = alias[Data.MODEL][Data.TYPE]
 		
-		alias_sequence = template[Data.MODEL][Data.DEFN]._alias_seq_capacity
-
 		for i = 3, #decl do
-			if decl[i] and 'table' == type(decl[i]) and -- TODO: remove type
+			if 'table' == type(decl[i]) and -- TODO: remove type check and else
 			   Data.ARRAY == decl[i][Data.MODEL] then
 				alias_collection = template[Data.MODEL][Data.DEFN][1][i]
 				-- print('DEBUG Data.instance 2: ', name, alias_collection)
 				break
+			else
+				alias_sequence = decl[i]
 			end
 		end
 	end
@@ -828,7 +828,7 @@ function Data.instance(name, template)
 	-- not a recursive typedef
 	---------------------------------------------------------------------------
 	
-	-- sequence of underlying type (which is not a typedef)
+	-- sequence of underlying types (which is not a typedef)
 	if alias_sequence or alias_collection then -- the sequence of alias elements
 		instance = Data.seq(name, template) 
 		return instance
@@ -1130,7 +1130,8 @@ function Data.print_idl(instance, indent_string)
 	end
 	
 	if Data.TYPEDEF == mytype then
-		local alias, seq_capacity = mydefn._alias, mydefn._alias_seq_capacity
+		local decl = mydefn[1]
+		local alias, seq_capacity = decl[2], decl[3]
 		if seq_capacity then
 			print(string.format('%s%s seq<%s%s> %s;\n', indent_string, mytype(), 
 							    alias[Data.MODEL][Data.NAME], 
