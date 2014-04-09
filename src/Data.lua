@@ -512,8 +512,11 @@ function Data:Union(param)
 end
 
 --[[
-	IDL: typedef seq<MyStruct> MyStructSeq
+	IDL: typedef sequence<MyStruct> MyStructSeq
 	Lua: Data:Typedef{'MyStructSeq', Data.MyStruct, Data.Seq() }
+	
+	IDL: typedef MyStruct MyStructArray[10][20]
+	Lua: Data:Typedef{'MyStructArray', Data.MyStruct, Data.Array(10, 20) }
 --]]
 function Data:Typedef(param) 
 	assert('table' == type(param), 
@@ -1647,24 +1650,7 @@ Test:Struct{'MyArrays1',
 	{ 'names', Test.Name, Data.Array(12, 15, 18) },
 }
 
-Test:Union{'MyArrays2', Test.Days,
-	-- 1-D
-	{ 'MON',
-		{'ints', Data.double, Data.Array(3) }},
-
-	-- 2-D
-	{ 'TUE',
-		{ 'days', Test.Days, Data.Array(6, 9) }},
-	
-	-- 3-D
-	{--
-		{ 'names', Test.Name, Data.Array(12, 15, 18) }},	
-}
-
--- Test:Typedef{'MyTypedefArray', Test.Name, Data.Array(10) }
--- Test:Typedef{'MyTypedefArray2', Test.Name, Data.Array(10, 10) }
-
-function Test:test_arrays()
+function Test:test_arrays1()
 	-- structure with arrays
 	self:print(Test.MyArrays1)
 	
@@ -1681,7 +1667,23 @@ function Test:test_arrays()
 	assert(Test.MyArrays1.names(1)(1)(1).first == 'names[1][1][1].first')
 	assert(Test.MyArrays1.names(1)(1)(1).nicknames() == 'names[1][1][1].nicknames#')
 	assert(Test.MyArrays1.names(1)(1)(1).nicknames(1) == 'names[1][1][1].nicknames[1]')
+end
 
+Test:Union{'MyArrays2', Test.Days,
+	-- 1-D
+	{ 'MON',
+		{'ints', Data.double, Data.Array(3) }},
+
+	-- 2-D
+	{ 'TUE',
+		{ 'days', Test.Days, Data.Array(6, 9) }},
+	
+	-- 3-D
+	{--
+		{ 'names', Test.Name, Data.Array(12, 15, 18) }},	
+}
+
+function Test:test_arrays2()
 	-- union with arrays
 	self:print(Test.MyArrays2)
 	
@@ -1698,6 +1700,31 @@ function Test:test_arrays()
 	assert(Test.MyArrays2.names(1)(1)(1).first == 'names[1][1][1].first')
 	assert(Test.MyArrays2.names(1)(1)(1).nicknames() == 'names[1][1][1].nicknames#')
 	assert(Test.MyArrays2.names(1)(1)(1).nicknames(1) == 'names[1][1][1].nicknames[1]')
+end
+
+function Test:Xtest_arrays3()
+	Test:Typedef{'MyNameArray', Test.Name, Data.Array(10) }
+	Test:Typedef{'MyNameArray2', Test.Name, Data.Array(10, 10) }
+
+	Test:Struct{'MyArrays3',
+		-- 1-D
+		{ 'myNames', Test.MyNameArray },
+		
+		-- 2-D
+		{ 'myNamesArray', Test.MyNameArray, Data.Array(10) },
+		
+		-- 2-D
+		{ 'myNames2', Test.MyNameArray2 },
+		
+		-- 3-D
+		{ 'myNames2Array', Test.MyNameArray2, Data.Array(10) },
+
+		-- 4-D
+		{ 'myNames2Array2', Test.MyNameArray2, Data.Array(10, 20) },
+	}
+
+	self:print(Test.MyArrays3)
+	
 end
 
 function Test.print_index(instance)
