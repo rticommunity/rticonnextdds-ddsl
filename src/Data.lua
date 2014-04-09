@@ -393,7 +393,7 @@ function Data:Struct(param)
 			-- decide if the 3rd entry is a sequence length or not?
 			local seq_capacity = 'number' == type(decl[3]) and decl[3] or nil
 					
-			local array = nil
+			local collection = nil
 			
 			-- ensure that the rest of the declaration entries are annotations:	
 			-- start with the 3rd or the 4th entry depending upon whether it 
@@ -408,14 +408,14 @@ function Data:Struct(param)
 								 
 				-- is this an array?
 				if 'Array' == decl[j][Data.MODEL][Data.NAME] then
-					array = decl[j]
+					collection = decl[j]
 				end
 			end
 				
 			-- populate the instance/role fields
-			if array then
+			if collection then
 				local template = element
-				for i = 1, #array - 1  do -- create iterator for inner dimensions
+				for i = 1, #collection - 1  do -- create iterator for inner dimensions
 					template = Data.seq('', template) -- unnamed iterator
 				end
 				instance[role] = Data.seq(role, template)
@@ -507,21 +507,35 @@ function Data:Union(param)
 			
 			-- decide if the 3rd entry is a sequence length or not?
 			local seq_capacity = 'number' == type(decl[1][3]) and decl[1][3] or nil
-					
+
+			local collection = nil
+				
 			-- ensure that the rest of the declaration entries are annotations	
 			-- start with the 3rd or the 4th entry depending upon whether it 
 			-- was a sequence or not:
-			for j = (seq_capacity and 4 or 3), #decl do
+			for j = (seq_capacity and 4 or 3), #decl[1] do
+								
 				assert('table' == type(decl[1][j]),
 					table.concat{'annotation expected: ', tostring(role), 
 								 ' : ', tostring(decl[1][j])})
 				assert(Data.ANNOTATION == decl[1][j][Data.MODEL][Data.TYPE],
 					table.concat{'not an annotation: ', tostring(role), 
 								 ' : ', tostring(decl[1][j])})		
-			end
 			
+				-- is this an array?
+				if 'Array' == decl[1][j][Data.MODEL][Data.NAME] then
+					collection = decl[1][j]
+				end
+			end
+				
 			-- populate the instance/role fields
-			if seq_capacity then
+			if collection then
+				local template = element
+				for i = 1, #collection - 1  do -- create iterator for inner dimensions
+					template = Data.seq('', template) -- unnamed iterator
+				end
+				instance[role] = Data.seq(role, template)
+			elseif seq_capacity then
 				instance[role] = Data.seq(role, element)
 			else
 				instance[role] = Data.instance(role, element)
@@ -647,6 +661,8 @@ end
 
 -- An array is implemented as a special annotation, whose attributes are 
 -- positive integer constants, which specify the array dimensions
+-- NOTE: Since an array is an annotation, it can appear anywhere after
+--       a member type declaration
 Data:Annotation('Array')
 function Data.Array(n, ...)
 
@@ -1635,7 +1651,7 @@ function Test:test_typedef_seq()
 end
 
 -- Arrays
-Test:Struct{'MyArray',
+Test:Struct{'MyArrays1',
 	-- 1-D
 	{ 'ints', Data.double, Data.Array(3) },
 
@@ -1646,22 +1662,54 @@ Test:Struct{'MyArray',
 	{ 'names', Test.Name, Data.Array(12, 15, 18) },
 }
 
+Test:Union{'MyArrays2', Test.Days,
+	-- 1-D
+	{ 'MON',
+		{'ints', Data.double, Data.Array(3) }},
+
+	-- 2-D
+	{ 'TUE',
+		{ 'days', Test.Days, Data.Array(6, 9) }},
+	
+	-- 3-D
+	{--
+		{ 'names', Test.Name, Data.Array(12, 15, 18) }},	
+}
+
 function Test:test_arrays()
-	self:print(Test.MyArray)
+	-- structure with arrays
+	self:print(Test.MyArrays1)
 	
-	assert(Test.MyArray.ints() == 'ints#')
-	assert(Test.MyArray.ints(1) == 'ints[1]')
+	assert(Test.MyArrays1.ints() == 'ints#')
+	assert(Test.MyArrays1.ints(1) == 'ints[1]')
 	
-	assert(Test.MyArray.days() == 'days#')
-	assert(Test.MyArray.days(1)() == 'days[1]#')
-	assert(Test.MyArray.days(1)(1) == 'days[1][1]')
+	assert(Test.MyArrays1.days() == 'days#')
+	assert(Test.MyArrays1.days(1)() == 'days[1]#')
+	assert(Test.MyArrays1.days(1)(1) == 'days[1][1]')
 	
-	assert(Test.MyArray.names() == 'names#')
-	assert(Test.MyArray.names(1)() == 'names[1]#')
-	assert(Test.MyArray.names(1)(1)() == 'names[1][1]#')
-	assert(Test.MyArray.names(1)(1)(1).first == 'names[1][1][1].first')
-	assert(Test.MyArray.names(1)(1)(1).nicknames() == 'names[1][1][1].nicknames#')
-	assert(Test.MyArray.names(1)(1)(1).nicknames(1) == 'names[1][1][1].nicknames[1]')
+	assert(Test.MyArrays1.names() == 'names#')
+	assert(Test.MyArrays1.names(1)() == 'names[1]#')
+	assert(Test.MyArrays1.names(1)(1)() == 'names[1][1]#')
+	assert(Test.MyArrays1.names(1)(1)(1).first == 'names[1][1][1].first')
+	assert(Test.MyArrays1.names(1)(1)(1).nicknames() == 'names[1][1][1].nicknames#')
+	assert(Test.MyArrays1.names(1)(1)(1).nicknames(1) == 'names[1][1][1].nicknames[1]')
+
+	-- union with arrays
+	self:print(Test.MyArrays2)
+	
+	assert(Test.MyArrays2.ints() == 'ints#')
+	assert(Test.MyArrays2.ints(1) == 'ints[1]')
+	
+	assert(Test.MyArrays2.days() == 'days#')
+	assert(Test.MyArrays2.days(1)() == 'days[1]#')
+	assert(Test.MyArrays2.days(1)(1) == 'days[1][1]')
+	
+	assert(Test.MyArrays2.names() == 'names#')
+	assert(Test.MyArrays2.names(1)() == 'names[1]#')
+	assert(Test.MyArrays2.names(1)(1)() == 'names[1][1]#')
+	assert(Test.MyArrays2.names(1)(1)(1).first == 'names[1][1][1].first')
+	assert(Test.MyArrays2.names(1)(1)(1).nicknames() == 'names[1][1][1].nicknames#')
+	assert(Test.MyArrays2.names(1)(1)(1).nicknames(1) == 'names[1][1][1].nicknames[1]')
 end
 
 function Test.print_index(instance)
