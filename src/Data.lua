@@ -1195,13 +1195,13 @@ function Data.print_idl_member(decl, content_indent_string)
 	
 	local output_member = ''		
 	if seq_capacity == nil then -- not a sequence
-		output_member = string.format('%s%s %s;', content_indent_string, 
+		output_member = string.format('%s%s %s', content_indent_string, 
 		element[Data.MODEL][Data.NAME], role)
 	elseif seq_capacity < 0 then -- unbounded sequence
-		output_member = string.format('%sseq<%s> %s;', content_indent_string, 
+		output_member = string.format('%sseq<%s> %s', content_indent_string, 
 		element[Data.MODEL][Data.NAME], role)
 	else -- bounded sequence
-		output_member = string.format('%sseq<%s,%d> %s;', content_indent_string, 
+		output_member = string.format('%sseq<%s,%d> %s', content_indent_string, 
 		element[Data.MODEL][Data.NAME], seq_capacity, role)
 	end
 
@@ -1210,15 +1210,24 @@ function Data.print_idl_member(decl, content_indent_string)
 	--   was a sequence or not:
 	local output_annotations = nil
 	for j = (seq_capacity and 4 or 3), #decl do
-		output_annotations = string.format('%s%s ', 
-		output_annotations or '', 
-		tostring(decl[j]))	
+		
+		local name = decl[j][Data.MODEL][Data.NAME]
+		
+		if 'Array' == name then
+			for i = 1, #decl[j] do
+				output_member = string.format('%s[%d]', output_member, decl[j][i]) 
+			end
+		else
+			output_annotations = string.format('%s%s ', 
+									output_annotations or '', 
+									tostring(decl[j]))	
+		end
 	end
 
 	if output_annotations then
-		print(string.format('%s //%s', output_member, output_annotations))
+		print(string.format('%s; //%s', output_member, output_annotations))
 	else
-		print(output_member)
+		print(string.format('%s;', output_member))
 	end
 end
 
@@ -1675,6 +1684,9 @@ Test:Union{'MyArrays2', Test.Days,
 	{--
 		{ 'names', Test.Name, Data.Array(12, 15, 18) }},	
 }
+
+-- Test:Typedef{'MyTypedefArray', Test.Name, Data.Array(10) }
+-- Test:Typedef{'MyTypedefArray2', Test.Name, Data.Array(10, 10) }
 
 function Test:test_arrays()
 	-- structure with arrays
