@@ -350,6 +350,23 @@ function Tester:test_typedef()
 	self:print(Data.MyAddress2)
 	
 	self:print(Data.MyTypedef)
+	
+	-- rawDouble
+	assert(Data.MyTypedef.rawDouble == 'rawDouble')
+	assert(Data.MyTypedef.myDouble == 'myDouble')
+	assert(Data.MyTypedef.myDouble2 == 'myDouble2')
+	-- name
+	assert(Data.MyTypedef.name.first == 'name.first')
+	assert(Data.MyTypedef.name.nicknames() == 'name.nicknames#')	
+	assert(Data.MyTypedef.name.nicknames(1) == 'name.nicknames[1]')
+	-- myName
+	assert(Data.MyTypedef.myName.first == 'myName.first')
+	assert(Data.MyTypedef.myName.nicknames() == 'myName.nicknames#')	
+	assert(Data.MyTypedef.myName.nicknames(1) == 'myName.nicknames[1]')
+	-- myAddress2
+	assert(Data.MyTypedef.myAddress2.name.first == 'myAddress2.name.first')
+	assert(Data.MyTypedef.myAddress2.name.nicknames() == 'myAddress2.name.nicknames#')	
+	assert(Data.MyTypedef.myAddress2.name.nicknames(1) == 'myAddress2.name.nicknames[1]')
 end
 
 Tester[#Tester+1] = 'test_typedef_seq'
@@ -439,13 +456,16 @@ function Tester:test_arrays1()
 	-- structure with arrays
 	self:print(Data.MyArrays1)
 	
+	-- ints
 	assert(Data.MyArrays1.ints() == 'ints#')
 	assert(Data.MyArrays1.ints(1) == 'ints[1]')
 	
+	-- days
 	assert(Data.MyArrays1.days() == 'days#')
 	assert(Data.MyArrays1.days(1)() == 'days[1]#')
 	assert(Data.MyArrays1.days(1)(1) == 'days[1][1]')
 	
+	-- names
 	assert(Data.MyArrays1.names() == 'names#')
 	assert(Data.MyArrays1.names(1)() == 'names[1]#')
 	assert(Data.MyArrays1.names(1)(1)() == 'names[1][1]#')
@@ -459,13 +479,16 @@ function Tester:test_arrays2()
 	-- union with arrays
 	self:print(Data.MyArrays2)
 	
+	-- ints
 	assert(Data.MyArrays2.ints() == 'ints#')
 	assert(Data.MyArrays2.ints(1) == 'ints[1]')
 	
+	-- days
 	assert(Data.MyArrays2.days() == 'days#')
 	assert(Data.MyArrays2.days(1)() == 'days[1]#')
 	assert(Data.MyArrays2.days(1)(1) == 'days[1][1]')
 	
+	-- names
 	assert(Data.MyArrays2.names() == 'names#')
 	assert(Data.MyArrays2.names(1)() == 'names[1]#')
 	assert(Data.MyArrays2.names(1)(1)() == 'names[1][1]#')
@@ -475,20 +498,20 @@ function Tester:test_arrays2()
 end
 
 Tester[#Tester+1] = 'test_arrays3'
-function Tester:Xtest_arrays3()
+function Tester:test_arrays3()
 	Data:Typedef{'MyNameArray', Data.Name, Data.Array(10) }
-	Data:Typedef{'MyNameArray2', Data.Name, Data.Array(10, 10) }
+	Data:Typedef{'MyNameArray2', Data.MyNameArray, Data.Array(10) }
 
 	Data:Struct{'MyArrays3',
 		-- 1-D
 		{ 'myNames', Data.MyNameArray },
-		
+
 		-- 2-D
 		{ 'myNamesArray', Data.MyNameArray, Data.Array(10) },
-		
+	
 		-- 2-D
 		{ 'myNames2', Data.MyNameArray2 },
-		
+				
 		-- 3-D
 		{ 'myNames2Array', Data.MyNameArray2, Data.Array(10) },
 
@@ -498,24 +521,27 @@ function Tester:Xtest_arrays3()
 
 	self:print(Data.MyArrays3)
 
+	-- myNames
 	assert(Data.MyArrays3.myNames() == 'myNames#')
 	assert(Data.MyArrays3.myNames(1).first == 'myNames[1].first')
 	assert(Data.MyArrays3.myNames(1).nicknames() == 'myNames[1].nicknames#')
 	assert(Data.MyArrays3.myNames(1).nicknames(1) == 'myNames[1].nicknames[1]')
 	
+	-- myNamesArray
 	assert(Data.MyArrays3.myNamesArray() == 'myNamesArray#')
 	assert(Data.MyArrays3.myNamesArray(1)() == 'myNamesArray[1]#')
 	assert(Data.MyArrays3.myNamesArray(1)(1).first == 'myNamesArray[1][1].first')
 	assert(Data.MyArrays3.myNamesArray(1)(1).nicknames() == 'myNamesArray[1][1].nicknames#')
 	assert(Data.MyArrays3.myNamesArray(1)(1).nicknames(1) == 'myNamesArray[1][1].nicknames[1]')
-
+	
+	-- myNames2
 	assert(Data.MyArrays3.myNames2() == 'myNames2#')
 	assert(Data.MyArrays3.myNames2(1)() == 'myNames2[1]#')
 	assert(Data.MyArrays3.myNames2(1)(1).first == 'myNames2[1][1].first')
 	assert(Data.MyArrays3.myNames2(1)(1).nicknames() == 'myNames2[1][1].nicknames#')
 	assert(Data.MyArrays3.myNames2(1)(1).nicknames(1) == 'myNames2[1][1].nicknames[1]')
 
-
+	-- myNames2Array
 	assert(Data.MyArrays3.myNames2Array() == 'myNames2Array#')
 	assert(Data.MyArrays3.myNames2Array(1)() == 'myNames2Array[1]#')
 	assert(Data.MyArrays3.myNames2Array(1)(1)() == 'myNames2Array[1][1]#')
@@ -523,11 +549,12 @@ function Tester:Xtest_arrays3()
 	assert(Data.MyArrays3.myNames2Array(1)(1)(1).nicknames() == 'myNames2Array[1][1][1].nicknames#')
 	assert(Data.MyArrays3.myNames2Array(1)(1)(1).nicknames(1) == 'myNames2Array[1][1][1].nicknames[1]')
 
+	-- myNames2Array2
 	assert(Data.MyArrays3.myNames2Array2() == 'myNames2Array2#')
 	assert(Data.MyArrays3.myNames2Array2(1)() == 'myNames2Array2[1]#')
 	assert(Data.MyArrays3.myNames2Array2(1)(1)() == 'myNames2Array2[1][1]#')
 	assert(Data.MyArrays3.myNames2Array2(1)(1)(1)() == 'myNames2Array2[1][1][1]#')
-	assert(Data.MyArrays3.myNames2Array2(1)(1)(1)(1).first == 'myNames2Array2[1][1][1].first')
+	assert(Data.MyArrays3.myNames2Array2(1)(1)(1)(1).first == 'myNames2Array2[1][1][1][1].first')
 	assert(Data.MyArrays3.myNames2Array2(1)(1)(1)(1).nicknames() == 'myNames2Array2[1][1][1][1].nicknames#')
 	assert(Data.MyArrays3.myNames2Array2(1)(1)(1)(1).nicknames(1) == 'myNames2Array2[1][1][1][1].nicknames[1]')
 end
