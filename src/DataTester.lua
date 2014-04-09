@@ -475,7 +475,7 @@ function Tester:test_arrays2()
 end
 
 Tester[#Tester+1] = 'test_arrays3'
-function Tester:Xtest_arrays3()
+function Tester:test_arrays3()
 	Data:Typedef{'MyNameArray', Data.Name, Data.Array(10) }
 	Data:Typedef{'MyNameArray2', Data.Name, Data.Array(10, 10) }
 
@@ -497,6 +497,7 @@ function Tester:Xtest_arrays3()
 	}
 
 	self:print(Data.MyArrays3)
+	
 end
 
 -- main() - run the list of tests passed on the command line

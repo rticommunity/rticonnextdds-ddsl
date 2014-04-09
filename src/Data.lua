@@ -144,6 +144,9 @@
 -- 		 2. Provides an unnamed name-space ('root') that acts like a module
 --       3. But is technically not a user-defined module
 --
+--    Note that this class (table) is really just the meta-table for the user
+--    defined model elements.
+--
 -- NOTES
 --    Self-recursive definitions require a forward declaration, and generate a
 --    warning. To create a forward declaration, install the same name twice,
@@ -269,6 +272,11 @@ end
 --    - are installed as closures so that user can pass in custom attributes
 --    - attributes are not interpreted, and are preserved i.e. kept intact 
 --
+-- @param name =  the name of the annotation
+-- @param ...  = optional attributes that are preserved by the annotation
+-- @return the annotation closure and the underlying model definition
+--          instance_fn = the instance function to instantiate this annotation
+--          model = the data model describing this annotation
 -- Examples:
 --        IDL:      @Key
 --        Lua:      Data._.Key
@@ -313,7 +321,7 @@ function Data:Annotation(name, ...)
 	_[name] = instance_fn
 	table.insert(self[Data.MODEL][Data.DEFN], instance_fn(...)) -- default attributes
 	
-	return instance_fn
+	return instance_fn, model
 end
 
 function Data:Enum(param) 
@@ -523,29 +531,41 @@ function Data:Typedef(param)
 		   table.concat{'invalid typedef specification: ', tostring(param)})
 
 	-- ensure proper specification
-	local name, base, seq_capacity = param[1], param[2], param[3]
+	local name, alias, seq_capacity = param[1], param[2], param[3]
 	assert('string' == type(name), 
 			table.concat{'invalid typedef name: ', tostring(name)})
-	assert('table' == type(base), 
-		table.concat{'undefined base type for typedef: "', tostring(name), '"'})
-	assert(nil ~= base[Data.MODEL], 
-		table.concat{'invalid base type for typedef "', tostring(name), '"'})
-	assert(nil == seq_capacity or 'number' == type(seq_capacity),
+	assert('table' == type(alias), 
+		table.concat{'undefined alias type for typedef: "', tostring(name), '"'})
+	assert(nil ~= alias[Data.MODEL], 
+		table.concat{'invalid alias type for typedef "', tostring(name), '"'})
+	assert(nil == seq_capacity or 'number' == type(seq_capacity) or
+		   Data.ARRAY == seq_capacity[Data.MODEL], -- TODO: change name: seq_capacity
 		table.concat{'invalid sequence capacity for typedef "', tostring(name), '"'})
 
 	local model = { -- meta-data defining the typedef
 		[Data.NAME] = name,
 		[Data.TYPE] = Data.TYPEDEF,
-		[Data.DEFN] = { _alias = base, _alias_seq_capacity = seq_capacity }, 
+		[Data.DEFN] = { _alias = alias, _alias_seq_capacity = seq_capacity }, 
 		[Data.INSTANCE] = nil,-- always nil
 	}
 	local instance = { -- top-level instance to be installed in the module
 		[Data.MODEL] = model,
 	}
 	
+	--[[
 	-- like and atomic type, typedefs don't have instance members
 	-- these will be defined by the underlying aliased type
-					
+	local member_instance, member_definition = Data.create_member(decl)
+	
+	-- insert the role
+	instance[role] = member_instance
+	
+	-- save the meta-data
+	-- as an array to get the correct ordering
+	table.insert(model[Data.DEFN], member_definition) 
+			
+	--]]		
+			
 	-- add/replace the definition in the container module
 	if self[name] then print('WARNING: replacing ', name) end
 	self[name] = instance
@@ -602,7 +622,7 @@ function Data.create_member(member_definition)
 							'" : ', tostring(member_definition[j])})	
 
 		-- is this an array?
-		if 'Array' == member_definition[j][Data.MODEL][Data.NAME] then
+		if Data.ARRAY == member_definition[j][Data.MODEL] then
 			collection = member_definition[j]
 		end
 	end
@@ -642,7 +662,8 @@ end
 -- positive integer constants, which specify the array dimensions
 -- NOTE: Since an array is an annotation, it can appear anywhere after
 --       a member type declaration
-Data:Annotation('Array')
+local arrayFn, arrayModel = Data:Annotation('Array')
+Data.ARRAY = arrayModel -- 'Array' annotation's data model
 function Data.Array(n, ...)
 
 	-- ensure that we have an array of positive numbers
@@ -1194,7 +1215,7 @@ function Data.print_idl_member(decl, content_indent_string)
 		
 		local name = decl[j][Data.MODEL][Data.NAME]
 		
-		if 'Array' == name then
+		if Data.ARRAY == decl[j][Data.MODEL] then
 			for i = 1, #decl[j] do
 				output_member = string.format('%s[%d]', output_member, decl[j][i]) 
 			end
@@ -1312,5 +1333,5 @@ end
 
 --------------------------------------------------------------------------------
 return Data:Module{''} -- global module (unnamed)
---return Data
+--return Data._
 --------------------------------------------------------------------------------
