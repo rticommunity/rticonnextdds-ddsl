@@ -475,7 +475,7 @@ function Tester:test_arrays2()
 end
 
 Tester[#Tester+1] = 'test_arrays3'
-function Tester:test_arrays3()
+function Tester:Xtest_arrays3()
 	Data:Typedef{'MyNameArray', Data.Name, Data.Array(10) }
 	Data:Typedef{'MyNameArray2', Data.Name, Data.Array(10, 10) }
 
@@ -497,7 +497,39 @@ function Tester:test_arrays3()
 	}
 
 	self:print(Data.MyArrays3)
+
+	assert(Data.MyArrays3.myNames() == 'myNames#')
+	assert(Data.MyArrays3.myNames(1).first == 'myNames[1].first')
+	assert(Data.MyArrays3.myNames(1).nicknames() == 'myNames[1].nicknames#')
+	assert(Data.MyArrays3.myNames(1).nicknames(1) == 'myNames[1].nicknames[1]')
 	
+	assert(Data.MyArrays3.myNamesArray() == 'myNamesArray#')
+	assert(Data.MyArrays3.myNamesArray(1)() == 'myNamesArray[1]#')
+	assert(Data.MyArrays3.myNamesArray(1)(1).first == 'myNamesArray[1][1].first')
+	assert(Data.MyArrays3.myNamesArray(1)(1).nicknames() == 'myNamesArray[1][1].nicknames#')
+	assert(Data.MyArrays3.myNamesArray(1)(1).nicknames(1) == 'myNamesArray[1][1].nicknames[1]')
+
+	assert(Data.MyArrays3.myNames2() == 'myNames2#')
+	assert(Data.MyArrays3.myNames2(1)() == 'myNames2[1]#')
+	assert(Data.MyArrays3.myNames2(1)(1).first == 'myNames2[1][1].first')
+	assert(Data.MyArrays3.myNames2(1)(1).nicknames() == 'myNames2[1][1].nicknames#')
+	assert(Data.MyArrays3.myNames2(1)(1).nicknames(1) == 'myNames2[1][1].nicknames[1]')
+
+
+	assert(Data.MyArrays3.myNames2Array() == 'myNames2Array#')
+	assert(Data.MyArrays3.myNames2Array(1)() == 'myNames2Array[1]#')
+	assert(Data.MyArrays3.myNames2Array(1)(1)() == 'myNames2Array[1][1]#')
+	assert(Data.MyArrays3.myNames2Array(1)(1)(1).first == 'myNames2Array[1][1][1].first')
+	assert(Data.MyArrays3.myNames2Array(1)(1)(1).nicknames() == 'myNames2Array[1][1][1].nicknames#')
+	assert(Data.MyArrays3.myNames2Array(1)(1)(1).nicknames(1) == 'myNames2Array[1][1][1].nicknames[1]')
+
+	assert(Data.MyArrays3.myNames2Array2() == 'myNames2Array2#')
+	assert(Data.MyArrays3.myNames2Array2(1)() == 'myNames2Array2[1]#')
+	assert(Data.MyArrays3.myNames2Array2(1)(1)() == 'myNames2Array2[1][1]#')
+	assert(Data.MyArrays3.myNames2Array2(1)(1)(1)() == 'myNames2Array2[1][1][1]#')
+	assert(Data.MyArrays3.myNames2Array2(1)(1)(1)(1).first == 'myNames2Array2[1][1][1].first')
+	assert(Data.MyArrays3.myNames2Array2(1)(1)(1)(1).nicknames() == 'myNames2Array2[1][1][1][1].nicknames#')
+	assert(Data.MyArrays3.myNames2Array2(1)(1)(1)(1).nicknames(1) == 'myNames2Array2[1][1][1][1].nicknames[1]')
 end
 
 -- main() - run the list of tests passed on the command line
