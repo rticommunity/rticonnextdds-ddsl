@@ -464,7 +464,12 @@ function Data:Union(param)
 			table.concat{'invalid union discriminator', name})
 	assert(nil ~= discriminator[Data.MODEL], 
 			table.concat{'undefined union discriminator type: ', name})
-		
+	local discriminator_type = discriminator[Data.MODEL][Data.TYPE]
+	assert(Data.ATOM == discriminator_type or
+		   Data.ENUM == discriminator_type,
+		   table.concat{'discriminator must be an atom|enum: ', 
+		   				 tostring(name)})
+		   				 
 	local model = { -- meta-data defining the struct
 		[Data.NAME] = name,
 		[Data.TYPE] = Data.UNION,
@@ -534,13 +539,24 @@ function Data:Typedef(param)
 	local name, alias, seq_capacity = param[1], param[2], param[3]
 	assert('string' == type(name), 
 			table.concat{'invalid typedef name: ', tostring(name)})
+
 	assert('table' == type(alias), 
 		table.concat{'undefined alias type for typedef: "', tostring(name), '"'})
 	assert(nil ~= alias[Data.MODEL], 
-		table.concat{'invalid alias type for typedef "', tostring(name), '"'})
+		table.concat{'alias must be a data model for typedef "', tostring(name), '"'})
+	local alias_type = alias[Data.MODEL][Data.TYPE]
+	assert(Data.STRUCT == alias_type or 
+		   Data.UNION == alias_type or
+		   Data.ATOM == alias_type or
+		   Data.ENUM == alias_type or
+		   Data.TYPEDEF == alias_type,
+		   table.concat{'alias must be a struct|union|atom|enum|typedef: ', 
+		   				 tostring(name)})
+		   				 
 	assert(nil == seq_capacity or 'number' == type(seq_capacity) or
 		   Data.ARRAY == seq_capacity[Data.MODEL], -- TODO: change name: seq_capacity
 		table.concat{'invalid sequence capacity for typedef "', tostring(name), '"'})
+
 
 	local model = { -- meta-data defining the typedef
 		[Data.NAME] = name,
@@ -553,9 +569,12 @@ function Data:Typedef(param)
 	}
 	
 	--[[
-	-- like and atomic type, typedefs don't have instance members
-	-- these will be defined by the underlying aliased type
-	local member_instance, member_definition = Data.create_member(decl)
+	-- TODO: like and atomic type, typedefs don't have instance members
+	-- these will be defined by the underlying aliased type	
+	
+	local role = ''
+	local member_instance, member_definition = 
+			Data.create_member{ role, alias, }
 	
 	-- insert the role
 	instance[role] = member_instance
@@ -563,8 +582,8 @@ function Data:Typedef(param)
 	-- save the meta-data
 	-- as an array to get the correct ordering
 	table.insert(model[Data.DEFN], member_definition) 
-			
-	--]]		
+	
+	--]]
 			
 	-- add/replace the definition in the container module
 	if self[name] then print('WARNING: replacing ', name) end
