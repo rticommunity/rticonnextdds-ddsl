@@ -621,17 +621,10 @@ function Data.create_member(member_definition)
 		   table.concat{'member "', tostring(role), 
 					    '" must be a atom|enum|struct|union|typedef: '})
 
-	-- decide if the 1st entry is a sequence length or not?
-	local seq_capacity = 
-		'number' == type(member_definition[3]) and member_definition[3] or nil
-
-	local collection = nil
-
 	-- ensure that the rest of the member definition entries are annotations:	
-	--
-	-- start with the 3rd or the 4th entry depending upon whether it 
-	-- was a sequence or not:
-	for j = (seq_capacity and 4 or 3), #member_definition do
+	-- also look for the 1st 'collection' annotation (if any)
+	local collection = nil
+	for j = 3, #member_definition do
 		assert('table' == type(member_definition[j]),
 				table.concat{'annotation expected "', tostring(role), 
 						     '" : ', tostring(member_definition[j])})
@@ -639,13 +632,13 @@ function Data.create_member(member_definition)
 				table.concat{'not an annotation: "', tostring(role), 
 							'" : ', tostring(member_definition[j])})	
 
-		-- is this an array?
-		if Data.ARRAY == member_definition[j][Data.MODEL] or
-		   Data.SEQUENCE == member_definition[j][Data.MODEL] then
+		-- is this a collection?
+		if not collection and  -- the 1st 'collection' definition is used
+		   (Data.ARRAY == member_definition[j][Data.MODEL] or
+		    Data.SEQUENCE == member_definition[j][Data.MODEL]) then
 			collection = member_definition[j]
 		end
 	end
-
 
 	-- populate the member_instance fields
 	local member_instance = nil
@@ -657,8 +650,6 @@ function Data.create_member(member_definition)
 				iterator = Data.seq('', iterator) -- unnamed iterator
 			end
 			member_instance = Data.seq(role, iterator)
-		elseif seq_capacity then
-			member_instance = Data.seq(role, template)
 		else
 			member_instance = Data.instance(role, template)
 		end
@@ -683,6 +674,7 @@ function Data.Sequence(n, ...)
 	return Data._Collection(Data._.Sequence, n, ...)
 end
 
+-- _Collection() - helper method to define collections, i.e. sequences and arrays
 function Data._Collection(annotation, n, ...)
 
 	-- ensure that we have an array of positive numbers
@@ -785,14 +777,11 @@ function Data.instance(name, template)
 		alias_type = alias[Data.MODEL][Data.TYPE]
 		
 		for i = 3, #decl do
-			if 'table' == type(decl[i]) and -- TODO: remove type check and else
-			   (Data.ARRAY == decl[i][Data.MODEL] or 
-			    Data.SEQUENCE == decl[i][Data.MODEL]) then
-				alias_collection = template[Data.MODEL][Data.DEFN][1][i]
+			if Data.ARRAY == decl[i][Data.MODEL] or 
+			   Data.SEQUENCE == decl[i][Data.MODEL] then
+				alias_collection = decl[i]
 				-- print('DEBUG Data.instance 2: ', name, alias_collection)
-				break
-			else
-				alias_sequence = decl[i]
+				break -- 1st 'collection' is used
 			end
 		end
 	end
@@ -1127,7 +1116,7 @@ function Data.print_idl(instance, indent_string)
 		local decl = mydefn[1]
 		local alias, collection = decl[2], decl[3]
 		if collection then
-			print(string.format('%s%s seq<%s%s> %s;\n', indent_string, mytype(), 
+			print(string.format('%s%s sequence<%s%s> %s;\n', indent_string, mytype(), 
 							    alias[Data.MODEL][Data.NAME], 
 							    #collection == 0 and '' or ',' .. collection[1],
 							    myname))
@@ -1219,38 +1208,51 @@ end
 
 -- Helper method
 -- Given a member declaration, print the equivalent IDL
--- decl is { role, element, [seq_capacity,] [annotation1, annotation2, ...] }
+-- decl is { role, element, [collection,] [annotation1, annotation2, ...] }
 function Data.print_idl_member(decl, content_indent_string)
 	
 	local role, element = decl[1], decl[2]
-	local seq_capacity = 'number' == type(decl[3]) and decl[3] or nil
-	
+	local seq
+	for i = 3, #decl do
+		if Data.SEQUENCE == decl[i][Data.MODEL] then
+			seq = decl[i]
+			break -- 1st 'collection' is used
+		end
+	end
+
 	local output_member = ''		
-	if seq_capacity == nil then -- not a sequence
+	if seq == nil then -- not a sequence
 		output_member = string.format('%s%s %s', content_indent_string, 
 		element[Data.MODEL][Data.NAME], role)
-	elseif seq_capacity < 0 then -- unbounded sequence
-		output_member = string.format('%sseq<%s> %s', content_indent_string, 
+	elseif #seq == 0 then -- unbounded sequence
+		output_member = string.format('%ssequence<%s> %s', content_indent_string, 
 		element[Data.MODEL][Data.NAME], role)
 	else -- bounded sequence
-		output_member = string.format('%sseq<%s,%d> %s', content_indent_string, 
-		element[Data.MODEL][Data.NAME], seq_capacity, role)
+		output_member = string.format('%s', content_indent_string)
+		for i = 1, #seq do
+			output_member = string.format('%ssequence<', output_member) 
+		end
+		output_member = string.format('%s%s', output_member, 
+											  element[Data.MODEL][Data.NAME])
+		for i = 1, #seq do
+			output_member = string.format('%s,%d>', output_member, seq[i]) 
+		end
+		output_member = string.format('%s %s', output_member, role)
 	end
 
 	-- member annotations:	
 	--   start with the 3rd or the 4th entry depending upon whether it 
 	--   was a sequence or not:
 	local output_annotations = nil
-	for j = (seq_capacity and 4 or 3), #decl do
+	for j = 3, #decl do
 		
 		local name = decl[j][Data.MODEL][Data.NAME]
 		
-		if Data.ARRAY == decl[j][Data.MODEL] or  
-		   Data.SEQUENCE == decl[j][Data.MODEL] then
+		if Data.ARRAY == decl[j][Data.MODEL] then
 			for i = 1, #decl[j] do
 				output_member = string.format('%s[%d]', output_member, decl[j][i]) 
 			end
-		else
+		elseif Data.SEQUENCE ~= decl[j][Data.MODEL] then
 			output_annotations = string.format('%s%s ', 
 									output_annotations or '', 
 									tostring(decl[j]))	
