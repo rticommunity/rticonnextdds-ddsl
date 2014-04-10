@@ -570,25 +570,19 @@ function Data:Typedef(param)
 		[Data.MODEL] = model,
 	}
 	
-	-- define the 'instance'
-	local role = ''  -- un-named role
+	-- create definition
 	local member_instance, member_definition = 
-							Data.create_member{ role, alias, collection }
+				Data.create_member{ nil, alias, collection }
 	
-	-- insert the role
-	-- instance[role] = member_instance
-	
-	--[[
-	print('DEBUG Data.Typedef 1: ', name, alias[Data.MODEL][Data.NAME],
-									'"' .. tostring(member_instance) .. '"')
-	-- if collection then print('DEBUG Data.Typedef 2: ', name, member_instance(1)) end
-	--]]
-	
+	-- NOTE: we reused the create_member() function method, because it already
+	--       does all the work  that we need to do. We ignore the 
+	--       'member_instance' because the instance fields are
+	--       defined by the underlying alias model definition! The 
+	--       member_instance will be nil, since the role was 'nil'
+			
 	-- save the meta-data
-	-- as an array to get the correct ordering
 	table.insert(model[Data.DEFN], member_definition) 
 	
-			
 	-- add/replace the definition in the container module
 	if self[name] then print('WARNING: replacing ', name) end
 	self[name] = instance
@@ -599,16 +593,16 @@ end
 
 -- create_member() - define a struct or union member (without the case)
 -- @param member_definition - array consists of entries in the following order:
---           role     - the member role to instantiate
+--           role     - the member role to instantiate (may be 'nil')
 --           template - the kind of member to instantiate (previously defined)
---           ...      - optional list of annotations including whether the member is an 
---                      array or sequence    
+--           ...      - optional list of annotations including whether the 
+--                      member is an array or sequence    
 -- @return the member instance and the member definition
 function Data.create_member(member_definition)
 	local role, template = member_definition[1], member_definition[2]
 	
 	-- ensure pre-conditions
-	assert('string' == type(role), 
+	assert(nil == role or 'string' == type(role), 
 			table.concat{'invalid member name: ', tostring(role)})
 	assert('table' == type(template), 
 			table.concat{'undefined type for member "', 
@@ -650,20 +644,24 @@ function Data.create_member(member_definition)
 		end
 	end
 
+
 	-- populate the member_instance fields
 	local member_instance = nil
-	if collection then
-		local iterator = template
-		for i = 1, #collection - 1  do -- create iterator for inner dimensions
-			iterator = Data.seq('', iterator) -- unnamed iterator
-		end
-		member_instance = Data.seq(role, iterator)
-	elseif seq_capacity then
-		member_instance = Data.seq(role, template)
-	else
-		member_instance = Data.instance(role, template)
-	end
 
+	if role then -- don't compute member instance if role is not specified 
+		if collection then
+			local iterator = template
+			for i = 1, #collection - 1  do -- create iterator for inner dimensions
+				iterator = Data.seq('', iterator) -- unnamed iterator
+			end
+			member_instance = Data.seq(role, iterator)
+		elseif seq_capacity then
+			member_instance = Data.seq(role, template)
+		else
+			member_instance = Data.instance(role, template)
+		end
+	end
+	
 	return member_instance, member_definition
 end
 
@@ -778,7 +776,7 @@ function Data.instance(name, template)
 	local instance = nil
 
 	---------------------------------------------------------------------------
-	-- typedef? => get the underlying template:
+	-- typedef? switch the template to the underlying alias
 	---------------------------------------------------------------------------
 
 	local alias, alias_type, alias_sequence, alias_collection
@@ -800,41 +798,14 @@ function Data.instance(name, template)
 		end
 	end
 
-	-- switch template to the underlying alias type
+	-- switch template to the underlying alias
 	if alias then template = alias end
-	
+	 
 	---------------------------------------------------------------------------
-	-- recursive typedefs, i.e. aliases
-	---------------------------------------------------------------------------
-
-	-- recursive typedefs:
-	-- NOTE: other cases (below) terminate the recursion
-	if Data.TYPEDEF == template_type and
-	   Data.TYPEDEF == alias_type then -- recursive
-		--[[
-		print('DEBUG Data.instance 3: ', name, 
-			   alias[Data.MODEL][Data.NAME], alias_sequence)
-		--]]	
-		if alias_sequence then
-			instance = Data.seq(name, template)
-		elseif  alias_collection then
-			local iterator = template
-			for i = 1, #alias_collection - 1  do -- create iterator for inner dimensions
-				iterator = Data.seq('', iterator) -- unnamed iterator
-			end
-			instance = Data.seq(name, iterator)
-		else
-			instance = Data.instance(name, template)
-		end
-
-		return instance
-	end
-
-	---------------------------------------------------------------------------
-	-- not a recursive typedef
+	-- typedef is a collection:
 	---------------------------------------------------------------------------
 	
-	-- sequence of underlying types (which is not a typedef)
+	-- collection of underlying types (which is not a typedef)
 	if alias_sequence then -- the sequence of alias elements
 		instance = Data.seq(name, template) 
 		return instance
@@ -846,6 +817,15 @@ function Data.instance(name, template)
 			iterator = Data.seq('', iterator) -- unnamed iterator
 		end
 		instance = Data.seq(name, iterator)
+		return instance
+	end
+	
+	---------------------------------------------------------------------------
+	-- typedef is recursive:
+	---------------------------------------------------------------------------
+	
+	if Data.TYPEDEF == template_type and Data.TYPEDEF == alias_type then
+		instance = Data.instance(name, template) -- recursive
 		return instance
 	end
 	
@@ -862,7 +842,7 @@ function Data.instance(name, template)
 	---------------------------------------------------------------------------
 	-- composite instances 
 	---------------------------------------------------------------------------
-	-- Data.STRUCT or Data.UNION or Data.TYPEDEF
+	-- Data.STRUCT or Data.UNION
 	
 	-- Establish the underlying model definition to create an instance
 	-- NOTE: typedef's do not hold any instances; the instances are held by the
@@ -935,9 +915,9 @@ function Data.seq(name, template)
 	local type_template = type(template)
 	assert('table' == type_template and template[Data.MODEL] or 
 	       'function' == type_template, -- collection iterator
-		   	  table.concat{'sequence template invalid; ',
-		   	  			   'must be an instance for a sequence: ',
-		   	 			   tostring(name)})
+		   	  table.concat{'sequence template ',
+		   	  			   'must be an instance table or function: "',
+		   	 			   tostring(name), '"'})
 	if 'table' == type_template then
 		local element_type = template[Data.MODEL][Data.TYPE]
 		assert(Data.ATOM == element_type or
