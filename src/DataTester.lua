@@ -501,7 +501,8 @@ Tester[#Tester+1] = 'test_arrays3'
 function Tester:test_arrays3()
 	Data:Typedef{'MyNameArray', Data.Name, Data.Array(10) }
 	Data:Typedef{'MyNameArray2', Data.MyNameArray, Data.Array(10) }
-
+	Data:Typedef{'MyName2x2', Data.Name, Data.Array(2, 3) }
+	
 	Data:Struct{'MyArrays3',
 		-- 1-D
 		{ 'myNames', Data.MyNameArray },
@@ -517,6 +518,12 @@ function Tester:test_arrays3()
 
 		-- 4-D
 		{ 'myNames2Array2', Data.MyNameArray2, Data.Array(10, 20) },
+		
+		-- 2D: 2x2
+		{ 'myName2x2', Data.MyName2x2 },
+
+		-- 4D: 2x2 x2x2
+		{ 'myName2x2x2x2', Data.MyName2x2, Data.Array(4,5) },
 	}
 
 	self:print(Data.MyArrays3)
@@ -557,6 +564,22 @@ function Tester:test_arrays3()
 	assert(Data.MyArrays3.myNames2Array2(1)(1)(1)(1).first == 'myNames2Array2[1][1][1][1].first')
 	assert(Data.MyArrays3.myNames2Array2(1)(1)(1)(1).nicknames() == 'myNames2Array2[1][1][1][1].nicknames#')
 	assert(Data.MyArrays3.myNames2Array2(1)(1)(1)(1).nicknames(1) == 'myNames2Array2[1][1][1][1].nicknames[1]')
+
+	-- myName2x2
+	assert(Data.MyArrays3.myName2x2() == 'myName2x2#')
+	assert(Data.MyArrays3.myName2x2(1)() == 'myName2x2[1]#')
+	assert(Data.MyArrays3.myName2x2(1)(1).first == 'myName2x2[1][1].first')
+	assert(Data.MyArrays3.myName2x2(1)(1).nicknames() == 'myName2x2[1][1].nicknames#')
+	assert(Data.MyArrays3.myName2x2(1)(1).nicknames(1) == 'myName2x2[1][1].nicknames[1]')
+
+	-- myName2x2x2x2
+	assert(Data.MyArrays3.myName2x2x2x2() == 'myName2x2x2x2#')
+	assert(Data.MyArrays3.myName2x2x2x2(1)() == 'myName2x2x2x2[1]#')
+	assert(Data.MyArrays3.myName2x2x2x2(1)(1)() == 'myName2x2x2x2[1][1]#')
+	assert(Data.MyArrays3.myName2x2x2x2(1)(1)(1)() == 'myName2x2x2x2[1][1][1]#')
+	assert(Data.MyArrays3.myName2x2x2x2(1)(1)(1)(1).first == 'myName2x2x2x2[1][1][1][1].first')
+	assert(Data.MyArrays3.myName2x2x2x2(1)(1)(1)(1).nicknames() == 'myName2x2x2x2[1][1][1][1].nicknames#')
+	assert(Data.MyArrays3.myName2x2x2x2(1)(1)(1)(1).nicknames(1) == 'myName2x2x2x2[1][1][1][1].nicknames[1]')
 end
 
 -- main() - run the list of tests passed on the command line

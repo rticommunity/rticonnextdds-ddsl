@@ -815,8 +815,14 @@ function Data.instance(name, template)
 		print('DEBUG Data.instance 3: ', name, 
 			   alias[Data.MODEL][Data.NAME], alias_sequence)
 		--]]	
-		if alias_sequence or alias_collection then
+		if alias_sequence then
 			instance = Data.seq(name, template)
+		elseif  alias_collection then
+			local iterator = template
+			for i = 1, #alias_collection - 1  do -- create iterator for inner dimensions
+				iterator = Data.seq('', iterator) -- unnamed iterator
+			end
+			instance = Data.seq(name, iterator)
 		else
 			instance = Data.instance(name, template)
 		end
@@ -829,11 +835,20 @@ function Data.instance(name, template)
 	---------------------------------------------------------------------------
 	
 	-- sequence of underlying types (which is not a typedef)
-	if alias_sequence or alias_collection then -- the sequence of alias elements
+	if alias_sequence then -- the sequence of alias elements
 		instance = Data.seq(name, template) 
 		return instance
 	end
 
+	if  alias_collection then
+		local iterator = template
+		for i = 1, #alias_collection - 1  do -- create iterator for inner dimensions
+			iterator = Data.seq('', iterator) -- unnamed iterator
+		end
+		instance = Data.seq(name, iterator)
+		return instance
+	end
+	
 	---------------------------------------------------------------------------
 	-- leaf instances
 	---------------------------------------------------------------------------
