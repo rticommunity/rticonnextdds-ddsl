@@ -101,10 +101,10 @@ Data.Subtest:Struct{'Fruit',
 Data:Struct{'Name',
 	{ 'first', Data.String(10), Data._.Key{} },
 	{ 'last',  Data.String() }, 
-	{ 'nicknames',  Data.String(10), Data.Seq(3) },
-	{ 'aliases',  Data.String(5), Data.Seq() },
+	{ 'nicknames',  Data.String(10), Data.Sequence(3) },
+	{ 'aliases',  Data.String(5), Data.Sequence() },
 	{ 'birthday', Data.Days, Data._.Optional{} },
-	{ 'favorite', Data.Subtest.Colors, Data.Seq(2), Data._.Optional{} },
+	{ 'favorite', Data.Subtest.Colors, Data.Sequence(2), Data._.Optional{} },
 }
 
 -- user defined annotation
@@ -155,14 +155,14 @@ Data:Union{'NameOrAddress', Data.boolean,
 
 Data:Struct{'Company',
 	{ 'entity', Data.NameOrAddress},
-	{ 'hq', Data.String(), Data.Seq(2) },
-	{ 'offices', Data.Address, Data.Seq(10) },
-	{ 'employees', Data.Name, Data.Seq() }
+	{ 'hq', Data.String(), Data.Sequence(2) },
+	{ 'offices', Data.Address, Data.Sequence(10) },
+	{ 'employees', Data.Name, Data.Sequence() }
 }
 
 Data:Struct{'BigCompany',
 	{ 'parent', Data.Company},
-	{ 'divisions', Data.Company, Data.Seq()}
+	{ 'divisions', Data.Company, Data.Sequence()}
 }
 
 Data:Struct{'FullName', Data.Name,
@@ -181,13 +181,13 @@ Data:Struct{'Tasks',
 }
 
 Data:Struct{'Calendar',
-	{ 'tasks',  Data.Tasks, Data.Seq() },
+	{ 'tasks',  Data.Tasks, Data.Sequence() },
 }
 
 -- typedefs
 Data:Typedef{'MyDouble', Data.double}
 Data:Typedef{'MyDouble2', Data.MyDouble}
-Data:Typedef{'MyString', Data.String(10)}
+Data:Typedef{'MyString', Data.String(10) }
 
 Data:Typedef{'MyName', Data.Name }
 Data:Typedef{'MyName2', Data.MyName }
@@ -209,31 +209,31 @@ Data:Struct{'MyTypedef',
 	{ 'myAddress2', Data.MyAddress2 },
 }
 			
-Data:Typedef{'MyDoubleSeq', Data.MyDouble, Data.Seq() }
-Data:Typedef{'MyStringSeq', Data.MyString, Data.Seq(10) }
+Data:Typedef{'MyDoubleSeq', Data.MyDouble, Data.Sequence() }
+Data:Typedef{'MyStringSeq', Data.MyString, Data.Sequence(10) }
 
-Data:Typedef{'NameSeq', Data.Name, Data.Seq(10) }
-Data:Typedef{'NameSeqSeq', Data.NameSeq, Data.Seq(10) }
+Data:Typedef{'NameSeq', Data.Name, Data.Sequence(10) }
+Data:Typedef{'NameSeqSeq', Data.NameSeq, Data.Sequence(10) }
 
-Data:Typedef{'MyNameSeq', Data.MyName, Data.Seq(10) }
-Data:Typedef{'MyNameSeqSeq', Data.MyNameSeq, Data.Seq(10) }
+Data:Typedef{'MyNameSeq', Data.MyName, Data.Sequence(10) }
+Data:Typedef{'MyNameSeqSeq', Data.MyNameSeq, Data.Sequence(10) }
 
 Data:Struct{'MyTypedefSeq',
-    { 'myDoubleSeq', Data.MyDouble, Data.Seq() },
+    { 'myDoubleSeq', Data.MyDouble, Data.Sequence() },
 	{ 'myDoubleSeqA', Data.MyDoubleSeq },
 	{ 'myStringSeqA', Data.MyStringSeq },
 	
-	{ 'nameSeq', Data.Name, Data.Seq() },
+	{ 'nameSeq', Data.Name, Data.Sequence() },
 	{ 'nameSeqA', Data.NameSeq },
-	{ 'nameSeqSeq', Data.NameSeq, Data.Seq() },
+	{ 'nameSeqSeq', Data.NameSeq, Data.Sequence() },
 	{ 'nameSeqSeqA', Data.NameSeqSeq },
-	{ 'nameSeqSeqASeq', Data.NameSeqSeq, Data.Seq() },
+	{ 'nameSeqSeqASeq', Data.NameSeqSeq, Data.Sequence() },
 
-	{ 'myNameSeq', Data.MyName, Data.Seq() },
+	{ 'myNameSeq', Data.MyName, Data.Sequence() },
 	{ 'myNameSeqA', Data.MyNameSeq },
-	{ 'myNameSeqSeq', Data.MyNameSeq, Data.Seq() },
+	{ 'myNameSeqSeq', Data.MyNameSeq, Data.Sequence() },
 	{ 'myNameSeqSeqA', Data.MyNameSeqSeq },
-	{ 'myNameSeqSeqASeq', Data.MyNameSeqSeq, Data.Seq() },
+	{ 'myNameSeqSeqASeq', Data.MyNameSeqSeq, Data.Sequence() },
 }
 
 -- Arrays

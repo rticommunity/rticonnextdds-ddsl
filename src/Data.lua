@@ -526,7 +526,7 @@ end
 
 --[[
 	IDL: typedef sequence<MyStruct> MyStructSeq
-	Lua: Data:Typedef{'MyStructSeq', Data.MyStruct, Data.Seq() }
+	Lua: Data:Typedef{'MyStructSeq', Data.MyStruct, Data.Sequence() }
 	
 	IDL: typedef MyStruct MyStructArray[10][20]
 	Lua: Data:Typedef{'MyStructArray', Data.MyStruct, Data.Array(10, 20) }
@@ -679,7 +679,7 @@ end
 
 tmp_fn, tmp_model = Data:Annotation('Sequence')
 Data.SEQUENCE = tmp_model -- 'Sequence' annotation's data model
-function Data.Seq(n, ...)
+function Data.Sequence(n, ...)
 	return Data._Collection(Data._.Sequence, n, ...)
 end
 
@@ -698,20 +698,6 @@ function Data._Collection(annotation, n, ...)
 	-- return the predefined annotation instance, whose attributes are 
 	-- the collection dimension bounds
 	return annotation(dimensions)
-end
-
--- meta-data annotations ---
--- sequence annotation (qualifier) on the base user-defined types
--- return the length of the sequence or -1 for unbounded sequences
-function Data.SeqX(n) 
-	return n == nil and -1 
-	                or (assert(type(n)=='number', 
-	                           table.concat{'invalid sequence capacity: ', 
-	                                        tostring(n)}) 
-	                    and (assert(n > 0, 
-		                         table.concat{'sequence capacity must be > 0: ', 
-		                         tostring(n)})
-		                     and n))
 end
 
 -- String of length n (i.e. string<n>) is an Atom
