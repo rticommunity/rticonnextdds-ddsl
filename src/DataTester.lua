@@ -582,6 +582,91 @@ function Tester:test_arrays3()
 	assert(Data.MyArrays3.myName2x2x2x2(1)(1)(1)(1).nicknames(1) == 'myName2x2x2x2[1][1][1][1].nicknames[1]')
 end
 
+Tester[#Tester+1] = 'test_sequences_multi_dim'
+function Tester:test_sequences_multi_dim()
+	Data:Typedef{'MyNameSeq1', Data.Name, Data.Sequence(10) }
+	Data:Typedef{'MyNameSeq2', Data.MyNameSeq, Data.Sequence(10) }
+	Data:Typedef{'MyNameSeq2x2', Data.Name, Data.Sequence(2, 3) }
+	
+	Data:Struct{'MySeqs3',
+		-- 1-D
+		{ 'myNames', Data.MyNameSeq },
+
+		-- 2-D
+		{ 'myNamesSeq', Data.MyNameSeq1, Data.Sequence(10) },
+	
+		-- 2-D
+		{ 'myNames2', Data.MyNameSeq2 },
+				
+		-- 3-D
+		{ 'myNames2Seq', Data.MyNameSeq2, Data.Sequence(10) },
+
+		-- 4-D
+		{ 'myNames2Seq2', Data.MyNameSeq2, Data.Sequence(10, 20) },
+		
+		-- 2D: 2x2
+		{ 'myName2x2', Data.MyName2x2 },
+
+		-- 4D: 2x2 x2x2
+		{ 'myName2x2x2x2', Data.MyNameSeq2x2, Data.Sequence(4,5) },
+	}
+
+	self:print(Data.MySeqs3)
+
+	-- myNames
+	assert(Data.MySeqs3.myNames() == 'myNames#')
+	assert(Data.MySeqs3.myNames(1).first == 'myNames[1].first')
+	assert(Data.MySeqs3.myNames(1).nicknames() == 'myNames[1].nicknames#')
+	assert(Data.MySeqs3.myNames(1).nicknames(1) == 'myNames[1].nicknames[1]')
+	
+	-- myNamesSeq
+	assert(Data.MySeqs3.myNamesSeq() == 'myNamesSeq#')
+	assert(Data.MySeqs3.myNamesSeq(1)() == 'myNamesSeq[1]#')
+	assert(Data.MySeqs3.myNamesSeq(1)(1).first == 'myNamesSeq[1][1].first')
+	assert(Data.MySeqs3.myNamesSeq(1)(1).nicknames() == 'myNamesSeq[1][1].nicknames#')
+	assert(Data.MySeqs3.myNamesSeq(1)(1).nicknames(1) == 'myNamesSeq[1][1].nicknames[1]')
+	
+	-- myNames2
+	assert(Data.MySeqs3.myNames2() == 'myNames2#')
+	assert(Data.MySeqs3.myNames2(1)() == 'myNames2[1]#')
+	assert(Data.MySeqs3.myNames2(1)(1).first == 'myNames2[1][1].first')
+	assert(Data.MySeqs3.myNames2(1)(1).nicknames() == 'myNames2[1][1].nicknames#')
+	assert(Data.MySeqs3.myNames2(1)(1).nicknames(1) == 'myNames2[1][1].nicknames[1]')
+
+	-- myNames2Seq
+	assert(Data.MySeqs3.myNames2Seq() == 'myNames2Seq#')
+	assert(Data.MySeqs3.myNames2Seq(1)() == 'myNames2Seq[1]#')
+	assert(Data.MySeqs3.myNames2Seq(1)(1)() == 'myNames2Seq[1][1]#')
+	assert(Data.MySeqs3.myNames2Seq(1)(1)(1).first == 'myNames2Seq[1][1][1].first')
+	assert(Data.MySeqs3.myNames2Seq(1)(1)(1).nicknames() == 'myNames2Seq[1][1][1].nicknames#')
+	assert(Data.MySeqs3.myNames2Seq(1)(1)(1).nicknames(1) == 'myNames2Seq[1][1][1].nicknames[1]')
+
+	-- myNames2Seq2
+	assert(Data.MySeqs3.myNames2Seq2() == 'myNames2Seq2#')
+	assert(Data.MySeqs3.myNames2Seq2(1)() == 'myNames2Seq2[1]#')
+	assert(Data.MySeqs3.myNames2Seq2(1)(1)() == 'myNames2Seq2[1][1]#')
+	assert(Data.MySeqs3.myNames2Seq2(1)(1)(1)() == 'myNames2Seq2[1][1][1]#')
+	assert(Data.MySeqs3.myNames2Seq2(1)(1)(1)(1).first == 'myNames2Seq2[1][1][1][1].first')
+	assert(Data.MySeqs3.myNames2Seq2(1)(1)(1)(1).nicknames() == 'myNames2Seq2[1][1][1][1].nicknames#')
+	assert(Data.MySeqs3.myNames2Seq2(1)(1)(1)(1).nicknames(1) == 'myNames2Seq2[1][1][1][1].nicknames[1]')
+
+	-- myName2x2
+	assert(Data.MySeqs3.myName2x2() == 'myName2x2#')
+	assert(Data.MySeqs3.myName2x2(1)() == 'myName2x2[1]#')
+	assert(Data.MySeqs3.myName2x2(1)(1).first == 'myName2x2[1][1].first')
+	assert(Data.MySeqs3.myName2x2(1)(1).nicknames() == 'myName2x2[1][1].nicknames#')
+	assert(Data.MySeqs3.myName2x2(1)(1).nicknames(1) == 'myName2x2[1][1].nicknames[1]')
+
+	-- myName2x2x2x2
+	assert(Data.MySeqs3.myName2x2x2x2() == 'myName2x2x2x2#')
+	assert(Data.MySeqs3.myName2x2x2x2(1)() == 'myName2x2x2x2[1]#')
+	assert(Data.MySeqs3.myName2x2x2x2(1)(1)() == 'myName2x2x2x2[1][1]#')
+	assert(Data.MySeqs3.myName2x2x2x2(1)(1)(1)() == 'myName2x2x2x2[1][1][1]#')
+	assert(Data.MySeqs3.myName2x2x2x2(1)(1)(1)(1).first == 'myName2x2x2x2[1][1][1][1].first')
+	assert(Data.MySeqs3.myName2x2x2x2(1)(1)(1)(1).nicknames() == 'myName2x2x2x2[1][1][1][1].nicknames#')
+	assert(Data.MySeqs3.myName2x2x2x2(1)(1)(1)(1).nicknames(1) == 'myName2x2x2x2[1][1][1][1].nicknames[1]')
+end
+
 -- main() - run the list of tests passed on the command line
 --          if no command line arguments are passed in, run all the tests
 function Tester:main()
