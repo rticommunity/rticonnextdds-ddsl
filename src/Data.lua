@@ -658,6 +658,29 @@ function Data.create_member(member_definition)
 	return member_instance, member_definition
 end
 
+-- String of length n (i.e. string<n>) is an Atom
+function Data.String(n)
+	local name = 'string'
+		
+	-- construct name of the atom: 'string<n>'
+	if nil ~= n then
+		assert(type(n)=='number', 
+	           table.concat{'invalid string capacity: ', tostring(n)})
+		assert(n > 0, 
+		       table.concat{'string capacity must be > 0: ', tostring(n)})
+	    name = table.concat{'string<', n, '>'}
+	end
+	            	
+	-- lookup the atom name
+	local instance = Data[name]
+	if nil == instance then
+		-- not found => create it
+		instance = Data:Atom{name}
+	end	 
+	
+	return instance
+end 
+
 -- Arrays and Sequences are implemented as a special annotations, whose 
 -- attributes are positive integer constants, that specify the dimension bounds
 -- NOTE: Since an array or a sequence is an annotation, it can appear anywhere 
@@ -691,29 +714,6 @@ function Data._Collection(annotation, n, ...)
 	-- the collection dimension bounds
 	return annotation(dimensions)
 end
-
--- String of length n (i.e. string<n>) is an Atom
-function Data.String(n)
-	local name = 'string'
-		
-	-- construct name of the atom: 'string<n>'
-	if nil ~= n then
-		assert(type(n)=='number', 
-	           table.concat{'invalid string capacity: ', tostring(n)})
-		assert(n > 0, 
-		       table.concat{'string capacity must be > 0: ', tostring(n)})
-	    name = table.concat{'string<', n, '>'}
-	end
-	            	
-	-- lookup the atom name
-	local instance = Data[name]
-	if nil == instance then
-		-- not found => create it
-		instance = Data:Atom{name}
-	end	 
-	
-	return instance
-end 
 
 --------------------------------------------------------------------------------
 -- Model Instances  ---
