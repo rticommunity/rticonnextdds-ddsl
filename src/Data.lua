@@ -556,7 +556,8 @@ function Data:Typedef(param)
 		   		
 	local collection = param[3]	 
 	assert(nil == collection or 'number' == type(collection) or
-		   Data.ARRAY == collection[Data.MODEL],
+		   Data.ARRAY == collection[Data.MODEL] or
+		   Data.SEQUENCE == collection[Data.MODEL],
 		table.concat{'invalid collection for typedef "', tostring(name), '"'})
 
 
@@ -639,7 +640,8 @@ function Data.create_member(member_definition)
 							'" : ', tostring(member_definition[j])})	
 
 		-- is this an array?
-		if Data.ARRAY == member_definition[j][Data.MODEL] then
+		if Data.ARRAY == member_definition[j][Data.MODEL] or
+		   Data.SEQUENCE == member_definition[j][Data.MODEL] then
 			collection = member_definition[j]
 		end
 	end
@@ -665,10 +667,43 @@ function Data.create_member(member_definition)
 	return member_instance, member_definition
 end
 
+-- Arrays and Sequences are implemented as a special annotations, whose 
+-- attributes are positive integer constants, that specify the dimension bounds
+-- NOTE: Since an array or a sequence is an annotation, it can appear anywhere 
+--       after a member type declaration; the 1st one is used
+local tmp_fn, tmp_model = Data:Annotation('Array')
+Data.ARRAY = tmp_model -- 'Array' annotation's data model
+function Data.Array(n, ...)
+	return Data._Collection(Data._.Array, n, ...)
+end
+
+tmp_fn, tmp_model = Data:Annotation('Sequence')
+Data.SEQUENCE = tmp_model -- 'Sequence' annotation's data model
+function Data.Seq(n, ...)
+	return Data._Collection(Data._.Sequence, n, ...)
+end
+
+function Data._Collection(annotation, n, ...)
+
+	-- ensure that we have an array of positive numbers
+	local dimensions = {...}
+	table.insert(dimensions, 1, n) -- insert n at the begining
+	for i, v in ipairs(dimensions) do
+		assert(type(v)=='number',  
+			table.concat{'invalid collection bound: ', tostring(v)})
+		assert(v >= 0,  
+			table.concat{'collection bound must be > 0: ', v})
+	end
+	
+	-- return the predefined annotation instance, whose attributes are 
+	-- the collection dimension bounds
+	return annotation(dimensions)
+end
+
 -- meta-data annotations ---
 -- sequence annotation (qualifier) on the base user-defined types
 -- return the length of the sequence or -1 for unbounded sequences
-function Data.Seq(n) 
+function Data.SeqX(n) 
 	return n == nil and -1 
 	                or (assert(type(n)=='number', 
 	                           table.concat{'invalid sequence capacity: ', 
@@ -677,29 +712,6 @@ function Data.Seq(n)
 		                         table.concat{'sequence capacity must be > 0: ', 
 		                         tostring(n)})
 		                     and n))
-end
-
--- An array is implemented as a special annotation, whose attributes are 
--- positive integer constants, which specify the array dimensions
--- NOTE: Since an array is an annotation, it can appear anywhere after
---       a member type declaration
-local arrayFn, arrayModel = Data:Annotation('Array')
-Data.ARRAY = arrayModel -- 'Array' annotation's data model
-function Data.Array(n, ...)
-
-	-- ensure that we have an array of positive numbers
-	local dimensions = {...}
-	table.insert(dimensions, 1, n) -- insert n at the begining
-	for i, v in ipairs(dimensions) do
-		assert(type(v)=='number',  
-			table.concat{'invalid array bound: ', tostring(v)})
-		assert(v >= 0,  
-			table.concat{'array bound must be > 0: ', v})
-	end
-	
-	-- return the predefined Array annotation instance, wose attributes are 
-	-- the array dimensions
-	return Data._.Array(dimensions)
 end
 
 -- String of length n (i.e. string<n>) is an Atom
@@ -788,7 +800,8 @@ function Data.instance(name, template)
 		
 		for i = 3, #decl do
 			if 'table' == type(decl[i]) and -- TODO: remove type check and else
-			   Data.ARRAY == decl[i][Data.MODEL] then
+			   (Data.ARRAY == decl[i][Data.MODEL] or 
+			    Data.SEQUENCE == decl[i][Data.MODEL]) then
 				alias_collection = template[Data.MODEL][Data.DEFN][1][i]
 				-- print('DEBUG Data.instance 2: ', name, alias_collection)
 				break
@@ -1126,11 +1139,11 @@ function Data.print_idl(instance, indent_string)
 	
 	if Data.TYPEDEF == mytype then
 		local decl = mydefn[1]
-		local alias, seq_capacity = decl[2], decl[3]
-		if seq_capacity then
+		local alias, collection = decl[2], decl[3]
+		if collection then
 			print(string.format('%s%s seq<%s%s> %s;\n', indent_string, mytype(), 
 							    alias[Data.MODEL][Data.NAME], 
-							    seq_capacity == -1 and '' or ',' .. seq_capacity,
+							    #collection == 0 and '' or ',' .. collection[1],
 							    myname))
 		else
 			print(string.format('%s%s %s %s;\n', indent_string, mytype(), 
@@ -1246,7 +1259,8 @@ function Data.print_idl_member(decl, content_indent_string)
 		
 		local name = decl[j][Data.MODEL][Data.NAME]
 		
-		if Data.ARRAY == decl[j][Data.MODEL] then
+		if Data.ARRAY == decl[j][Data.MODEL] or  
+		   Data.SEQUENCE == decl[j][Data.MODEL] then
 			for i = 1, #decl[j] do
 				output_member = string.format('%s[%d]', output_member, decl[j][i]) 
 			end
@@ -1322,7 +1336,7 @@ function Data.index(instance, result, model)
 	-- walk through the body of the model definition
 	-- NOTE: typedefs don't have an array of members	
 	for i, decl in ipairs(mydefn) do 
-		local role, element, seq_capacity 
+		local role, element 
 		
 		-- skip annotations
 		if not decl[Data.MODEL] then
