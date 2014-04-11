@@ -11,7 +11,7 @@
 -- Created: Rajive Joshi, 2014 Feb 14
 -------------------------------------------------------------------------------
 
-Data = require "Data"
+local Data = require "Data"
 
 --[[
 local Test = Test or {}
@@ -74,7 +74,7 @@ MyData:Enum('Months') {
 -- Data Definitions
 --------------------------------------------------------------------------------
 
-Data:Enum{'Days', 
+days = Data:Enum{'Days', 
 	{'MON'}, {'TUE'}, {'WED'}, {'THU'}, {'FRI'}, {'SAT'}, {'SUN'}
 }
 
@@ -247,7 +247,6 @@ Data:Struct{'MyArrays1',
 	-- 3-D
 	{ 'names', Data.Name, Data.Array(12, 15, 18) },
 }
-
 
 Data:Union{'MyArrays2', Data.Days,
 	-- 1-D
@@ -665,6 +664,27 @@ function Tester:test_sequences_multi_dim()
 	assert(Data.MySeqs3.myName2x2x2x2(1)(1)(1)(1).first == 'myName2x2x2x2[1][1][1][1].first')
 	assert(Data.MySeqs3.myName2x2x2x2(1)(1)(1)(1).nicknames() == 'myName2x2x2x2[1][1][1][1].nicknames#')
 	assert(Data.MySeqs3.myName2x2x2x2(1)(1)(1)(1).nicknames(1) == 'myName2x2x2x2[1][1][1][1].nicknames[1]')
+end
+
+Tester[#Tester+1] = 'test_const'
+function Tester:test_const()
+  Data:Const{'LONG', Data.long, 10 }
+  Data:Const{'FLOAT', Data.float, 3.14 }
+  Data:Const{'DOUBLE', Data.double, 3.14 * 3.14 }   
+  Data:Const{'STRING', Data.string, "String Constant" }   
+  Data:Const{'BOOL', Data.boolean, true }   
+  
+  self:print(Data.LONG)
+  self:print(Data.FLOAT)
+  self:print(Data.DOUBLE)
+  self:print(Data.STRING)
+  self:print(Data.BOOL)
+  
+  assert(Data.LONG == 10)
+  assert(Data.FLOAT == 3.14)
+  assert(Data.DOUBLE == 3.14 * 3.14)
+  assert(Data.STRING == "String Constant")
+  assert(Data.BOOL == true)
 end
 
 -- main() - run the list of tests passed on the command line
