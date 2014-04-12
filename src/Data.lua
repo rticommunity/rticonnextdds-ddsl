@@ -36,6 +36,10 @@
 --    10. Can be used to generate TypeObject/TypeCode on the wire
 --    11. Extensible: new annotations and atomic types can be easily added
 -- 
+--  In IDL, referenced data types need to be defined first
+--    Forward declarations not allowed
+--    Forward references not allowed
+--  
 -- Usage:
 --    Nomenclature
 --        The nomenclature is used to refer to parts of a data type is 
@@ -1280,13 +1284,14 @@ function Data.print_idl(instance, indent_string)
 				local case = decl[1]
 				
 				-- case
-				local case_string = (nil == case) and 'default' or tostring(case)
-				if (Data.char == mydefn._d and nil ~= case) then
+				if (nil == case) then
+				  print(string.format("%sdefault :", content_indent_string))
+				elseif (Data.char == mydefn._d and nil ~= case) then
 					print(string.format("%scase '%s' :", 
-						content_indent_string, case_string))
+						content_indent_string, tostring(case)))
 				else
 					print(string.format("%scase %s :", 
-						content_indent_string, case_string))
+						content_indent_string, tostring(case)))
 				end
 				
 				-- member element
