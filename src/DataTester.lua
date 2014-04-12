@@ -673,11 +673,12 @@ function Tester:test_const()
   Data:Const{'LDOUBLE', Data.long_double, 3.14 * 3.14 * 3.14 }   
   Data:Const{'STRING', Data.string, "String Constant" }   
   Data:Const{'BOOL', Data.boolean, true } 
-  Data:Const{'CHAR', Data.char, "String Constant" }   
-  Data:Const{'LONG', Data.long, 10.7 }
+  Data:Const{'CHAR', Data.char, "String Constant" } -- warning  
+  Data:Const{'LONG', Data.long, 10.7 } -- warning
   Data:Const{'LLONG', Data.long_long, 10^10 }
   Data:Const{'SHORT', Data.short, 5 }
-
+  Data:Const{'WSTRING', Data.wstring, "WString Constant" }
+  
   self:print(Data.FLOAT)
   self:print(Data.DOUBLE)
   self:print(Data.LDOUBLE)
@@ -687,7 +688,8 @@ function Tester:test_const()
   self:print(Data.LONG)
   self:print(Data.LLONG)
   self:print(Data.SHORT)
-  
+  self:print(Data.WSTRING)
+   
   assert(Data.FLOAT() == 3.14)
   assert(Data.DOUBLE() == 3.14 * 3.14)
   assert(Data.LDOUBLE() == 3.14 * 3.14 * 3.14)
@@ -697,6 +699,7 @@ function Tester:test_const()
   assert(Data.LONG() == 10)  -- warning printed
   assert(Data.LLONG() == 10^10)  
   assert(Data.SHORT() == 5)  
+  assert(Data.WSTRING() == "WString Constant")
 end
 
 -- main() - run the list of tests passed on the command line

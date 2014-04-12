@@ -352,7 +352,7 @@ function Data:Const(param)
   assert(nil ~= value, 
          table.concat{'const value must be non-nil: ', tostring(name)})
   assert((Data.boolean == atom and 'boolean' == type(value) or
-         ((Data.string == atom or Data.char == atom) and 
+         ((Data.string == atom or Data.wstring == atom or Data.char == atom) and 
           'string' == type(value)) or 
          ((Data.short == atom or Data.unsigned_short == atom or 
            Data.long == atom or Data.unsigned_long == atom or 
@@ -364,14 +364,15 @@ function Data:Const(param)
            Data.unsigned_long == atom or
            Data.unsigned_long_long == atom) and 
            value < 0)), 
-         table.concat{'const value must be non-negative, of the type: ', 
-                      atom[Data.MODEL][Data.TYPE]() })
+         table.concat{'const value must be non-negative and of the type: ', 
+                      atom[Data.MODEL][Data.NAME] })
          
   -- char: truncate value to 1st char; warn if truncated
-  if Data.char == atom and #value > 1 then
+  if (Data.char == atom or Data.wchar == atom) and #value > 1 then
     value = string.sub(value, 1, 1)
-    print(table.concat{'WARNING: truncating string value for char constant "', 
-                       name, '" to: ', value})  
+    print(table.concat{'WARNING: truncating string value for ',
+                       atom[Data.MODEL][Data.NAME],
+                       ' constant "', name, '" to: ', value})  
   end
  
   -- integer: truncate value to integer; warn if truncated
@@ -758,9 +759,18 @@ function Data.create_member(member_definition)
 	return member_instance, member_definition
 end
 
--- String of length n (i.e. string<n>) is an Atom
-function Data.String(n)
-	local name = 'string'
+---
+-- Local helper method to define a string on maximum length 'n'.
+-- Used by Data.string() and Data.wstring().
+-- 
+-- A string of length n (i.e. string<n>) is implemented as an automatically 
+-- defined Atom with the correct name.
+-- 
+-- @function _string 
+-- @param #number n the maximum length of the string
+-- @param #string name the name of the underlying type: string or wstring
+-- @return #table the string data model instance
+local function _string(n, name)
 		
 	-- construct name of the atom: 'string<n>'
 	if nil ~= n then
@@ -780,6 +790,24 @@ function Data.String(n)
 	
 	return instance
 end 
+
+---
+-- string of length n (i.e. string<n>) is an Atom
+-- @function string 
+-- @param #number n the maximum length of the string
+-- @return #table the string data model instance
+function Data.String(n)
+  return _string(n, 'string')
+end
+
+---
+-- wstring of length n (i.e. string<n>) is an Atom
+-- @function wstring 
+-- @param #number n the maximum length of the wstring
+-- @return #table the string data model instance
+function Data.WString(n)
+  return _string(n, 'wstring')
+end
 
 -- Arrays and Sequences are implemented as a special annotations, whose 
 -- attributes are positive integer constants, that specify the dimension bounds
@@ -1122,6 +1150,9 @@ Data:Atom{'char'}
 Data:Atom{'wchar'}
 
 Data:Atom{'octet'}
+
+Data.String()
+Data.WString()
 
 --------------------------------------------------------------------------------
 -- Predefined Annotations
