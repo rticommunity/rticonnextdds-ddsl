@@ -10,14 +10,16 @@
 -- Purpose: DDSL: Data type definition Domain Specific Language (DSL) in Lua
 -- Created: Rajive Joshi, 2014 Feb 14
 -------------------------------------------------------------------------------
+
 -- TODO: Design Overview 
 -- TODO: Create a github project for DDSL
--------------------------------------------------------------------------------
 
+-------------------------------------------------------------------------------
 -- Data - meta-data (meta-table) class implementing a semantic data definition 
 --        model equivalent to OMG IDL, and easily mappable to various 
 --        representations (eg OMG IDL, XML etc)
 --
+-- @module Data
 -- Purpose: 
 -- 	   Serves several purposes
 --     1. Provides a way of defining IDL equivalent data types (aka models). Does
@@ -176,7 +178,8 @@ local Data = {
 	ATOM       = function() return 'atom' end,
 	ANNOTATION = function() return 'annotation' end,
 	TYPEDEF    = function() return 'typedef' end,
-	
+	CONST      = function() return 'const' end,
+	 
 	-- name-space and meta-table for annotations (to avoid name collisions)
 	-- NOTE: ALl of the above could go inside this table
 	_		   = {}  
@@ -218,7 +221,7 @@ Data[Data.MODEL] = {
 function Data:Module(name) 
 	local name = name[1] or name -- accept a table containing a string or a string
 	
-	assert(type(name) == 'string', 
+	assert('string' == type(name), 
 		   table.concat{'invalid module name: ', tostring(name)})
 	local model = { 
 		[Data.NAME] = name,
@@ -244,26 +247,26 @@ end
 
 -- Install an atomic type in the module
 function Data:Atom(name) 
-	local name = name[1] or name -- accept a table containing a string or a string
+  local name = name[1] or name -- accept a table containing a string or a string
+  
+  assert('string' == type(name), 
+       table.concat{'invalid atom name: ', tostring(name)})
+  local model = {
+    [Data.NAME] = name, 
+    [Data.TYPE] = Data.ATOM,
+    [Data.DEFN] = nil,      -- always nil
+    [Data.INSTANCE] = nil,  -- always nil
+  }  
+  local instance = { -- top-level instance to be installed in the module
+    [Data.MODEL] = model,
+  }
 
-	assert(type(name) == 'string', 
-		   table.concat{'invalid atom name: ', tostring(name)})
-	local model = {
-		[Data.NAME] = name, 
-		[Data.TYPE] = Data.ATOM,
-		[Data.DEFN] = nil,      -- always nil
-		[Data.INSTANCE] = nil,  -- always nil
-	}  
-	local instance = { -- top-level instance to be installed in the module
-		[Data.MODEL] = model,
-	}
-
-	-- add/replace the definition in the container module
-	if self[name] then print('WARNING: replacing ', name) end
-	self[name] = instance
-	table.insert(self[Data.MODEL][Data.DEFN], instance)
-	
-	return instance
+  -- add/replace the definition in the container module
+  if self[name] then print('WARNING: replacing ', name) end
+  self[name] = instance
+  table.insert(self[Data.MODEL][Data.DEFN], instance)
+  
+  return instance
 end
 
 -- Annotations are modeled like Atomic types, expect that 
@@ -284,7 +287,7 @@ end
 --        IDL:  	@MyAnnotation(value1 = 42, value2 = 42.0)
 --        Lua:      Data._.MyAnnotation{value1 = 42, value2 = 42.0}
 function Data:Annotation(name, ...) 	
-	assert(type(name) == 'string', 
+	assert('string' == type(name), 
 		   table.concat{'invalid annotation name: ', tostring(name)})
 	local model = {
 		[Data.NAME] = name, 
@@ -324,6 +327,99 @@ function Data:Annotation(name, ...)
 	return instance_fn, model
 end
 
+---
+-- Const - define a constant
+-- @function Const
+-- @param #list param { name, Data.<atom>, const_value }
+-- @return #map an table to index into the constant
+-- @usage Define a const: Data:Const{'MY_CONST', Data.short, 10 }
+-- @usage Use a const: { 'mySeq', Data.string, Data.Sequence(Data.MY_CONST()) }
+-- @usage Use a const: Data:Const{'NEW_CONST', Data.short, Data.MY_CONST()*2 }
+function Data:Const(param) 
+  local name, atom, value = param[1], param[2], param[3]
+  
+  assert('string' == type(name), 
+         table.concat{'invalid const name: ', tostring(name)})
+  assert('table' == type(atom), 
+         table.concat{'invalid const type: ', tostring(name)})
+  assert(Data.ATOM == atom[Data.MODEL][Data.TYPE], 
+         table.concat{'const must of of primitive (atom) type: ', 
+                      tostring(name)})
+  assert(nil ~= value, 
+         table.concat{'const value must be non-nil: ', tostring(name)})
+  assert((Data.boolean == atom and 'boolean' == type(value) or
+         ((Data.string == atom or Data.char == atom) and 
+          'string' == type(value)) or 
+         ((Data.short == atom or Data.unsigned_short == atom or 
+           Data.long == atom or Data.unsigned_long == atom or 
+           Data.long_long == atom or Data.unsigned_long_long == atom or
+           Data.float == atom or 
+           Data.double == atom or Data.long_double == atom) and 
+           'number' == type(value)) or
+         ((Data.unsigned_short == atom or 
+           Data.unsigned_long == atom or
+           Data.unsigned_long_long == atom) and 
+           value < 0)), 
+         table.concat{'const value must be non-negative, of the type: ', 
+                      atom[Data.MODEL][Data.TYPE]() })
+         
+  -- char: truncate value to 1st char; warn if truncated
+  if Data.char == atom and #value > 1 then
+    value = string.sub(value, 1, 1)
+    print(table.concat{'WARNING: truncating string value for char constant "', 
+                       name, '" to: ', value})  
+  end
+ 
+  -- integer: truncate value to integer; warn if truncated
+  if Data.short == atom or Data.unsigned_short == atom or 
+     Data.long == atom or Data.unsigned_long == atom or 
+     Data.long_long == atom or Data.unsigned_long_long == atom and
+     value - math.floor(value) ~= 0 then
+    value = math.floor(value)
+    print(table.concat{'WARNING: truncating decimal value for integer constant "', 
+                       name, '" to: ', value})
+  end
+  
+  -- Construct model
+  local model = {
+    [Data.NAME] = name, 
+    [Data.TYPE] = Data.CONST,
+    [Data.DEFN] = { { name, atom } }, 
+    [Data.INSTANCE] = nil,  -- always nil
+  }  
+  local instance = { -- top-level instance to be installed in the module
+    [Data.MODEL] = model,
+  }
+
+  -- instance value is obtained by evaluating the table:
+  -- eg: MY_CONST()
+  setmetatable(instance, {
+    __call = function(self)
+        return value
+    end,
+    
+    __tostring = function(self)
+        if Data.char == atom then
+            return table.concat{"'", tostring(value), "'"}
+        elseif Data.string == atom then
+            return table.concat{'"', tostring(value), '"'}
+        else
+            return tostring(value)
+        end
+    end           
+  })
+
+  -- add/replace the definition in the container module
+  if self[name] then print('WARNING: replacing ', name) end
+  self[name] = instance
+  table.insert(self[Data.MODEL][Data.DEFN], instance)
+  
+  return instance
+end
+
+---
+-- @function Define an Enum
+-- @return @map<#string,#number> a table of (name=value) pairs
 function Data:Enum(param) 
 	assert('table' == type(param), 
 		   table.concat{'invalid enum specification: ', tostring(param)})
@@ -1004,19 +1100,24 @@ end
 -- Predefined Types
 --------------------------------------------------------------------------------
 
+Data:Atom{'boolean'}
+
 Data:Atom{'float'}
 Data:Atom{'double'}
-
-Data:Atom{'long'}
-Data:Atom{'unsigned_long'}
-Data:Atom{'long_long'}
+Data:Atom{'long_double'}
 
 Data:Atom{'short'}
+Data:Atom{'long'}
+Data:Atom{'long_long'}
+
 Data:Atom{'unsigned_short'}
+Data:Atom{'unsigned_long'}
+Data:Atom{'unsigned_long_long'}
 
 Data:Atom{'char'}
+Data:Atom{'wchar'}
+
 Data:Atom{'octet'}
-Data:Atom{'boolean'}
 
 --------------------------------------------------------------------------------
 -- Predefined Annotations
@@ -1111,7 +1212,15 @@ function Data.print_idl(instance, indent_string)
 	   Data.ANNOTATION == mytype then 
 	   return instance, indent_string 
 	end
-	
+    
+  if Data.CONST == mytype then
+     local name, atom = mydefn[1][1], mydefn[1][2]
+     print(string.format('%sconst %s %s = %s;', content_indent_string, 
+                        atom[Data.MODEL][Data.NAME], 
+                        name, tostring(instance)))
+     return instance, indent_string                              
+  end
+    
 	if Data.TYPEDEF == mytype then
 		local decl = mydefn[1]
 		local alias, collection = decl[2], decl[3]

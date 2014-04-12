@@ -668,23 +668,35 @@ end
 
 Tester[#Tester+1] = 'test_const'
 function Tester:test_const()
-  Data:Const{'LONG', Data.long, 10 }
   Data:Const{'FLOAT', Data.float, 3.14 }
-  Data:Const{'DOUBLE', Data.double, 3.14 * 3.14 }   
+  Data:Const{'DOUBLE', Data.double, 3.14 * 3.14 }  
+  Data:Const{'LDOUBLE', Data.long_double, 3.14 * 3.14 * 3.14 }   
   Data:Const{'STRING', Data.string, "String Constant" }   
-  Data:Const{'BOOL', Data.boolean, true }   
-  
-  self:print(Data.LONG)
+  Data:Const{'BOOL', Data.boolean, true } 
+  Data:Const{'CHAR', Data.char, "String Constant" }   
+  Data:Const{'LONG', Data.long, 10.7 }
+  Data:Const{'LLONG', Data.long_long, 10^10 }
+  Data:Const{'SHORT', Data.short, 5 }
+
   self:print(Data.FLOAT)
   self:print(Data.DOUBLE)
+  self:print(Data.LDOUBLE)
   self:print(Data.STRING)
   self:print(Data.BOOL)
+  self:print(Data.CHAR)
+  self:print(Data.LONG)
+  self:print(Data.LLONG)
+  self:print(Data.SHORT)
   
-  assert(Data.LONG == 10)
-  assert(Data.FLOAT == 3.14)
-  assert(Data.DOUBLE == 3.14 * 3.14)
-  assert(Data.STRING == "String Constant")
-  assert(Data.BOOL == true)
+  assert(Data.FLOAT() == 3.14)
+  assert(Data.DOUBLE() == 3.14 * 3.14)
+  assert(Data.LDOUBLE() == 3.14 * 3.14 * 3.14)
+  assert(Data.STRING() == "String Constant")
+  assert(Data.BOOL() == true)
+  assert(Data.CHAR() == 'S') -- warning printed
+  assert(Data.LONG() == 10)  -- warning printed
+  assert(Data.LLONG() == 10^10)  
+  assert(Data.SHORT() == 5)  -- warning printed
 end
 
 -- main() - run the list of tests passed on the command line
