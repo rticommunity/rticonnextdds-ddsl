@@ -696,7 +696,7 @@ function Tester:test_const()
   assert(Data.CHAR() == 'S') -- warning printed
   assert(Data.LONG() == 10)  -- warning printed
   assert(Data.LLONG() == 10^10)  
-  assert(Data.SHORT() == 5)  -- warning printed
+  assert(Data.SHORT() == 5)  
 end
 
 -- main() - run the list of tests passed on the command line

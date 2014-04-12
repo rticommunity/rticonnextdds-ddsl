@@ -375,10 +375,10 @@ function Data:Const(param)
   end
  
   -- integer: truncate value to integer; warn if truncated
-  if Data.short == atom or Data.unsigned_short == atom or 
-     Data.long == atom or Data.unsigned_long == atom or 
-     Data.long_long == atom or Data.unsigned_long_long == atom and
-     value - math.floor(value) ~= 0 then
+  if (Data.short == atom or Data.unsigned_short == atom or 
+      Data.long == atom or Data.unsigned_long == atom or 
+      Data.long_long == atom or Data.unsigned_long_long == atom) and
+      value - math.floor(value) ~= 0 then
     value = math.floor(value)
     print(table.concat{'WARNING: truncating decimal value for integer constant "', 
                        name, '" to: ', value})
@@ -788,17 +788,17 @@ end
 local tmp_fn, tmp_model = Data:Annotation('Array')
 Data.ARRAY = tmp_model -- 'Array' annotation's data model
 function Data.Array(n, ...)
-	return Data._Collection(Data._.Array, n, ...)
+	return Data._collection(Data._.Array, n, ...)
 end
 
 tmp_fn, tmp_model = Data:Annotation('Sequence')
 Data.SEQUENCE = tmp_model -- 'Sequence' annotation's data model
 function Data.Sequence(n, ...)
-	return Data._Collection(Data._.Sequence, n, ...)
+	return Data._collection(Data._.Sequence, n, ...)
 end
 
--- _Collection() - helper method to define collections, i.e. sequences and arrays
-function Data._Collection(annotation, n, ...)
+-- _collection() - helper method to define collections, i.e. sequences and arrays
+function Data._collection(annotation, n, ...)
 
 	-- ensure that we have an array of positive numbers
 	local dimensions = {...}
