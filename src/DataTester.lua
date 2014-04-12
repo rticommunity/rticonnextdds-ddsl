@@ -141,7 +141,7 @@ Data:Union{'TestUnion3', Data.short,
 	{ 1, 
 		{'x', Data.String()}},
 	{ 2, 
-		{'y', Data.double}},
+		{'y', Data.long_double}},
 	{ -- default
 		{'z', Data.boolean}},
 }
@@ -292,19 +292,14 @@ function Tester:test_struct_nested()
 	self:print(Data.Address)
 end
 
-Tester[#Tester+1] = 'test_module'
-function Tester:test_module()
-		self:print(Data)
-end
-
 Tester[#Tester+1] = 'test_submodule'
 function Tester:test_submodule()
 	self:print(Data.Subtest)
 end
 
-Tester[#Tester+1] = 'test_root'
-function Tester:test_root()
-	self:print(Data)
+Tester[#Tester+1] = 'test_module'
+function Tester:test_module()
+    self:print(Data)
 end
 
 Tester[#Tester+1] = 'test_enum'
@@ -700,6 +695,11 @@ function Tester:test_const()
   assert(Data.LLONG() == 10^10)  
   assert(Data.SHORT() == 5)  
   assert(Data.WSTRING() == "WString Constant")
+end
+
+Tester[#Tester+1] = 'test_root'
+function Tester:test_root()
+  self:print(Data)
 end
 
 -- main() - run the list of tests passed on the command line

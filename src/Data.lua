@@ -404,9 +404,9 @@ function Data:Const(param)
     end,
     
     __tostring = function(self)
-        if Data.char == atom then
+        if Data.char == atom or Data.wchar == atom then
             return table.concat{"'", tostring(value), "'"}
-        elseif Data.string == atom then
+        elseif Data.string == atom or Data.wstring == atom then
             return table.concat{'"', tostring(value), '"'}
         else
             return tostring(value)
@@ -1170,6 +1170,31 @@ Data:Annotation('Nested')
 Data:Annotation('top_level') -- legacy
 
 --------------------------------------------------------------------------------
+-- IDL_DISPLAY
+--------------------------------------------------------------------------------
+
+---
+-- For some model elements, the IDL display string is not the same as the model
+-- element name. This table maps to the corresponding display string in IDL.
+-- #map<#table, #string>
+
+local IDL_DISPLAY = {
+  -- [model element]         = "Display string in IDL"
+  [Data.long_double]         = "long double",
+  [Data.long_long]           = "long long",
+  [Data.unsigned_short]      = "unsigned short",
+  [Data.unsigned_long]       = "unsigned long",
+  [Data.unsigned_long_long]  = "unsigned long long",
+}
+
+setmetatable(IDL_DISPLAY, {
+    -- default: idl display string is the same as the model name
+    __index = function(self, instance) 
+        return instance[Data.MODEL] and instance[Data.MODEL][Data.NAME] or nil
+    end
+})
+
+--------------------------------------------------------------------------------
 -- Relationship Definitions
 --------------------------------------------------------------------------------
 
@@ -1251,7 +1276,7 @@ function Data.print_idl(instance, indent_string)
   if Data.CONST == mytype then
      local name, atom = mydefn[1][1], mydefn[1][2]
      print(string.format('%sconst %s %s = %s;', content_indent_string, 
-                        atom[Data.MODEL][Data.NAME], 
+                        IDL_DISPLAY[atom], 
                         name, tostring(instance)))
      return instance, indent_string                              
   end
@@ -1368,17 +1393,17 @@ function Data.print_idl_member(decl, content_indent_string)
 	local output_member = ''		
 	if seq == nil then -- not a sequence
 		output_member = string.format('%s%s %s', content_indent_string, 
-		element[Data.MODEL][Data.NAME], role)
+		                IDL_DISPLAY[element], role)
 	elseif #seq == 0 then -- unbounded sequence
 		output_member = string.format('%ssequence<%s> %s', content_indent_string, 
-		element[Data.MODEL][Data.NAME], role)
+		                IDL_DISPLAY[element], role)
 	else -- bounded sequence
 		output_member = string.format('%s', content_indent_string)
 		for i = 1, #seq do
 			output_member = string.format('%ssequence<', output_member) 
 		end
 		output_member = string.format('%s%s', output_member, 
-											  element[Data.MODEL][Data.NAME])
+									  IDL_DISPLAY[element])
 		for i = 1, #seq do
 			output_member = string.format('%s,%d>', output_member, seq[i]) 
 		end
