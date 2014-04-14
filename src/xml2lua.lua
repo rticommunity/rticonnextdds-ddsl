@@ -104,7 +104,7 @@ end
 ----------------------------------------------------------------------------
 -- Output Lua
 
-require('Data')
+Data = require('Data')
 
 local xmlfile = arg[1]
 print('xmlfile = ', xmlfile)
@@ -211,9 +211,9 @@ function emit_member(data, xarg)
 
 	table.insert(decl_i, kind)
 
-	-- multiplicity: Seq()
+	-- multiplicity: Sequence()
 	if xarg.sequenceMaxLength then
-		table.insert(decl_i, Data.Seq(tonumber(xarg.sequenceMaxLength)))
+		table.insert(decl_i, Data.Sequence(tonumber(xarg.sequenceMaxLength)))
 	end
 
 	-- annotations
