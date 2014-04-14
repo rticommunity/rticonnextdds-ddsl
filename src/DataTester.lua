@@ -697,6 +697,36 @@ function Tester:test_const()
   assert(Data.WSTRING() == "WString Constant")
 end
 
+Tester[#Tester+1] = 'test_const_bounds'
+function Tester:test_const_bounds()
+    Data:Const{'CAPACITY', Data.short, 5 }
+    Data:Typedef{'MyCapacitySeq', Data.Name, 
+                                  Data.Sequence(Data.CAPACITY) }
+    Data:Struct{'MyCapacityStruct', 
+        { 'myNames', Data.MyCapacitySeq },
+        { 'myStrings', Data.String(), Data.Array(Data.CAPACITY, Data.CAPACITY)},
+        { 'myNums', Data.double, Data.Sequence(Data.CAPACITY,
+                                                 Data.CAPACITY)},
+    }
+                                 
+    self:print(Data.CAPACITY)
+    self:print(Data.MyCapacitySeq)
+    self:print(Data.MyCapacityStruct)
+    
+  assert(Data.CAPACITY() == 5)
+  
+  -- myNames
+  assert(Data.MyCapacityStruct.myNames() == 'myNames#')
+  assert(Data.MyCapacityStruct.myNames(1).first == 'myNames[1].first')
+  assert(Data.MyCapacityStruct.myNames(1).nicknames() == 'myNames[1].nicknames#')
+  assert(Data.MyCapacityStruct.myNames(1).nicknames(1) == 'myNames[1].nicknames[1]')
+  
+  -- myStrings
+  assert(Data.MyCapacityStruct.myStrings() == 'myStrings#')
+  assert(Data.MyCapacityStruct.myStrings(1)() == 'myStrings[1]#')
+  assert(Data.MyCapacityStruct.myStrings(1)(1) == 'myStrings[1][1]')
+end
+
 Tester[#Tester+1] = 'test_root'
 function Tester:test_root()
   self:print(Data)

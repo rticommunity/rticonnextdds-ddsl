@@ -337,7 +337,7 @@ end
 -- @param #list param { name, Data.<atom>, const_value }
 -- @return #map an table to index into the constant
 -- @usage Define a const: Data:Const{'MY_CONST', Data.short, 10 }
--- @usage Use a const: { 'mySeq', Data.string, Data.Sequence(Data.MY_CONST()) }
+-- @usage Use a const: { 'mySeq', Data.string, Data.Sequence(Data.MY_CONST) }
 -- @usage Use a const: Data:Const{'NEW_CONST', Data.short, Data.MY_CONST()*2 }
 function Data:Const(param) 
   local name, atom, value = param[1], param[2], param[3]
@@ -809,38 +809,49 @@ function Data.WString(n)
   return _string(n, 'wstring')
 end
 
+
+-- collection() - helper method to define collections, i.e. sequences and arrays
+local function _collection(annotation, n, ...)
+
+  -- ensure that we have an array of positive numbers
+  local dimensions = {...}
+  table.insert(dimensions, 1, n) -- insert n at the begining
+  for i, v in ipairs(dimensions) do
+    local dim = v
+         
+    -- if the dim is a CONST, validate its value
+    if 'table' == type(v) and 
+       'nil' ~= v[Data.MODEL] and 
+       Data.CONST == v[Data.MODEL][Data.TYPE] then
+       dim = v()
+    end
+   
+    -- check if the 'dim' is valid
+    assert(type(dim)=='number',  
+      table.concat{'invalid collection bound: ', tostring(dim)})
+    assert(dim > 0 and dim - math.floor(dim) == 0, -- positive integer  
+      table.concat{'collection bound must be > 0: ', dim})
+  end
+  
+  -- return the predefined annotation instance, whose attributes are 
+  -- the collection dimension bounds
+  return annotation(dimensions)
+end
+
 -- Arrays and Sequences are implemented as a special annotations, whose 
 -- attributes are positive integer constants, that specify the dimension bounds
 -- NOTE: Since an array or a sequence is an annotation, it can appear anywhere 
 --       after a member type declaration; the 1st one is used
-local tmp_fn, tmp_model = Data:Annotation('Array')
-Data.ARRAY = tmp_model -- 'Array' annotation's data model
+local _tmp_fn, _tmp_model = Data:Annotation('Array')
+Data.ARRAY = _tmp_model -- 'Array' annotation's data model
 function Data.Array(n, ...)
-	return Data._collection(Data._.Array, n, ...)
+	return _collection(Data._.Array, n, ...)
 end
 
-tmp_fn, tmp_model = Data:Annotation('Sequence')
-Data.SEQUENCE = tmp_model -- 'Sequence' annotation's data model
+_tmp_fn, _tmp_model = Data:Annotation('Sequence')
+Data.SEQUENCE = _tmp_model -- 'Sequence' annotation's data model
 function Data.Sequence(n, ...)
-	return Data._collection(Data._.Sequence, n, ...)
-end
-
--- _collection() - helper method to define collections, i.e. sequences and arrays
-function Data._collection(annotation, n, ...)
-
-	-- ensure that we have an array of positive numbers
-	local dimensions = {...}
-	table.insert(dimensions, 1, n) -- insert n at the begining
-	for i, v in ipairs(dimensions) do
-		assert(type(v)=='number',  
-			table.concat{'invalid collection bound: ', tostring(v)})
-		assert(v >= 0,  
-			table.concat{'collection bound must be > 0: ', v})
-	end
-	
-	-- return the predefined annotation instance, whose attributes are 
-	-- the collection dimension bounds
-	return annotation(dimensions)
+	return _collection(Data._.Sequence, n, ...)
 end
 
 --------------------------------------------------------------------------------
@@ -1170,31 +1181,6 @@ Data:Annotation('Nested')
 Data:Annotation('top_level') -- legacy
 
 --------------------------------------------------------------------------------
--- IDL_DISPLAY
---------------------------------------------------------------------------------
-
----
--- For some model elements, the IDL display string is not the same as the model
--- element name. This table maps to the corresponding display string in IDL.
--- #map<#table, #string>
-
-local IDL_DISPLAY = {
-  -- [model element]         = "Display string in IDL"
-  [Data.long_double]         = "long double",
-  [Data.long_long]           = "long long",
-  [Data.unsigned_short]      = "unsigned short",
-  [Data.unsigned_long]       = "unsigned long",
-  [Data.unsigned_long_long]  = "unsigned long long",
-}
-
-setmetatable(IDL_DISPLAY, {
-    -- default: idl display string is the same as the model name
-    __index = function(self, instance) 
-        return instance[Data.MODEL] and instance[Data.MODEL][Data.NAME] or nil
-    end
-})
-
---------------------------------------------------------------------------------
 -- Relationship Definitions
 --------------------------------------------------------------------------------
 
@@ -1241,6 +1227,42 @@ end
 -- Helpers
 --------------------------------------------------------------------------------
 
+---
+-- For some model elements, the IDL display string is not the same as the model
+-- element name. This table maps to the corresponding display string in IDL.
+-- #map<#table, #string>
+
+local _IDL_DISPLAY = {
+  -- [model element]         = "Display string in IDL"
+  [Data.long_double]         = "long double",
+  [Data.long_long]           = "long long",
+  [Data.unsigned_short]      = "unsigned short",
+  [Data.unsigned_long]       = "unsigned long",
+  [Data.unsigned_long_long]  = "unsigned long long",
+}
+
+setmetatable(_IDL_DISPLAY, {
+    -- default: idl display string is the same as the model name
+    __index = function(self, instance) 
+        return instance[Data.MODEL] and instance[Data.MODEL][Data.NAME] or nil
+    end
+})
+
+
+---
+-- Fully qualified name of a model element
+-- @function fqname
+-- @param #table instance a model element whose fully qualified name is desired
+-- @return #string the fully qualified name of the instance if any
+--                 if instance is not a model element, returns the string value
+--                 of the argument
+local function _fqname(instance)
+    return 'table' == type(instance) and 
+              (instance[Data.MODEL] and 
+                instance[Data.MODEL][Data.NAME]) or 
+              tostring(instance)
+end
+
 -- Data.print_idl() - prints OMG IDL representation of a data model
 --
 -- Purpose:
@@ -1276,7 +1298,7 @@ function Data.print_idl(instance, indent_string)
   if Data.CONST == mytype then
      local atom = mydefn
      print(string.format('%sconst %s %s = %s;', content_indent_string, 
-                        IDL_DISPLAY[atom], 
+                        _IDL_DISPLAY[atom], 
                         myname, tostring(instance)))
      return instance, indent_string                              
   end
@@ -1287,7 +1309,8 @@ function Data.print_idl(instance, indent_string)
 		if collection then
 			print(string.format('%s%s sequence<%s%s> %s;\n', indent_string, mytype(), 
 							    alias[Data.MODEL][Data.NAME], 
-							    #collection == 0 and '' or ',' .. collection[1],
+							    
+							    #collection == 0 and '' or ',' .. _fqname(collection[1]),
 							    myname))
 		else
 			print(string.format('%s%s %s %s;\n', indent_string, mytype(), 
@@ -1393,26 +1416,24 @@ function Data.print_idl_member(decl, content_indent_string)
 	local output_member = ''		
 	if seq == nil then -- not a sequence
 		output_member = string.format('%s%s %s', content_indent_string, 
-		                IDL_DISPLAY[element], role)
+		                _IDL_DISPLAY[element], role)
 	elseif #seq == 0 then -- unbounded sequence
 		output_member = string.format('%ssequence<%s> %s', content_indent_string, 
-		                IDL_DISPLAY[element], role)
+		                _IDL_DISPLAY[element], role)
 	else -- bounded sequence
 		output_member = string.format('%s', content_indent_string)
 		for i = 1, #seq do
 			output_member = string.format('%ssequence<', output_member) 
 		end
 		output_member = string.format('%s%s', output_member, 
-									  IDL_DISPLAY[element])
+									  _IDL_DISPLAY[element])
 		for i = 1, #seq do
-			output_member = string.format('%s,%d>', output_member, seq[i]) 
+			output_member = string.format('%s,%s>', output_member, _fqname(seq[i])) 
 		end
 		output_member = string.format('%s %s', output_member, role)
 	end
 
 	-- member annotations:	
-	--   start with the 3rd or the 4th entry depending upon whether it 
-	--   was a sequence or not:
 	local output_annotations = nil
 	for j = 3, #decl do
 		
@@ -1420,7 +1441,8 @@ function Data.print_idl_member(decl, content_indent_string)
 		
 		if Data.ARRAY == decl[j][Data.MODEL] then
 			for i = 1, #decl[j] do
-				output_member = string.format('%s[%d]', output_member, decl[j][i]) 
+				output_member = string.format('%s[%s]', output_member, 
+				                                 _fqname(decl[j][i])) 
 			end
 		elseif Data.SEQUENCE ~= decl[j][Data.MODEL] then
 			output_annotations = string.format('%s%s ', 
