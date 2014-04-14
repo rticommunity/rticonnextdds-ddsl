@@ -389,7 +389,7 @@ function Data:Const(param)
   local model = {
     [Data.NAME] = name, 
     [Data.TYPE] = Data.CONST,
-    [Data.DEFN] = { { name, atom } }, 
+    [Data.DEFN] = atom,
     [Data.INSTANCE] = nil,  -- always nil
   }  
   local instance = { -- top-level instance to be installed in the module
@@ -1274,10 +1274,10 @@ function Data.print_idl(instance, indent_string)
 	end
     
   if Data.CONST == mytype then
-     local name, atom = mydefn[1][1], mydefn[1][2]
+     local atom = mydefn
      print(string.format('%sconst %s %s = %s;', content_indent_string, 
                         IDL_DISPLAY[atom], 
-                        name, tostring(instance)))
+                        myname, tostring(instance)))
      return instance, indent_string                              
   end
     
