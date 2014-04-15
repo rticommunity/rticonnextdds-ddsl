@@ -760,6 +760,20 @@ function Data.create_member(member_definition)
 end
 
 ---
+-- Fully qualified name of a model element
+-- @function fqname
+-- @param #table instance a model element whose fully qualified name is desired
+-- @return #string the fully qualified name of the instance if any
+--                 if instance is not a model element, returns the string value
+--                 of the argument
+local function _fqname(instance)
+    return 'table' == type(instance) and 
+              (instance[Data.MODEL] and 
+                instance[Data.MODEL][Data.NAME]) or 
+              tostring(instance)
+end
+
+---
 -- Local helper method to define a string on maximum length 'n'.
 -- Used by Data.string() and Data.wstring().
 -- 
@@ -773,12 +787,23 @@ end
 local function _string(n, name)
 		
 	-- construct name of the atom: 'string<n>'
-	if nil ~= n then
-		assert(type(n)=='number', 
+	
+  local dim = n
+         
+  -- if the dim is a CONST, use its value for validation
+  if 'table' == type(n) and 
+     'nil' ~= n[Data.MODEL] and 
+     Data.CONST == n[Data.MODEL][Data.TYPE] then
+     dim = n()
+  end
+   
+  -- validate the dimension
+	if nil ~= dim then
+		assert(type(dim)=='number', 
 	           table.concat{'invalid string capacity: ', tostring(n)})
-		assert(n > 0, 
+		assert(dim > 0, 
 		       table.concat{'string capacity must be > 0: ', tostring(n)})
-	    name = table.concat{'string<', n, '>'}
+	  name = table.concat{'string<', _fqname(n), '>'}
 	end
 	            	
 	-- lookup the atom name
@@ -1247,21 +1272,6 @@ setmetatable(_IDL_DISPLAY, {
         return instance[Data.MODEL] and instance[Data.MODEL][Data.NAME] or nil
     end
 })
-
-
----
--- Fully qualified name of a model element
--- @function fqname
--- @param #table instance a model element whose fully qualified name is desired
--- @return #string the fully qualified name of the instance if any
---                 if instance is not a model element, returns the string value
---                 of the argument
-local function _fqname(instance)
-    return 'table' == type(instance) and 
-              (instance[Data.MODEL] and 
-                instance[Data.MODEL][Data.NAME]) or 
-              tostring(instance)
-end
 
 -- Data.print_idl() - prints OMG IDL representation of a data model
 --
