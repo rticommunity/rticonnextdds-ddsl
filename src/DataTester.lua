@@ -74,7 +74,7 @@ MyData:Enum('Months') {
 -- Data Definitions
 --------------------------------------------------------------------------------
 
-days = Data:Enum{'Days', 
+Data:Enum{'Days', 
 	{'MON'}, {'TUE'}, {'WED'}, {'THU'}, {'FRI'}, {'SAT'}, {'SUN'}
 }
 
@@ -304,9 +304,9 @@ end
 
 Tester[#Tester+1] = 'test_enum'
 function Tester:test_enum()
-	Data.print_idl(Data.Days)
-	Data.print_idl(Data.Months)
-	Data.print_idl(Data.Subtest.Colors)
+	self:print(Data.Days)
+	self:print(Data.Months)
+	self:print(Data.Subtest.Colors)
 end
 
 Tester[#Tester+1] = 'test_union'

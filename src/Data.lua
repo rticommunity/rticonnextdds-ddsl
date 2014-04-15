@@ -1323,7 +1323,7 @@ function Data.print_idl(instance, indent_string)
 	end
 	
 	-- open --
-	if (nil ~= myname) then -- not top-level
+	if (nil ~= myname) then -- not top-level / root module
 	
 		-- print the annotations
 		if nil ~=mydefn then
@@ -1395,7 +1395,7 @@ function Data.print_idl(instance, indent_string)
 	end
 	
 	-- close --
-	if (nil ~= myname) then -- not top-level
+	if (nil ~= myname) then -- not top-level / root module
 		print(string.format('%s};\n', indent_string))
 	end
 	
@@ -1562,6 +1562,7 @@ function Data.index(instance, result, model)
 end
 
 --------------------------------------------------------------------------------
-return Data:Module{''} -- global module (unnamed)
---return Data._
+local root_module = Data:Module{''} 
+root_module[Data.MODEL][Data.NAME] = nil -- root module is unnamed
+return root_module
 --------------------------------------------------------------------------------
