@@ -1316,17 +1316,9 @@ function Data.print_idl(instance, indent_string)
 	if Data.TYPEDEF == mytype then
 		local decl = mydefn[1]
 		local alias, collection = decl[2], decl[3]
-		if collection then
-			print(string.format('%s%s sequence<%s%s> %s;\n', indent_string, mytype(), 
-							    alias[Data.MODEL][Data.NAME], 
-							    
-							    #collection == 0 and '' or ',' .. _fqname(collection[1]),
-							    myname))
-		else
-			print(string.format('%s%s %s %s;\n', indent_string, mytype(), 
-							    alias[Data.MODEL][Data.NAME], 
-							    myname))
-		end
+		
+    print(string.format('%s%s %s', indent_string,  mytype(),
+                                Data.tostring_idl_member(decl, myname)))
 		return instance, indent_string 
 	end
 	
@@ -1363,7 +1355,8 @@ function Data.print_idl(instance, indent_string)
 	 
 		for i, decl in ipairs(mydefn) do -- walk through the model definition
 			if not decl[Data.MODEL] then -- skip struct level annotations
-				Data.print_idl_member(decl, content_indent_string)
+        print(string.format('%s%s', content_indent_string,
+                            Data.tostring_idl_member(decl)))
 			end
 		end
 
@@ -1384,7 +1377,8 @@ function Data.print_idl(instance, indent_string)
 				end
 				
 				-- member element
-				Data.print_idl_member(decl[2], content_indent_string .. '   ')
+				print(string.format('%s%s', content_indent_string .. '   ',
+				                    Data.tostring_idl_member(decl[2])))
 			end
 		end
 		
@@ -1409,12 +1403,19 @@ function Data.print_idl(instance, indent_string)
 end
 
 
--- Helper method
--- Given a member declaration, print the equivalent IDL
--- decl is { role, element, [collection,] [annotation1, annotation2, ...] }
-function Data.print_idl_member(decl, content_indent_string)
+---
+-- IDL string representation of a member field or a typedef.
+-- @function tostring_idl_member
+-- @param #table decl member declararyin in the form of
+--             { role, element, [collection,] [annotation1, annotation2, ...] }
+-- @param #string typedef_name non-nil only for typedefs; specifies the name
+--              Note that decl[1] ie role is nil for typedefs; this parameter 
+--              supplied the string to use instead
+-- @return #string IDL string representation of the idl member
+function Data.tostring_idl_member(decl, typedef_name)
 	
-	local role, element = decl[1], decl[2]
+	local role = typedef_name or decl[1] -- typedef_name non-nil only for typedefs
+	local element = decl[2]
 	local seq
 	for i = 3, #decl do
 		if Data.SEQUENCE == decl[i][Data.MODEL] then
@@ -1425,18 +1426,14 @@ function Data.print_idl_member(decl, content_indent_string)
 
 	local output_member = ''		
 	if seq == nil then -- not a sequence
-		output_member = string.format('%s%s %s', content_indent_string, 
-		                _IDL_DISPLAY[element], role)
+		output_member = string.format('%s %s', _IDL_DISPLAY[element], role)
 	elseif #seq == 0 then -- unbounded sequence
-		output_member = string.format('%ssequence<%s> %s', content_indent_string, 
-		                _IDL_DISPLAY[element], role)
+		output_member = string.format('sequence<%s> %s', _IDL_DISPLAY[element], role)
 	else -- bounded sequence
-		output_member = string.format('%s', content_indent_string)
 		for i = 1, #seq do
 			output_member = string.format('%ssequence<', output_member) 
 		end
-		output_member = string.format('%s%s', output_member, 
-									  _IDL_DISPLAY[element])
+		output_member = string.format('%s%s', output_member, _IDL_DISPLAY[element])
 		for i = 1, #seq do
 			output_member = string.format('%s,%s>', output_member, _fqname(seq[i])) 
 		end
@@ -1462,9 +1459,9 @@ function Data.print_idl_member(decl, content_indent_string)
 	end
 
 	if output_annotations then
-		print(string.format('%s; //%s', output_member, output_annotations))
+		return string.format('%s; //%s', output_member, output_annotations)
 	else
-		print(string.format('%s;', output_member))
+		return string.format('%s;', output_member)
 	end
 end
 

@@ -716,31 +716,32 @@ function Tester:test_const_bounds()
                                  
     self:print(Data.CAPACITY)
     self:print(Data.MyCapacitySeq)
+    self:print(Data.MyCapacityArr)
     self:print(Data.MyCapacityStruct)
     
-  assert(Data.CAPACITY() == 5)
+    assert(Data.CAPACITY() == 5)
+    
+    -- myNames
+    assert(Data.MyCapacityStruct.myNames() == 'myNames#')
+    assert(Data.MyCapacityStruct.myNames(1)() == 'myNames[1]#')
+    assert(Data.MyCapacityStruct.myNames(1)(1).first == 'myNames[1][1].first')
+    assert(Data.MyCapacityStruct.myNames(1)(1).nicknames() == 'myNames[1][1].nicknames#')
+    assert(Data.MyCapacityStruct.myNames(1)(1).nicknames(1) == 'myNames[1][1].nicknames[1]')
   
-  -- myNames
-  assert(Data.MyCapacityStruct.myNames() == 'myNames#')
-  assert(Data.MyCapacityStruct.myNames(1)() == 'myNames[1]#')
-  assert(Data.MyCapacityStruct.myNames(1)(1).first == 'myNames[1][1].first')
-  assert(Data.MyCapacityStruct.myNames(1)(1).nicknames() == 'myNames[1][1].nicknames#')
-  assert(Data.MyCapacityStruct.myNames(1)(1).nicknames(1) == 'myNames[1][1].nicknames[1]')
-
-  -- myNames2
-  assert(Data.MyCapacityStruct.myNames2() == 'myNames2#')
-  assert(Data.MyCapacityStruct.myNames2(1)() == 'myNames2[1]#')
-  assert(Data.MyCapacityStruct.myNames2(1)(1).first == 'myNames2[1][1].first')
-  assert(Data.MyCapacityStruct.myNames2(1)(1).nicknames() == 'myNames2[1][1].nicknames#')
-  assert(Data.MyCapacityStruct.myNames2(1)(1).nicknames(1) == 'myNames2[1][1].nicknames[1]')
- 
-  -- myStrings
-  assert(Data.MyCapacityStruct.myStrings() == 'myStrings#')
-  assert(Data.MyCapacityStruct.myStrings(1)() == 'myStrings[1]#')
-  assert(Data.MyCapacityStruct.myStrings(1)(1) == 'myStrings[1][1]')
-  
-  -- myStr
-  assert(Data.MyCapacityStruct.myStr == 'myStr')
+    -- myNames2
+    assert(Data.MyCapacityStruct.myNames2() == 'myNames2#')
+    assert(Data.MyCapacityStruct.myNames2(1)() == 'myNames2[1]#')
+    assert(Data.MyCapacityStruct.myNames2(1)(1).first == 'myNames2[1][1].first')
+    assert(Data.MyCapacityStruct.myNames2(1)(1).nicknames() == 'myNames2[1][1].nicknames#')
+    assert(Data.MyCapacityStruct.myNames2(1)(1).nicknames(1) == 'myNames2[1][1].nicknames[1]')
+   
+    -- myStrings
+    assert(Data.MyCapacityStruct.myStrings() == 'myStrings#')
+    assert(Data.MyCapacityStruct.myStrings(1)() == 'myStrings[1]#')
+    assert(Data.MyCapacityStruct.myStrings(1)(1) == 'myStrings[1][1]')
+    
+    -- myStr
+    assert(Data.MyCapacityStruct.myStr == 'myStr')
 end
 
 Tester[#Tester+1] = 'test_root'
