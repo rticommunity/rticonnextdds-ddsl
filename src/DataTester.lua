@@ -11,256 +11,9 @@
 -- Created: Rajive Joshi, 2014 Feb 14
 -------------------------------------------------------------------------------
 
-local Data = require "Data"
+local data = require "Data"
 
---[[
-local Test = Test or {}
-
-Data.Days = Data.enum{
-	'MON', 'TUE', 'WED', 'THU',
-}
-
-Data.Subtest = {}
-
-Data.Subtest.Colors = Data.enum2{
-	RED   = 5,
-	BLUE  = 7,
-	GREEN = 9,
-}
-
-Data.Name = Data.instance2{
-	first = Data.STRING,
-	last  = Data.STRING,
-}
-
-Data.Address = Data.instance2{
-	name    = Data.instance('name', Data.Name),
-	street  = Data.STRING,
-	city    = Data.STRING,
-}
---]]
-
---[[ ALTERNATE Syntax:
-local MyTest = Data:Module('MyTest')
-
-MyData:Struct('Address') {
--- MyData:Struct{Address = {
-	{ name = Data.Name },
-	{ street = Data.String() },
-	{ city = Data.String() },
-	{ coord = Data.Seq(Data.double, 2) },
-}-- }
-
-MyData:Union('TestUnion1')(Data.Days) {
--- MyData:Union{TestUnion1 = Data.switch(Data.Days) {
-
-	{ 'MON', 
-		{name = Data.Name},
-	{ 'TUE', 
-		{address = Data.Address}},
-	{ -- default
-		{x = Data.double}},		
-}-- }
-
-MyData:Enum('Months') { 
--- MyData:Enum{Months = { 
-	{ JAN = 1 },
-	{ FEB = 2 },
-	{ MAR = 3 },
-}--}
---]]
-
---------------------------------------------------------------------------------
--- Data Definitions
---------------------------------------------------------------------------------
-
-Data:Enum{'Days', 
-	{'MON'}, {'TUE'}, {'WED'}, {'THU'}, {'FRI'}, {'SAT'}, {'SUN'}
-}
-
-Data:Enum{'Months', 
-	{ 'JAN', 1 },
-	{ 'FEB', 2 },
-	{ 'MAR', 3 }
-}
-
-Data:Module('Subtest') -- alternate syntax
-
-Data.Subtest:Enum{'Colors', 
-	{ 'RED',   -5 },
-	{ 'BLUE',  7 },
-	{ 'GREEN', -9 },
-	{ 'PINK' }
-}
-
-Data.Subtest:Struct{'Fruit', 
-	{ 'weight', Data.double },
-	{ 'color' , Data.Subtest.Colors}
-}
-
-Data:Struct{'Name',
-	{ 'first', Data.String(10), Data._.Key{} },
-	{ 'last',  Data.String() }, 
-	{ 'nicknames',  Data.String(10), Data.Sequence(3) },
-	{ 'aliases',  Data.String(5), Data.Sequence() },
-	{ 'birthday', Data.Days, Data._.Optional{} },
-	{ 'favorite', Data.Subtest.Colors, Data.Sequence(2), Data._.Optional{} },
-}
-
--- user defined annotation
-Data:Annotation('MyAnnotation', {value1 = 42, value2 = 42.0})
-
-Data:Struct{'Address',
-	Data._.Extensibility{'EXTENSIBLE_EXTENSIBILITY'},
-	{ 'name', Data.Name },
-	{ 'street', Data.String() },
-	{ 'city',  Data.String(), Data._.MyAnnotation{value1 = 10, value2 = 17} },
-	-- Data._.Extensibility{'EXTENSIBLE_EXTENSIBILITY'},
-}
-
-Data:Union{'TestUnion1', Data.Days,
-	{ 'MON', 
-		{'name', Data.Name}},
-	{ 'TUE', 
-		{'address', Data.Address}},
-	{ -- default
-		{'x', Data.double}},		
-	Data._.Extensibility{'EXTENSIBLE_EXTENSIBILITY',domain=5},
-}
-
-Data:Union{'TestUnion2', Data.char,
-	{ 'c', 
-		{'name', Data.Name, Data._.Key{} }},
-	{ 'a', 
-		{'address', Data.Address}},
-	{ -- default
-		{'x', Data.double}},
-}
-
-Data:Union{'TestUnion3', Data.short,
-	{ 1, 
-		{'x', Data.String()}},
-	{ 2, 
-		{'y', Data.long_double}},
-	{ -- default
-		{'z', Data.boolean}},
-}
-
-Data:Union{'NameOrAddress', Data.boolean,
-	{ true, 
-		{'name', Data.Name}},
-	{ false, 
-		{'address', Data.Address}},
-}
-
-Data:Struct{'Company',
-	{ 'entity', Data.NameOrAddress},
-	{ 'hq', Data.String(), Data.Sequence(2) },
-	{ 'offices', Data.Address, Data.Sequence(10) },
-	{ 'employees', Data.Name, Data.Sequence() }
-}
-
-Data:Struct{'BigCompany',
-	{ 'parent', Data.Company},
-	{ 'divisions', Data.Company, Data.Sequence()}
-}
-
-Data:Struct{'FullName', Data.Name,
-	{ 'middle',  Data.String() },
-	Data._.Extensibility{'EXTENSIBLE_EXTENSIBILITY'},
-}
-
-Data:Struct{'Contact', Data.FullName,
-	{ 'address',  Data.Address },
-	{ 'email',  Data.String() },
-}
-
-Data:Struct{'Tasks',
-	{ 'contact',  Data.Contact },
-	{ 'day',  Data.Days },
-}
-
-Data:Struct{'Calendar',
-	{ 'tasks',  Data.Tasks, Data.Sequence() },
-}
-
--- typedefs
-Data:Typedef{'MyDouble', Data.double}
-Data:Typedef{'MyDouble2', Data.MyDouble}
-Data:Typedef{'MyString', Data.String(10) }
-
-Data:Typedef{'MyName', Data.Name }
-Data:Typedef{'MyName2', Data.MyName }
-
-Data:Typedef{'MyAddress', Data.Address }
-Data:Typedef{'MyAddress2', Data.MyAddress }
-
-Data:Struct{'MyTypedef',
-	{ 'rawDouble', Data.double },
-	{ 'myDouble', Data.MyDouble },
-	{ 'myDouble2', Data.MyDouble2 },
-	
-	{ 'name',  Data.Name },
-	{ 'myName',  Data.MyName },
-	{ 'myName2',  Data.MyName2 },
-	
-	{ 'address', Data.Address },
-	{ 'myAddress', Data.MyAddress },
-	{ 'myAddress2', Data.MyAddress2 },
-}
-			
-Data:Typedef{'MyDoubleSeq', Data.MyDouble, Data.Sequence() }
-Data:Typedef{'MyStringSeq', Data.MyString, Data.Sequence(10) }
-
-Data:Typedef{'NameSeq', Data.Name, Data.Sequence(10) }
-Data:Typedef{'NameSeqSeq', Data.NameSeq, Data.Sequence(10) }
-
-Data:Typedef{'MyNameSeq', Data.MyName, Data.Sequence(10) }
-Data:Typedef{'MyNameSeqSeq', Data.MyNameSeq, Data.Sequence(10) }
-
-Data:Struct{'MyTypedefSeq',
-    { 'myDoubleSeq', Data.MyDouble, Data.Sequence() },
-	{ 'myDoubleSeqA', Data.MyDoubleSeq },
-	{ 'myStringSeqA', Data.MyStringSeq },
-	
-	{ 'nameSeq', Data.Name, Data.Sequence() },
-	{ 'nameSeqA', Data.NameSeq },
-	{ 'nameSeqSeq', Data.NameSeq, Data.Sequence() },
-	{ 'nameSeqSeqA', Data.NameSeqSeq },
-	{ 'nameSeqSeqASeq', Data.NameSeqSeq, Data.Sequence() },
-
-	{ 'myNameSeq', Data.MyName, Data.Sequence() },
-	{ 'myNameSeqA', Data.MyNameSeq },
-	{ 'myNameSeqSeq', Data.MyNameSeq, Data.Sequence() },
-	{ 'myNameSeqSeqA', Data.MyNameSeqSeq },
-	{ 'myNameSeqSeqASeq', Data.MyNameSeqSeq, Data.Sequence() },
-}
-
--- Arrays
-Data:Struct{'MyArrays1',
-	-- 1-D
-	{ 'ints', Data.double, Data.Array(3) },
-
-	-- 2-D
-	{ 'days', Data.Days, Data.Array(6, 9) },
-	
-	-- 3-D
-	{ 'names', Data.Name, Data.Array(12, 15, 18) },
-}
-
-Data:Union{'MyArrays2', Data.Days,
-	-- 1-D
-	{ 'MON',
-		{'ints', Data.double, Data.Array(3) }},
-
-	-- 2-D
-	{ 'TUE',
-		{ 'days', Data.Days, Data.Array(6, 9) }},
-	
-	-- 3-D
-	{--
-		{ 'names', Data.Name, Data.Array(12, 15, 18) }},	
-}
+local Data -- top-level data-space (to be defined using 'data' methods)
 
 --------------------------------------------------------------------------------
 -- Tester - the unit tests
@@ -268,185 +21,512 @@ Data:Union{'MyArrays2', Data.Days,
 
 local Tester = {} -- array of test functions
 
--- print - helper method to print the IDL and the index for an data definition
-function Tester:print(instance)
-	Data.print_idl(instance)
+Tester[#Tester+1] = 'test_module'
+function Tester:test_module()
 
-	-- print index
-	local instance = Data.index(instance)
-	if instance == nil then return end
-	
-	print('index:')
-	for i, v in ipairs(instance) do
-		print('   ', v)	
-	end
-end
+    Data = data.module{} -- define a module
 
-Tester[#Tester+1] = 'test_struct_basic'
-function Tester:test_struct_basic()
-	self:print(Data.Name)
-end
-
-Tester[#Tester+1] = 'test_struct_nested'
-function Tester:test_struct_nested()
-	self:print(Data.Address)
+    self:print(Data)
+    
+    assert(Data ~= nil)
 end
 
 Tester[#Tester+1] = 'test_submodule'
 function Tester:test_submodule()
-	self:print(Data.Subtest)
+
+  Data.Submodule = data.module{} -- submodule 
+  
+  self:print(Data.Submodule)
+  
+  assert(Data.Submodule ~= nil)
 end
 
-Tester[#Tester+1] = 'test_module'
-function Tester:test_module()
-    self:print(Data)
+Tester[#Tester+1] = 'test_enum1'
+function Tester:test_enum1()
+
+  Data.Days = data.enum{
+    {'MON'}, {'TUE'}, {'WED'}, {'THU'}, {'FRI'}, {'SAT'}, {'SUN'}
+  }
+  
+  self:print(Data.Days)
+  
+  assert(Data.Days.MON == 0)
+  assert(Data.Days.SUN == 6)
 end
 
-Tester[#Tester+1] = 'test_enum'
-function Tester:test_enum()
-	self:print(Data.Days)
-	self:print(Data.Months)
-	self:print(Data.Subtest.Colors)
+Tester[#Tester+1] = 'test_enum2'
+function Tester:test_enum2()
+
+  Data.Months = data.enum{
+    { 'OCT', 10 },
+    { 'NOV', 11 },
+    { 'DEC', 12 }
+  }
+
+  self:print(Data.Months)
+  
+  assert(Data.Months.OCT == 10)
+  assert(Data.Months.DEC == 12)
 end
 
-Tester[#Tester+1] = 'test_union'
-function Tester:test_union()
-	self:print(Data.TestUnion1)
-	self:print(Data.TestUnion2)
-	self:print(Data.TestUnion3)
-	self:print(Data.NameOrAddress)
+Tester[#Tester+1] = 'test_submodule_enum'
+function Tester:test_submodule_enum()
+
+  Data.Submodule.Colors = data.enum{
+    { 'RED',   -5 },
+    { 'YELLOW',  7 },
+    { 'GREEN', -9 },
+    { 'PINK' }
+  }
+  self:print(Data.Submodule.Colors)
+  
+  assert(Data.Submodule.Colors.YELLOW == 7)
+  assert(Data.Submodule.Colors.GREEN == -9)
+  assert(Data.Submodule.Colors.PINK == 3)
 end
 
-Tester[#Tester+1] = 'test_struct_complex'
-function Tester:test_struct_complex()
-	self:print(Data.Company)
-	self:print(Data.BigCompany)
+Tester[#Tester+1] = 'test_submodule_struct'
+function Tester:test_submodule_struct()
+
+    Data.Submodule.Fruit = data.struct{
+      { 'weight', data.double },
+      { 'color' , Data.Submodule.Colors },
+    }
+    
+    self:print(Data.Submodule.Fruit)
+    
+    assert(Data.Submodule.Fruit.weight == 'weight')
+    assert(Data.Submodule.Fruit.color == 'color')
 end
 
-Tester[#Tester+1] = 'test_struct_inheritance'
-function Tester:test_struct_inheritance()
-	self:print(Data.FullName)
-	self:print(Data.Contact)
-	self:print(Data.Tasks)
-	self:print(Data.Calendar)
+Tester[#Tester+1] = 'test_user_annotation'
+function Tester:test_user_annotation()
+
+    -- user defined annotation
+    Data.MyAnnotation = data.annotation{value1 = 42, value2 = 9.0}
+    Data.MyAnnotationStruct = data.struct{
+      { 'id',     data.long, data.Key },
+      { 'org',    data.long, data.Key{GUID=3} },
+      { 'weight', data.double, Data.MyAnnotation }, -- default 
+      { 'height', data.double, Data.MyAnnotation{} },
+      { 'color' , Data.Submodule.Colors, 
+                  Data.MyAnnotation{value1 = 10} },
+    }
+    
+    self:print(Data.MyAnnotation)
+    self:print(Data.MyAnnotationStruct)
+     
+    assert(Data.MyAnnotation ~= nil)
+    assert(Data.MyAnnotation.value1 == 42)
+    assert(Data.MyAnnotation.value2 == 9.0)
+end
+
+Tester[#Tester+1] = 'test_atoms'
+function Tester:test_atoms()
+
+    Data.Atoms = data.struct{
+      { 'myBoolean', data.boolean },
+      { 'myOctet', data.octet },
+      { 'myChar', data.char },
+      { 'myWChar', data.wchar },
+      { 'myFloat', data.float },
+      { 'myDouble', data.double },
+      { 'myLongDouble', data.long_double },
+      { 'myShort', data.short },
+      { 'myLong', data.long },
+      { 'myLongLong', data.long_long },
+      { 'myUnsignedShort', data.unsigned_short },
+      { 'myUnsignedLong', data.unsigned_long },
+      { 'myUnsignedLongLong', data.unsigned_long_long },
+    }
+    
+    self:print(Data.Atoms)
+    
+    assert(Data.Atoms.myBoolean == 'myBoolean')
+    for k, v in pairs(Data.Atoms) do
+        if 'string' == type(k) then assert(k == v) end
+    end
+end
+
+Tester[#Tester+1] = 'test_struct_basic'
+function Tester:test_struct_basic()
+  
+    Data.Name = data.struct{
+      -- { first = { data.string(10), data.Key } },
+      { 'first', data.string(10), data.Key },
+      { 'last',  data.wstring() },
+      { 'nicknames',  data.string(), data.sequence(3) },
+      { 'aliases',  data.string(7), data.sequence() },
+      { 'birthday', Data.Days, data.Optional },
+      { 'favorite', Data.Submodule.Colors, data.sequence(2), data.Optional },
+    }
+    
+    self:print(Data.Name)
+
+    assert(Data.Name.first == 'first')
+    assert(Data.Name.last == 'last')
+    assert(Data.Name.nicknames() == 'nicknames#')
+    assert(Data.Name.nicknames(1) == 'nicknames[1]')
+    assert(Data.Name.aliases() == 'aliases#')
+    assert(Data.Name.aliases(1) == 'aliases[1]')
+    assert(Data.Name.birthday == 'birthday')
+    assert(Data.Name.favorite() == 'favorite#')
+    assert(Data.Name.favorite(1) == 'favorite[1]')
+end
+
+Tester[#Tester+1] = 'test_struct_nested'
+function Tester:test_struct_nested()
+
+    Data.Address = data.struct{
+      data.Extensibility{'EXTENSIBLE_EXTENSIBILITY'},
+      { 'name', Data.Name },
+      { 'street', data.string() },
+      { 'city',  data.string(10), 
+                    Data.MyAnnotation{value1 = 10, value2 = 17} },
+      data.Nested{'FALSE'},
+    }
+
+    self:print(Data.Address)
+    
+    assert(Data.Address.name.first == 'name.first')
+    assert(Data.Address.name.nicknames() == 'name.nicknames#')
+    assert(Data.Address.name.nicknames(1) == 'name.nicknames[1]')
+    assert(Data.Address.street == 'street')
+    assert(Data.Address.city == 'city')
+end
+
+Tester[#Tester+1] = 'test_union1'
+function Tester:test_union1()
+
+  Data.TestUnion1 = data.union{data.short,
+    { 1, 
+      {'x', data.string() }},
+    { 2, 
+      {'y', data.long_double }},
+    { -- default
+      {'z', data.boolean}},
+  }
+
+  self:print(Data.TestUnion1)
+  
+  assert(Data.TestUnion1._d == '#')
+  assert(Data.TestUnion1.x == 'x')
+  assert(Data.TestUnion1.y == 'y')
+  assert(Data.TestUnion1.z == 'z')
+end
+
+Tester[#Tester+1] = 'test_union2'
+function Tester:test_union2()
+
+  Data.TestUnion2 = data.union{data.char,
+    { 'c', 
+      {'name', Data.Name, data.Key }},
+    { 'a', 
+      {'address', Data.Address}},
+    { -- default
+      {'x', data.double}},
+  }
+
+  self:print(Data.TestUnion2)
+  
+  -- TODO: assert
+end
+
+Tester[#Tester+1] = 'test_union3'
+function Tester:test_union3()
+
+  Data.TestUnion3 = data.union{Data.Days,
+    { 'MON', 
+      {'name', Data.Name}},
+    { 'TUE', 
+      {'address', Data.Address}},
+    { -- default
+      {'x', data.double}},    
+    data.Extensibility{'EXTENSIBLE_EXTENSIBILITY',domain=5},
+  }
+
+  self:print(Data.TestUnion3)
+  
+  -- TODO: assert
+end
+
+Tester[#Tester+1] = 'test_union4'
+function Tester:test_union4()
+
+  Data.NameOrAddress = data.union{data.boolean,
+    { true, 
+      {'name', Data.Name}},
+    { false, 
+      {'address', Data.Address}},
+  }
+  
+  self:print(Data.NameOrAddress)
+  
+  -- TODO: assert
+end
+
+Tester[#Tester+1] = 'test_struct_complex1'
+function Tester:test_struct_complex1()
+
+  Data.Company = data.struct{
+    { 'entity', Data.NameOrAddress},
+    { 'hq', data.string(), data.sequence(2) },
+    { 'offices', Data.Address, data.sequence(10) },
+    { 'employees', Data.Name, data.sequence() }
+  }
+
+  self:print(Data.Company)
+
+  -- TODO: assert
+end
+
+Tester[#Tester+1] = 'test_struct_complex2'
+function Tester:test_struct_complex2()
+
+  Data.BigCompany = data.struct{
+    { 'parent', Data.Company},
+    { 'divisions', Data.Company, data.sequence()}
+  }
+
+  self:print(Data.BigCompany)
+
+  -- TODO: assert
+end
+
+Tester[#Tester+1] = 'test_struct_inheritance1'
+function Tester:test_struct_inheritance1()
+
+  Data.FullName = data.struct{Data.Name,
+    { 'middle',  data.string() },
+    data.Extensibility{'EXTENSIBLE_EXTENSIBILITY'},
+  }
+
+  self:print(Data.FullName)
+  
+  -- TODO: assert
+end
+
+Tester[#Tester+1] = 'test_struct_inheritance2'
+function Tester:test_struct_inheritance2()
+
+  Data.Contact = data.struct{Data.FullName,
+    { 'address',  Data.Address },
+    { 'email',  data.string() },
+  }
+
+  self:print(Data.Contact)
+
+  -- TODO: assert
+end
+
+Tester[#Tester+1] = 'test_struct_inheritance3'
+function Tester:test_struct_inheritance3()
+
+  Data.Tasks = data.struct{
+    { 'contact',  Data.Contact },
+    { 'day',  Data.Days },
+  }
+
+  self:print(Data.Tasks)
+
+  -- TODO: assert
+end
+
+Tester[#Tester+1] = 'test_struct_inheritance4'
+function Tester:test_struct_inheritance4()
+
+  Data.Calendar = data.struct{
+    { 'tasks',  Data.Tasks, data.sequence() },
+  }
+
+  self:print(Data.Calendar)
+
+  -- TODO: assert
 end
 
 Tester[#Tester+1] = 'test_typedef'
-function Tester:test_typedef()	
-	self:print(Data.MyDouble)
-	self:print(Data.MyDouble2)	
-	self:print(Data.MyString)
-				
-	self:print(Data.MyName)
-	self:print(Data.MyName2)
-	
-	self:print(Data.MyAddress)
-	self:print(Data.MyAddress2)
-	
-	self:print(Data.MyTypedef)
-	
-	-- rawDouble
-	assert(Data.MyTypedef.rawDouble == 'rawDouble')
-	assert(Data.MyTypedef.myDouble == 'myDouble')
-	assert(Data.MyTypedef.myDouble2 == 'myDouble2')
-	-- name
-	assert(Data.MyTypedef.name.first == 'name.first')
-	assert(Data.MyTypedef.name.nicknames() == 'name.nicknames#')	
-	assert(Data.MyTypedef.name.nicknames(1) == 'name.nicknames[1]')
-	-- myName
-	assert(Data.MyTypedef.myName.first == 'myName.first')
-	assert(Data.MyTypedef.myName.nicknames() == 'myName.nicknames#')	
-	assert(Data.MyTypedef.myName.nicknames(1) == 'myName.nicknames[1]')
-	-- myAddress2
-	assert(Data.MyTypedef.myAddress2.name.first == 'myAddress2.name.first')
-	assert(Data.MyTypedef.myAddress2.name.nicknames() == 'myAddress2.name.nicknames#')	
-	assert(Data.MyTypedef.myAddress2.name.nicknames(1) == 'myAddress2.name.nicknames[1]')
+function Tester:test_typedef()  
+
+  -- typedefs
+  Data.MyDouble = data.typedef{data.double}
+  Data.MyDouble2 = data.typedef{Data.MyDouble}
+  Data.MyString = data.typedef{data.string(10) }
+  
+  Data.MyName = data.typedef{Data.Name}
+  Data.MyName2 = data.typedef{Data.MyName}
+  
+  Data.MyAddress = data.typedef{Data.Address}
+  Data.MyAddress2 = data.typedef{Data.MyAddress}
+  
+  Data.MyTypedef = data.struct{
+    { 'rawDouble', data.double },
+    { 'myDouble', Data.MyDouble },
+    { 'myDouble2', Data.MyDouble2 },
+    
+    { 'name',  Data.Name },
+    { 'myName',  Data.MyName },
+    { 'myName2',  Data.MyName2 },
+    
+    { 'address', Data.Address },
+    { 'myAddress', Data.MyAddress },
+    { 'myAddress2', Data.MyAddress2 },
+  }
+
+  self:print(Data.MyDouble)
+  self:print(Data.MyDouble2)  
+  self:print(Data.MyString)
+        
+  self:print(Data.MyName)
+  self:print(Data.MyName2)
+  
+  self:print(Data.MyAddress)
+  self:print(Data.MyAddress2)
+  
+  self:print(Data.MyTypedef)
+  
+  -- rawDouble
+  assert(Data.MyTypedef.rawDouble == 'rawDouble')
+  assert(Data.MyTypedef.myDouble == 'myDouble')
+  assert(Data.MyTypedef.myDouble2 == 'myDouble2')
+  -- name
+  assert(Data.MyTypedef.name.first == 'name.first')
+  assert(Data.MyTypedef.name.nicknames() == 'name.nicknames#')  
+  assert(Data.MyTypedef.name.nicknames(1) == 'name.nicknames[1]')
+  -- myName
+  assert(Data.MyTypedef.myName.first == 'myName.first')
+  assert(Data.MyTypedef.myName.nicknames() == 'myName.nicknames#')  
+  assert(Data.MyTypedef.myName.nicknames(1) == 'myName.nicknames[1]')
+  -- myAddress2
+  assert(Data.MyTypedef.myAddress2.name.first == 'myAddress2.name.first')
+  assert(Data.MyTypedef.myAddress2.name.nicknames() == 'myAddress2.name.nicknames#')  
+  assert(Data.MyTypedef.myAddress2.name.nicknames(1) == 'myAddress2.name.nicknames[1]')
 end
 
 Tester[#Tester+1] = 'test_typedef_seq'
-function Tester:test_typedef_seq()	
-	self:print(Data.MyDoubleSeq)
-	self:print(Data.MyStringSeq)
-	
-	self:print(Data.NameSeq)
-	self:print(Data.NameSeqSeq)
+function Tester:test_typedef_seq()  
 
-	self:print(Data.MyNameSeq)
-	self:print(Data.MyNameSeqSeq)
-	
-	self:print(Data.MyTypedefSeq)
-	
-	-- nameSeq
-	assert(Data.MyTypedefSeq.nameSeq() == 'nameSeq#')
-	assert(Data.MyTypedefSeq.nameSeq(1).first == 'nameSeq[1].first')	
-	assert(Data.MyTypedefSeq.nameSeq(1).nicknames() == 'nameSeq[1].nicknames#')	
-	assert(Data.MyTypedefSeq.nameSeq(1).nicknames(1) == 'nameSeq[1].nicknames[1]')	
+  Data.MyDoubleSeq = data.typedef{Data.MyDouble, data.sequence() }
+  Data.MyStringSeq = data.typedef{Data.MyString, data.sequence(10) }
+  
+  Data.NameSeq = data.typedef{Data.Name, data.sequence(10) }
+  Data.NameSeqSeq = data.typedef{Data.NameSeq, data.sequence(10) }
+  
+  Data.MyNameSeq = data.typedef{Data.MyName, data.sequence(10) }
+  Data.MyNameSeqSeq = data.typedef{Data.MyNameSeq, data.sequence(10) }
+  
+  Data.MyTypedefSeq = data.struct{
+    { 'myDoubleSeq', Data.MyDouble, data.sequence() },
+    { 'myDoubleSeqA', Data.MyDoubleSeq },
+    { 'myStringSeqA', Data.MyStringSeq },
+    
+    { 'nameSeq', Data.Name, data.sequence() },
+    { 'nameSeqA', Data.NameSeq },
+    { 'nameSeqSeq', Data.NameSeq, data.sequence() },
+    { 'nameSeqSeqA', Data.NameSeqSeq },
+    { 'nameSeqSeqASeq', Data.NameSeqSeq, data.sequence() },
+  
+    { 'myNameSeq', Data.MyName, data.sequence() },
+    { 'myNameSeqA', Data.MyNameSeq },
+    { 'myNameSeqSeq', Data.MyNameSeq, data.sequence() },
+    { 'myNameSeqSeqA', Data.MyNameSeqSeq },
+    { 'myNameSeqSeqASeq', Data.MyNameSeqSeq, data.sequence() },
+  }
 
-	-- nameSeqA
-	assert(Data.MyTypedefSeq.nameSeqA() == 'nameSeqA#')
-	assert(Data.MyTypedefSeq.nameSeqA(1).first == 'nameSeqA[1].first')	
-	assert(Data.MyTypedefSeq.nameSeqA(1).nicknames() == 'nameSeqA[1].nicknames#')	
-	assert(Data.MyTypedefSeq.nameSeqA(1).nicknames(1) == 'nameSeqA[1].nicknames[1]')	
+  self:print(Data.MyDoubleSeq)
+  self:print(Data.MyStringSeq)
+  
+  self:print(Data.NameSeq)
+  self:print(Data.NameSeqSeq)
 
-	-- nameSeqSeq
-	assert(Data.MyTypedefSeq.nameSeqSeq() == 'nameSeqSeq#')	
-	assert(Data.MyTypedefSeq.nameSeqSeq(1)() == 'nameSeqSeq[1]#')
-	assert(Data.MyTypedefSeq.nameSeqSeq(1)(1).first == 'nameSeqSeq[1][1].first')
-	assert(Data.MyTypedefSeq.nameSeqSeq(1)(1).nicknames() == 'nameSeqSeq[1][1].nicknames#')
-	assert(Data.MyTypedefSeq.nameSeqSeq(1)(1).nicknames(1) == 'nameSeqSeq[1][1].nicknames[1]')
-	
-	-- nameSeqSeqA
-	assert(Data.MyTypedefSeq.nameSeqSeqA() == 'nameSeqSeqA#')	
-	assert(Data.MyTypedefSeq.nameSeqSeqA(1)() == 'nameSeqSeqA[1]#')
-	assert(Data.MyTypedefSeq.nameSeqSeqA(1)(1).first == 'nameSeqSeqA[1][1].first')
-	assert(Data.MyTypedefSeq.nameSeqSeqA(1)(1).nicknames() == 'nameSeqSeqA[1][1].nicknames#')
-	assert(Data.MyTypedefSeq.nameSeqSeqA(1)(1).nicknames(1) == 'nameSeqSeqA[1][1].nicknames[1]')
+  self:print(Data.MyNameSeq)
+  self:print(Data.MyNameSeqSeq)
+  
+  self:print(Data.MyTypedefSeq)
+  
+  -- nameSeq
+  assert(Data.MyTypedefSeq.nameSeq() == 'nameSeq#')
+  assert(Data.MyTypedefSeq.nameSeq(1).first == 'nameSeq[1].first')  
+  assert(Data.MyTypedefSeq.nameSeq(1).nicknames() == 'nameSeq[1].nicknames#') 
+  assert(Data.MyTypedefSeq.nameSeq(1).nicknames(1) == 'nameSeq[1].nicknames[1]')  
 
-	-- nameSeqSeqASeq
-	assert(Data.MyTypedefSeq.nameSeqSeqASeq() == 'nameSeqSeqASeq#')	
-	assert(Data.MyTypedefSeq.nameSeqSeqASeq(1)() == 'nameSeqSeqASeq[1]#')
-	assert(Data.MyTypedefSeq.nameSeqSeqASeq(1)(1)() == 'nameSeqSeqASeq[1][1]#')
-	assert(Data.MyTypedefSeq.nameSeqSeqASeq(1)(1)(1).first == 'nameSeqSeqASeq[1][1][1].first')
-	assert(Data.MyTypedefSeq.nameSeqSeqASeq(1)(1)(1).nicknames() == 'nameSeqSeqASeq[1][1][1].nicknames#')
-	assert(Data.MyTypedefSeq.nameSeqSeqASeq(1)(1)(1).nicknames(1) == 'nameSeqSeqASeq[1][1][1].nicknames[1]')
+  -- nameSeqA
+  assert(Data.MyTypedefSeq.nameSeqA() == 'nameSeqA#')
+  assert(Data.MyTypedefSeq.nameSeqA(1).first == 'nameSeqA[1].first')  
+  assert(Data.MyTypedefSeq.nameSeqA(1).nicknames() == 'nameSeqA[1].nicknames#') 
+  assert(Data.MyTypedefSeq.nameSeqA(1).nicknames(1) == 'nameSeqA[1].nicknames[1]')  
 
-	-- myNameSeq
-	assert(Data.MyTypedefSeq.myNameSeq() == 'myNameSeq#')
-	assert(Data.MyTypedefSeq.myNameSeq(1).first == 'myNameSeq[1].first')	
-	assert(Data.MyTypedefSeq.myNameSeq(1).nicknames() == 'myNameSeq[1].nicknames#')	
-	assert(Data.MyTypedefSeq.myNameSeq(1).nicknames(1) == 'myNameSeq[1].nicknames[1]')	
+  -- nameSeqSeq
+  assert(Data.MyTypedefSeq.nameSeqSeq() == 'nameSeqSeq#') 
+  assert(Data.MyTypedefSeq.nameSeqSeq(1)() == 'nameSeqSeq[1]#')
+  assert(Data.MyTypedefSeq.nameSeqSeq(1)(1).first == 'nameSeqSeq[1][1].first')
+  assert(Data.MyTypedefSeq.nameSeqSeq(1)(1).nicknames() == 'nameSeqSeq[1][1].nicknames#')
+  assert(Data.MyTypedefSeq.nameSeqSeq(1)(1).nicknames(1) == 'nameSeqSeq[1][1].nicknames[1]')
+  
+  -- nameSeqSeqA
+  assert(Data.MyTypedefSeq.nameSeqSeqA() == 'nameSeqSeqA#') 
+  assert(Data.MyTypedefSeq.nameSeqSeqA(1)() == 'nameSeqSeqA[1]#')
+  assert(Data.MyTypedefSeq.nameSeqSeqA(1)(1).first == 'nameSeqSeqA[1][1].first')
+  assert(Data.MyTypedefSeq.nameSeqSeqA(1)(1).nicknames() == 'nameSeqSeqA[1][1].nicknames#')
+  assert(Data.MyTypedefSeq.nameSeqSeqA(1)(1).nicknames(1) == 'nameSeqSeqA[1][1].nicknames[1]')
 
-	-- myNameSeqA
-	assert(Data.MyTypedefSeq.myNameSeqA() == 'myNameSeqA#')
-	assert(Data.MyTypedefSeq.myNameSeqA(1).first == 'myNameSeqA[1].first')	
-	assert(Data.MyTypedefSeq.myNameSeqA(1).nicknames() == 'myNameSeqA[1].nicknames#')	
-	assert(Data.MyTypedefSeq.myNameSeqA(1).nicknames(1) == 'myNameSeqA[1].nicknames[1]')	
+  -- nameSeqSeqASeq
+  assert(Data.MyTypedefSeq.nameSeqSeqASeq() == 'nameSeqSeqASeq#') 
+  assert(Data.MyTypedefSeq.nameSeqSeqASeq(1)() == 'nameSeqSeqASeq[1]#')
+  assert(Data.MyTypedefSeq.nameSeqSeqASeq(1)(1)() == 'nameSeqSeqASeq[1][1]#')
+  assert(Data.MyTypedefSeq.nameSeqSeqASeq(1)(1)(1).first == 'nameSeqSeqASeq[1][1][1].first')
+  assert(Data.MyTypedefSeq.nameSeqSeqASeq(1)(1)(1).nicknames() == 'nameSeqSeqASeq[1][1][1].nicknames#')
+  assert(Data.MyTypedefSeq.nameSeqSeqASeq(1)(1)(1).nicknames(1) == 'nameSeqSeqASeq[1][1][1].nicknames[1]')
 
-	-- myNameSeqSeq
-	assert(Data.MyTypedefSeq.myNameSeqSeq() == 'myNameSeqSeq#')	
-	assert(Data.MyTypedefSeq.myNameSeqSeq(1)() == 'myNameSeqSeq[1]#')
-	assert(Data.MyTypedefSeq.myNameSeqSeq(1)(1).first == 'myNameSeqSeq[1][1].first')
-	assert(Data.MyTypedefSeq.myNameSeqSeq(1)(1).nicknames() == 'myNameSeqSeq[1][1].nicknames#')
-	assert(Data.MyTypedefSeq.myNameSeqSeq(1)(1).nicknames(1) == 'myNameSeqSeq[1][1].nicknames[1]')
-	
-	-- myNameSeqSeqA
-	assert(Data.MyTypedefSeq.myNameSeqSeqA() == 'myNameSeqSeqA#')	
-	assert(Data.MyTypedefSeq.myNameSeqSeqA(1)() == 'myNameSeqSeqA[1]#')
-	assert(Data.MyTypedefSeq.myNameSeqSeqA(1)(1).first == 'myNameSeqSeqA[1][1].first')
-	assert(Data.MyTypedefSeq.myNameSeqSeqA(1)(1).nicknames() == 'myNameSeqSeqA[1][1].nicknames#')
-	assert(Data.MyTypedefSeq.myNameSeqSeqA(1)(1).nicknames(1) == 'myNameSeqSeqA[1][1].nicknames[1]')
+  -- myNameSeq
+  assert(Data.MyTypedefSeq.myNameSeq() == 'myNameSeq#')
+  assert(Data.MyTypedefSeq.myNameSeq(1).first == 'myNameSeq[1].first')  
+  assert(Data.MyTypedefSeq.myNameSeq(1).nicknames() == 'myNameSeq[1].nicknames#') 
+  assert(Data.MyTypedefSeq.myNameSeq(1).nicknames(1) == 'myNameSeq[1].nicknames[1]')  
 
-	-- myNameSeqSeqASeq
-	assert(Data.MyTypedefSeq.myNameSeqSeqASeq() == 'myNameSeqSeqASeq#')	
-	assert(Data.MyTypedefSeq.myNameSeqSeqASeq(1)() == 'myNameSeqSeqASeq[1]#')
-	assert(Data.MyTypedefSeq.myNameSeqSeqASeq(1)(1)() == 'myNameSeqSeqASeq[1][1]#')
-	assert(Data.MyTypedefSeq.myNameSeqSeqASeq(1)(1)(1).first == 'myNameSeqSeqASeq[1][1][1].first')
-	assert(Data.MyTypedefSeq.myNameSeqSeqASeq(1)(1)(1).nicknames() == 'myNameSeqSeqASeq[1][1][1].nicknames#')
-	assert(Data.MyTypedefSeq.myNameSeqSeqASeq(1)(1)(1).nicknames(1) == 'myNameSeqSeqASeq[1][1][1].nicknames[1]')
+  -- myNameSeqA
+  assert(Data.MyTypedefSeq.myNameSeqA() == 'myNameSeqA#')
+  assert(Data.MyTypedefSeq.myNameSeqA(1).first == 'myNameSeqA[1].first')  
+  assert(Data.MyTypedefSeq.myNameSeqA(1).nicknames() == 'myNameSeqA[1].nicknames#') 
+  assert(Data.MyTypedefSeq.myNameSeqA(1).nicknames(1) == 'myNameSeqA[1].nicknames[1]')  
+
+  -- myNameSeqSeq
+  assert(Data.MyTypedefSeq.myNameSeqSeq() == 'myNameSeqSeq#') 
+  assert(Data.MyTypedefSeq.myNameSeqSeq(1)() == 'myNameSeqSeq[1]#')
+  assert(Data.MyTypedefSeq.myNameSeqSeq(1)(1).first == 'myNameSeqSeq[1][1].first')
+  assert(Data.MyTypedefSeq.myNameSeqSeq(1)(1).nicknames() == 'myNameSeqSeq[1][1].nicknames#')
+  assert(Data.MyTypedefSeq.myNameSeqSeq(1)(1).nicknames(1) == 'myNameSeqSeq[1][1].nicknames[1]')
+  
+  -- myNameSeqSeqA
+  assert(Data.MyTypedefSeq.myNameSeqSeqA() == 'myNameSeqSeqA#') 
+  assert(Data.MyTypedefSeq.myNameSeqSeqA(1)() == 'myNameSeqSeqA[1]#')
+  assert(Data.MyTypedefSeq.myNameSeqSeqA(1)(1).first == 'myNameSeqSeqA[1][1].first')
+  assert(Data.MyTypedefSeq.myNameSeqSeqA(1)(1).nicknames() == 'myNameSeqSeqA[1][1].nicknames#')
+  assert(Data.MyTypedefSeq.myNameSeqSeqA(1)(1).nicknames(1) == 'myNameSeqSeqA[1][1].nicknames[1]')
+
+  -- myNameSeqSeqASeq
+  assert(Data.MyTypedefSeq.myNameSeqSeqASeq() == 'myNameSeqSeqASeq#') 
+  assert(Data.MyTypedefSeq.myNameSeqSeqASeq(1)() == 'myNameSeqSeqASeq[1]#')
+  assert(Data.MyTypedefSeq.myNameSeqSeqASeq(1)(1)() == 'myNameSeqSeqASeq[1][1]#')
+  assert(Data.MyTypedefSeq.myNameSeqSeqASeq(1)(1)(1).first == 'myNameSeqSeqASeq[1][1][1].first')
+  assert(Data.MyTypedefSeq.myNameSeqSeqASeq(1)(1)(1).nicknames() == 'myNameSeqSeqASeq[1][1][1].nicknames#')
+  assert(Data.MyTypedefSeq.myNameSeqSeqASeq(1)(1)(1).nicknames(1) == 'myNameSeqSeqASeq[1][1][1].nicknames[1]')
 end
 
 Tester[#Tester+1] = 'test_arrays1'
 function Tester:test_arrays1()
+
+    -- Arrays
+    Data.MyArrays1 = data.struct{
+      -- 1-D
+      { 'ints', data.double, data.array(3) },
+    
+      -- 2-D
+      { 'days', Data.Days, data.array(6, 9) },
+      
+      -- 3-D
+      { 'names', Data.Name, data.array(12, 15, 18) },
+    }
+
 	-- structure with arrays
 	self:print(Data.MyArrays1)
 	
@@ -470,6 +550,21 @@ end
 
 Tester[#Tester+1] = 'test_arrays2'
 function Tester:test_arrays2()
+
+    Data.MyArrays2 = data.union{Data.Days,
+      -- 1-D
+      { 'MON',
+        {'ints', data.double, data.array(3) }},
+    
+      -- 2-D
+      { 'TUE',
+        { 'days', Data.Days, data.array(6, 9) }},
+      
+      -- 3-D
+      {--
+        { 'names', Data.Name, data.array(12, 15, 18) }},  
+    }
+
 	-- union with arrays
 	self:print(Data.MyArrays2)
 	
@@ -493,33 +588,36 @@ end
 
 Tester[#Tester+1] = 'test_arrays3'
 function Tester:test_arrays3()
-	Data:Typedef{'MyNameArray', Data.Name, Data.Array(10) }
-	Data:Typedef{'MyNameArray2', Data.MyNameArray, Data.Array(10) }
-	Data:Typedef{'MyName2x2', Data.Name, Data.Array(2, 3) }
+	Data.MyNameArray = data.typedef{Data.Name, data.array(10) }
+	Data.MyNameArray2 = data.typedef{Data.MyNameArray, data.array(10) }
+	Data.MyName2x2 = data.typedef{Data.Name, data.array(2, 3) }
 	
-	Data:Struct{'MyArrays3',
+	Data.MyArrays3 = data.struct{
 		-- 1-D
 		{ 'myNames', Data.MyNameArray },
 
 		-- 2-D
-		{ 'myNamesArray', Data.MyNameArray, Data.Array(10) },
+		{ 'myNamesArray', Data.MyNameArray, data.array(10) },
 	
 		-- 2-D
 		{ 'myNames2', Data.MyNameArray2 },
 				
 		-- 3-D
-		{ 'myNames2Array', Data.MyNameArray2, Data.Array(10) },
+		{ 'myNames2Array', Data.MyNameArray2, data.array(10) },
 
 		-- 4-D
-		{ 'myNames2Array2', Data.MyNameArray2, Data.Array(10, 20) },
+		{ 'myNames2Array2', Data.MyNameArray2, data.array(10, 20) },
 		
 		-- 2D: 2x2
 		{ 'myName2x2', Data.MyName2x2 },
 
 		-- 4D: 2x2 x2x2
-		{ 'myName2x2x2x2', Data.MyName2x2, Data.Array(4,5) },
+		{ 'myName2x2x2x2', Data.MyName2x2, data.array(4,5) },
 	}
 
+    self:print(Data.MyNameArray)
+    self:print(Data.MyNameArray2)
+    self:print(Data.MyName2x2)
 	self:print(Data.MyArrays3)
 
 	-- myNames
@@ -578,34 +676,37 @@ end
 
 Tester[#Tester+1] = 'test_sequences_multi_dim'
 function Tester:test_sequences_multi_dim()
-	Data:Typedef{'MyNameSeq1', Data.Name, Data.Sequence(10) }
-	Data:Typedef{'MyNameSeq2', Data.MyNameSeq, Data.Sequence(10) }
-	Data:Typedef{'MyNameSeq2x2', Data.Name, Data.Sequence(2, 3) }
+	Data.MyNameSeq1 = data.typedef{Data.Name, data.sequence(10) }
+	Data.MyNameSeq2 = data.typedef{Data.MyNameSeq, data.sequence(10) }
+	Data.MyNameSeq2x2 = data.typedef{Data.Name, data.sequence(2, 3) }
 	
-	Data:Struct{'MySeqs3',
+	Data.MySeqs3 = data.struct{
 		-- 1-D
 		{ 'myNames', Data.MyNameSeq },
 
 		-- 2-D
-		{ 'myNamesSeq', Data.MyNameSeq1, Data.Sequence(10) },
+		{ 'myNamesSeq', Data.MyNameSeq1, data.sequence(10) },
 	
 		-- 2-D
 		{ 'myNames2', Data.MyNameSeq2 },
 				
 		-- 3-D
-		{ 'myNames2Seq', Data.MyNameSeq2, Data.Sequence(10) },
+		{ 'myNames2Seq', Data.MyNameSeq2, data.sequence(10) },
 
 		-- 4-D
-		{ 'myNames2Seq2', Data.MyNameSeq2, Data.Sequence(10, 20) },
+		{ 'myNames2Seq2', Data.MyNameSeq2, data.sequence(10, 20) },
 		
 		-- 2D: 2x2
 		{ 'myName2x2', Data.MyName2x2 },
 
 		-- 4D: 2x2 x2x2
-		{ 'myName2x2x2x2', Data.MyNameSeq2x2, Data.Sequence(4,5) },
+		{ 'myName2x2x2x2', Data.MyNameSeq2x2, data.sequence(4,5) },
 	}
 
-	self:print(Data.MySeqs3)
+    self:print(Data.MyNameSeq1)
+    self:print(Data.MyNameSeq2)
+    self:print(Data.MySeqs3)
+	self:print(Data.MyNameSeq2x2)
 
 	-- myNames
 	assert(Data.MySeqs3.myNames() == 'myNames#')
@@ -663,17 +764,17 @@ end
 
 Tester[#Tester+1] = 'test_const'
 function Tester:test_const()
-  Data:Const{'FLOAT', Data.float, 3.14 }
-  Data:Const{'DOUBLE', Data.double, 3.14 * 3.14 }  
-  Data:Const{'LDOUBLE', Data.long_double, 3.14 * 3.14 * 3.14 }   
-  Data:Const{'STRING', Data.string, "String Constant" }   
-  Data:Const{'BOOL', Data.boolean, true } 
-  Data:Const{'CHAR', Data.char, "String Constant" } -- warning  
-  Data:Const{'LONG', Data.long, 10.7 } -- warning
-  Data:Const{'LLONG', Data.long_long, 10^10 }
-  Data:Const{'SHORT', Data.short, 5 }
-  Data:Const{'WSTRING', Data.wstring, "WString Constant" }
-  
+  Data.FLOAT = data.const{data.float, 3.14 }
+  Data.DOUBLE = data.const{data.double, 3.14 * 3.14 }  
+  Data.LDOUBLE = data.const{data.long_double, 3.14 * 3.14 * 3.14 }   
+  Data.STRING = data.const{data.string(), "String Constant" }   
+  Data.BOOL = data.const{data.boolean, true } 
+  Data.CHAR = data.const{data.char, "String Constant" } -- warning  
+  Data.LONG = data.const{data.long, 10.7 } -- warning
+  Data.LLONG = data.const{data.long_long, 10^10 }
+  Data.SHORT = data.const{data.short, 5 }
+  Data.WSTRING = data.const{data.wstring(), "WString Constant" }
+
   self:print(Data.FLOAT)
   self:print(Data.DOUBLE)
   self:print(Data.LDOUBLE)
@@ -699,19 +800,20 @@ end
 
 Tester[#Tester+1] = 'test_const_bounds'
 function Tester:test_const_bounds()
-    Data:Const{'CAPACITY', Data.short, 5 }
-    Data:Typedef{'MyCapacitySeq', Data.Name, 
-                                  Data.Sequence(Data.CAPACITY, Data.CAPACITY) }
-    Data:Typedef{'MyCapacityArr', Data.Name, 
-                                  Data.Array(Data.CAPACITY, Data.CAPACITY) }
+    Data.CAPACITY = data.const{data.short, 5 }
+    Data.MyCapacitySeq = data.typedef{Data.Name, 
+                      data.sequence(Data.CAPACITY, Data.CAPACITY) }
+    Data.MyCapacityArr = data.typedef{Data.Name, 
+                      data.array(Data.CAPACITY, Data.CAPACITY) }
   
-    Data:Struct{'MyCapacityStruct', 
+    Data.MyCapacityStruct = data.struct{ 
         { 'myNames', Data.MyCapacitySeq },
         { 'myNames2', Data.MyCapacityArr },
-        { 'myStrings', Data.String(), Data.Array(Data.CAPACITY, Data.CAPACITY)},
-        { 'myNums', Data.double, Data.Sequence(Data.CAPACITY,
-                                                 Data.CAPACITY)},
-        { 'myStr', Data.String(Data.CAPACITY) },                                       
+        { 'myStrings', data.string(), 
+                       data.array(Data.CAPACITY, Data.CAPACITY)},
+        { 'myNums', data.double, 
+                    data.sequence(Data.CAPACITY, Data.CAPACITY)},
+        { 'myStr', data.string(Data.CAPACITY) },                                       
     }
                                  
     self:print(Data.CAPACITY)
@@ -744,25 +846,54 @@ function Tester:test_const_bounds()
     assert(Data.MyCapacityStruct.myStr == 'myStr')
 end
 
+--[=[
+Tester[#Tester+1] = 'test_struct_dynamic'
+function Tester:test_struct_dynamic()
+
+    Data.Name.day = { Data.Days, data.array(7) } -- add a new field
+
+    self:print(Data.Name)
+    
+    assert(Data.Name.day() == 'day#')
+    assert(Data.Name.day(1) == 'day[1]')
+end
+--]=]
+
 Tester[#Tester+1] = 'test_root'
 function Tester:test_root()
   self:print(Data)
 end
 
+---
+-- print - helper method to print the IDL and the index for data definition
+function Tester:print(instance)
+    -- print IDL
+    data.print_idl(instance)
+  
+    -- print index
+    local instance = data.index(instance)
+    if instance == nil then return end
+    print('index:')
+    for i, v in ipairs(instance) do
+        print('',v) 
+    end
+end
+
+---
 -- main() - run the list of tests passed on the command line
 --          if no command line arguments are passed in, run all the tests
 function Tester:main()
-	if #arg > 0 then -- run selected tests passed in from the command line
-		for i, test in ipairs (arg) do
-			print('\n--- ' .. test .. ' ---')
-			self[test](self) -- run the test
-		end
-	else -- run all  the tests
-		for k, v in ipairs (self) do
-			print('\n--- Test ' .. k .. ' : ' .. v .. ' ---')
-			if self[v] then self[v](self) end 
-		end
-	end
+  	if #arg > 0 then -- run selected tests passed in from the command line
+    		for i, test in ipairs (arg) do
+    			print('\n--- ' .. test .. ' ---')
+    			self[test](self) -- run the test
+    		end
+  	else -- run all  the tests
+    		for k, v in ipairs (self) do
+    			print('\n--- Test ' .. k .. ' : ' .. v .. ' ---')
+    			if self[v] then self[v](self) end 
+    		end
+  	end
 end
 
 Tester:main()

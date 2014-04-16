@@ -103,6 +103,10 @@
 --    or 
 --          Model[Data.INSTANCE].i1.role1
 -- 
+--   Extend builtin atoms and annotations by adding to the Data.builtin module:
+--       Data.builtin.my_atom = Data.atom{}
+--       Data.builtin.my_annotation = Data.annotation{val1=1, val2=y, ...}
+--     
 -- Implementation:
 --    The meta-model pre-defines the following meta-data 
 --    attributes for a model element:
@@ -144,11 +148,6 @@
 --    Note that all the meta-data attributes are functions, so it is 
 --    straightforward to skip them, when traversing a model table.
 --
--- 
---    This top-level container is special in that:
---    	 1. It defines the atomic types
--- 		 2. Provides an unnamed name-space ('root') that acts like a module
---       3. But is technically not a user-defined module
 --
 --    Note that this class (table) is really just the meta-table for the user
 --    defined model elements.
@@ -184,79 +183,50 @@ local Data = {
 	TYPEDEF    = function() return 'typedef' end,
 	CONST      = function() return 'const' end,
 	 
-	-- name-space and meta-table for annotations (to avoid name collisions)
-	-- NOTE: ALl of the above could go inside this table
-	_		   = {}  
+
+	METATABLES = {},
 }
 
 --------------------------------------------------------------------------------
 -- Model Definitions -- 
 --------------------------------------------------------------------------------
 
--- Root Module/namespace:
---    Bootstrap the type-system
---      The Data table acts as un-named module (i.e. namespace) instance
---      Here is the underlying model definition for it.
-Data[Data.MODEL] = { 
-	[Data.NAME] = nil,     -- unnamed root module
-	[Data.TYPE] = Data.MODULE,
-	[Data.DEFN] = {},      -- empty
-	[Data.INSTANCE] = nil, -- always nil
+Data.METATABLES[Data.MODULE] = {
+
+  __newindex = function (module, name, instance)
+      -- set the instance name
+      instance[Data.MODEL][Data.NAME] = name
+      
+      -- insert in the module definition, so that the instance can be iterated
+      -- in the correct order (eg when outputting IDL)
+      table.insert(module[Data.MODEL][Data.DEFN], instance)
+      
+      -- add an index entry to the module
+      rawset(module, name, instance)
+  end
 }
 
--- Data:Module() - creates a new module
--- Purpose:
---    Create a user defined namespace, that inherits from the 'Data' namespace
--- Parameters:
--- 	  <<in>> name - module name to be created
---    <<returns>> the newly created namespace, also inserted into the calling
---                namespace
--- Usage:
---    To define a module called 'UserModule'
---       Data:Module('UserModule')
---    which results in the following being defined and returned
---       Data.UserModule = {
---          [Data.NAME] = 'UserModule'
---          [Data.TYPE] = Data.MODULE 
---       }
---   The UserModule table extends the 'Data' table, and inherits all the methods.
---   User defined types defined in the 'UserModule' will live in that table
---   namespace.
-function Data:Module(name) 
-	local name = name[1] or name -- accept a table containing a string or a string
-	
-	assert('string' == type(name), 
-		   table.concat{'invalid module name: ', tostring(name)})
-	local model = { 
-		[Data.NAME] = name,
-		[Data.TYPE] = Data.MODULE,
-		[Data.DEFN] = {},      -- empty  
-		[Data.INSTANCE] = nil, -- always nil
-	}  
-	local instance = { -- top-level instance to be installed in the module
-		[Data.MODEL] = model,
-	}
-	
-	-- inherit from container module
-	setmetatable(instance, self)
-	self.__index = self
-
-	-- add/replace the definition in the container module
-	if self[name] then print('WARNING: replacing ', name) end
-	self[name] = instance
-	table.insert(self[Data.MODEL][Data.DEFN], instance)
-	
-	return instance
+function Data.module() 
+  -- empty module instance
+  local model = { 
+    [Data.NAME] = nil,     -- nil only for the ROOT i.e. top-level unnamed module
+    [Data.TYPE] = Data.MODULE,
+    [Data.DEFN] = {},      -- populated as members are added to the module  
+    [Data.INSTANCE] = nil, -- always nil
+  } 
+  local instance = {
+    [Data.MODEL] = model,
+  }
+  
+  -- set the meta-table for new instance to be added to the module
+  setmetatable(instance, Data.METATABLES[Data.MODULE])
+  return instance
 end
 
 -- Install an atomic type in the module
-function Data:Atom(name) 
-  local name = name[1] or name -- accept a table containing a string or a string
-  
-  assert('string' == type(name), 
-       table.concat{'invalid atom name: ', tostring(name)})
+function Data.atom() 
   local model = {
-    [Data.NAME] = name, 
+    [Data.NAME] = nil,      -- populated when the atom is assigned to a module
     [Data.TYPE] = Data.ATOM,
     [Data.DEFN] = nil,      -- always nil
     [Data.INSTANCE] = nil,  -- always nil
@@ -265,13 +235,46 @@ function Data:Atom(name)
     [Data.MODEL] = model,
   }
 
-  -- add/replace the definition in the container module
-  if self[name] then print('WARNING: replacing ', name) end
-  self[name] = instance
-  table.insert(self[Data.MODEL][Data.DEFN], instance)
-  
   return instance
 end
+
+Data.METATABLES[Data.ANNOTATION] = {
+
+    __call = function(annotation, ...)
+      return annotation[Data.MODEL][Data.DEFN](...)
+    end,
+    
+    __tostring = function(annotation)
+      -- output the attributes if any
+      local output = nil
+    
+      -- assertions
+      for i, v in ipairs(annotation) do
+        output = string.format('%s%s%s', 
+                  output or '', -- output or nothing
+                  output and ',' or '', -- put a comma or not?
+                  tostring(v))
+      end
+      
+      -- name value pairs {name=value}
+      for k, v in pairs(annotation) do
+        if 'string' == type(k) then
+          output = string.format('%s%s%s=%s', 
+                output or '', -- output or nothing
+                output and ',' or '', -- put a comma or not?
+                tostring(k), tostring(v))
+        end
+      end
+      
+      if output then
+        output = string.format('@%s(%s)', annotation[Data.MODEL][Data.NAME], output)  
+      else
+        output = string.format('@%s', annotation[Data.MODEL][Data.NAME])
+      end
+      
+      return output
+    end
+}
 
 -- Annotations are modeled like Atomic types, expect that 
 --    - are installed in a nested name space '_' to avoid conflicts
@@ -279,57 +282,70 @@ end
 --    - are installed as closures so that user can pass in custom attributes
 --    - attributes are not interpreted, and are preserved i.e. kept intact 
 --
--- @param name =  the name of the annotation
--- @param ...  = optional attributes that are preserved by the annotation
--- @return the annotation closure and the underlying model definition
+-- @param #table ...  = optional 'default' attributes 
+-- @return $table the annotation table, closure, and model
+--          instance = annotation with the default attributes
 --          instance_fn = the instance function to instantiate this annotation
 --          model = the data model describing this annotation
 -- Examples:
 --        IDL:      @Key
---        Lua:      Data._.Key
+--        Lua:      Data.Key
 --
 --        IDL:  	@MyAnnotation(value1 = 42, value2 = 42.0)
---        Lua:      Data._.MyAnnotation{value1 = 42, value2 = 42.0}
-function Data:Annotation(name, ...) 	
-	assert('string' == type(name), 
-		   table.concat{'invalid annotation name: ', tostring(name)})
+--        Lua:      Data.MyAnnotation{value1 = 42, value2 = 42.0}
+function Data.annotation(...) 	
+ 
 	local model = {
-		[Data.NAME] = name, 
+		[Data.NAME] = nil,      -- populated when inserted into a module
 		[Data.TYPE] = Data.ANNOTATION,
-		[Data.DEFN] = nil,      -- always nil
+		[Data.DEFN] = nil,      -- instance_fn defined below
 		[Data.INSTANCE] = nil,  -- always nil
 	}  
 
-	-- top-level instance function (closure) to be installed in the module
+	-- annotation instance function (closure) to be installed in the module
 	-- NOTE: the attributes passed to the annotation are not interpreted,
 	--       and are kept intact; we simply add the MODEL definition
 	--   A function that returns a model table, with user defined 
 	--   annotation attributes passed as a table of {name = value} pairs
-	--      eg: Data._.MyAnnotation{value1 = 42, value2 = 42.0}
+	--      eg: Data.MyAnnotation{value1 = 42, value2 = 42.0}
 	local instance_fn = function (attributes) -- parameters to the annotation
 		if attributes then
-			assert('table' == type(attributes), 
-		   table.concat{'table with {name=value} and/or assertions expected: ', 
-		   		    tostring(attributes)})
+		  assert('table' == type(attributes), 
+		    table.concat{'table with {name=value, ...} attributes expected: ', 
+		       		     tostring(attributes)})
 		end
 		local instance = attributes or {}
 		instance[Data.MODEL] = model
-		setmetatable(instance, Data._) -- for the __tostring() function
-		-- instance.__tostring = Data._.__tostring
+		setmetatable(instance, Data.METATABLES[Data.ANNOTATION])
 		return instance		
 	end
 	
-	-- put all the annotation definitions in a local namespace: _
-	-- so that the annotation names do not conflict with user defined types	
-	local _ = self._ or {}       self._ = _
+	model[Data.DEFN] = instance_fn
 	
-	-- add/replace the definition in the container module
-	if _[name] then print('WARNING: replacing ', name) end
-	_[name] = instance_fn
-	table.insert(self[Data.MODEL][Data.DEFN], instance_fn(...)) -- default attributes
-	
-	return instance_fn, model
+	-- default attributes, instance function, model
+	return instance_fn(...)
 end
+
+
+Data.METATABLES[Data.CONST] = {
+  -- instance value is obtained by evaluating the table:
+  -- eg: MY_CONST()
+  __call = function(const)
+      return const[Data.MODEL][Data.INSTANCE]
+  end,
+  
+  __tostring = function(const)
+      local value = const[Data.MODEL][Data.INSTANCE]
+      local atom = const[Data.MODEL][Data.DEFN]
+      if Data.char == atom or Data.wchar == atom then
+          return table.concat{"'", tostring(value), "'"}
+      elseif Data.string() == atom or Data.wstring() == atom then
+          return table.concat{'"', tostring(value), '"'}
+      else
+          return tostring(value)
+      end
+  end           
+}
 
 ---
 -- Const - define a constant
@@ -339,20 +355,18 @@ end
 -- @usage Define a const: Data:Const{'MY_CONST', Data.short, 10 }
 -- @usage Use a const: { 'mySeq', Data.string, Data.Sequence(Data.MY_CONST) }
 -- @usage Use a const: Data:Const{'NEW_CONST', Data.short, Data.MY_CONST()*2 }
-function Data:Const(param) 
-  local name, atom, value = param[1], param[2], param[3]
+function Data.const(param) 
+  local atom, value = param[1], param[2]
   
-  assert('string' == type(name), 
-         table.concat{'invalid const name: ', tostring(name)})
   assert('table' == type(atom), 
-         table.concat{'invalid const type: ', tostring(name)})
+         table.concat{'invalid const primitive (atom) type: ', tostring(atom)})
   assert(Data.ATOM == atom[Data.MODEL][Data.TYPE], 
          table.concat{'const must of of primitive (atom) type: ', 
-                      tostring(name)})
+                      tostring(atom)})
   assert(nil ~= value, 
-         table.concat{'const value must be non-nil: ', tostring(name)})
+         table.concat{'const value must be non-nil: ', tostring(value)})
   assert((Data.boolean == atom and 'boolean' == type(value) or
-         ((Data.string == atom or Data.wstring == atom or Data.char == atom) and 
+         ((Data.string() == atom or Data.wstring() == atom or Data.char == atom) and 
           'string' == type(value)) or 
          ((Data.short == atom or Data.unsigned_short == atom or 
            Data.long == atom or Data.unsigned_long == atom or 
@@ -372,7 +386,7 @@ function Data:Const(param)
     value = string.sub(value, 1, 1)
     print(table.concat{'WARNING: truncating string value for ',
                        atom[Data.MODEL][Data.NAME],
-                       ' constant "', name, '" to: ', value})  
+                       ' constant to: ', value})  
   end
  
   -- integer: truncate value to integer; warn if truncated
@@ -381,61 +395,35 @@ function Data:Const(param)
       Data.long_long == atom or Data.unsigned_long_long == atom) and
       value - math.floor(value) ~= 0 then
     value = math.floor(value)
-    print(table.concat{'WARNING: truncating decimal value for integer constant "', 
-                       name, '" to: ', value})
+    print(table.concat{'WARNING: truncating decimal value for integer constant ', 
+                       'to: ', value})
   end
   
   -- Construct model
   local model = {
-    [Data.NAME] = name, 
+    [Data.NAME] = nil,  -- populated when this constant is assigned to a module
     [Data.TYPE] = Data.CONST,
     [Data.DEFN] = atom,
-    [Data.INSTANCE] = nil,  -- always nil
+    [Data.INSTANCE] = value, 
   }  
   local instance = { -- top-level instance to be installed in the module
     [Data.MODEL] = model,
   }
 
-  -- instance value is obtained by evaluating the table:
-  -- eg: MY_CONST()
-  setmetatable(instance, {
-    __call = function(self)
-        return value
-    end,
-    
-    __tostring = function(self)
-        if Data.char == atom or Data.wchar == atom then
-            return table.concat{"'", tostring(value), "'"}
-        elseif Data.string == atom or Data.wstring == atom then
-            return table.concat{'"', tostring(value), '"'}
-        else
-            return tostring(value)
-        end
-    end           
-  })
+  setmetatable(instance, Data.METATABLES[Data.CONST])
 
-  -- add/replace the definition in the container module
-  if self[name] then print('WARNING: replacing ', name) end
-  self[name] = instance
-  table.insert(self[Data.MODEL][Data.DEFN], instance)
-  
   return instance
 end
 
 ---
 -- @function Define an Enum
 -- @return @map<#string,#number> a table of (name=value) pairs
-function Data:Enum(param) 
+function Data.enum(param) 
 	assert('table' == type(param), 
 		   table.concat{'invalid enum specification: ', tostring(param)})
 
-	-- pop the name
-	local name = param[1]   table.remove(param, 1)
-	assert('string' == type(name), 
-		   table.concat{'invalid enum name: ', tostring(name)})
-
-	local model = { -- meta-data defining the struct
-		[Data.NAME] = name,
+	local model = { -- meta-data defining the enum
+		[Data.NAME] = nil,    -- will get populated when inserted into a module
 		[Data.TYPE] = Data.ENUM,
 		[Data.DEFN] = {},     -- will be populated as enumerations
 		[Data.INSTANCE] = nil,-- always nil
@@ -465,23 +453,13 @@ function Data:Enum(param)
 		-- as an array to get the correct ordering when printing/visiting
 		table.insert(model[Data.DEFN], { role, ordinal }) 
 	end
-	
-	-- add/replace the definition in the container module
-	if self[name] then print('WARNING: replacing ', name) end
-	self[name] = instance
-	table.insert(self[Data.MODEL][Data.DEFN], instance)
 		
 	return instance
 end
 
-function Data:Struct(param) 
+function Data.struct(param) 
 	assert('table' == type(param), 
 		   table.concat{'invalid struct specification: ', tostring(param)})
-
-	-- pop the name
-	local name = param[1]   table.remove(param, 1)
-	assert('string' == type(name), 
-		   table.concat{'invalid struct name: ', tostring(name)})
 		   
 	-- OPTIONAL base: pop the next element if it is a base model element
 	local base
@@ -494,7 +472,7 @@ function Data:Struct(param)
 	end
 
 	local model = { -- meta-data defining the struct
-		[Data.NAME] = name,
+		[Data.NAME] = nil,    -- will get populated when assigned to a module
 		[Data.TYPE] = Data.STRUCT,
 		[Data.DEFN] = {},     -- will be populated as model elements are defined 
 		[Data.INSTANCE] = nil,-- will be populated as instances are defined
@@ -542,22 +520,12 @@ function Data:Struct(param)
 		end
 	end
 	
-	-- add/replace the definition in the container module
-	if self[name] then print('WARNING: replacing ', name) end
-	self[name] = instance
-	table.insert(self[Data.MODEL][Data.DEFN], instance)
-		
 	return instance
 end
 
-function Data:Union(param) 
+function Data.union(param) 
 	assert('table' == type(param), 
 		   table.concat{'invalid union specification: ', tostring(param)})
-
-	-- pop the name
-	local name = param[1]   table.remove(param, 1)
-	assert('string' == type(name), 
-		   table.concat{'invalid union name: ', tostring(name)})
 		   
 	-- pop the discriminator
 	local discriminator = param[1]   table.remove(param, 1)
@@ -617,11 +585,6 @@ function Data:Union(param)
 		end
 	end
 	
-	-- add/replace the definition in the container module
-	if self[name] then print('WARNING: replacing ', name) end
-	self[name] = instance
-	table.insert(self[Data.MODEL][Data.DEFN], instance)
-		
 	return instance
 end
 
@@ -632,20 +595,15 @@ end
 	IDL: typedef MyStruct MyStructArray[10][20]
 	Lua: Data:Typedef{'MyStructArray', Data.MyStruct, Data.Array(10, 20) }
 --]]
-function Data:Typedef(param) 
+function Data.typedef(param) 
 	assert('table' == type(param), 
 		   table.concat{'invalid typedef specification: ', tostring(param)})
 
-	-- ensure proper specification
-	local name = param[1]
-	assert('string' == type(name), 
-			table.concat{'invalid typedef name: ', tostring(name)})
-
-	local alias = param[2]
+	local alias = param[1]
 	assert('table' == type(alias), 
-		table.concat{'undefined alias type for typedef: "', tostring(name), '"'})
+		table.concat{'undefined alias type for typedef: "', tostring(alias), '"'})
 	assert(nil ~= alias[Data.MODEL], 
-		table.concat{'alias must be a data model for typedef "', tostring(name), '"'})
+		table.concat{'alias must be a data model for typedef "', tostring(alias), '"'})
 	local alias_type = alias[Data.MODEL][Data.TYPE]
 	assert(Data.ATOM == alias_type or
 		   Data.ENUM == alias_type or
@@ -655,15 +613,15 @@ function Data:Typedef(param)
 		   table.concat{'alias must be a atom|enum|struct|union|typedef: ', 
 		   				 tostring(name)})
 		   		
-	local collection = param[3]	 
+	local collection = param[2]	 
 	assert(nil == collection or 'number' == type(collection) or
 		   Data.ARRAY == collection[Data.MODEL] or
 		   Data.SEQUENCE == collection[Data.MODEL],
-		table.concat{'invalid collection for typedef "', tostring(name), '"'})
+		table.concat{'invalid collection for typedef "', tostring(collection), '"'})
 
 
 	local model = { -- meta-data defining the typedef
-		[Data.NAME] = name,
+		[Data.NAME] = nil, -- populated when the typedef is assigned to a module
 		[Data.TYPE] = Data.TYPEDEF,
 		[Data.DEFN] = {}, -- exactly 1 entry: '', underlying alias, array/sequence
 		[Data.INSTANCE] = nil,
@@ -685,11 +643,6 @@ function Data:Typedef(param)
 	-- save the meta-data
 	table.insert(model[Data.DEFN], member_definition) 
 	
-	-- add/replace the definition in the container module
-	if self[name] then print('WARNING: replacing ', name) end
-	self[name] = instance
-	table.insert(self[Data.MODEL][Data.DEFN], instance)
-		
 	return instance
 end
 
@@ -757,126 +710,6 @@ function Data.create_member(member_definition)
 	end
 	
 	return member_instance, member_definition
-end
-
----
--- Fully qualified name of a model element
--- @function fqname
--- @param #table instance a model element whose fully qualified name is desired
--- @return #string the fully qualified name of the instance if any
---                 if instance is not a model element, returns the string value
---                 of the argument
-local function _fqname(instance)
-    return 'table' == type(instance) and 
-              (instance[Data.MODEL] and 
-                instance[Data.MODEL][Data.NAME]) or 
-              tostring(instance)
-end
-
----
--- Local helper method to define a string on maximum length 'n'.
--- Used by Data.string() and Data.wstring().
--- 
--- A string of length n (i.e. string<n>) is implemented as an automatically 
--- defined Atom with the correct name.
--- 
--- @function _string 
--- @param #number n the maximum length of the string
--- @param #string name the name of the underlying type: string or wstring
--- @return #table the string data model instance
-local function _string(n, name)
-		
-	-- construct name of the atom: 'string<n>'
-	
-  local dim = n
-         
-  -- if the dim is a CONST, use its value for validation
-  if 'table' == type(n) and 
-     'nil' ~= n[Data.MODEL] and 
-     Data.CONST == n[Data.MODEL][Data.TYPE] then
-     dim = n()
-  end
-   
-  -- validate the dimension
-	if nil ~= dim then
-		assert(type(dim)=='number', 
-	           table.concat{'invalid string capacity: ', tostring(n)})
-		assert(dim > 0, 
-		       table.concat{'string capacity must be > 0: ', tostring(n)})
-	  name = table.concat{'string<', _fqname(n), '>'}
-	end
-	            	
-	-- lookup the atom name
-	local instance = Data[name]
-	if nil == instance then
-		-- not found => create it
-		instance = Data:Atom{name}
-	end	 
-	
-	return instance
-end 
-
----
--- string of length n (i.e. string<n>) is an Atom
--- @function string 
--- @param #number n the maximum length of the string
--- @return #table the string data model instance
-function Data.String(n)
-  return _string(n, 'string')
-end
-
----
--- wstring of length n (i.e. string<n>) is an Atom
--- @function wstring 
--- @param #number n the maximum length of the wstring
--- @return #table the string data model instance
-function Data.WString(n)
-  return _string(n, 'wstring')
-end
-
-
--- collection() - helper method to define collections, i.e. sequences and arrays
-local function _collection(annotation, n, ...)
-
-  -- ensure that we have an array of positive numbers
-  local dimensions = {...}
-  table.insert(dimensions, 1, n) -- insert n at the begining
-  for i, v in ipairs(dimensions) do
-    local dim = v
-         
-    -- if the dim is a CONST, validate its value
-    if 'table' == type(v) and 
-       'nil' ~= v[Data.MODEL] and 
-       Data.CONST == v[Data.MODEL][Data.TYPE] then
-       dim = v()
-    end
-   
-    -- check if the 'dim' is valid
-    assert(type(dim)=='number',  
-      table.concat{'invalid collection bound: ', tostring(dim)})
-    assert(dim > 0 and dim - math.floor(dim) == 0, -- positive integer  
-      table.concat{'collection bound must be > 0: ', dim})
-  end
-  
-  -- return the predefined annotation instance, whose attributes are 
-  -- the collection dimension bounds
-  return annotation(dimensions)
-end
-
--- Arrays and Sequences are implemented as a special annotations, whose 
--- attributes are positive integer constants, that specify the dimension bounds
--- NOTE: Since an array or a sequence is an annotation, it can appear anywhere 
---       after a member type declaration; the 1st one is used
-local _tmp_fn, _tmp_model = Data:Annotation('Array')
-Data.ARRAY = _tmp_model -- 'Array' annotation's data model
-function Data.Array(n, ...)
-	return _collection(Data._.Array, n, ...)
-end
-
-_tmp_fn, _tmp_model = Data:Annotation('Sequence')
-Data.SEQUENCE = _tmp_model -- 'Sequence' annotation's data model
-function Data.Sequence(n, ...)
-	return _collection(Data._.Sequence, n, ...)
 end
 
 --------------------------------------------------------------------------------
@@ -1132,78 +965,169 @@ function Data.assert_case(case, discriminator)
 	 return case
 end
 
--- Print an annotation
-function Data._.__tostring(annotation)
-	-- output the attributes if any
-	local output = nil
 
-	-- assertions
-	for i, v in ipairs(annotation) do
-		output = string.format('%s%s%s', 
-							output or '', -- output or nothing
-							output and ',' or '', -- put a comma or not?
-							tostring(v))
-	end
-	
-	-- name value pairs {name=value}
-	for k, v in pairs(annotation) do
-		if 'string' == type(k) then
-			output = string.format('%s%s%s=%s', 
-						output or '', -- output or nothing
-						output and ',' or '', -- put a comma or not?
-						tostring(k), tostring(v))
-		end
-	end
-	
-	if output then
-		output = string.format('@%s(%s)', annotation[Data.MODEL][Data.NAME], output)	
-	else
-		output = string.format('@%s', annotation[Data.MODEL][Data.NAME])
-	end
-	
-	return output
+---
+-- Fully qualified name of a model element
+-- @function [parent=Data]fqname
+-- @param #table instance a model element whose fully qualified name is desired
+-- @return #string the fully qualified name of the instance if any
+--                 if instance is not a model element, returns the string value
+--                 of the argument
+function Data.fqname(instance)
+    return 'table' == type(instance) and 
+              (instance[Data.MODEL] and 
+                instance[Data.MODEL][Data.NAME]) or 
+              tostring(instance)
 end
 
 --------------------------------------------------------------------------------
--- Predefined Types
+--- Builtin Module - Predefined Model Elements
 --------------------------------------------------------------------------------
 
-Data:Atom{'boolean'}
+--- 
+-- 'builtin' module
+-- Built-in data types (atomic types) and annotations belong to this module
+-- @type [parent=#Data] builtin
+Data.builtin = Data.module{}
 
-Data:Atom{'float'}
-Data:Atom{'double'}
-Data:Atom{'long_double'}
+--- 
+-- Built-in atomic types
+Data.builtin.boolean = Data.atom{}
+Data.builtin.octet = Data.atom{}
 
-Data:Atom{'short'}
-Data:Atom{'long'}
-Data:Atom{'long_long'}
+Data.builtin.char = Data.atom{}
+Data.builtin.wchar = Data.atom{}
 
-Data:Atom{'unsigned_short'}
-Data:Atom{'unsigned_long'}
-Data:Atom{'unsigned_long_long'}
+Data.builtin.float = Data.atom{}
+Data.builtin.double = Data.atom{}
+Data.builtin.long_double = Data.atom{}
 
-Data:Atom{'char'}
-Data:Atom{'wchar'}
+Data.builtin.short = Data.atom{}
+Data.builtin.long = Data.atom{}
+Data.builtin.long_long = Data.atom{}
 
-Data:Atom{'octet'}
+Data.builtin.unsigned_short = Data.atom{}
+Data.builtin.unsigned_long = Data.atom{}
+Data.builtin.unsigned_long_long = Data.atom{}
 
-Data.String()
-Data.WString()
+--- 
+-- Built-in annotations
+Data.builtin.Key = Data.annotation{}
+Data.builtin.Extensibility = Data.annotation{}
+Data.builtin.ID = Data.annotation{}
+Data.builtin.MustUnderstand = Data.annotation{}
+Data.builtin.Shared = Data.annotation{}
+Data.builtin.BitBound = Data.annotation{}
+Data.builtin.BitSet = Data.annotation{}
+Data.builtin.Nested = Data.annotation{}
+Data.builtin.top_level = Data.annotation{} -- legacy
 
---------------------------------------------------------------------------------
--- Predefined Annotations
---------------------------------------------------------------------------------
 
-Data:Annotation('Key')
-Data:Annotation('Optional')
-Data:Annotation('Extensibility')
-Data:Annotation('ID')
-Data:Annotation('MustUnderstand')
-Data:Annotation('Shared')
-Data:Annotation('BitBound')
-Data:Annotation('BitSet')
-Data:Annotation('Nested')
-Data:Annotation('top_level') -- legacy
+---
+-- Local helper method to define a string on maximum length 'n'.
+-- Used by Data.string() and Data.wstring().
+-- 
+-- A string of length n (i.e. string<n>) is implemented as an automatically 
+-- defined Atom with the correct name.
+-- 
+-- @function _string 
+-- @param #number n the maximum length of the string
+-- @param #string name the name of the underlying type: string or wstring
+-- @return #table the string data model instance, the name under which to 
+--                install the atom
+local function _string(n, name)
+    
+  -- construct name of the atom: 'string<n>'
+    local dim = n
+           
+    -- if the dim is a CONST, use its value for validation
+    if 'table' == type(n) and 
+       'nil' ~= n[Data.MODEL] and 
+       Data.CONST == n[Data.MODEL][Data.TYPE] then
+       dim = n()
+    end
+     
+    -- validate the dimension
+    if nil ~= dim then
+      assert(type(dim)=='number', 
+               table.concat{'invalid string capacity: ', tostring(n)})
+      assert(dim > 0, 
+             table.concat{'string capacity must be > 0: ', tostring(n)})
+        name = table.concat{name, '<', Data.fqname(n), '>'}
+    end
+            
+  -- lookup the atom name in the builtin module
+  local instance = Data.builtin[name]
+  if nil == instance then
+    -- not found => create it
+    instance = Data.atom()
+    Data.builtin[name] = instance -- install it in the builtin module
+  end  
+  
+  return instance
+end 
+
+---
+-- string of length n (i.e. string<n>) is an Atom
+-- @function string 
+-- @param #number n the maximum length of the string
+-- @return #table the string data model instance
+function Data.string(n)
+  return _string(n, 'string')
+end
+
+---
+-- wstring of length n (i.e. string<n>) is an Atom
+-- @function wstring 
+-- @param #number n the maximum length of the wstring
+-- @return #table the string data model instance
+function Data.wstring(n)
+  return _string(n, 'wstring')
+end
+
+-- collection() - helper method to define collections, i.e. sequences and arrays
+local function _collection(annotation, n, ...)
+
+  -- ensure that we have an array of positive numbers
+  local dimensions = {...}
+  table.insert(dimensions, 1, n) -- insert n at the begining
+  for i, v in ipairs(dimensions) do
+    local dim = v
+         
+    -- if the dim is a CONST, validate its value
+    if 'table' == type(v) and 
+       'nil' ~= v[Data.MODEL] and 
+       Data.CONST == v[Data.MODEL][Data.TYPE] then
+       dim = v()
+    end
+   
+    -- check if the 'dim' is valid
+    assert(type(dim)=='number',  
+      table.concat{'invalid collection bound: ', tostring(dim)})
+    assert(dim > 0 and dim - math.floor(dim) == 0, -- positive integer  
+      table.concat{'collection bound must be > 0: ', dim})
+  end
+  
+  -- return the predefined annotation instance, whose attributes are 
+  -- the collection dimension bounds
+  return annotation[Data.MODEL][Data.DEFN](dimensions)
+end
+
+-- Arrays and Sequences are implemented as a special annotations, whose 
+-- attributes are positive integer constants, that specify the dimension bounds
+-- NOTE: Since an array or a sequence is an annotation, it can appear anywhere 
+--       after a member type declaration; the 1st one is used
+Data.builtin.Array = Data.annotation{}
+Data.ARRAY = Data.builtin.Array[Data.MODEL]
+function Data.array(n, ...)
+  return _collection(Data.builtin.Array, n, ...)
+end
+
+Data.builtin.Sequence = Data.annotation{}
+Data.SEQUENCE = Data.builtin.Sequence[Data.MODEL]
+function Data.sequence(n, ...)
+  return _collection(Data.builtin.Sequence, n, ...)
+end
 
 --------------------------------------------------------------------------------
 -- Relationship Definitions
@@ -1258,12 +1182,13 @@ end
 -- #map<#table, #string>
 
 local _IDL_DISPLAY = {
-  -- [model element]         = "Display string in IDL"
-  [Data.long_double]         = "long double",
-  [Data.long_long]           = "long long",
-  [Data.unsigned_short]      = "unsigned short",
-  [Data.unsigned_long]       = "unsigned long",
-  [Data.unsigned_long_long]  = "unsigned long long",
+  -- [model element]                 = "Display string in IDL"
+  [Data.builtin.long_double]         = "long double",
+  [Data.builtin.long_long]           = "long long",
+  [Data.builtin.unsigned_short]      = "unsigned short",
+  [Data.builtin.unsigned_long]       = "unsigned long",
+  [Data.builtin.unsigned_long_long]  = "unsigned long long",
+  [Data.builtin.top_level]           = "top-level",
 }
 
 setmetatable(_IDL_DISPLAY, {
@@ -1287,7 +1212,8 @@ setmetatable(_IDL_DISPLAY, {
 --         Data.print_idl(model, '   ')
 function Data.print_idl(instance, indent_string)
 	-- ensure valid instance
-	assert('table' == type(instance), 'instance missing!')
+	assert('table' == type(instance), 
+	       table.concat{'instance must be a table: "', tostring(instance), '"'})
 	assert(instance[Data.MODEL], 'invalid instance')
 
 	local indent_string = indent_string or ''
@@ -1323,7 +1249,7 @@ function Data.print_idl(instance, indent_string)
 	end
 	
 	-- open --
-	if (nil ~= myname) then -- not top-level / root module
+	if (nil ~= myname) then -- not top-level / builtin module
 	
 		-- print the annotations
 		if nil ~=mydefn then
@@ -1395,7 +1321,7 @@ function Data.print_idl(instance, indent_string)
 	end
 	
 	-- close --
-	if (nil ~= myname) then -- not top-level / root module
+	if (nil ~= myname) then -- not top-level / builtin module
 		print(string.format('%s};\n', indent_string))
 	end
 	
@@ -1435,7 +1361,7 @@ function Data.tostring_idl_member(decl, typedef_name)
 		end
 		output_member = string.format('%s%s', output_member, _IDL_DISPLAY[element])
 		for i = 1, #seq do
-			output_member = string.format('%s,%s>', output_member, _fqname(seq[i])) 
+			output_member = string.format('%s,%s>', output_member, Data.fqname(seq[i])) 
 		end
 		output_member = string.format('%s %s', output_member, role)
 	end
@@ -1449,7 +1375,7 @@ function Data.tostring_idl_member(decl, typedef_name)
 		if Data.ARRAY == decl[j][Data.MODEL] then
 			for i = 1, #decl[j] do
 				output_member = string.format('%s[%s]', output_member, 
-				                                 _fqname(decl[j][i])) 
+				                                 Data.fqname(decl[j][i])) 
 			end
 		elseif Data.SEQUENCE ~= decl[j][Data.MODEL] then
 			output_annotations = string.format('%s%s ', 
@@ -1562,7 +1488,10 @@ function Data.index(instance, result, model)
 end
 
 --------------------------------------------------------------------------------
-local root_module = Data:Module{''} 
-root_module[Data.MODEL][Data.NAME] = nil -- root module is unnamed
-return root_module
+-- Inherit the builtin model elements
+setmetatable(Data, {
+    __index = Data.builtin
+})
+
+return Data
 --------------------------------------------------------------------------------
