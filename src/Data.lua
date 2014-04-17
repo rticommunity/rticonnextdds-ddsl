@@ -194,12 +194,23 @@ local Data = {
 Data.METATABLES[Data.MODULE] = {
 
   __newindex = function (module, name, instance)
+      
       -- set the instance name
       instance[Data.MODEL][Data.NAME] = name
       
-      -- insert in the module definition, so that the instance can be iterated
-      -- in the correct order (eg when outputting IDL)
-      table.insert(module[Data.MODEL][Data.DEFN], instance)
+      -- insert in the module definition, so that the instance can be 
+      -- iterated in the correct order (eg when outputting IDL)
+      local definitions = module[Data.MODEL][Data.DEFN]
+      local replaced = false
+      for i = #definitions, 1, -1 do -- count down, latest first
+          if definitions[i][Data.MODEL][Data.NAME] == name then
+              replaced = true -- replace an old definition
+              definitions[i] = instance
+          end
+      end
+      if not replaced then -- insert at the end
+          table.insert(module[Data.MODEL][Data.DEFN], instance)
+      end
       
       -- add an index entry to the module
       rawset(module, name, instance)
@@ -457,20 +468,9 @@ function Data.enum(param)
 	return instance
 end
 
-
 function Data.struct(param) 
 	assert('table' == type(param), 
 		   table.concat{'invalid struct specification: ', tostring(param)})
-		   
-	-- OPTIONAL base: pop the next element if it is a base model element
-	local base
-	if 'table' == type(param[1]) 
-		and nil ~= param[1][Data.MODEL]
-		and Data.ANNOTATION ~= param[1][Data.MODEL][Data.TYPE] then
-		base = param[1]   table.remove(param, 1)
-		assert(Data.STRUCT == base[Data.MODEL][Data.TYPE], 
-			table.concat{'base type must be a struct: ', name})
-	end
 
 	local model = { -- meta-data defining the struct
 		[Data.NAME] = nil,    -- will get populated when assigned to a module
@@ -481,7 +481,17 @@ function Data.struct(param)
 	local instance = { -- top-level instance to be installed in the module
 		[Data.MODEL] = model,
 	}
-	
+
+    -- OPTIONAL base: pop the next element if it is a base model element
+    local base
+    if 'table' == type(param[1]) 
+      and nil ~= param[1][Data.MODEL]
+      and Data.ANNOTATION ~= param[1][Data.MODEL][Data.TYPE] then
+      base = param[1]   table.remove(param, 1)
+      assert(Data.STRUCT == base[Data.MODEL][Data.TYPE], 
+        table.concat{'base type must be a struct: ', tostring(base)})
+    end
+  
 	-- add the base
 	if base then
 		-- install base class:

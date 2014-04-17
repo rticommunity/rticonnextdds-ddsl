@@ -848,23 +848,28 @@ end
 
 Tester[#Tester+1] = 'test_struct_recursive'
 function Tester:test_struct_recursive()
-  -- NOTE: recursive structs and fwd declarations are not allowed in IDL
-  Data.RecursiveStruct = data.struct{} -- fwd decl
-  Data.RecursiveStruct = data.struct{
-    { 'x', data.long },
-    { 'y', data.long },
-    { 'child', Data.RecursiveStruct },
-  }
-  
-  self:print(Data.RecursiveStruct)
-  
-  assert('x' == Data.RecursiveStruct.x)
-  assert('y' == Data.RecursiveStruct.y)
-  
-  -- assert('child.x' == Data.RecursiveStruct.child.x)
+
+    -- NOTE: Forward data declarations are not allowed in IDL
+    --       still, this is just a test to see how it might work
+    
+    Data.RecursiveStruct = data.struct{} -- fwd decl
+    local RecursiveStruct = data.struct{ -- note: won't get installed as a defn
+      { 'x', data.long },
+      { 'y', data.long },
+      { 'child', Data.RecursiveStruct },
+    }
+    Data.RecursiveStruct = nil -- erase from module
+    Data.RecursiveStruct = RecursiveStruct -- reinstall it
+    
+    self:print(Data.RecursiveStruct)
+    
+    assert('x' == Data.RecursiveStruct.x)
+    assert('y' == Data.RecursiveStruct.y)
+    
+    -- assert('child.x' == Data.RecursiveStruct.child.x)
 end
 
-Tester[#Tester+1] = 'test_struct_dynamic'
+Tester[#Tester+1] = 'Xtest_struct_dynamic'
 function Tester:test_struct_dynamic()
 
     local DynamicShapeType = data.struct{}
