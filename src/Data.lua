@@ -411,7 +411,7 @@ function Data.const(param)
   }
 
   setmetatable(instance, Data.METATABLES[Data.CONST])
-
+  
   return instance
 end
 
@@ -456,6 +456,7 @@ function Data.enum(param)
 		
 	return instance
 end
+
 
 function Data.struct(param) 
 	assert('table' == type(param), 
@@ -504,8 +505,9 @@ function Data.struct(param)
 			-- save the meta-data
 			table.insert(model[Data.DEFN], decl) 		
 		else -- struct member definition
-			local role, template = decl[1], decl[2]
-			local member_instance, member_definition = Data.create_member(decl)
+			local role = decl[1]     table.remove(decl, 1) -- pop the role
+			local member_instance, member_definition = 
+			                               Data.create_member(role, decl) 
 		
 			-- check for conflicting  member fields
 			assert(nil == instance[role], 
@@ -516,10 +518,14 @@ function Data.struct(param)
 			
 			-- save the meta-data
 			-- as an array to get the correct ordering
+			table.insert(member_definition, 1, role) 
 			table.insert(model[Data.DEFN], member_definition) 
 		end
 	end
-	
+
+    -- set the meta-table for new instance to be added to the module
+    -- setmetatable(instance, Data.METATABLES[Data.STRUCT])
+  
 	return instance
 end
 
@@ -568,12 +574,11 @@ function Data.union(param)
 			local case = nil
 			if #decl > 1 then case = decl[1]  table.remove(decl, 1) end -- case
 			
-			local role, element = decl[1][1], decl[1][2]
-			-- print('DEBUG Union 2: ', case, role, element)
-					
 			Data.assert_case(case, discriminator)
-			
-			local member_instance, member_definition = Data.create_member(decl[1])
+      
+			local role = decl[1][1]	   table.remove(decl[1], 1) -- pop the role
+			local member_instance, member_definition = 
+			                                 Data.create_member(role, decl[1])
 
 			-- insert the role
 			instance[role] = member_instance
@@ -581,6 +586,7 @@ function Data.union(param)
 			-- save the meta-data
 			-- as an array to get the correct ordering
 			-- NOTE: default case is stored as a 'nil'
+			table.insert(member_definition, 1, role)
 			table.insert(model[Data.DEFN], { case, member_definition }) 
 		end
 	end
@@ -632,7 +638,7 @@ function Data.typedef(param)
 	
 	-- create definition
 	local member_instance, member_definition = 
-				Data.create_member{ nil, alias, collection }
+				Data.create_member( nil, { alias, collection })
 	
 	-- NOTE: we reused the create_member() function method, because it already
 	--       does all the work  that we need to do. We ignore the 
@@ -641,30 +647,32 @@ function Data.typedef(param)
 	--       member_instance will be nil, since the role was 'nil'
 			
 	-- save the meta-data
-	table.insert(model[Data.DEFN], member_definition) 
+	table.insert(member_definition, 1, nil)
+	table.insert(model[Data.DEFN], member_definition)
 	
 	return instance
 end
 
 -- create_member() - define a struct or union member (without the case)
--- @param member_definition - array consists of entries in the following order:
---           role     - the member role to instantiate (may be 'nil')
+-- @param #string member_name - the member name to instantiate (may be 'nil')
+-- @param #list<#table> member_definition - array consists of entries in the 
+--      following order:
 --           template - the kind of member to instantiate (previously defined)
 --           ...      - optional list of annotations including whether the 
 --                      member is an array or sequence    
 -- @return the member instance and the member definition
-function Data.create_member(member_definition)
-	local role, template = member_definition[1], member_definition[2]
+function Data.create_member(member_name, member_definition)
+	local template = member_definition[1]
 	
 	-- ensure pre-conditions
-	assert(nil == role or 'string' == type(role), 
-			table.concat{'invalid member name: ', tostring(role)})
+	assert(nil == member_name or 'string' == type(member_name), 
+			table.concat{'invalid member name: ', tostring(member_name)})
 	assert('table' == type(template), 
 			table.concat{'undefined type for member "', 
-						  tostring(role), '": ', tostring(template)})
+						  tostring(member_name), '": ', tostring(template)})
 	assert(nil ~= template[Data.MODEL], 
 		   table.concat{'invalid type for struct member "', 
-		   tostring(role), '"'})
+		   tostring(member_name), '"'})
 
 	local template_type = template[Data.MODEL][Data.TYPE]
 	assert(Data.ATOM == template_type or
@@ -672,18 +680,18 @@ function Data.create_member(member_definition)
 		   Data.STRUCT == template_type or 
 		   Data.UNION == template_type or
 		   Data.TYPEDEF == template_type,
-		   table.concat{'member "', tostring(role), 
+		   table.concat{'member "', tostring(member_name), 
 					    '" must be a atom|enum|struct|union|typedef: '})
 
 	-- ensure that the rest of the member definition entries are annotations:	
 	-- also look for the 1st 'collection' annotation (if any)
 	local collection = nil
-	for j = 3, #member_definition do
+	for j = 2, #member_definition do
 		assert('table' == type(member_definition[j]),
-				table.concat{'annotation expected "', tostring(role), 
+				table.concat{'annotation expected "', tostring(member_name), 
 						     '" : ', tostring(member_definition[j])})
 		assert(Data.ANNOTATION == member_definition[j][Data.MODEL][Data.TYPE],
-				table.concat{'not an annotation: "', tostring(role), 
+				table.concat{'not an annotation: "', tostring(member_name), 
 							'" : ', tostring(member_definition[j])})	
 
 		-- is this a collection?
@@ -697,15 +705,15 @@ function Data.create_member(member_definition)
 	-- populate the member_instance fields
 	local member_instance = nil
 
-	if role then -- don't compute member instance if role is not specified 
+	if member_name then -- skip member instance if member_name is not specified 
 		if collection then
 			local iterator = template
 			for i = 1, #collection - 1  do -- create iterator for inner dimensions
 				iterator = Data.seq('', iterator) -- unnamed iterator
 			end
-			member_instance = Data.seq(role, iterator)
+			member_instance = Data.seq(member_name, iterator)
 		else
-			member_instance = Data.instance(role, template)
+			member_instance = Data.instance(member_name, template)
 		end
 	end
 	
