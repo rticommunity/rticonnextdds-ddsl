@@ -846,22 +846,70 @@ function Tester:test_const_bounds()
     assert(Data.MyCapacityStruct.myStr == 'myStr')
 end
 
---[=[
+Tester[#Tester+1] = 'test_struct_recursive'
+function Tester:test_struct_recursive()
+  -- NOTE: recursive structs and fwd declarations are not allowed in IDL
+  Data.RecursiveStruct = data.struct{} -- fwd decl
+  Data.RecursiveStruct = data.struct{
+    { 'x', data.long },
+    { 'y', data.long },
+    { 'child', Data.RecursiveStruct },
+  }
+  
+  self:print(Data.RecursiveStruct)
+  
+  assert('x' == Data.RecursiveStruct.x)
+  assert('y' == Data.RecursiveStruct.y)
+  
+  -- assert('child.x' == Data.RecursiveStruct.child.x)
+end
+
 Tester[#Tester+1] = 'test_struct_dynamic'
 function Tester:test_struct_dynamic()
 
-    Data.Name.day = { Data.Days, data.array(7) } -- add a new field
-
-    self:print(Data.Name)
+    local DynamicShapeType = data.struct{}
+    DynamicShapeType.x = { data.long }
+    DynamicShapeType.y = { data.long }
+    DynamicShapeType.shapesize = { data.double }
+    DynamicShapeType.color = { data.string(128), data.Key  }
+        
     
-    assert(Data.Name.day() == 'day#')
-    assert(Data.Name.day(1) == 'day[1]')
+    -- install it under the name 'ShapeType' in the module
+    Data.ShapeType = DynamicShapeType
+    self:print(DynamicShapeType)
+    
+    -- shapesize re-definition:
+    DynamicShapeType.shapesize = nil -- erase old definition
+    DynamicShapeType.shapesize = { data.long } -- redefine it
+    self:print(DynamicShapeType)
+ 
+ 
+    assert('x' == DynamicShapeType.x)
+    assert('y' == DynamicShapeType.y)
+    assert('shapesize' == DynamicShapeType.shapesize)
+    assert('color' == DynamicShapeType.color)   
 end
---]=]
 
 Tester[#Tester+1] = 'test_root'
 function Tester:test_root()
   self:print(Data)
+end
+
+Tester[#Tester+1] = 'test_struct_nomodule'
+function Tester:test_struct_nomodule()
+  local ShapeType = data.struct{
+    { 'x', data.long },
+    { 'y', data.long },
+    { 'shapesize', data.long },
+    { 'color', data.string(128), data.Key },
+  }
+  
+  self:print(ShapeType)
+  
+  assert('x' == ShapeType.x)
+  assert('y' == ShapeType.y)
+  assert('shapesize' == ShapeType.shapesize)
+  assert('color' == ShapeType.color)   
 end
 
 ---
@@ -884,9 +932,12 @@ end
 --          if no command line arguments are passed in, run all the tests
 function Tester:main()
   	if #arg > 0 then -- run selected tests passed in from the command line
+        self:test_module() -- always run this one to initialize the module
     		for i, test in ipairs (arg) do
-    			print('\n--- ' .. test .. ' ---')
-    			self[test](self) -- run the test
+      		  if 'test_module' ~= test then -- skip, cuz already ran it
+          			print('\n--- ' .. test .. ' ---')
+          			self[test](self) -- run the test
+        		end
     		end
   	else -- run all  the tests
     		for k, v in ipairs (self) do
