@@ -200,10 +200,8 @@ _.METATABLES[Data.MODULE] = {
 
   __newindex = function (module, name, instance)
       
-      -- if we are not 'erasing' an entry, then the value must be an instance
-      if nil ~= instance then
-          assert('table' == type(instance) and nil ~= instance[Data.MODEL])
-      end
+      -- if we are not 'erasing' an entry, the value must be a model instance
+      assert(nil == instance or nil ~= _.model_type(instance))
       
       -- set the instance name
       instance[Data.MODEL][Data.NAME] = name
@@ -521,16 +519,12 @@ _.METATABLES[Data.STRUCT] = {
           
           -- establish a valid base struct, if any:
           if nil ~= value then
-            assert('table' == type(value) and value[Data.MODEL] and 
-                 Data.STRUCT == value[Data.MODEL][Data.TYPE],
-                 table.concat{'base type must be a struct, was: "', 
-                               tostring(value), '"'})
-            base = value
+              base = _.assert_model(Data.STRUCT, value)
           end
          
           -- clear the instance fields from the current base type (if any)
-          if struct[Data.MODEL][Data.BASE] then
-              for k, v in pairs(struct[Data.MODEL][Data.BASE]) do
+          if struct[Data.MODEL][Data.DEFN][Data.BASE] then
+              for k, v in pairs(struct[Data.MODEL][Data.DEFN][Data.BASE]) do
                   if 'string' == type(k) then -- copy only the base instance fields 
                       rawset(struct, k, nil)
                       
@@ -540,9 +534,10 @@ _.METATABLES[Data.STRUCT] = {
           end
           
           -- set the new base in the model definition (may be nil)
-          struct[Data.MODEL][Data.BASE] = base
+          struct[Data.MODEL][Data.DEFN][Data.BASE] = base
          
           -- populate the instance fields from the base type
+          print('***', base)
           if base then
               for k, v in pairs(base) do
                   if 'string' == type(k) then -- copy the base instance fields 
@@ -553,22 +548,9 @@ _.METATABLES[Data.STRUCT] = {
               end
           end
           
-      elseif Data.ANNOTATION == key then -- annotations
-          local annotations
-          
-          -- establish valid annotations, if any
-          if nil ~= value then
-              for i, v in ipairs(value) do
-                  assert('table' == type(v) and v[Data.MODEL] and 
-                       Data.ANNOTATION == v[Data.MODEL][Data.TYPE],
-                       table.concat{'value must be an annotation list: "', 
-                                     tostring(v), '"'})
-              end
-              annotations = value
-          end
-          
+      elseif Data.ANNOTATION == key then -- annotation definition
           -- set the new annotations in the model definition (may be nil)
-          struct[Data.MODEL][Data.ANNOTATION] = annotations    
+          struct[Data.MODEL][Data.DEFN][Data.ANNOTATION] = _.assert_annotation_array(value)    
       end
            
   end
@@ -638,80 +620,131 @@ function Data.struct(param)
 end
 
 
+_.METATABLES[Data.UNION] = { -- applies to a union[Data.MODEL] table
+
+  -- NOTE: union[Data.MODEL] table serves as a virtual table and manipulates
+  --       the underlying union[Data.MODEL][Data.DEFN] and attaches instances
+  
+  __len = function (model)
+      return #model[Data.DEFN]
+  end,
+
+  __index = function (model, key)
+      return model[Data.DEFN][key]
+  end,
+  
+  __newindex = function (model, key, value)
+
+      if 'number' == type(key) then -- member definition
+          
+          -- save the old value: member definition
+          local old_value = model[Data.DEFN][key]
+          
+          -- update instances: remove the old_member_definition
+          if old_value then
+              local old_role = old_value[2][1]
+              for name, instance in pairs(model[Data.INSTANCE]) do
+                 -- print('DEBUG union meta 1: ', key, name, old_role)
+                 instance[old_role] = nil
+              end
+          end
+               
+                    
+          -- compute the new new member_definition
+          local member_instance, case, member_definition
+          if nil ~= value then -- 
+              case = _.assert_case(value[1], model[Data.DEFN][Data.SWITCH])
+              
+              for role, decl in pairs(value) do
+                   if 'string' == type(role) then 
+                       -- print(' DEBUG union meta 2: ', key, case, role, decl[1][Data.MODEL][Data.NAME])
+                                 
+                       member_instance, member_definition = 
+                                                    _.create_member(role, decl)
+                                                  
+                       -- print('  DEBUG union meta 3: ', key, case, role, old_member_definition)
+                                  
+                       break -- only 1 member allowed per case
+                   end
+              end
+           end
+                               
+           -- update instances: add the new member_definition
+           if member_instance then
+               local role = member_definition[1]
+               for name, instance in pairs(model[Data.INSTANCE]) do
+                  -- print('   DEBUG union meta 4: ', key, case, name, role)
+                  instance[role] = member_instance -- TODO: prefix the 'name'
+               end
+           end
+           
+           
+           -- set the new value
+           if member_instance then
+               model[Data.DEFN][key] = {case, member_definition}
+           else
+               model[Data.DEFN][key] = nil -- remove
+           end
+          
+      elseif Data.ANNOTATION == key then -- annotation definition
+          -- set the new annotations in the model definition (may be nil)
+          model[Data.DEFN][Data.ANNOTATION] = _.assert_annotation_array(value) 
+      
+      elseif Data.NAME == key then -- set the model name
+          rawset(model, Data.NAME, value)
+      end
+  end
+}
 
 function Data.union(param) 
-	assert('table' == type(param), 
-		   table.concat{'invalid union specification: ', tostring(param)})
-		   
-	-- pop the discriminator
-	local discriminator = param[1]   table.remove(param, 1)
-	assert('table' == type(discriminator), 
-			table.concat{'invalid union discriminator', name})
-	assert(nil ~= discriminator[Data.MODEL], 
-			table.concat{'undefined union discriminator type: ', name})
-	local discriminator_type = discriminator[Data.MODEL][Data.TYPE]
-	assert(Data.ATOM == discriminator_type or
-		   Data.ENUM == discriminator_type,
-		   table.concat{'discriminator must be an atom|enum: ', 
-		   				 tostring(name)})
-		   				 
-	local model = { -- meta-data defining the struct
-		[Data.NAME] = name,
-		[Data.TYPE] = Data.UNION,
-		[Data.DEFN] = {},     -- will be populated as model elements are defined 
-		[Data.INSTANCE] = nil,-- will be populated as instances are defined
-	}
-	local instance = { -- top-level instance to be installed in the module
-		[Data.MODEL] = model,
-	}
-	
-  -- set the model meta-table:
-  -- setmetatable(model, _.METATABLES[Data.UNION])
 
+	local discriminator_type = _.model_type(param[1])
+	assert(Data.ATOM == discriminator_type or Data.ENUM == discriminator_type,
+	      'discriminator type must be an "atom" or an "enum"')
+
+  -- pop the discriminator
+  local discriminator = param[1]        table.remove(param, 1)
+  	                
+	local model = { -- meta-data defining the union
+  		[Data.NAME] = nil,    -- will get populated when inserted into a module
+  		[Data.TYPE] = Data.UNION, -- immutable
+  		[Data.DEFN] = {},     -- will be populated as model elements are defined 
+  		[Data.INSTANCE] = {}, -- will be populated as instances are defined
+	}
+	local template = { -- top-level template to be installed in the module
+  		[Data.MODEL] = model,
+	}
+	model[Data.INSTANCE]._ = template -- template instance is always called '_'
+
+  -- set the model meta-table:
+  setmetatable(model, _.METATABLES[Data.UNION])
 
 	-- add the discriminator
-	model[Data.SWITCH] = discriminator
-	instance._d = '#'
+	model[Data.DEFN][Data.SWITCH] = discriminator
+	template._d = '#'
 
 	-- populate the model table
-    -- print('DEBUG Union 1: ', name, discriminator[Data.MODEL][Data.TYPE](), discriminator[Data.MODEL][Data.NAME])			
+  -- print('DEBUG union 1: ', name, discriminator[Data.MODEL][Data.TYPE](), discriminator[Data.MODEL][Data.NAME])			
   local annotations
 	for i, decl in ipairs(param) do	
-
-    if decl[Data.MODEL] then -- annotation at the Union level
-        -- build the union level annotation list
-        assert(Data.ANNOTATION == decl[Data.MODEL][Data.TYPE],
-            table.concat{'not an annotation: ', tostring(decl)})
-        annotations = annotations or {}
-        table.insert(annotations, decl)  
-
-		else -- union member definition
-			local case = nil
-			if #decl > 1 then case = decl[1]  table.remove(decl, 1) end -- case
-			
-			_.assert_case(case, discriminator)
-      
-			local role = decl[1][1]	   table.remove(decl[1], 1) -- pop the role
-			local member_instance, member_definition = 
-			                                 _.create_member(role, decl[1])
-
-			-- insert the role
-			instance[role] = member_instance
-			
-			-- save the meta-data
-			-- as an array to get the correct ordering
-			-- NOTE: default case is stored as a 'nil'
-			table.insert(model[Data.DEFN], { case, member_definition }) 
-		end
+	
+      if decl[Data.MODEL] then -- annotation at the Union level
+          annotations = annotations or {} -- build the annotation list
+          table.insert(annotations, _.assert_model(Data.ANNOTATION, decl))  
+  
+  		else -- union member definition
+    			local case = nil
+    			if #decl > 1 then case = decl[1]  table.remove(decl, 1) end -- pop case
+    			local role = decl[1][1]	   table.remove(decl[1], 1) -- pop the role  			
+    			model[#model+1] = { case, [role] = decl[1] }
+      end
 	end
 	
   if annotations then -- insert the annotations:
-      -- invokes the meta-table __newindex()
-      -- instance[Data.ANNOTATION] = annotations 
-      model[Data.ANNOTATION] = annotations
+      model[Data.ANNOTATION] = annotations -- invokes meta-table __newindex()
   end
     
-	return instance
+	return template
 end
 
 --[[
@@ -793,6 +826,46 @@ function _.assert_case(case, discriminator)
    end
   
    return case
+end
+
+
+---
+-- Get the model_type of any arbitrary value
+-- @param #type value the value for which to retrieve the model type
+-- @return #table the model type or nil (if 'value' does not have a Data.MODEL)
+function _.model_type(value)
+    return ('table' == type(value) and value[Data.MODEL]) 
+           and value[Data.MODEL][Data.TYPE]
+           or nil
+end
+
+---
+-- Ensure that the value is a model element
+-- @param #table kind expected model element kind
+-- @param #table value table to see of it is a model element of "kind"
+-- @return the model table if the kind matches, or nil
+function _.assert_model(kind, value)
+    assert('table' == type(value) and 
+           value[Data.MODEL] and 
+           kind == value[Data.MODEL][Data.TYPE],
+           table.concat{'expected model kind "', kind(), 
+                        '", instead got "', tostring(value), '"'})
+    return value
+end
+
+---
+-- Ensure all elements in the 'value' array are annotations
+-- @return the annotation array
+function _.assert_annotation_array(value)
+    -- establish valid annotations, if any
+    local annotations
+    if nil ~= value then
+        for i, v in ipairs(value) do
+            _.assert_model(Data.ANNOTATION, v)
+        end
+        annotations = value
+    end
+    return annotations
 end
 
 -- create_member() - define a struct or union member (without the case)
@@ -1336,19 +1409,19 @@ function Data.print_idl(instance, indent_string)
 	if (nil ~= myname) then -- not top-level / builtin module
 	
 		-- print the annotations
-		if nil ~=mydefn and nil ~= mydefn.annotations then
-			for i, annotation in ipairs(mydefn.annotations) do
+		if nil ~=mydefn and nil ~= mydefn[Data.ANNOTATION] then
+			for i, annotation in ipairs(mydefn[Data.ANNOTATION]) do
 		      print(string.format('%s%s', indent_string, tostring(annotation)))
 			end
 		end
 		
 		if Data.UNION == mytype then
 			print(string.format('%s%s %s switch (%s) {', indent_string, 
-						mytype(), myname, model[Data.SWITCH][Data.MODEL][Data.NAME]))
+						mytype(), myname, model[Data.DEFN][Data.SWITCH][Data.MODEL][Data.NAME]))
 						
-		elseif Data.STRUCT == mytype and model[Data.BASE] then -- base struct
+		elseif Data.STRUCT == mytype and model[Data.DEFN][Data.BASE] then -- base struct
 			print(string.format('%s%s %s : %s {', indent_string, mytype(), 
-					myname, model[Data.BASE][Data.MODEL][Data.NAME]))
+					myname, model[Data.DEFN][Data.BASE][Data.MODEL][Data.NAME]))
 		
 		else
 			print(string.format('%s%s %s {', indent_string, mytype(), myname))
@@ -1378,7 +1451,7 @@ function Data.print_idl(instance, indent_string)
 				-- case
 				if (nil == case) then
 				  print(string.format("%sdefault :", content_indent_string))
-				elseif (Data.char == model[Data.SWITCH] and nil ~= case) then
+				elseif (Data.char == model[Data.DEFN][Data.SWITCH] and nil ~= case) then
 					print(string.format("%scase '%s' :", 
 						content_indent_string, tostring(case)))
 				else
@@ -1525,7 +1598,7 @@ function Data.index(instance, result, model)
 	end
 		
 	-- struct base type, if any
-	local base = model[Data.BASE]
+	local base = model[Data.DEFN][Data.BASE]
 	if nil ~= base then
 		result = Data.index(instance, result, base[Data.MODEL])	
 	end
