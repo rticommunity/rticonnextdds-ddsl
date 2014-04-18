@@ -1095,48 +1095,54 @@ function Tester:test_struct_dynamic()
     -- redefine shapesize:
     DynamicShapeType.shapesize = nil -- erase member (for redefinition)
     DynamicShapeType.shapesize = { data.long } -- redefine it
-    print("\n*redefined: double->long shapesize*\n")
+    print("\n** redefined: double->long shapesize **\n")
     self:print(DynamicShapeType)
  
  
  
     -- add z:
     DynamicShapeType.z = { data.string() }
-    print("\n*added: string z*\n")
+    print("\n** added: string z **\n")
     self:print(DynamicShapeType)
 
     -- remove z:
     DynamicShapeType.z = nil -- erase member (for redefinition)
     DynamicShapeType.z = nil -- redefine it as empty
-    print("\n*removed: string z*\n")
+    print("\n** removed: string z **\n")
     self:print(DynamicShapeType)
     
     
+       
+    -- add a base class
+    local Bases = data.module{}
+    Bases.Base1 = data.struct{
+        { 'org', data.string() },
+    }
+    DynamicShapeType[data.STRUCT] = Bases.Base1
+    print("\n** added: base class: Base1 **\n")
+    self:print(Bases.Base1)
+    self:print(DynamicShapeType)
+    assert(DynamicShapeType.org == 'org')  
+     
+    -- redefine base class
+    Bases.Base2 = data.struct{
+        { 'pattern', data.long },
+    }
+    DynamicShapeType[data.STRUCT] = Bases.Base2
+    print("\n** replaced: base class: Base2 **\n")
+    self:print(Bases.Base2)
+    self:print(DynamicShapeType)
+    assert(DynamicShapeType.pattern == 'pattern') 
+           
+    -- removed base class
+    DynamicShapeType[data.STRUCT] = nil
+    print("\n** erased base class **\n")
+    self:print(DynamicShapeType)
+ 
     
     --[[ 
     -- NOTE: Just some ideas below. Not going to implement! 
     --       Overloading __index() can slow the data critical path
-    
-    
-    -- add a base class
-    DynamicShapeType[data.STRUCT] = Data.Name
-    print("\n*added: base class: Name*\n")
-    self:print(DynamicShapeType)
-    assert(DynamicShapeType[data.STRUCT] == Data.Name)
-    
-    -- redefine base class
-    DynamicShapeType[data.STRUCT] = Data.FullName
-    print("\n*replaced: base class: FullName*\n")
-    self:print(DynamicShapeType)
-    assert(DynamicShapeType[data.STRUCT] == Data.FullName)
-       
-    -- removed base class
-    DynamicShapeType[data.STRUCT] = nil
-    print("\n*erased base class*\n")
-    self:print(DynamicShapeType)
-    assert(DynamicShapeType[data.STRUCT] == nil)    
-    
-    
     
     -- no annotations
     assert(DynamicShapeType[data.ANNOTATION] == nil) 

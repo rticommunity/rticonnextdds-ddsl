@@ -482,27 +482,59 @@ Data.METATABLES[Data.STRUCT] = {
 
       local member_instance, member_definition
       
-      -- not erasing the member definition:
-      if nil ~= value then
-          member_instance, member_definition = Data.create_member(key, value) 
-      end
-      
-      -- insert in the struct definition, so that it can be 
-      -- iterated in the correct order (eg when outputting IDL)
-      local definition = struct[Data.MODEL][Data.DEFN]
-      local replaced = false
-      for i = #definition, 1, -1 do -- count down, latest first
-          if definition[i][1] == key then
-              if member_definition then -- replace the old definition
-                  definition[i][2] = member_definition[2] 
-              else -- erase the entry for definition
-                  table.remove(definition,i)
-              end
-              replaced = true 
+      if 'string' == type(key) then -- member definition 
+          -- not erasing the member definition:
+          if nil ~= value then
+              member_instance, member_definition = Data.create_member(key, value) 
           end
-      end
-      if not replaced and member_definition then -- insert at the end
-          table.insert(definition, member_definition)
+          
+          -- insert into the struct definition
+          local definition = struct[Data.MODEL][Data.DEFN]
+          local replaced = false
+          for i = #definition, 1, -1 do -- count down, latest first
+              if definition[i][1] == key then
+                  if member_definition then -- replace the old definition
+                      definition[i][2] = member_definition[2] 
+                  else -- erase the entry for definition
+                      table.remove(definition,i)
+                  end
+                  replaced = true 
+              end
+          end
+          if not replaced and member_definition then -- insert at the end
+              table.insert(definition, member_definition)
+          end
+      elseif Data.STRUCT == key then -- base definition
+          local base
+          
+          -- establish a valid base struct, if any:
+          if nil ~= value then
+            assert('table' == type(value) and value[Data.MODEL] and 
+                 Data.STRUCT == value[Data.MODEL][Data.TYPE],
+                 table.concat{'base type must be a struct, was: "', 
+                               tostring(value), '"'})
+            base = value
+          end
+         
+          -- clear the instance fields from the current base type (if any)
+          if struct[Data.MODEL][Data.DEFN]._base then
+              for k, v in pairs(struct[Data.MODEL][Data.DEFN]._base) do
+                  if 'string' == type(k) then -- copy only the base instance fields 
+                      rawset(struct, k, nil)
+                  end
+              end
+          end
+          -- set the new base in the model definition (may be nil)
+          struct[Data.MODEL][Data.DEFN]._base = base
+         
+          -- populate the instance fields from the base type
+          if base then
+              for k, v in pairs(base) do
+                  if 'string' == type(k) then -- copy only the base instance fields 
+                      rawset(struct, k, v)
+                  end
+              end
+          end
       end
       -- TODO: update the struct instances for this member (re)-definition
 
@@ -537,21 +569,10 @@ function Data.struct(param)
         base = param[1]   table.remove(param, 1)
         assert(Data.STRUCT == base[Data.MODEL][Data.TYPE], 
           table.concat{'base type must be a struct: "', tostring(base), '"'})
-    end
-  
-    -- add the base
-    if base then
-        -- install base class:
-        model[Data.DEFN]._base = base
         
-        -- populate the instance fields from the base type
-        for k, v in pairs(base) do
-            if 'string' == type(k) then -- copy only the base type instance fields 
-              rawset(instance, k, v)
-            end
-        end
+        -- insert the base class:
+        instance[Data.STRUCT] = base -- invokes the meta-table __newindex()
     end
-  
         
     -- populate the model table
     for i, decl in ipairs(param) do 
