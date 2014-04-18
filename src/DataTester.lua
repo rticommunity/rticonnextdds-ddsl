@@ -1085,13 +1085,26 @@ function Tester:test_struct_dynamic()
     Data.ShapeType = DynamicShapeType
     self:print(DynamicShapeType)
     
-    -- shapesize re-definition:
-    DynamicShapeType.shapesize = nil -- erase old definition
+    -- shapesize redefine:
+    DynamicShapeType.shapesize = nil -- erase member (for redefinition)
     DynamicShapeType.shapesize = { data.long } -- redefine it
-    print("\n*shapesize changed: double -> long*\n")
+    print("\n*redefined: double->long shapesize*\n")
     self:print(DynamicShapeType)
  
  
+ 
+    -- add z:
+    DynamicShapeType.z = { data.string() }
+    print("\n*added: string z*\n")
+    self:print(DynamicShapeType)
+
+    -- remove z:
+    DynamicShapeType.z = nil -- erase member (for redefinition)
+    DynamicShapeType.z = nil -- redefine it as empty
+    print("\n*removed: string z*\n")
+    self:print(DynamicShapeType)
+    
+    
     assert(DynamicShapeType.x == 'x')
     assert(DynamicShapeType.y == 'y')
     assert(DynamicShapeType.shapesize == 'shapesize')

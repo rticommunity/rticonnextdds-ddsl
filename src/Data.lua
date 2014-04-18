@@ -473,22 +473,31 @@ Data.METATABLES[Data.STRUCT] = {
 
   __newindex = function (struct, role, decl)
 
-      local member_instance, member_definition = Data.create_member(role, decl) 
-    
+      local member_instance, member_definition
+      
+      -- not erasing the member definition:
+      if nil ~= decl then
+          member_instance, member_definition = Data.create_member(role, decl) 
+      end
+      
       -- insert in the struct definition, so that it can be 
       -- iterated in the correct order (eg when outputting IDL)
       local definition = struct[Data.MODEL][Data.DEFN]
       local replaced = false
       for i = #definition, 1, -1 do -- count down, latest first
           if definition[i][1] == role then
-              replaced = true -- replace an old definition
-              definition[i][2] = member_definition[2]
+              if member_definition then -- replace the old definition
+                  definition[i][2] = member_definition[2] 
+              else -- erase the entry for definition
+                  table.remove(definition,i)
+              end
+              replaced = true 
           end
       end
-      if not replaced then -- insert at the end
+      if not replaced and member_definition then -- insert at the end
           table.insert(definition, member_definition)
       end
-      -- TODO: update the struct instances for this member
+      -- TODO: update the struct instances for this member (re)-definition
 
       -- add an index entry to the struct
       rawset(struct, role, member_instance)
