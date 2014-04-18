@@ -229,7 +229,21 @@ function Tester:test_union2()
 
   self:print(Data.TestUnion2)
   
-  -- TODO: assert
+  -- discriminator
+  assert(Data.TestUnion2._d == '#')
+  
+  -- name
+  assert(Data.TestUnion2.name.first == 'name.first')
+  assert(Data.TestUnion2.name.nicknames() == 'name.nicknames#')  
+  assert(Data.TestUnion2.name.nicknames(1) == 'name.nicknames[1]')
+
+  -- address
+  assert(Data.TestUnion2.address.name.first == 'address.name.first')
+  assert(Data.TestUnion2.address.name.nicknames() == 'address.name.nicknames#')  
+  assert(Data.TestUnion2.address.name.nicknames(1) == 'address.name.nicknames[1]')
+
+  -- x
+  assert(Data.TestUnion2.x == 'x')
 end
 
 Tester[#Tester+1] = 'test_union3'
@@ -246,8 +260,22 @@ function Tester:test_union3()
   }
 
   self:print(Data.TestUnion3)
+
+  -- discriminator
+  assert(Data.TestUnion3._d == '#')
   
-  -- TODO: assert
+  -- name
+  assert(Data.TestUnion3.name.first == 'name.first')
+  assert(Data.TestUnion3.name.nicknames() == 'name.nicknames#')  
+  assert(Data.TestUnion3.name.nicknames(1) == 'name.nicknames[1]')
+
+  -- address
+  assert(Data.TestUnion3.address.name.first == 'address.name.first')
+  assert(Data.TestUnion3.address.name.nicknames() == 'address.name.nicknames#')  
+  assert(Data.TestUnion3.address.name.nicknames(1) == 'address.name.nicknames[1]')
+
+  -- x
+  assert(Data.TestUnion3.x == 'x')
 end
 
 Tester[#Tester+1] = 'test_union4'
@@ -261,8 +289,19 @@ function Tester:test_union4()
   }
   
   self:print(Data.NameOrAddress)
+
+  -- discriminator
+  assert(Data.NameOrAddress._d == '#')
   
-  -- TODO: assert
+  -- name
+  assert(Data.NameOrAddress.name.first == 'name.first')
+  assert(Data.NameOrAddress.name.nicknames() == 'name.nicknames#')  
+  assert(Data.NameOrAddress.name.nicknames(1) == 'name.nicknames[1]')
+
+  -- address
+  assert(Data.NameOrAddress.address.name.first == 'address.name.first')
+  assert(Data.NameOrAddress.address.name.nicknames() == 'address.name.nicknames#')  
+  assert(Data.NameOrAddress.address.name.nicknames(1) == 'address.name.nicknames[1]')
 end
 
 Tester[#Tester+1] = 'test_struct_complex1'
@@ -276,8 +315,34 @@ function Tester:test_struct_complex1()
   }
 
   self:print(Data.Company)
+ 
+  -- TODO: fix failing test
+  --[[ 
+  -- entity
+  assert(Data.Company.entity._d == 'entity#')
+  assert(Data.Company.entity.name.first == 'entity.name.first')
+  assert(Data.Company.entity.name.nicknames() == 'entity.name.nicknames#')  
+  assert(Data.Company.entity.name.nicknames(1) == 'entity.name.nicknames[1]')
+  assert(Data.Company.entity.address.name.first == 'entity.address.name.first')
+  assert(Data.Company.entity.address.name.nicknames() == 'entity.address.name.nicknames#')  
+  assert(Data.Company.entity.address.name.nicknames(1) == 'entity.address.name.nicknames[1]')
+  --]]
+  
+  -- hq
+  assert(Data.Company.hq() == 'hq#')
+  assert(Data.Company.hq(1) == 'hq[1]')
+  
+  -- offices
+  assert(Data.Company.offices() == 'offices#')
+  assert(Data.Company.offices(1).name.first == 'offices[1].name.first')
+  assert(Data.Company.offices(1).name.nicknames() == 'offices[1].name.nicknames#')  
+  assert(Data.Company.offices(1).name.nicknames(1) == 'offices[1].name.nicknames[1]')
 
-  -- TODO: assert
+  -- employees
+  assert(Data.Company.employees() == 'employees#')
+  assert(Data.Company.employees(1).first == 'employees[1].first')
+  assert(Data.Company.employees(1).nicknames() == 'employees[1].nicknames#')  
+  assert(Data.Company.employees(1).nicknames(1) == 'employees[1].nicknames[1]')
 end
 
 Tester[#Tester+1] = 'test_struct_complex2'
@@ -290,7 +355,66 @@ function Tester:test_struct_complex2()
 
   self:print(Data.BigCompany)
 
-  -- TODO: assert
+  -- TODO: fix failing test
+  --[[ 
+  -- parent.entity
+  assert(Data.BigCompany.parent.entity._d == 'parent.entity#')
+  assert(Data.BigCompany.parent.entity.name.first == 'parent.entity.name.first')
+  assert(Data.BigCompany.parent.entity.name.nicknames() == 'parent.entity.name.nicknames#')  
+  assert(Data.BigCompany.parent.entity.name.nicknames(1) == 'parent.entity.name.nicknames[1]')
+  assert(Data.BigCompany.parent.entity.address.name.first == 'parent.entity.address.name.first')
+  assert(Data.BigCompany.parent.entity.address.name.nicknames() == 'parent.entity.address.name.nicknames#')  
+  assert(Data.BigCompany.parent.entity.address.name.nicknames(1) == 'parent.entity.address.name.nicknames[1]')
+  --]]
+  
+  -- parent.hq
+  assert(Data.BigCompany.parent.hq() == 'parent.hq#')
+  assert(Data.BigCompany.parent.hq(1) == 'parent.hq[1]')
+  
+  -- parent.offices
+  assert(Data.BigCompany.parent.offices() == 'parent.offices#')
+  assert(Data.BigCompany.parent.offices(1).name.first == 'parent.offices[1].name.first')
+  assert(Data.BigCompany.parent.offices(1).name.nicknames() == 'parent.offices[1].name.nicknames#')  
+  assert(Data.BigCompany.parent.offices(1).name.nicknames(1) == 'parent.offices[1].name.nicknames[1]')
+
+  -- parent.employees
+  assert(Data.BigCompany.parent.employees() == 'parent.employees#')
+  assert(Data.BigCompany.parent.employees(1).first == 'parent.employees[1].first')
+  assert(Data.BigCompany.parent.employees(1).nicknames() == 'parent.employees[1].nicknames#')  
+  assert(Data.BigCompany.parent.employees(1).nicknames(1) == 'parent.employees[1].nicknames[1]')
+
+
+  -- divisions
+  assert(Data.BigCompany.divisions() == 'divisions#')
+  
+  -- TODO: fix failing test
+  --[[ 
+  -- divisions(1).entity
+  assert(Data.BigCompany.divisions(1).entity._d == 'divisions[1].entity#')
+  assert(Data.BigCompany.divisions(1).entity.name.first == 'divisions[1].entity.name.first')
+  assert(Data.BigCompany.divisions(1).entity.name.nicknames() == 'divisions[1].entity.name.nicknames#')  
+  assert(Data.BigCompany.divisions(1).entity.name.nicknames(1) == 'divisions[1].entity.name.nicknames[1]')
+  assert(Data.BigCompany.divisions(1).entity.address.name.first == 'divisions[1].entity.address.name.first')
+  assert(Data.BigCompany.divisions(1).entity.address.name.nicknames() == 'divisions[1].entity.address.name.nicknames#')  
+  assert(Data.BigCompany.divisions(1).entity.address.name.nicknames(1) == 'divisions[1].entity.address.name.nicknames[1]')
+  --]]
+  
+  -- divisions(1).hq
+  assert(Data.BigCompany.divisions(1).hq() == 'divisions[1].hq#')
+  assert(Data.BigCompany.divisions(1).hq(1) == 'divisions[1].hq[1]')
+  
+  -- divisions(1).offices
+  assert(Data.BigCompany.divisions(1).offices() == 'divisions[1].offices#')
+  assert(Data.BigCompany.divisions(1).offices(1).name.first == 'divisions[1].offices[1].name.first')
+  assert(Data.BigCompany.divisions(1).offices(1).name.nicknames() == 'divisions[1].offices[1].name.nicknames#')  
+  assert(Data.BigCompany.divisions(1).offices(1).name.nicknames(1) == 'divisions[1].offices[1].name.nicknames[1]')
+
+  -- divisions(1).employees
+  assert(Data.BigCompany.divisions(1).employees() == 'divisions[1].employees#')
+  assert(Data.BigCompany.divisions(1).employees(1).first == 'divisions[1].employees[1].first')
+  assert(Data.BigCompany.divisions(1).employees(1).nicknames() == 'divisions[1].employees[1].nicknames#')  
+  assert(Data.BigCompany.divisions(1).employees(1).nicknames(1) == 'divisions[1].employees[1].nicknames[1]')
+
 end
 
 Tester[#Tester+1] = 'test_struct_inheritance1'
@@ -303,7 +427,19 @@ function Tester:test_struct_inheritance1()
 
   self:print(Data.FullName)
   
-  -- TODO: assert
+  -- base: Name
+  assert(Data.FullName.first == 'first')
+  assert(Data.FullName.last == 'last')
+  assert(Data.FullName.nicknames() == 'nicknames#')
+  assert(Data.FullName.nicknames(1) == 'nicknames[1]')
+  assert(Data.FullName.aliases() == 'aliases#')
+  assert(Data.FullName.aliases(1) == 'aliases[1]')
+  assert(Data.FullName.birthday == 'birthday')
+  assert(Data.FullName.favorite() == 'favorite#')
+  assert(Data.FullName.favorite(1) == 'favorite[1]')
+  
+  -- FullName
+  assert(Data.FullName.middle == 'middle')
 end
 
 Tester[#Tester+1] = 'test_struct_inheritance2'
@@ -316,7 +452,27 @@ function Tester:test_struct_inheritance2()
 
   self:print(Data.Contact)
 
-  -- TODO: assert
+  -- base: FullName
+  assert(Data.Contact.first == 'first')
+  assert(Data.Contact.last == 'last')
+  assert(Data.Contact.nicknames() == 'nicknames#')
+  assert(Data.Contact.nicknames(1) == 'nicknames[1]')
+  assert(Data.Contact.aliases() == 'aliases#')
+  assert(Data.Contact.aliases(1) == 'aliases[1]')
+  assert(Data.Contact.birthday == 'birthday')
+  assert(Data.Contact.favorite() == 'favorite#')
+  assert(Data.Contact.favorite(1) == 'favorite[1]')
+  assert(Data.Contact.middle == 'middle')
+  
+  -- Contact
+  assert(Data.Contact.address.name.first == 'address.name.first')
+  assert(Data.Contact.address.name.first == 'address.name.first')
+  assert(Data.Contact.address.name.nicknames() == 'address.name.nicknames#')
+  assert(Data.Contact.address.name.nicknames(1) == 'address.name.nicknames[1]')
+  assert(Data.Contact.address.street == 'address.street')
+  assert(Data.Contact.address.city == 'address.city')
+    
+  assert(Data.Contact.email == 'email')
 end
 
 Tester[#Tester+1] = 'test_struct_inheritance3'
@@ -329,7 +485,29 @@ function Tester:test_struct_inheritance3()
 
   self:print(Data.Tasks)
 
-  -- TODO: assert
+  -- Tasks.contact
+  assert(Data.Tasks.contact.first == 'contact.first')
+  assert(Data.Tasks.contact.last == 'contact.last')
+  assert(Data.Tasks.contact.nicknames() == 'contact.nicknames#')
+  assert(Data.Tasks.contact.nicknames(1) == 'contact.nicknames[1]')
+  assert(Data.Tasks.contact.aliases() == 'contact.aliases#')
+  assert(Data.Tasks.contact.aliases(1) == 'contact.aliases[1]')
+  assert(Data.Tasks.contact.birthday == 'contact.birthday')
+  assert(Data.Tasks.contact.favorite() == 'contact.favorite#')
+  assert(Data.Tasks.contact.favorite(1) == 'contact.favorite[1]')
+  assert(Data.Tasks.contact.middle == 'contact.middle')
+  
+  -- Tasks.contact.address
+  assert(Data.Tasks.contact.address.name.first == 'contact.address.name.first')
+  assert(Data.Tasks.contact.address.name.first == 'contact.address.name.first')
+  assert(Data.Tasks.contact.address.name.nicknames() == 'contact.address.name.nicknames#')
+  assert(Data.Tasks.contact.address.name.nicknames(1) == 'contact.address.name.nicknames[1]')
+  assert(Data.Tasks.contact.address.street == 'contact.address.street')
+  assert(Data.Tasks.contact.address.city == 'contact.address.city')
+    
+  assert(Data.Tasks.contact.email == 'contact.email')
+  
+  assert(Data.Tasks.day == 'day')
 end
 
 Tester[#Tester+1] = 'test_struct_inheritance4'
@@ -340,8 +518,32 @@ function Tester:test_struct_inheritance4()
   }
 
   self:print(Data.Calendar)
-
-  -- TODO: assert
+  
+  assert(Data.Calendar.tasks() == 'tasks#')
+   
+  -- tasks(1).contact
+  assert(Data.Calendar.tasks(1).contact.first == 'tasks[1].contact.first')
+  assert(Data.Calendar.tasks(1).contact.last == 'tasks[1].contact.last')
+  assert(Data.Calendar.tasks(1).contact.nicknames() == 'tasks[1].contact.nicknames#')
+  assert(Data.Calendar.tasks(1).contact.nicknames(1) == 'tasks[1].contact.nicknames[1]')
+  assert(Data.Calendar.tasks(1).contact.aliases() == 'tasks[1].contact.aliases#')
+  assert(Data.Calendar.tasks(1).contact.aliases(1) == 'tasks[1].contact.aliases[1]')
+  assert(Data.Calendar.tasks(1).contact.birthday == 'tasks[1].contact.birthday')
+  assert(Data.Calendar.tasks(1).contact.favorite() == 'tasks[1].contact.favorite#')
+  assert(Data.Calendar.tasks(1).contact.favorite(1) == 'tasks[1].contact.favorite[1]')
+  assert(Data.Calendar.tasks(1).contact.middle == 'tasks[1].contact.middle')
+  
+  -- tasks(1).contact.address
+  assert(Data.Calendar.tasks(1).contact.address.name.first == 'tasks[1].contact.address.name.first')
+  assert(Data.Calendar.tasks(1).contact.address.name.first == 'tasks[1].contact.address.name.first')
+  assert(Data.Calendar.tasks(1).contact.address.name.nicknames() == 'tasks[1].contact.address.name.nicknames#')
+  assert(Data.Calendar.tasks(1).contact.address.name.nicknames(1) == 'tasks[1].contact.address.name.nicknames[1]')
+  assert(Data.Calendar.tasks(1).contact.address.street == 'tasks[1].contact.address.street')
+  assert(Data.Calendar.tasks(1).contact.address.city == 'tasks[1].contact.address.city')
+    
+  assert(Data.Calendar.tasks(1).contact.email == 'tasks[1].contact.email')
+  
+  assert(Data.Calendar.tasks(1).day == 'tasks[1].day')
 end
 
 Tester[#Tester+1] = 'test_typedef'
