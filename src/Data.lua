@@ -195,6 +195,11 @@ Data.METATABLES[Data.MODULE] = {
 
   __newindex = function (module, name, instance)
       
+      -- if we are not 'erasing' an entry, then the value must be an instance
+      if nil ~= instance then
+          assert('table' == type(instance) and nil ~= instance[Data.MODEL])
+      end
+      
       -- set the instance name
       instance[Data.MODEL][Data.NAME] = name
       
@@ -470,14 +475,16 @@ end
 
 
 Data.METATABLES[Data.STRUCT] = {
-
-  __newindex = function (struct, role, decl)
+  -- __index(): Don't want to overload it. Want it to be very FAST since it is
+  --            in the critical data access path
+  
+  __newindex = function (struct, key, value)
 
       local member_instance, member_definition
       
       -- not erasing the member definition:
-      if nil ~= decl then
-          member_instance, member_definition = Data.create_member(role, decl) 
+      if nil ~= value then
+          member_instance, member_definition = Data.create_member(key, value) 
       end
       
       -- insert in the struct definition, so that it can be 
@@ -485,7 +492,7 @@ Data.METATABLES[Data.STRUCT] = {
       local definition = struct[Data.MODEL][Data.DEFN]
       local replaced = false
       for i = #definition, 1, -1 do -- count down, latest first
-          if definition[i][1] == role then
+          if definition[i][1] == key then
               if member_definition then -- replace the old definition
                   definition[i][2] = member_definition[2] 
               else -- erase the entry for definition
@@ -500,7 +507,7 @@ Data.METATABLES[Data.STRUCT] = {
       -- TODO: update the struct instances for this member (re)-definition
 
       -- add an index entry to the struct
-      rawset(struct, role, member_instance)
+      rawset(struct, key, member_instance)
   end
 }
 

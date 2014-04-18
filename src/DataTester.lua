@@ -1084,8 +1084,15 @@ function Tester:test_struct_dynamic()
     -- install it under the name 'ShapeType' in the module
     Data.ShapeType = DynamicShapeType
     self:print(DynamicShapeType)
+
+    assert(DynamicShapeType.x == 'x')
+    assert(DynamicShapeType.y == 'y')
+    assert(DynamicShapeType.shapesize == 'shapesize')
+    assert(DynamicShapeType.color == 'color')   
     
-    -- shapesize redefine:
+    
+    
+    -- redefine shapesize:
     DynamicShapeType.shapesize = nil -- erase member (for redefinition)
     DynamicShapeType.shapesize = { data.long } -- redefine it
     print("\n*redefined: double->long shapesize*\n")
@@ -1105,10 +1112,51 @@ function Tester:test_struct_dynamic()
     self:print(DynamicShapeType)
     
     
-    assert(DynamicShapeType.x == 'x')
-    assert(DynamicShapeType.y == 'y')
-    assert(DynamicShapeType.shapesize == 'shapesize')
-    assert(DynamicShapeType.color == 'color')   
+    
+    --[[ 
+    -- NOTE: Just some ideas below. Not going to implement! 
+    --       Overloading __index() can slow the data critical path
+    
+    
+    -- add a base class
+    DynamicShapeType[data.STRUCT] = Data.Name
+    print("\n*added: base class: Name*\n")
+    self:print(DynamicShapeType)
+    assert(DynamicShapeType[data.STRUCT] == Data.Name)
+    
+    -- redefine base class
+    DynamicShapeType[data.STRUCT] = Data.FullName
+    print("\n*replaced: base class: FullName*\n")
+    self:print(DynamicShapeType)
+    assert(DynamicShapeType[data.STRUCT] == Data.FullName)
+       
+    -- removed base class
+    DynamicShapeType[data.STRUCT] = nil
+    print("\n*erased base class*\n")
+    self:print(DynamicShapeType)
+    assert(DynamicShapeType[data.STRUCT] == nil)    
+    
+    
+    
+    -- no annotations
+    assert(DynamicShapeType[data.ANNOTATION] == nil) 
+ 
+    -- add an annotation
+    DynamicShapeType[data.ANNOTATION] = 
+      table.insert(DynamicShapeType[data.ANNOTATION] or {},
+                   data.Extensibility{'EXTENSIBLE_EXTENSIBILITY'})
+    print("\n*added: annotation: Extensibility{'EXTENSIBLE_EXTENSIBILITY'}*\n")
+    self:print(DynamicShapeType)
+    DynamicShapeType[data.ANNOTATION] = 
+      table.insert(DynamicShapeType[data.ANNOTATION] or {},
+                   data.Nested{'FALSE'})
+    print("\n*added: annotation: Nested{'FALSE'}*\n")
+    self:print(DynamicShapeType)
+    
+    -- clear annotations:
+    DynamicShapeType[data.ANNOTATION] = nil
+    
+   --]]
 end
 
 Tester[#Tester+1] = 'test_root'
