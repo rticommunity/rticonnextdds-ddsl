@@ -1168,10 +1168,10 @@ end
 Tester[#Tester+1] = 'test_dynamic_union'
 function Tester:test_dynamic_union()
 
-    local DynamicUnion = data.union{data.char}
-    DynamicUnion.m_str = { data.string() }
-    DynamicUnion.m_int = { data.short }
-    
+    local DynamicUnion = data.union{data.char} -- switch
+    DynamicUnion[1] = { 's', m_str = data.string() }
+    DynamicUnion[2] = { 'i', m_int = data.short() }  
+    DynamicUnion[3] = { nil, m_oct = data.octet } -- default case
 
     -- install it under the name 'ShapeType' in the module
     Data.DynamicUnion = DynamicUnion
@@ -1180,26 +1180,26 @@ function Tester:test_dynamic_union()
     assert(DynamicUnion._d== '#')
     assert(DynamicUnion.m_str== 'm_str')
     assert(DynamicUnion.m_int == 'm_int')
+    assert(DynamicUnion.m_oct == 'm_oct')
     
     
     -- redefine m_int:
-    DynamicUnion.m_int = nil -- erase member (for redefinition)
-    DynamicUnion.m_int = { data.long } -- redefine it
+    DynamicUnion[2] = { 'l', m_int = data.long() }  
     print("\n** redefined: short->long m_int **\n")
     self:print(DynamicUnion)
     assert(DynamicUnion.m_int == 'm_int')
  
  
+ 
     -- add m_real:
-    DynamicUnion.m_real = { data.string() }
-    print("\n** added: string m_real **\n")
+    DynamicUnion[4] = { 'r', m_real = data.double }
+    print("\n** added: double m_real **\n")
     self:print(DynamicUnion)
     assert(DynamicUnion.m_real== 'm_real')
     
     -- remove m_real:
-    DynamicUnion.m_real = nil -- erase member (for redefinition)
-    DynamicUnion.m_real = nil -- redefine it as empty
-    print("\n** removed: string m_real **\n")
+    DynamicUnion[4] = nil -- erase m_real
+    print("\n** removed: double m_real **\n")
     self:print(DynamicUnion)
     assert(DynamicUnion.m_real== nil) 
  
