@@ -658,7 +658,7 @@ function Data.union(param)
 	}
 	
 	-- add the discriminator
-	model[Data.DEFN]._d = discriminator
+	model[Data.DEFN].switch = discriminator
 	instance._d = '#'
 
 	-- populate the model table
@@ -1376,7 +1376,7 @@ function Data.print_idl(instance, indent_string)
 		
 		if Data.UNION == mytype then
 			print(string.format('%s%s %s switch (%s) {', indent_string, 
-						mytype(), myname, mydefn._d[Data.MODEL][Data.NAME]))
+						mytype(), myname, mydefn.switch[Data.MODEL][Data.NAME]))
 		elseif Data.STRUCT == mytype and model[Data.DEFN].base then
 			print(string.format('%s%s %s : %s {', indent_string, mytype(), 
 					myname, model[Data.DEFN].base[Data.MODEL][Data.NAME]))
@@ -1408,7 +1408,7 @@ function Data.print_idl(instance, indent_string)
 				-- case
 				if (nil == case) then
 				  print(string.format("%sdefault :", content_indent_string))
-				elseif (Data.char == mydefn._d and nil ~= case) then
+				elseif (Data.char == mydefn.switch and nil ~= case) then
 					print(string.format("%scase '%s' :", 
 						content_indent_string, tostring(case)))
 				else
@@ -1551,7 +1551,7 @@ function Data.index(instance, result, model)
 					
 	-- union discriminator, if any
 	if Data.UNION == mytype then
-		table.insert(result, instance._d) 
+		table.insert(result, instance._d)
 	end
 		
 	-- struct base type, if any
