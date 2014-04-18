@@ -182,16 +182,21 @@ local Data = {
 	ANNOTATION = function() return 'annotation' end,
 	TYPEDEF    = function() return 'typedef' end,
 	CONST      = function() return 'const' end,
-	 
+	
+	BASE       = function() return ' : ' end,
+	SWITCH     = function() return 'switch' end,
+}
 
-	METATABLES = {},
+-- Internal Implementation Details
+local _ = {
+  METATABLES = {}
 }
 
 --------------------------------------------------------------------------------
 -- Model Definitions -- 
 --------------------------------------------------------------------------------
 
-Data.METATABLES[Data.MODULE] = {
+_.METATABLES[Data.MODULE] = {
 
   __newindex = function (module, name, instance)
       
@@ -235,11 +240,11 @@ function Data.module()
   }
   
   -- set the meta-table for new instance to be added to the module
-  setmetatable(instance, Data.METATABLES[Data.MODULE])
+  setmetatable(instance, _.METATABLES[Data.MODULE])
   return instance
 end
 
--- Install an atomic type in the module
+-- Define an atomic type in the module
 function Data.atom() 
   local model = {
     [Data.NAME] = nil,      -- populated when the atom is assigned to a module
@@ -254,7 +259,8 @@ function Data.atom()
   return instance
 end
 
-Data.METATABLES[Data.ANNOTATION] = {
+
+_.METATABLES[Data.ANNOTATION] = {
 
     __call = function(annotation, ...)
       return annotation[Data.MODEL][Data.DEFN](...)
@@ -332,7 +338,7 @@ function Data.annotation(...)
 		end
 		local instance = attributes or {}
 		instance[Data.MODEL] = model
-		setmetatable(instance, Data.METATABLES[Data.ANNOTATION])
+		setmetatable(instance, _.METATABLES[Data.ANNOTATION])
 		return instance		
 	end
 	
@@ -343,7 +349,7 @@ function Data.annotation(...)
 end
 
 
-Data.METATABLES[Data.CONST] = {
+_.METATABLES[Data.CONST] = {
   -- instance value is obtained by evaluating the table:
   -- eg: MY_CONST()
   __call = function(const)
@@ -426,7 +432,7 @@ function Data.const(param)
     [Data.MODEL] = model,
   }
 
-  setmetatable(instance, Data.METATABLES[Data.CONST])
+  setmetatable(instance, _.METATABLES[Data.CONST])
   
   return instance
 end
@@ -474,7 +480,7 @@ function Data.enum(param)
 end
 
 
-Data.METATABLES[Data.STRUCT] = {
+_.METATABLES[Data.STRUCT] = {
   -- __index(): Don't want to overload it. Want it to be very FAST since it is
   --            in the critical data access path
   
@@ -485,7 +491,7 @@ Data.METATABLES[Data.STRUCT] = {
                 
           -- not erasing the member definition:
           if nil ~= value then
-              member_instance, member_definition = Data.create_member(key, value) 
+              member_instance, member_definition = _.create_member(key, value) 
           end
           
           -- insert into the struct definition
@@ -510,7 +516,7 @@ Data.METATABLES[Data.STRUCT] = {
           
           -- TODO: update the struct instances for this member (re)-definition
       
-      elseif Data.STRUCT == key then -- base definition
+      elseif Data.BASE == key then -- base definition
           local base
           
           -- establish a valid base struct, if any:
@@ -523,8 +529,8 @@ Data.METATABLES[Data.STRUCT] = {
           end
          
           -- clear the instance fields from the current base type (if any)
-          if struct[Data.MODEL][Data.DEFN].base then
-              for k, v in pairs(struct[Data.MODEL][Data.DEFN].base) do
+          if struct[Data.MODEL][Data.BASE] then
+              for k, v in pairs(struct[Data.MODEL][Data.BASE]) do
                   if 'string' == type(k) then -- copy only the base instance fields 
                       rawset(struct, k, nil)
                       
@@ -534,7 +540,7 @@ Data.METATABLES[Data.STRUCT] = {
           end
           
           -- set the new base in the model definition (may be nil)
-          struct[Data.MODEL][Data.DEFN].base = base
+          struct[Data.MODEL][Data.BASE] = base
          
           -- populate the instance fields from the base type
           if base then
@@ -562,7 +568,7 @@ Data.METATABLES[Data.STRUCT] = {
           end
           
           -- set the new annotations in the model definition (may be nil)
-          struct[Data.MODEL][Data.DEFN].annotations = annotations    
+          struct[Data.MODEL][Data.ANNOTATION] = annotations    
       end
            
   end
@@ -583,7 +589,7 @@ function Data.struct(param)
   	}
   	
     -- set the meta-table for new instance to be added to the struct
-    setmetatable(instance, Data.METATABLES[Data.STRUCT])
+    setmetatable(instance, _.METATABLES[Data.STRUCT])
     
     
     -- OPTIONAL base: pop the next element if it is a base model element
@@ -596,7 +602,7 @@ function Data.struct(param)
           table.concat{'base type must be a struct: "', tostring(base), '"'})
         
         -- insert the base class:
-        instance[Data.STRUCT] = base -- invokes the meta-table __newindex()
+        instance[Data.BASE] = base -- invokes the meta-table __newindex()
     end
         
     -- populate the model table
@@ -631,6 +637,8 @@ function Data.struct(param)
 	return instance
 end
 
+
+
 function Data.union(param) 
 	assert('table' == type(param), 
 		   table.concat{'invalid union specification: ', tostring(param)})
@@ -657,8 +665,12 @@ function Data.union(param)
 		[Data.MODEL] = model,
 	}
 	
+  -- set the model meta-table:
+  -- setmetatable(model, _.METATABLES[Data.UNION])
+
+
 	-- add the discriminator
-	model[Data.DEFN].switch = discriminator
+	model[Data.SWITCH] = discriminator
 	instance._d = '#'
 
 	-- populate the model table
@@ -677,11 +689,11 @@ function Data.union(param)
 			local case = nil
 			if #decl > 1 then case = decl[1]  table.remove(decl, 1) end -- case
 			
-			Data.assert_case(case, discriminator)
+			_.assert_case(case, discriminator)
       
 			local role = decl[1][1]	   table.remove(decl[1], 1) -- pop the role
 			local member_instance, member_definition = 
-			                                 Data.create_member(role, decl[1])
+			                                 _.create_member(role, decl[1])
 
 			-- insert the role
 			instance[role] = member_instance
@@ -696,7 +708,7 @@ function Data.union(param)
   if annotations then -- insert the annotations:
       -- invokes the meta-table __newindex()
       -- instance[Data.ANNOTATION] = annotations 
-      model[Data.DEFN].annotations = annotations
+      model[Data.ANNOTATION] = annotations
   end
     
 	return instance
@@ -746,7 +758,7 @@ function Data.typedef(param)
 	
 	-- create definition
 	local member_instance, member_definition = 
-				Data.create_member( nil, { alias, collection })
+				_.create_member( nil, { alias, collection })
 	
 	-- NOTE: we reused the create_member() function method, because it already
 	--       does all the work  that we need to do. We ignore the 
@@ -760,6 +772,29 @@ function Data.typedef(param)
 	return instance
 end
 
+-- Ensure that case is a valid discriminator value
+function _.assert_case(case, discriminator)
+  if nil == case then return case end -- default case 
+
+  local err_msg = table.concat{'invalid case value: ', tostring(case)}
+  
+  if Data.long == discriminator or -- integral type
+     Data.short == discriminator or 
+     Data.octet == discriminator then
+    assert(tonumber(case) and math.floor(case) == case, err_msg)     
+   elseif Data.char == discriminator then -- character
+    assert('string' == type(case) and 1 == string.len(case), err_msg) 
+   elseif Data.boolean == discriminator then -- boolean
+    assert(true == case or false == case, err_msg)
+   elseif Data.ENUM == discriminator[Data.MODEL][Data.TYPE] then -- enum
+    assert(discriminator[case], err_msg)
+   else -- invalid 
+    assert(false, err_msg)
+   end
+  
+   return case
+end
+
 -- create_member() - define a struct or union member (without the case)
 -- @param #string member_name - the member name to instantiate (may be 'nil')
 -- @param #list<#table> member_definition - array consists of entries in the 
@@ -768,7 +803,7 @@ end
 --           ...      - optional list of annotations including whether the 
 --                      member is an array or sequence    
 -- @return the member instance and the member definition
-function Data.create_member(member_name, member_definition)
+function _.create_member(member_name, member_definition)
 	local template = member_definition[1]
 	
 	-- ensure pre-conditions
@@ -1058,30 +1093,6 @@ function Data.seq(name, template)
 	end
 end
 
--- Ensure that case is a valid discriminator value
-function Data.assert_case(case, discriminator)
-	if nil == case then return case end -- default case 
-
-	local err_msg = table.concat{'invalid case value: ', tostring(case)}
-	
-	if Data.long == discriminator or -- integral type
-	   Data.short == discriminator or 
-	   Data.octet == discriminator then
-		assert(tonumber(case) and math.floor(case) == case, err_msg)	   
-	 elseif Data.char == discriminator then -- character
-	 	assert('string' == type(case) and 1 == string.len(case), err_msg)	
-	 elseif Data.boolean == discriminator then -- boolean
-		assert(true == case or false == case, err_msg)
-	 elseif Data.ENUM == discriminator[Data.MODEL][Data.TYPE] then -- enum
-	 	assert(discriminator[case], err_msg)
-	 else -- invalid 
-	 	assert(false, err_msg)
-	 end
-	
-	 return case
-end
-
-
 ---
 -- Fully qualified name of a model element
 -- @function [parent=Data]fqname
@@ -1103,7 +1114,7 @@ end
 --- 
 -- 'builtin' module
 -- Built-in data types (atomic types) and annotations belong to this module
--- @type [parent=#Data] builtin
+-- @type [parent=#Data]builtin
 Data.builtin = Data.module{}
 
 --- 
@@ -1146,12 +1157,12 @@ Data.builtin.top_level = Data.annotation{} -- legacy
 -- A string of length n (i.e. string<n>) is implemented as an automatically 
 -- defined Atom with the correct name.
 -- 
--- @function _string 
+-- @function string 
 -- @param #number n the maximum length of the string
 -- @param #string name the name of the underlying type: string or wstring
 -- @return #table the string data model instance, the name under which to 
 --                install the atom
-local function _string(n, name)
+function _.string(n, name)
     
   -- construct name of the atom: 'string<n>'
     local dim = n
@@ -1189,7 +1200,7 @@ end
 -- @param #number n the maximum length of the string
 -- @return #table the string data model instance
 function Data.string(n)
-  return _string(n, 'string')
+  return _.string(n, 'string')
 end
 
 ---
@@ -1198,11 +1209,11 @@ end
 -- @param #number n the maximum length of the wstring
 -- @return #table the string data model instance
 function Data.wstring(n)
-  return _string(n, 'wstring')
+  return _.string(n, 'wstring')
 end
 
 -- collection() - helper method to define collections, i.e. sequences and arrays
-local function _collection(annotation, n, ...)
+function _.collection(annotation, n, ...)
 
   -- ensure that we have an array of positive numbers
   local dimensions = {...}
@@ -1236,57 +1247,14 @@ end
 Data.builtin.Array = Data.annotation{}
 Data.ARRAY = Data.builtin.Array[Data.MODEL]
 function Data.array(n, ...)
-  return _collection(Data.builtin.Array, n, ...)
+  return _.collection(Data.builtin.Array, n, ...)
 end
 
 Data.builtin.Sequence = Data.annotation{}
 Data.SEQUENCE = Data.builtin.Sequence[Data.MODEL]
 function Data.sequence(n, ...)
-  return _collection(Data.builtin.Sequence, n, ...)
+  return _.collection(Data.builtin.Sequence, n, ...)
 end
-
---------------------------------------------------------------------------------
--- Relationship Definitions
---------------------------------------------------------------------------------
-
--- Data:has() - containment relationship
--- Purpose:
---    Create a nested model element
--- Parameters:
---    <<in>> name - name used to refer to the contained model element
---    <<in>> model - the contained  model element
---    <<return>> a table containing the name and a table that can be used 
---               to index into the 
--- Usage:
---    To define a contained element
---       Data.has('name', model)
---    which results in the following being defined and returned
---       { name, model_instance_table_for_indexing_using_name }
---
---    Thus, for example, if 
---       model = { 
---                 first = 'first',
---                 last  = 'last',
---                  :  
---               }
---    the returned value will be an array of two elements:
---      t =   { 'name',  { 
---                           first = 'name.first',
---                           last  = 'name.last',
---                            :  
---                        } 
---             }
---   such that in the returned table can index the nested elements:
---       t[2].first = 'name.first'
---       t[2].last  = 'name.last'
---  and so on. 
--- TODO: delete?
-function Data.has(name, model, sequence)
-	return { name, model, sequence }
-end
-function Data.case(value, name, model)
-	return { value, name, model }
-end 
 
 --------------------------------------------------------------------------------
 -- Helpers
@@ -1297,7 +1265,7 @@ end
 -- element name. This table maps to the corresponding display string in IDL.
 -- #map<#table, #string>
 
-local _IDL_DISPLAY = {
+_.IDL_DISPLAY = {
   -- [model element]                 = "Display string in IDL"
   [Data.builtin.long_double]         = "long double",
   [Data.builtin.long_long]           = "long long",
@@ -1307,7 +1275,7 @@ local _IDL_DISPLAY = {
   [Data.builtin.top_level]           = "top-level",
 }
 
-setmetatable(_IDL_DISPLAY, {
+setmetatable(_.IDL_DISPLAY, {
     -- default: idl display string is the same as the model name
     __index = function(self, instance) 
         return instance[Data.MODEL] and instance[Data.MODEL][Data.NAME] or nil
@@ -1350,7 +1318,7 @@ function Data.print_idl(instance, indent_string)
   if Data.CONST == mytype then
      local atom = mydefn
      print(string.format('%sconst %s %s = %s;', content_indent_string, 
-                        _IDL_DISPLAY[atom], 
+                        _.IDL_DISPLAY[atom], 
                         myname, tostring(instance)))
      return instance, indent_string                              
   end
@@ -1376,10 +1344,12 @@ function Data.print_idl(instance, indent_string)
 		
 		if Data.UNION == mytype then
 			print(string.format('%s%s %s switch (%s) {', indent_string, 
-						mytype(), myname, mydefn.switch[Data.MODEL][Data.NAME]))
-		elseif Data.STRUCT == mytype and model[Data.DEFN].base then
+						mytype(), myname, model[Data.SWITCH][Data.MODEL][Data.NAME]))
+						
+		elseif Data.STRUCT == mytype and model[Data.BASE] then -- base struct
 			print(string.format('%s%s %s : %s {', indent_string, mytype(), 
-					myname, model[Data.DEFN].base[Data.MODEL][Data.NAME]))
+					myname, model[Data.BASE][Data.MODEL][Data.NAME]))
+		
 		else
 			print(string.format('%s%s %s {', indent_string, mytype(), myname))
 		end
@@ -1408,7 +1378,7 @@ function Data.print_idl(instance, indent_string)
 				-- case
 				if (nil == case) then
 				  print(string.format("%sdefault :", content_indent_string))
-				elseif (Data.char == mydefn.switch and nil ~= case) then
+				elseif (Data.char == model[Data.SWITCH] and nil ~= case) then
 					print(string.format("%scase '%s' :", 
 						content_indent_string, tostring(case)))
 				else
@@ -1466,14 +1436,14 @@ function Data.tostring_idl_member(decl, typedef_name)
 
 	local output_member = ''		
 	if seq == nil then -- not a sequence
-		output_member = string.format('%s %s', _IDL_DISPLAY[element], role)
+		output_member = string.format('%s %s', _.IDL_DISPLAY[element], role)
 	elseif #seq == 0 then -- unbounded sequence
-		output_member = string.format('sequence<%s> %s', _IDL_DISPLAY[element], role)
+		output_member = string.format('sequence<%s> %s', _.IDL_DISPLAY[element], role)
 	else -- bounded sequence
 		for i = 1, #seq do
 			output_member = string.format('%ssequence<', output_member) 
 		end
-		output_member = string.format('%s%s', output_member, _IDL_DISPLAY[element])
+		output_member = string.format('%s%s', output_member, _.IDL_DISPLAY[element])
 		for i = 1, #seq do
 			output_member = string.format('%s,%s>', output_member, Data.fqname(seq[i])) 
 		end
@@ -1555,7 +1525,7 @@ function Data.index(instance, result, model)
 	end
 		
 	-- struct base type, if any
-	local base = mydefn.base
+	local base = model[Data.BASE]
 	if nil ~= base then
 		result = Data.index(instance, result, base[Data.MODEL])	
 	end
