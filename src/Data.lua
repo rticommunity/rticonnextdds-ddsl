@@ -523,7 +523,8 @@ _.METATABLES[Data.STRUCT] = {
           end
          
           -- clear the instance fields from the current base type (if any)
-          if struct[Data.MODEL][Data.DEFN][Data.BASE] then
+          local old_base = struct[Data.MODEL][Data.DEFN][Data.BASE]
+          if old_base then
               for k, v in pairs(struct[Data.MODEL][Data.DEFN][Data.BASE]) do
                   if 'string' == type(k) then -- copy only the base instance fields 
                       rawset(struct, k, nil)
@@ -531,11 +532,12 @@ _.METATABLES[Data.STRUCT] = {
                       -- TODO: update the struct instances to remove this member
                   end
               end
+              old_base[Data.MODEL][Data.INSTANCE][struct] = nil -- struct is no longer its instance
           end
           
           -- set the new base in the model definition (may be nil)
           struct[Data.MODEL][Data.DEFN][Data.BASE] = base
-         
+        
           -- populate the instance fields from the base type
           print('***', base)
           if base then
@@ -546,6 +548,8 @@ _.METATABLES[Data.STRUCT] = {
                       -- TODO: update the struct instances to add this member
                   end
               end
+              print('***', base, base[Data.MODEL], base[Data.MODEL][Data.INSTANCE])
+              base[Data.MODEL][Data.INSTANCE][struct] = struct -- struct is its special instance
           end
           
       elseif Data.ANNOTATION == key then -- annotation definition
@@ -564,7 +568,7 @@ function Data.struct(param)
   		[Data.NAME] = nil,    -- will get populated when assigned to a module
   		[Data.TYPE] = Data.STRUCT,
   		[Data.DEFN] = {},     -- will be populated as model elements are defined 
-  		[Data.INSTANCE] = nil,-- will be populated as instances are defined
+  		[Data.INSTANCE] = {}, -- will be populated as instances are defined
   	}
   	local instance = { -- top-level instance to be installed in the module
   		[Data.MODEL] = model,
@@ -684,26 +688,6 @@ _.METATABLES[Data.UNION] = { -- applies to a union[Data.MODEL] table
       end
   end
 }
-
----
--- Propagate member 'role' update to all instances of a model
--- @param #table model the model 
--- @param #string role the role to propagate
--- @param #type value the value of the role instance
-function _.update_instances(model, role, role_template)
-
-   -- update template first
-   local template = model[Data.INSTANCE]._
-   template[role] = role_template
-   
-   -- update the remaining member instances:
-   for name, instance in pairs(model[Data.INSTANCE]) do
-      if instance ~= template then
-          -- prefix the 'name' to template[role]
-          instance[role] = _.prefix(name, role_template)
-      end
-   end
-end
 
 function Data.union(param) 
 
@@ -1090,39 +1074,6 @@ function Data.instance(name, template)
 	return instance
 end
 
----
--- Prefix an index value with the given name
--- @param #string name name to prefix with
--- @param #type v index value
--- @return #type index value with the 'name' prefix
-function _.prefix(name, v)
-
-    local type_v = type(v)
-    local result 
-    
-    -- prefix the member names
-    if 'function' == type_v then -- seq
-      result = -- use member as a closure template
-        function(j, prefix_j) -- allow further prefixing
-          return v(j, table.concat{prefix_j or '', name, '.'}) 
-        end
-
-    elseif 'table' == type_v then -- struct or union
-      result = Data.instance(name, v) -- use member as template
-
-    elseif 'string' == type_v then -- atom/leaf
-
-      if '#' == v then -- _d: leaf level union discriminator
-        result = table.concat{name, '', v} -- no dot separator
-      else
-        result = table.concat{name, '.', v}
-      end
-
-    end
-    
-    return result
-end
-
 -- Name: 
 --    Data.seq() - creates a sequence, of elements specified by the template
 -- Purpose:
@@ -1190,6 +1141,60 @@ function Data.seq(name, template)
 				 -- length
 			     or string.format('%s%s#', prefix_i, name)
 	end
+end
+
+---
+-- Prefix an index value with the given name
+-- @param #string name name to prefix with
+-- @param #type v index value
+-- @return #type index value with the 'name' prefix
+function _.prefix(name, v)
+
+    local type_v = type(v)
+    local result 
+    
+    -- prefix the member names
+    if 'function' == type_v then -- seq
+      result = -- use member as a closure template
+        function(j, prefix_j) -- allow further prefixing
+          return v(j, table.concat{prefix_j or '', name, '.'}) 
+        end
+
+    elseif 'table' == type_v then -- struct or union
+      result = Data.instance(name, v) -- use member as template
+
+    elseif 'string' == type_v then -- atom/leaf
+
+      if '#' == v then -- _d: leaf level union discriminator
+        result = table.concat{name, '', v} -- no dot separator
+      else
+        result = table.concat{name, '.', v}
+      end
+
+    end
+    
+    return result
+end
+
+---
+-- Propagate member 'role' update to all instances of a model
+-- @param #table model the model 
+-- @param #string role the role to propagate
+-- @param #type value the value of the role instance
+function _.update_instances(model, role, role_template)
+
+   -- update template first
+   local template = model[Data.INSTANCE]._
+   template[role] = role_template
+   
+   -- update the remaining member instances:
+   for name, instance in pairs(model[Data.INSTANCE]) do
+      if instance == name then -- child struct (model is a base struct)
+          instance[role] = role_template -- no prefix    
+      elseif instance ~= template then -- prefix the 'name' to template[role]
+          instance[role] = _.prefix(name, role_template)
+      end
+   end
 end
 
 ---
