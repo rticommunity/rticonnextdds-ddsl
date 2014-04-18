@@ -1071,7 +1071,7 @@ function Tester:test_struct_recursive()
     -- assert('child.x' == Data.RecursiveStruct.child.x)
 end
 
-Tester[#Tester+1] = 'Xtest_struct_dynamic'
+Tester[#Tester+1] = 'test_struct_dynamic'
 function Tester:test_struct_dynamic()
 
     local DynamicShapeType = data.struct{}
@@ -1088,13 +1088,14 @@ function Tester:test_struct_dynamic()
     -- shapesize re-definition:
     DynamicShapeType.shapesize = nil -- erase old definition
     DynamicShapeType.shapesize = { data.long } -- redefine it
+    print("\n*shapesize changed: double -> long*\n")
     self:print(DynamicShapeType)
  
  
-    assert('x' == DynamicShapeType.x)
-    assert('y' == DynamicShapeType.y)
-    assert('shapesize' == DynamicShapeType.shapesize)
-    assert('color' == DynamicShapeType.color)   
+    assert(DynamicShapeType.x == 'x')
+    assert(DynamicShapeType.y == 'y')
+    assert(DynamicShapeType.shapesize == 'shapesize')
+    assert(DynamicShapeType.color == 'color')   
 end
 
 Tester[#Tester+1] = 'test_root'

@@ -200,16 +200,16 @@ Data.METATABLES[Data.MODULE] = {
       
       -- insert in the module definition, so that the instance can be 
       -- iterated in the correct order (eg when outputting IDL)
-      local definitions = module[Data.MODEL][Data.DEFN]
+      local definition = module[Data.MODEL][Data.DEFN]
       local replaced = false
-      for i = #definitions, 1, -1 do -- count down, latest first
-          if definitions[i][Data.MODEL][Data.NAME] == name then
+      for i = #definition, 1, -1 do -- count down, latest first
+          if definition[i][Data.MODEL][Data.NAME] == name then
               replaced = true -- replace an old definition
-              definitions[i] = instance
+              definition[i] = instance
           end
       end
       if not replaced then -- insert at the end
-          table.insert(module[Data.MODEL][Data.DEFN], instance)
+          table.insert(definition, instance)
       end
       
       -- add an index entry to the module
@@ -468,73 +468,97 @@ function Data.enum(param)
 	return instance
 end
 
+
+Data.METATABLES[Data.STRUCT] = {
+
+  __newindex = function (struct, role, decl)
+
+      local member_instance, member_definition = Data.create_member(role, decl) 
+    
+      -- insert in the struct definition, so that it can be 
+      -- iterated in the correct order (eg when outputting IDL)
+      local definition = struct[Data.MODEL][Data.DEFN]
+      local replaced = false
+      for i = #definition, 1, -1 do -- count down, latest first
+          if definition[i][1] == role then
+              replaced = true -- replace an old definition
+              definition[i][2] = member_definition[2]
+          end
+      end
+      if not replaced then -- insert at the end
+          table.insert(definition, member_definition)
+      end
+      -- TODO: update the struct instances for this member
+
+      -- add an index entry to the struct
+      rawset(struct, role, member_instance)
+  end
+}
+
 function Data.struct(param) 
-	assert('table' == type(param), 
-		   table.concat{'invalid struct specification: ', tostring(param)})
-
-	local model = { -- meta-data defining the struct
-		[Data.NAME] = nil,    -- will get populated when assigned to a module
-		[Data.TYPE] = Data.STRUCT,
-		[Data.DEFN] = {},     -- will be populated as model elements are defined 
-		[Data.INSTANCE] = nil,-- will be populated as instances are defined
-	}
-	local instance = { -- top-level instance to be installed in the module
-		[Data.MODEL] = model,
-	}
-
+  	assert('table' == type(param), 
+  		   table.concat{'invalid struct specification: ', tostring(param)})
+  
+  	local model = { -- meta-data defining the struct
+  		[Data.NAME] = nil,    -- will get populated when assigned to a module
+  		[Data.TYPE] = Data.STRUCT,
+  		[Data.DEFN] = {},     -- will be populated as model elements are defined 
+  		[Data.INSTANCE] = nil,-- will be populated as instances are defined
+  	}
+  	local instance = { -- top-level instance to be installed in the module
+  		[Data.MODEL] = model,
+  	}
+  	
+    -- set the meta-table for new instance to be added to the struct
+    setmetatable(instance, Data.METATABLES[Data.STRUCT])
+    
+    
     -- OPTIONAL base: pop the next element if it is a base model element
     local base
     if 'table' == type(param[1]) 
-      and nil ~= param[1][Data.MODEL]
-      and Data.ANNOTATION ~= param[1][Data.MODEL][Data.TYPE] then
-      base = param[1]   table.remove(param, 1)
-      assert(Data.STRUCT == base[Data.MODEL][Data.TYPE], 
-        table.concat{'base type must be a struct: ', tostring(base)})
+        and nil ~= param[1][Data.MODEL]
+        and Data.ANNOTATION ~= param[1][Data.MODEL][Data.TYPE] then
+        base = param[1]   table.remove(param, 1)
+        assert(Data.STRUCT == base[Data.MODEL][Data.TYPE], 
+          table.concat{'base type must be a struct: "', tostring(base), '"'})
     end
   
-	-- add the base
-	if base then
-		-- install base class:
-		model[Data.DEFN]._base = base
-		
-		-- populate the instance fields from the base type
-		for k, v in pairs(base) do
-			if 'string' == type(k) then -- copy only the base type instance fields 
-				instance[k] = v
-			end
-		end
-	end
-	
-	-- populate the model table
-	for i, decl in ipairs(param) do	
-	
-		if decl[Data.MODEL] then -- annotation at the Struct level
-			assert(Data.ANNOTATION == decl[Data.MODEL][Data.TYPE],
-					table.concat{'not an annotation: ', tostring(decl)})
+    -- add the base
+    if base then
+        -- install base class:
+        model[Data.DEFN]._base = base
+        
+        -- populate the instance fields from the base type
+        for k, v in pairs(base) do
+            if 'string' == type(k) then -- copy only the base type instance fields 
+              rawset(instance, k, v)
+            end
+        end
+    end
+  
+        
+    -- populate the model table
+    for i, decl in ipairs(param) do 
+    
+      if decl[Data.MODEL] then -- annotation at the Struct level
+        assert(Data.ANNOTATION == decl[Data.MODEL][Data.TYPE],
+            table.concat{'not an annotation: ', tostring(decl)})
+  
+        -- save the meta-data
+        table.insert(model[Data.DEFN], decl)    
+        
+      else -- struct member definition
 
-			-- save the meta-data
-			table.insert(model[Data.DEFN], decl) 		
-		else -- struct member definition
-			local role = decl[1]     table.remove(decl, 1) -- pop the role
-			local member_instance, member_definition = 
-			                               Data.create_member(role, decl) 
-		
-			-- check for conflicting  member fields
-			assert(nil == instance[role], 
-			  	   table.concat{'member name already defined: ', role})
-	
-			-- insert the role
-			instance[role] = member_instance
-			
-			-- save the meta-data
-			-- as an array to get the correct ordering
-			table.insert(member_definition, 1, role) 
-			table.insert(model[Data.DEFN], member_definition) 
-		end
-	end
-
-    -- set the meta-table for new instance to be added to the module
-    -- setmetatable(instance, Data.METATABLES[Data.STRUCT])
+        local role = decl[1]     table.remove(decl, 1) -- pop the role
+        
+        -- check for conflicting  member fields
+        assert(nil == instance[role], 
+               table.concat{'member name already defined: ', role})
+    
+        -- insert the member:
+        instance[role] = decl    -- invokes the meta-table __newindex()
+      end
+    end
   
 	return instance
 end
@@ -596,7 +620,6 @@ function Data.union(param)
 			-- save the meta-data
 			-- as an array to get the correct ordering
 			-- NOTE: default case is stored as a 'nil'
-			table.insert(member_definition, 1, role)
 			table.insert(model[Data.DEFN], { case, member_definition }) 
 		end
 	end
@@ -657,7 +680,6 @@ function Data.typedef(param)
 	--       member_instance will be nil, since the role was 'nil'
 			
 	-- save the meta-data
-	table.insert(member_definition, 1, nil)
 	table.insert(model[Data.DEFN], member_definition)
 	
 	return instance
@@ -727,6 +749,7 @@ function Data.create_member(member_name, member_definition)
 		end
 	end
 	
+	table.insert(member_definition, 1, member_name)
 	return member_instance, member_definition
 end
 
