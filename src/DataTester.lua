@@ -1191,15 +1191,13 @@ function Tester:test_dynamic_union()
     assert(DynamicUnion.m_str == 'm_str')
     assert(DynamicUnion.m_int == 'm_int')
     assert(DynamicUnion.m_oct == 'm_oct')
-
-
-
+       
+    
     -- redefine m_int:
     DynamicUnion[data.MODEL][2] = { 'l', m_int = { data.long, data.Key } }  
     print("\n** redefined: short->long m_int @Key **\n")
     self:print(DynamicUnion)
     assert(DynamicUnion.m_int == 'm_int')
- 
  
  
     -- add m_real:
@@ -1209,10 +1207,10 @@ function Tester:test_dynamic_union()
     assert(DynamicUnion.m_real == 'm_real')
     
     -- remove m_real:
-    DynamicUnion[data.MODEL][4] = nil -- erase m_real
-    print("\n** removed: double m_real **\n")
+    DynamicUnion[data.MODEL][1] = nil -- erase m_real
+    print("\n** removed: double m_str **\n")
     self:print(DynamicUnion)
-    assert(DynamicUnion.m_real == nil) 
+    assert(DynamicUnion.m_str == nil) 
  
  
  
@@ -1239,6 +1237,57 @@ function Tester:test_dynamic_union()
     print("\n** erased annotations **\n")
     self:print(DynamicUnion)
     assert(DynamicUnion[data.MODEL][data.ANNOTATION] == nil)
+    
+    
+    --[[
+    -- check the accessor syntax
+    DynamicUnion[data.MODEL][2] = DynamicUnion[data.MODEL][2]
+    print("\n** rewrote: long m_int @Key **\n")
+    self:print(DynamicUnion)
+    assert(DynamicUnion.m_int == 'm_int')
+    --]]
+end
+
+Tester[#Tester+1] = 'test_dynamic_union2'
+function Tester:test_dynamic_union2()
+    local DynamicUnion2 = data.union{data.char} -- switch
+    DynamicUnion2[data.MODEL][1] = { 's', m_str = { data.string() } }
+    DynamicUnion2[data.MODEL][2] = { 'i', m_int = { data.short } }  
+    DynamicUnion2[data.MODEL][3] = { nil, m_oct = { data.octet } } -- default case
+    
+    local DynamicStruct2 = data.struct{
+        { 'x', data.long },
+        { 'u', DynamicUnion2 },
+    }
+    
+    Data.DynamicUnion2 = DynamicUnion2
+    Data.DynamicStruct = DynamicStruct2
+    
+    self:print(DynamicUnion2)
+    self:print(DynamicStruct2)
+    
+    assert(DynamicStruct2.x == 'x')
+    assert(DynamicStruct2.u._d == 'u#')
+    assert(DynamicStruct2.u.m_str == 'u.m_str')
+    assert(DynamicStruct2.u.m_int == 'u.m_int')
+    assert(DynamicStruct2.u.m_oct == 'u.m_oct')
+    
+    -- add a member to the union, the struct should be updated
+    DynamicUnion2[data.MODEL][#DynamicUnion2[data.MODEL] + 1] =
+                { 'r', m_real = { data.double, data.Key } }
+    print("\n** added to union: double m_real @Key **\n")
+    self:print(DynamicUnion2)
+    assert(DynamicUnion2.m_real == 'm_real')
+    self:print(DynamicStruct2)
+    assert(DynamicStruct2.u.m_real == 'u.m_real')
+    
+    -- remove a member from the union, the struct should be updated
+    DynamicUnion2[data.MODEL][1] = nil -- erase m_str
+    print("\n** removed: string m_str **\n")
+    self:print(DynamicUnion2)
+    assert(DynamicUnion2.m_str == nil)
+    self:print(DynamicStruct2)
+    assert(DynamicUnion2.m_str == nil) 
 end
 
 Tester[#Tester+1] = 'test_root'

@@ -643,10 +643,7 @@ _.METATABLES[Data.UNION] = { -- applies to a union[Data.MODEL] table
           -- update instances: remove the old_member_definition
           if old_value then
               local old_role = old_value[2][1]
-              for name, instance in pairs(model[Data.INSTANCE]) do
-                 -- print('DEBUG union meta 1: ', key, name, old_role)
-                 instance[old_role] = nil
-              end
+              _.update_instances(model, old_role, nil) -- clear the role
           end
                
                     
@@ -656,34 +653,26 @@ _.METATABLES[Data.UNION] = { -- applies to a union[Data.MODEL] table
               case = _.assert_case(value[1], model[Data.DEFN][Data.SWITCH])
               
               for role, decl in pairs(value) do
-                   if 'string' == type(role) then 
-                       -- print(' DEBUG union meta 2: ', key, case, role, decl[1][Data.MODEL][Data.NAME])
-                                 
-                       member_instance, member_definition = 
-                                                    _.create_member(role, decl)
-                                                  
-                       -- print('  DEBUG union meta 3: ', key, case, role, old_member_definition)
-                                  
-                       break -- only 1 member allowed per case
-                   end
+               if 'string' == type(role) then 
+                 -- print(' DEBUG union meta 2: ', key, case, role, decl[1][Data.MODEL][Data.NAME])
+                 member_instance, member_definition = _.create_member(role, decl)              
+                 -- print('  DEBUG union meta 3: ', key, case, role, old_member_definition)        
+                 break -- only 1 member definition allowed per case
+               end
               end
            end
                                
            -- update instances: add the new member_definition
            if member_instance then
-               local role = member_definition[1]
-               for name, instance in pairs(model[Data.INSTANCE]) do
-                  -- print('   DEBUG union meta 4: ', key, case, name, role)
-                  instance[role] = member_instance -- TODO: prefix the 'name'
-               end
+              local role =  member_definition[1]
+              _.update_instances(model, role, member_instance)
            end
-           
            
            -- set the new value
            if member_instance then
                model[Data.DEFN][key] = {case, member_definition}
-           else
-               model[Data.DEFN][key] = nil -- remove
+           else -- nil: remove the key-th member definition
+               table.remove(model[Data.DEFN], key) -- do not want holes in array
            end
           
       elseif Data.ANNOTATION == key then -- annotation definition
@@ -695,6 +684,26 @@ _.METATABLES[Data.UNION] = { -- applies to a union[Data.MODEL] table
       end
   end
 }
+
+---
+-- Propagate member 'role' update to all instances of a model
+-- @param #table model the model 
+-- @param #string role the role to propagate
+-- @param #type value the value of the role instance
+function _.update_instances(model, role, role_template)
+
+   -- update template first
+   local template = model[Data.INSTANCE]._
+   template[role] = role_template
+   
+   -- update the remaining member instances:
+   for name, instance in pairs(model[Data.INSTANCE]) do
+      if instance ~= template then
+          -- prefix the 'name' to template[role]
+          instance[role] = _.prefix(name, role_template)
+      end
+   end
+end
 
 function Data.union(param) 
 
@@ -1065,29 +1074,13 @@ function Data.instance(name, template)
 	-- not found => create the instance:
 	if not instance then 
 		instance = { -- the underlying model, of which this is an instance 
-			[Data.MODEL] = template[Data.MODEL], 		
+			 [Data.MODEL] = template[Data.MODEL], 		
 		}
 		for k, v in pairs(template) do
-			local type_v = type(v)
-			
-			-- skip meta-data attributes
-			if 'string' == type(k) then 
-				-- prefix the member names
-				if 'function' == type_v then -- seq
-					instance[k] = -- use member as a closure template
-						function(j, prefix_j) -- allow further prefixing
-							return v(j, table.concat{prefix_j or '', name, '.'}) 
-						end
-				elseif 'table' == type_v then -- struct or union
-					instance[k] = Data.instance(name, v) -- use member as template
-				elseif 'string' == type_v then -- atom/leaf
-					if '#' == v then -- _d: leaf level union discriminator
-						instance[k] = table.concat{name, '', v} -- no dot separator
-					else
-						instance[k] = table.concat{name, '.', v}
-					end
-				end
-			end
+  			-- skip meta-data attributes
+  			if 'string' == type(k) then 
+            instance[k] = _.prefix(name, v)
+  			end
 		end
 		
 		-- cache the instance, so that we can reuse it the next time!
@@ -1095,6 +1088,39 @@ function Data.instance(name, template)
 	end
 	
 	return instance
+end
+
+---
+-- Prefix an index value with the given name
+-- @param #string name name to prefix with
+-- @param #type v index value
+-- @return #type index value with the 'name' prefix
+function _.prefix(name, v)
+
+    local type_v = type(v)
+    local result 
+    
+    -- prefix the member names
+    if 'function' == type_v then -- seq
+      result = -- use member as a closure template
+        function(j, prefix_j) -- allow further prefixing
+          return v(j, table.concat{prefix_j or '', name, '.'}) 
+        end
+
+    elseif 'table' == type_v then -- struct or union
+      result = Data.instance(name, v) -- use member as template
+
+    elseif 'string' == type_v then -- atom/leaf
+
+      if '#' == v then -- _d: leaf level union discriminator
+        result = table.concat{name, '', v} -- no dot separator
+      else
+        result = table.concat{name, '.', v}
+      end
+
+    end
+    
+    return result
 end
 
 -- Name: 
