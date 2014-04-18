@@ -1139,30 +1139,26 @@ function Tester:test_struct_dynamic()
     print("\n** erased base class **\n")
     self:print(DynamicShapeType)
  
-    
-    --[[ 
-    -- NOTE: Just some ideas below. Not going to implement! 
-    --       Overloading __index() can slow the data critical path
-    
-    -- no annotations
-    assert(DynamicShapeType[data.ANNOTATION] == nil) 
  
     -- add an annotation
-    DynamicShapeType[data.ANNOTATION] = 
-      table.insert(DynamicShapeType[data.ANNOTATION] or {},
-                   data.Extensibility{'EXTENSIBLE_EXTENSIBILITY'})
-    print("\n*added: annotation: Extensibility{'EXTENSIBLE_EXTENSIBILITY'}*\n")
+    DynamicShapeType[data.ANNOTATION] = { 
+        data.Extensibility{'EXTENSIBLE_EXTENSIBILITY'} 
+    }
+    print("\n** added annotation: @Extensibility **\n")
     self:print(DynamicShapeType)
-    DynamicShapeType[data.ANNOTATION] = 
-      table.insert(DynamicShapeType[data.ANNOTATION] or {},
-                   data.Nested{'FALSE'})
-    print("\n*added: annotation: Nested{'FALSE'}*\n")
+    
+    -- add another annotation
+    DynamicShapeType[data.ANNOTATION] = { 
+        data.Extensibility{'EXTENSIBLE_EXTENSIBILITY'},
+        data.Nested{'FALSE'},
+    }  
+    print("\n** added: annotation: @Nested **\n")
     self:print(DynamicShapeType)
     
     -- clear annotations:
     DynamicShapeType[data.ANNOTATION] = nil
-    
-   --]]
+    print("\n** erased annotations **\n")
+    self:print(DynamicShapeType)
 end
 
 Tester[#Tester+1] = 'test_root'

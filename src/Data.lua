@@ -480,9 +480,9 @@ Data.METATABLES[Data.STRUCT] = {
   
   __newindex = function (struct, key, value)
 
-      local member_instance, member_definition
-      
       if 'string' == type(key) then -- member definition 
+          local member_instance, member_definition
+                
           -- not erasing the member definition:
           if nil ~= value then
               member_instance, member_definition = Data.create_member(key, value) 
@@ -504,6 +504,12 @@ Data.METATABLES[Data.STRUCT] = {
           if not replaced and member_definition then -- insert at the end
               table.insert(definition, member_definition)
           end
+          
+          -- add an index entry to the struct
+          rawset(struct, key, member_instance)
+          
+          -- TODO: update the struct instances for this member (re)-definition
+      
       elseif Data.STRUCT == key then -- base definition
           local base
           
@@ -517,29 +523,48 @@ Data.METATABLES[Data.STRUCT] = {
           end
          
           -- clear the instance fields from the current base type (if any)
-          if struct[Data.MODEL][Data.DEFN]._base then
-              for k, v in pairs(struct[Data.MODEL][Data.DEFN]._base) do
+          if struct[Data.MODEL][Data.DEFN].base then
+              for k, v in pairs(struct[Data.MODEL][Data.DEFN].base) do
                   if 'string' == type(k) then -- copy only the base instance fields 
                       rawset(struct, k, nil)
+                      
+                      -- TODO: update the struct instances to remove this member
                   end
               end
           end
+          
           -- set the new base in the model definition (may be nil)
-          struct[Data.MODEL][Data.DEFN]._base = base
+          struct[Data.MODEL][Data.DEFN].base = base
          
           -- populate the instance fields from the base type
           if base then
               for k, v in pairs(base) do
-                  if 'string' == type(k) then -- copy only the base instance fields 
+                  if 'string' == type(k) then -- copy the base instance fields 
                       rawset(struct, k, v)
+                      
+                      -- TODO: update the struct instances to add this member
                   end
               end
           end
+          
+      elseif Data.ANNOTATION == key then -- annotations
+          local annotations
+          
+          -- establish valid annotations, if any
+          if nil ~= value then
+              for i, v in ipairs(value) do
+                  assert('table' == type(v) and v[Data.MODEL] and 
+                       Data.ANNOTATION == v[Data.MODEL][Data.TYPE],
+                       table.concat{'value must be an annotation list: "', 
+                                     tostring(v), '"'})
+              end
+              annotations = value
+          end
+          
+          -- set the new annotations in the model definition (may be nil)
+          struct[Data.MODEL][Data.DEFN].annotations = annotations    
       end
-      -- TODO: update the struct instances for this member (re)-definition
-
-      -- add an index entry to the struct
-      rawset(struct, key, member_instance)
+           
   end
 }
 
@@ -575,28 +600,34 @@ function Data.struct(param)
     end
         
     -- populate the model table
+    local annotations
     for i, decl in ipairs(param) do 
     
+      -- build the struct level annotation list
       if decl[Data.MODEL] then -- annotation at the Struct level
-        assert(Data.ANNOTATION == decl[Data.MODEL][Data.TYPE],
-            table.concat{'not an annotation: ', tostring(decl)})
-  
-        -- save the meta-data
-        table.insert(model[Data.DEFN], decl)    
-        
-      else -- struct member definition
-
-        local role = decl[1]     table.remove(decl, 1) -- pop the role
-        
-        -- check for conflicting  member fields
-        assert(nil == instance[role], 
-               table.concat{'member name already defined: ', role})
+          assert(Data.ANNOTATION == decl[Data.MODEL][Data.TYPE],
+              table.concat{'not an annotation: ', tostring(decl)})
     
-        -- insert the member:
-        instance[role] = decl    -- invokes the meta-table __newindex()
-      end
+          annotations = annotations or {}
+          table.insert(annotations, decl)  
+          
+      else -- struct member definition
+          local role = decl[1]     table.remove(decl, 1) -- pop the role
+          
+          -- check for conflicting  member fields
+          assert(nil == instance[role], 
+                 table.concat{'member name already defined: ', role})
+      
+          -- insert the member:
+          instance[role] = decl    -- invokes the meta-table __newindex()
+        end
     end
   
+    if annotations then -- insert the annotations:
+        -- invokes the meta-table __newindex()
+        instance[Data.ANNOTATION] = annotations 
+    end
+    
 	return instance
 end
 
@@ -632,15 +663,16 @@ function Data.union(param)
 
 	-- populate the model table
     -- print('DEBUG Union 1: ', name, discriminator[Data.MODEL][Data.TYPE](), discriminator[Data.MODEL][Data.NAME])			
+  local annotations
 	for i, decl in ipairs(param) do	
 
-		if decl[Data.MODEL] then -- annotation at the Union level
-			assert(Data.ANNOTATION == decl[Data.MODEL][Data.TYPE],
-					table.concat{'not an annotation: ', tostring(decl)})
-			
-			-- save the meta-data
-			table.insert(model[Data.DEFN], decl) 	
-				
+    if decl[Data.MODEL] then -- annotation at the Union level
+        -- build the union level annotation list
+        assert(Data.ANNOTATION == decl[Data.MODEL][Data.TYPE],
+            table.concat{'not an annotation: ', tostring(decl)})
+        annotations = annotations or {}
+        table.insert(annotations, decl)  
+
 		else -- union member definition
 			local case = nil
 			if #decl > 1 then case = decl[1]  table.remove(decl, 1) end -- case
@@ -661,6 +693,12 @@ function Data.union(param)
 		end
 	end
 	
+  if annotations then -- insert the annotations:
+      -- invokes the meta-table __newindex()
+      -- instance[Data.ANNOTATION] = annotations 
+      model[Data.DEFN].annotations = annotations
+  end
+    
 	return instance
 end
 
@@ -1330,20 +1368,18 @@ function Data.print_idl(instance, indent_string)
 	if (nil ~= myname) then -- not top-level / builtin module
 	
 		-- print the annotations
-		if nil ~=mydefn then
-			for i, decl in ipairs(mydefn) do
-				if decl[Data.MODEL] and Data.ANNOTATION == decl[Data.MODEL][Data.TYPE] then
-					print(string.format('%s%s', indent_string, tostring(decl)))
-				end
+		if nil ~=mydefn and nil ~= mydefn.annotations then
+			for i, annotation in ipairs(mydefn.annotations) do
+		      print(string.format('%s%s', indent_string, tostring(annotation)))
 			end
 		end
 		
 		if Data.UNION == mytype then
 			print(string.format('%s%s %s switch (%s) {', indent_string, 
 						mytype(), myname, mydefn._d[Data.MODEL][Data.NAME]))
-		elseif Data.STRUCT == mytype and model[Data.DEFN]._base then
+		elseif Data.STRUCT == mytype and model[Data.DEFN].base then
 			print(string.format('%s%s %s : %s {', indent_string, mytype(), 
-					myname, model[Data.DEFN]._base[Data.MODEL][Data.NAME]))
+					myname, model[Data.DEFN].base[Data.MODEL][Data.NAME]))
 		else
 			print(string.format('%s%s %s {', indent_string, mytype(), myname))
 		end
@@ -1519,7 +1555,7 @@ function Data.index(instance, result, model)
 	end
 		
 	-- struct base type, if any
-	local base = mydefn._base
+	local base = mydefn.base
 	if nil ~= base then
 		result = Data.index(instance, result, base[Data.MODEL])	
 	end
