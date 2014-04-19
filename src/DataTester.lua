@@ -1207,13 +1207,22 @@ function Tester:test_dynamic_union()
     assert(DynamicUnion.m_real == 'm_real')
     
     -- remove m_real:
+    local case = DynamicUnion[data.MODEL][1] -- save the case
     DynamicUnion[data.MODEL][1] = nil -- erase m_real
     print("\n** removed: double m_str **\n")
     self:print(DynamicUnion)
     assert(DynamicUnion.m_str == nil) 
  
- 
- 
+  
+    -- check the accessor syntax - returned value must be assignable
+    -- add the previously saved case1 at the end, under a new value
+    case[1] = 'S'
+    DynamicUnion[data.MODEL][#DynamicUnion[data.MODEL]+1] = case 
+    print("\n** re-inserted modified case at the end **\n")
+    self:print(DynamicUnion)
+    assert(DynamicUnion.m_str == 'm_str')
+
+   
     -- add an annotation
     DynamicUnion[data.MODEL][data.ANNOTATION] = { 
         data.Extensibility{'EXTENSIBLE_EXTENSIBILITY'} 
@@ -1237,15 +1246,6 @@ function Tester:test_dynamic_union()
     print("\n** erased annotations **\n")
     self:print(DynamicUnion)
     assert(DynamicUnion[data.MODEL][data.ANNOTATION] == nil)
-    
-    
-    --[[
-    -- check the accessor syntax
-    DynamicUnion[data.MODEL][2] = DynamicUnion[data.MODEL][2]
-    print("\n** rewrote: long m_int @Key **\n")
-    self:print(DynamicUnion)
-    assert(DynamicUnion.m_int == 'm_int')
-    --]]
 end
 
 Tester[#Tester+1] = 'test_dynamic_union2'

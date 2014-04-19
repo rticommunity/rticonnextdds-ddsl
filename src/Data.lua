@@ -41,6 +41,13 @@
 --    Forward references not allowed
 --  
 -- Usage:
+--  Unions:
+--   { case, role = { template, [collection,] [annotation1, annotation2, ...] } }
+--  Structs:
+--   { role = { template, [collection,] [annotation1, annotation2, ...] } }
+--  Typedefs:
+--   { { template, [collection,] [annotation1, annotation2, ...] } }
+--   
 --    Nomenclature
 --        The nomenclature is used to refer to parts of a data type is 
 --        illustrated using the example below:
@@ -453,8 +460,8 @@ function Data.enum(param)
 	}
 	
 	-- populate the model table
-	for i, decl in ipairs(param) do	
-		local role, ordinal = decl[1], decl[2]	
+	for i, defn_i in ipairs(param) do	
+		local role, ordinal = defn_i[1], defn_i[2]	
 		assert(type(role) == 'string', 
 				table.concat{'invalid enum member: ', tostring(role)})
 		assert(nil == ordinal or 'number' == type(ordinal), 
@@ -485,32 +492,36 @@ _.METATABLES[Data.STRUCT] = {
   __newindex = function (struct, key, value)
 
       if 'string' == type(key) then -- member definition 
-          local member_instance, member_definition
-                
+          --  Structs:
+          --  { role = { template, [collection,] [annotation1, annotation2, ...] } }
+          local role, role_defn, role_instance = key, value
+               
           -- not erasing the member definition:
-          if nil ~= value then
-              member_instance, member_definition = _.create_member(key, value) 
+          if nil ~= role_defn then
+              role_instance, role_defn = _.create_role_instance(role, role_defn) 
           end
           
           -- insert into the struct definition
-          local definition = struct[Data.MODEL][Data.DEFN]
+          local defn = struct[Data.MODEL][Data.DEFN]
           local replaced = false
-          for i = #definition, 1, -1 do -- count down, latest first
-              if definition[i][1] == key then
-                  if member_definition then -- replace the old definition
-                      definition[i][2] = member_definition[2] 
+          for i = #defn, 1, -1 do -- count down, latest first
+              local role_i, role_defn_i = next(defn[i])
+              if role == role_i then
+                  if role_defn then -- replace the old definition
+                      defn[i][role] = role_defn
                   else -- erase the entry for definition
-                      table.remove(definition,i)
+                      table.remove(defn,i)
                   end
                   replaced = true 
+                  break
               end
           end
-          if not replaced and member_definition then -- insert at the end
-              table.insert(definition, member_definition)
+          if not replaced and role_defn then -- insert at the end
+              table.insert(defn, { [role] = role_defn } )
           end
           
           -- add an index entry to the struct
-          rawset(struct, key, member_instance)
+          rawset(struct, role, role_instance)
           
           -- TODO: update the struct instances for this member (re)-definition
       
@@ -539,7 +550,6 @@ _.METATABLES[Data.STRUCT] = {
           struct[Data.MODEL][Data.DEFN][Data.BASE] = base
         
           -- populate the instance fields from the base type
-          print('***', base)
           if base then
               for k, v in pairs(base) do
                   if 'string' == type(k) then -- copy the base instance fields 
@@ -548,7 +558,6 @@ _.METATABLES[Data.STRUCT] = {
                       -- TODO: update the struct instances to add this member
                   end
               end
-              print('***', base, base[Data.MODEL], base[Data.MODEL][Data.INSTANCE])
               base[Data.MODEL][Data.INSTANCE][struct] = struct -- struct is its special instance
           end
           
@@ -593,25 +602,25 @@ function Data.struct(param)
         
     -- populate the model table
     local annotations
-    for i, decl in ipairs(param) do 
+    for i, defn_i in ipairs(param) do 
     
       -- build the struct level annotation list
-      if decl[Data.MODEL] then -- annotation at the Struct level
-          assert(Data.ANNOTATION == decl[Data.MODEL][Data.TYPE],
-              table.concat{'not an annotation: ', tostring(decl)})
+      if defn_i[Data.MODEL] then -- annotation at the Struct level
+          assert(Data.ANNOTATION == defn_i[Data.MODEL][Data.TYPE],
+              table.concat{'not an annotation: ', tostring(defn_i)})
     
           annotations = annotations or {}
-          table.insert(annotations, decl)  
+          table.insert(annotations, defn_i)  
           
       else -- struct member definition
-          local role = decl[1]     table.remove(decl, 1) -- pop the role
+          local role = defn_i[1]     table.remove(defn_i, 1) -- pop the role
           
           -- check for conflicting  member fields
           assert(nil == instance[role], 
                  table.concat{'member name already defined: ', role})
       
           -- insert the member:
-          instance[role] = decl    -- invokes the meta-table __newindex()
+          instance[role] = defn_i    -- invokes the meta-table __newindex()
         end
     end
   
@@ -640,44 +649,55 @@ _.METATABLES[Data.UNION] = { -- applies to a union[Data.MODEL] table
   __newindex = function (model, key, value)
 
       if 'number' == type(key) then -- member definition
-          
-          -- save the old value: member definition
-          local old_value = model[Data.DEFN][key]
-          
-          -- update instances: remove the old_member_definition
-          if old_value then
-              local old_role = old_value[2][1]
-              _.update_instances(model, old_role, nil) -- clear the role
-          end
-               
-                    
-          -- compute the new new member_definition
-          local member_instance, case, member_definition
-          if nil ~= value then -- 
-              case = _.assert_case(value[1], model[Data.DEFN][Data.SWITCH])
-              
-              for role, decl in pairs(value) do
-               if 'string' == type(role) then 
-                 -- print(' DEBUG union meta 2: ', key, case, role, decl[1][Data.MODEL][Data.NAME])
-                 member_instance, member_definition = _.create_member(role, decl)              
-                 -- print('  DEBUG union meta 3: ', key, case, role, old_member_definition)        
-                 break -- only 1 member definition allowed per case
-               end
+          --  Unions:
+          --   { case, 
+          --     role = { template, [collection,] [annotation1, annotation2, ...] } 
+          --   }
+      
+          -- clear the old member definition
+          if model[Data.DEFN][key] then
+              local old_role = next(model[Data.DEFN][key], 1)
+        
+              -- update instances: remove the old_role_defn
+              if old_role then
+                  _.update_instances(model, old_role, nil) -- clear the role
               end
-           end
+          end
+                    
+          -- set the new role_defn
+          local case, role, role_defn, role_instance
+          if nil ~= value then -- 
+              case = _.assert_case(model[Data.DEFN][Data.SWITCH], value[1])
+              
+              for k, v in pairs(value) do
+                 if 'string' == type(k) then 
+                     role = k         role_defn = v
+                     role_instance = _.create_role_instance(role, role_defn)              
+                     break -- only 1 member definition allowed per case
+                 end
+              end
                                
-           -- update instances: add the new member_definition
-           if member_instance then
-              local role =  member_definition[1]
-              _.update_instances(model, role, member_instance)
-           end
+              -- set the new definition
+               
+              if role then
+                  local role_defn_copy = {}
+                  for i, v in ipairs(role_defn) do role_defn_copy[i] = v end
+                  model[Data.DEFN][key] = {
+                      case,                     -- array of length 1
+                      [role] = role_defn_copy   -- map with one entry
+                  }          
+                  
+                 -- update instances: add the new role_defn
+                 _.update_instances(model, role, role_instance)
+              else
+                 model[Data.DEFN][key] = {
+                      case,         -- array of length 1
+                 }
+              end
            
-           -- set the new value
-           if member_instance then
-               model[Data.DEFN][key] = {case, member_definition}
-           else -- nil: remove the key-th member definition
-               table.remove(model[Data.DEFN], key) -- do not want holes in array
-           end
+          else -- nil: remove the key-th member definition
+              table.remove(model[Data.DEFN], key) -- do not want holes in array
+          end
           
       elseif Data.ANNOTATION == key then -- annotation definition
           -- set the new annotations in the model definition (may be nil)
@@ -719,17 +739,17 @@ function Data.union(param)
 	-- populate the model table
   -- print('DEBUG union 1: ', name, discriminator[Data.MODEL][Data.TYPE](), discriminator[Data.MODEL][Data.NAME])			
   local annotations
-	for i, decl in ipairs(param) do	
+	for i, defn_i in ipairs(param) do	
 	
-      if decl[Data.MODEL] then -- annotation at the Union level
+      if defn_i[Data.MODEL] then -- annotation at the Union level
           annotations = annotations or {} -- build the annotation list
-          table.insert(annotations, _.assert_model(Data.ANNOTATION, decl))  
+          table.insert(annotations, _.assert_model(Data.ANNOTATION, defn_i))  
   
   		else -- union member definition
     			local case = nil
-    			if #decl > 1 then case = decl[1]  table.remove(decl, 1) end -- pop case
-    			local role = decl[1][1]	   table.remove(decl[1], 1) -- pop the role  			
-    			model[#model+1] = { case, [role] = decl[1] }
+    			if #defn_i > 1 then case = defn_i[1]  table.remove(defn_i, 1) end -- pop case
+    			local role = defn_i[1][1]	   table.remove(defn_i[1], 1) -- pop the role  			
+    			model[#model+1] = { case, [role] = defn_i[1] }
       end
 	end
 	
@@ -740,6 +760,9 @@ function Data.union(param)
 	return template
 end
 
+
+--  Typedefs:
+--   { { template, [collection,] [annotation1, annotation2, ...] } }
 --[[
 	IDL: typedef sequence<MyStruct> MyStructSeq
 	Lua: Data:Typedef{'MyStructSeq', Data.MyStruct, Data.Sequence() }
@@ -783,23 +806,21 @@ function Data.typedef(param)
 	}
 	
 	-- create definition
-	local member_instance, member_definition = 
-				_.create_member( nil, { alias, collection })
-	
-	-- NOTE: we reused the create_member() function method, because it already
-	--       does all the work  that we need to do. We ignore the 
-	--       'member_instance' because the instance fields are
-	--       defined by the underlying alias model definition! The 
-	--       member_instance will be nil, since the role was 'nil'
-			
+  -- NOTE: The create_role_instance() function method already
+  --       does all the work  that we need to do. We ignore the 
+  --       'role_instance' because the instance fields are
+  --       defined by the underlying alias model definition! The 
+  --       role_instance will be nil, since the role was 'nil'
+	local _, role_defn = _.create_role_instance( nil, { alias, collection })
+		
 	-- save the meta-data
-	table.insert(model[Data.DEFN], member_definition)
+	table.insert(model[Data.DEFN], role_defn)
 	
 	return instance
 end
 
 -- Ensure that case is a valid discriminator value
-function _.assert_case(case, discriminator)
+function _.assert_case(discriminator, case)
   if nil == case then return case end -- default case 
 
   local err_msg = table.concat{'invalid case value: ', tostring(case)}
@@ -861,26 +882,27 @@ function _.assert_annotation_array(value)
     return annotations
 end
 
--- create_member() - define a struct or union member (without the case)
--- @param #string member_name - the member name to instantiate (may be 'nil')
--- @param #list<#table> member_definition - array consists of entries in the 
+-- Define a role (member) instance
+-- @param #string role - the member name to instantiate (may be 'nil')
+-- @param #list<#table> role_defn - array consists of entries in the 
+--           { template, [collection,] [annotation1, annotation2, ...] }
 --      following order:
 --           template - the kind of member to instantiate (previously defined)
 --           ...      - optional list of annotations including whether the 
 --                      member is an array or sequence    
--- @return the member instance and the member definition
-function _.create_member(member_name, member_definition)
-	local template = member_definition[1]
+-- @return the role (member) instance and the role_defn
+function _.create_role_instance(role, role_defn)
+	local template = role_defn[1]
 	
 	-- ensure pre-conditions
-	assert(nil == member_name or 'string' == type(member_name), 
-			table.concat{'invalid member name: ', tostring(member_name)})
+	assert(nil == role or 'string' == type(role), 
+			table.concat{'invalid member name: ', tostring(role)})
 	assert('table' == type(template), 
 			table.concat{'undefined type for member "', 
-						  tostring(member_name), '": ', tostring(template)})
+						  tostring(role), '": ', tostring(template)})
 	assert(nil ~= template[Data.MODEL], 
 		   table.concat{'invalid type for struct member "', 
-		   tostring(member_name), '"'})
+		   tostring(role), '"'})
 
 	local template_type = template[Data.MODEL][Data.TYPE]
 	assert(Data.ATOM == template_type or
@@ -888,45 +910,44 @@ function _.create_member(member_name, member_definition)
 		   Data.STRUCT == template_type or 
 		   Data.UNION == template_type or
 		   Data.TYPEDEF == template_type,
-		   table.concat{'member "', tostring(member_name), 
+		   table.concat{'member "', tostring(role), 
 					    '" must be a atom|enum|struct|union|typedef: '})
 
 	-- ensure that the rest of the member definition entries are annotations:	
 	-- also look for the 1st 'collection' annotation (if any)
 	local collection = nil
-	for j = 2, #member_definition do
-		assert('table' == type(member_definition[j]),
-				table.concat{'annotation expected "', tostring(member_name), 
-						     '" : ', tostring(member_definition[j])})
-		assert(Data.ANNOTATION == member_definition[j][Data.MODEL][Data.TYPE],
-				table.concat{'not an annotation: "', tostring(member_name), 
-							'" : ', tostring(member_definition[j])})	
+	for j = 2, #role_defn do
+		assert('table' == type(role_defn[j]),
+				table.concat{'annotation expected "', tostring(role), 
+						     '" : ', tostring(role_defn[j])})
+		assert(Data.ANNOTATION == role_defn[j][Data.MODEL][Data.TYPE],
+				table.concat{'not an annotation: "', tostring(role), 
+							'" : ', tostring(role_defn[j])})	
 
 		-- is this a collection?
 		if not collection and  -- the 1st 'collection' definition is used
-		   (Data.ARRAY == member_definition[j][Data.MODEL] or
-		    Data.SEQUENCE == member_definition[j][Data.MODEL]) then
-			collection = member_definition[j]
+		   (Data.ARRAY == role_defn[j][Data.MODEL] or
+		    Data.SEQUENCE == role_defn[j][Data.MODEL]) then
+			collection = role_defn[j]
 		end
 	end
 
-	-- populate the member_instance fields
-	local member_instance = nil
+	-- populate the role_instance fields
+	local role_instance = nil
 
-	if member_name then -- skip member instance if member_name is not specified 
+	if role then -- skip member instance if role is not specified 
 		if collection then
 			local iterator = template
 			for i = 1, #collection - 1  do -- create iterator for inner dimensions
 				iterator = Data.seq('', iterator) -- unnamed iterator
 			end
-			member_instance = Data.seq(member_name, iterator)
+			role_instance = Data.seq(role, iterator)
 		else
-			member_instance = Data.instance(member_name, template)
+			role_instance = Data.instance(role, template)
 		end
 	end
 	
-	table.insert(member_definition, 1, member_name)
-	return member_instance, member_definition
+	return role_instance, role_defn
 end
 
 --------------------------------------------------------------------------------
@@ -986,14 +1007,14 @@ function Data.instance(name, template)
 	local alias, alias_type, alias_sequence, alias_collection
 	
 	if Data.TYPEDEF == template_type then
-		local decl = template[Data.MODEL][Data.DEFN][1]
-		alias = decl[2]
+		local defn_i = template[Data.MODEL][Data.DEFN][1]
+		alias = defn_i[1]
 		alias_type = alias[Data.MODEL][Data.TYPE]
 		
-		for i = 3, #decl do
-			if Data.ARRAY == decl[i][Data.MODEL] or 
-			   Data.SEQUENCE == decl[i][Data.MODEL] then
-				alias_collection = decl[i]
+		for j = 2, #defn_i do
+			if Data.ARRAY == defn_i[j][Data.MODEL] or 
+			   Data.SEQUENCE == defn_i[j][Data.MODEL] then
+				alias_collection = defn_i[j]
 				-- print('DEBUG Data.instance 2: ', name, alias_collection)
 				break -- 1st 'collection' is used
 			end
@@ -1428,11 +1449,9 @@ function Data.print_idl(instance, indent_string)
   end
     
 	if Data.TYPEDEF == mytype then
-		local decl = mydefn[1]
-		local alias, collection = decl[2], decl[3]
-		
+		local defn_i = mydefn[1]		
     print(string.format('%s%s %s', indent_string,  mytype(),
-                                Data.tostring_idl_member(decl, myname)))
+                                    _.tostring_role(myname, defn_i)))
 		return instance, indent_string 
 	end
 	
@@ -1467,17 +1486,18 @@ function Data.print_idl(instance, indent_string)
 		
 	elseif Data.STRUCT == mytype then
 	 
-		for i, decl in ipairs(mydefn) do -- walk through the model definition
-			if not decl[Data.MODEL] then -- skip struct level annotations
+		for i, defn_i in ipairs(mydefn) do -- walk through the model definition
+			if not defn_i[Data.MODEL] then -- skip struct level annotations
+			  local role, role_defn = next(defn_i)
         print(string.format('%s%s', content_indent_string,
-                            Data.tostring_idl_member(decl)))
+                            _.tostring_role(role, role_defn)))
 			end
 		end
 
 	elseif Data.UNION == mytype then 
-		for i, decl in ipairs(mydefn) do -- walk through the model definition
-			if not decl[Data.MODEL] then -- skip union level annotations
-				local case = decl[1]
+		for i, defn_i in ipairs(mydefn) do -- walk through the model definition
+			if not defn_i[Data.MODEL] then -- skip union level annotations
+				local case = defn_i[1]
 				
 				-- case
 				if (nil == case) then
@@ -1491,14 +1511,15 @@ function Data.print_idl(instance, indent_string)
 				end
 				
 				-- member element
+				local role, role_defn = next(defn_i, #defn_i > 0 and #defn_i or nil)
 				print(string.format('%s%s', content_indent_string .. '   ',
-				                    Data.tostring_idl_member(decl[2])))
+				                             _.tostring_role(role, role_defn)))
 			end
 		end
 		
 	elseif Data.ENUM == mytype then
-		for i, decl in ipairs(mydefn) do -- walk through the model definition	
-			local role, ordinal = decl[1], decl[2]
+		for i, defn_i in ipairs(mydefn) do -- walk through the model definition	
+			local role, ordinal = defn_i[1], defn_i[2]
 			if ordinal then
 				print(string.format('%s%s = %s,', content_indent_string, role, 
 								    ordinal))
@@ -1518,36 +1539,33 @@ end
 
 
 ---
--- IDL string representation of a member field or a typedef.
--- @function tostring_idl_member
--- @param #table decl member declararyin in the form of
---             { role, element, [collection,] [annotation1, annotation2, ...] }
--- @param #string typedef_name non-nil only for typedefs; specifies the name
---              Note that decl[1] ie role is nil for typedefs; this parameter 
---              supplied the string to use instead
+-- IDL string representation of a role
+-- @function tostring_role
+-- @param #string role role name
+-- @param #list role_defn the definition of the role in the following format:
+--           { template, [collection,] [annotation1, annotation2, ...] } 
 -- @return #string IDL string representation of the idl member
-function Data.tostring_idl_member(decl, typedef_name)
-	
-	local role = typedef_name or decl[1] -- typedef_name non-nil only for typedefs
-	local element = decl[2]
+function _.tostring_role(role, role_defn)
+
+	local template = role_defn[1]
 	local seq
-	for i = 3, #decl do
-		if Data.SEQUENCE == decl[i][Data.MODEL] then
-			seq = decl[i]
+	for i = 2, #role_defn do
+		if Data.SEQUENCE == role_defn[i][Data.MODEL] then
+			seq = role_defn[i]
 			break -- 1st 'collection' is used
 		end
 	end
 
 	local output_member = ''		
 	if seq == nil then -- not a sequence
-		output_member = string.format('%s %s', _.IDL_DISPLAY[element], role)
+		output_member = string.format('%s %s', _.IDL_DISPLAY[template], role)
 	elseif #seq == 0 then -- unbounded sequence
-		output_member = string.format('sequence<%s> %s', _.IDL_DISPLAY[element], role)
+		output_member = string.format('sequence<%s> %s', _.IDL_DISPLAY[template], role)
 	else -- bounded sequence
 		for i = 1, #seq do
 			output_member = string.format('%ssequence<', output_member) 
 		end
-		output_member = string.format('%s%s', output_member, _.IDL_DISPLAY[element])
+		output_member = string.format('%s%s', output_member, _.IDL_DISPLAY[template])
 		for i = 1, #seq do
 			output_member = string.format('%s,%s>', output_member, Data.fqname(seq[i])) 
 		end
@@ -1556,19 +1574,19 @@ function Data.tostring_idl_member(decl, typedef_name)
 
 	-- member annotations:	
 	local output_annotations = nil
-	for j = 3, #decl do
+	for j = 2, #role_defn do
 		
-		local name = decl[j][Data.MODEL][Data.NAME]
+		local name = role_defn[j][Data.MODEL][Data.NAME]
 		
-		if Data.ARRAY == decl[j][Data.MODEL] then
-			for i = 1, #decl[j] do
+		if Data.ARRAY == role_defn[j][Data.MODEL] then
+			for i = 1, #role_defn[j] do
 				output_member = string.format('%s[%s]', output_member, 
-				                                 Data.fqname(decl[j][i])) 
+				                                 Data.fqname(role_defn[j][i])) 
 			end
-		elseif Data.SEQUENCE ~= decl[j][Data.MODEL] then
+		elseif Data.SEQUENCE ~= role_defn[j][Data.MODEL] then
 			output_annotations = string.format('%s%s ', 
-									output_annotations or '', 
-									tostring(decl[j]))	
+									                        output_annotations or '', 
+									                        tostring(role_defn[j]))	
 		end
 	end
 
@@ -1636,38 +1654,38 @@ function Data.index(instance, result, model)
 	
 	-- walk through the body of the model definition
 	-- NOTE: typedefs don't have an array of members	
-	for i, decl in ipairs(mydefn) do 
-		local role, element 
-		
+	for i, defn_i in ipairs(mydefn) do 		
 		-- skip annotations
-		if not decl[Data.MODEL] then
+		if not defn_i[Data.MODEL] then
 			-- walk through the elements in the order of definition:
-			if Data.UNION == mytype then
-				role, element = decl[2][1], decl[2][2]
-			else -- Data.STRUCT or Data.TYPEDEF
-				 role, element = decl[1], decl[2]
-			end
 			
-			local instance_member = instance[role]
-			local instance_member_type = type(instance_member)
-			-- print('DEBUG index 3: ', role, instance_member)
+			local role
+		  if Data.STRUCT == mytype then     
+        role = next(defn_i)
+      elseif Data.UNION == mytype then
+        role = next(defn_i, #defn_i > 0 and #defn_i or nil)
+      end
+			
+			local role_instance = instance[role]
+			local role_instance_type = type(role_instance)
+			-- print('DEBUG index 3: ', role, role_instance)
 
-			if 'table' == instance_member_type then -- composite (nested)
-					result = Data.index(instance_member, result)
-			elseif 'function' == instance_member_type then -- sequence
+			if 'table' == role_instance_type then -- composite (nested)
+					result = Data.index(role_instance, result)
+			elseif 'function' == role_instance_type then -- sequence
 				-- length operator
-				table.insert(result, instance_member())
+				table.insert(result, role_instance())
 	
 				-- index 1st element for illustration
-				if 'table' == type(instance_member(1)) then -- composite sequence
-					Data.index(instance_member(1), result) -- index the 1st element 
-				elseif 'function' == type(instance_member(1)) then -- sequence of sequence
-					Data.index(instance_member(1), result)
+				if 'table' == type(role_instance(1)) then -- composite sequence
+					Data.index(role_instance(1), result) -- index the 1st element 
+				elseif 'function' == type(role_instance(1)) then -- sequence of sequence
+					Data.index(role_instance(1), result)
 				else -- primitive sequence
-					table.insert(result, instance_member(1))
+					table.insert(result, role_instance(1))
 				end
 			else -- atom or enum (leaf)
-				table.insert(result, instance_member) 
+				table.insert(result, role_instance) 
 			end
 		end
 	end
