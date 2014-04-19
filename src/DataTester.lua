@@ -1116,7 +1116,16 @@ function Tester:test_dynamic_struct()
     print("\n** removed: string z **\n")
     self:print(DynamicShapeType)
     assert(DynamicShapeType.z == nil) 
-    
+
+    --[[ TODO
+    -- check the accessor syntax - returned value must be assignable
+    -- add the previously saved case1 at the end, under a new value
+    case[1] = 'S'
+    DynamicUnion[data.MODEL][#DynamicUnion[data.MODEL]+1] = case 
+    print("\n** re-inserted modified case for m_str at the end **\n")
+    self:print(DynamicUnion)
+    assert(DynamicUnion.m_str == 'm_str')
+    --]]
        
     -- add a base class
     local Bases = data.module{}
@@ -1181,8 +1190,14 @@ function Tester:test_dynamic_union()
     local DynamicUnion = data.union{data.char} -- switch
     DynamicUnion[data.MODEL][1] = { 's', m_str = { data.string() } }
     DynamicUnion[data.MODEL][2] = { 'i', m_int = { data.short } }  
-    DynamicUnion[data.MODEL][3] = { nil, m_oct = { data.octet } } -- default case
+    DynamicUnion[data.MODEL][3] = { 'n' } -- no definition
+    DynamicUnion[data.MODEL][4] = { nil, m_oct = { data.octet } } -- default case
 
+    --[[ un-comment to test error checking (expected to assert)
+    DynamicUnion[data.MODEL][#DynamicUnion[data.MODEL]+1] = 
+                                  { 'x', m_oct = { data.octet } }
+    --]]
+    
     -- install it under the name 'ShapeType' in the module
     Data.DynamicUnion = DynamicUnion
     self:print(DynamicUnion)
@@ -1201,7 +1216,8 @@ function Tester:test_dynamic_union()
  
  
     -- add m_real:
-    DynamicUnion[data.MODEL][4] = { 'r', m_real = { data.double, data.Key } }
+    DynamicUnion[data.MODEL][#DynamicUnion[data.MODEL]+1] = 
+                      { 'r', m_real = { data.double, data.Key } }
     print("\n** added: double m_real @Key **\n")
     self:print(DynamicUnion)
     assert(DynamicUnion.m_real == 'm_real')
@@ -1218,7 +1234,7 @@ function Tester:test_dynamic_union()
     -- add the previously saved case1 at the end, under a new value
     case[1] = 'S'
     DynamicUnion[data.MODEL][#DynamicUnion[data.MODEL]+1] = case 
-    print("\n** re-inserted modified case at the end **\n")
+    print("\n** re-inserted modified case for m_str at the end **\n")
     self:print(DynamicUnion)
     assert(DynamicUnion.m_str == 'm_str')
 

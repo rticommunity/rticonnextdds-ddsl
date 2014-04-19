@@ -654,7 +654,7 @@ _.METATABLES[Data.UNION] = { -- applies to a union[Data.MODEL] table
           --   { case, 
           --     role = { template, [collection,] [annotation1, annotation2, ...] } 
           --   }
-      
+          
           -- clear the old member definition
           if model[Data.DEFN][key] then
               local old_role = next(model[Data.DEFN][key], 1)
@@ -670,6 +670,13 @@ _.METATABLES[Data.UNION] = { -- applies to a union[Data.MODEL] table
           if nil ~= value then -- 
               case = _.assert_case(model[Data.DEFN][Data.SWITCH], value[1])
               
+              -- is the case already defined?
+              for i, defn_i in ipairs(model[Data.DEFN]) do
+                  assert(case ~= defn_i[1], 
+                         table.concat{'case exists: "', tostring(case), '"'})
+              end
+              
+              -- get the role and definition
               for k, v in pairs(value) do
                  if 'string' == type(k) then 
                      role = k         role_defn = v
@@ -677,10 +684,15 @@ _.METATABLES[Data.UNION] = { -- applies to a union[Data.MODEL] table
                      break -- only 1 member definition allowed per case
                  end
               end
-                               
-              -- set the new definition
-               
+                                                         
+              -- add the role
               if role then
+                  -- is the role already defined?
+                  assert(nil == model[Data.INSTANCE]._[role], -- check template
+                         table.concat{'member name already defined: "', 
+                                      role, '"'})
+               
+                  -- insert the new member definition 
                   local role_defn_copy = {}
                   for i, v in ipairs(role_defn) do role_defn_copy[i] = v end
                   model[Data.DEFN][key] = {
@@ -1537,16 +1549,20 @@ end
 -- @return #string IDL string representation of the idl member
 function _.tostring_role(role, role_defn)
 
-	local template = role_defn[1]
-	local seq
-	for i = 2, #role_defn do
-		if Data.SEQUENCE == role_defn[i][Data.MODEL] then
-			seq = role_defn[i]
-			break -- 1st 'collection' is used
-		end
-	end
+	local template, seq 
+	if role_defn then
+	  template = role_defn[1]
+  	for i = 2, #role_defn do
+  		if Data.SEQUENCE == role_defn[i][Data.MODEL] then
+  			seq = role_defn[i]
+  			break -- 1st 'collection' is used
+  		end
+  	end
+  end
 
 	local output_member = ''		
+  if nil == template then return output_member end
+
 	if seq == nil then -- not a sequence
 		output_member = string.format('%s %s', _.IDL_DISPLAY[template], role)
 	elseif #seq == 0 then -- unbounded sequence
