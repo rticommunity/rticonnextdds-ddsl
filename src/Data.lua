@@ -41,12 +41,13 @@
 --    Forward references not allowed
 --  
 -- Usage:
+-- Definition:
 --  Unions:
---   { case, role = { template, [collection,] [annotation1, annotation2, ...] } }
+--   { { case, role = { template, [collection,] [annotation1, annotation2, ...] } } }
 --  Structs:
---   { role = { template, [collection,] [annotation1, annotation2, ...] } }
+--   { { role = { template, [collection,] [annotation1, annotation2, ...] } } }
 --  Typedefs:
---   { { template, [collection,] [annotation1, annotation2, ...] } }
+--   { template, [collection,] [annotation1, annotation2, ...] }
 --   
 --    Nomenclature
 --        The nomenclature is used to refer to parts of a data type is 
@@ -762,7 +763,7 @@ end
 
 
 --  Typedefs:
---   { { template, [collection,] [annotation1, annotation2, ...] } }
+--     { template, [collection,] [annotation1, annotation2, ...] } 
 --[[
 	IDL: typedef sequence<MyStruct> MyStructSeq
 	Lua: Data:Typedef{'MyStructSeq', Data.MyStruct, Data.Sequence() }
@@ -793,29 +794,18 @@ function Data.typedef(param)
 		   Data.ARRAY == collection[Data.MODEL] or
 		   Data.SEQUENCE == collection[Data.MODEL],
 		table.concat{'invalid collection for typedef "', tostring(collection), '"'})
-
-
+ 
+   
 	local model = { -- meta-data defining the typedef
 		[Data.NAME] = nil, -- populated when the typedef is assigned to a module
 		[Data.TYPE] = Data.TYPEDEF,
-		[Data.DEFN] = {}, -- exactly 1 entry: '', underlying alias, array/sequence
+		[Data.DEFN] = { alias, collection },
 		[Data.INSTANCE] = nil,
 	}
 	local instance = { -- top-level instance to be installed in the module
 		[Data.MODEL] = model,
 	}
-	
-	-- create definition
-  -- NOTE: The create_role_instance() function method already
-  --       does all the work  that we need to do. We ignore the 
-  --       'role_instance' because the instance fields are
-  --       defined by the underlying alias model definition! The 
-  --       role_instance will be nil, since the role was 'nil'
-	local _, role_defn = _.create_role_instance( nil, { alias, collection })
 		
-	-- save the meta-data
-	table.insert(model[Data.DEFN], role_defn)
-	
 	return instance
 end
 
@@ -1007,14 +997,14 @@ function Data.instance(name, template)
 	local alias, alias_type, alias_sequence, alias_collection
 	
 	if Data.TYPEDEF == template_type then
-		local defn_i = template[Data.MODEL][Data.DEFN][1]
-		alias = defn_i[1]
+		local defn = template[Data.MODEL][Data.DEFN]
+		alias = defn[1]
 		alias_type = alias[Data.MODEL][Data.TYPE]
 		
-		for j = 2, #defn_i do
-			if Data.ARRAY == defn_i[j][Data.MODEL] or 
-			   Data.SEQUENCE == defn_i[j][Data.MODEL] then
-				alias_collection = defn_i[j]
+		for j = 2, #defn do
+			if Data.ARRAY == defn[j][Data.MODEL] or 
+			   Data.SEQUENCE == defn[j][Data.MODEL] then
+				alias_collection = defn[j]
 				-- print('DEBUG Data.instance 2: ', name, alias_collection)
 				break -- 1st 'collection' is used
 			end
@@ -1449,9 +1439,9 @@ function Data.print_idl(instance, indent_string)
   end
     
 	if Data.TYPEDEF == mytype then
-		local defn_i = mydefn[1]		
+		local defn = mydefn	
     print(string.format('%s%s %s', indent_string,  mytype(),
-                                    _.tostring_role(myname, defn_i)))
+                                    _.tostring_role(myname, defn)))
 		return instance, indent_string 
 	end
 	
