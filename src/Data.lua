@@ -195,6 +195,7 @@ local Data = {
 	SWITCH     = function() return 'switch' end,
 }
 
+---
 -- Internal Implementation Details
 local _ = {
   METATABLES = {}
@@ -204,6 +205,7 @@ local _ = {
 -- Model Definitions -- 
 --------------------------------------------------------------------------------
 
+--- Module Metatable
 _.METATABLES[Data.MODULE] = {
 
   __newindex = function (module, name, instance)
@@ -657,7 +659,7 @@ _.METATABLES[Data.UNION] = { -- applies to a union[Data.MODEL] table
           
           -- clear the old member definition
           if model[Data.DEFN][key] then
-              local old_role = next(model[Data.DEFN][key], 1)
+              local old_role = next(model[Data.DEFN][key], 1) -- 2nd item
         
               -- update instances: remove the old_role_defn
               if old_role then
@@ -675,25 +677,25 @@ _.METATABLES[Data.UNION] = { -- applies to a union[Data.MODEL] table
                   assert(case ~= defn_i[1], 
                          table.concat{'case exists: "', tostring(case), '"'})
               end
-              
+
               -- get the role and definition
               for k, v in pairs(value) do
                  if 'string' == type(k) then 
-                     role = k         role_defn = v
-                     role_instance = _.create_role_instance(role, role_defn)              
-                     break -- only 1 member definition allowed per case
+                    role = k         role_defn = v
+                    break -- only 1 member definition allowed per case
                  end
               end
-                                                         
+           
               -- add the role
-              if role then
+              if role then                    
                   -- is the role already defined?
-                  assert(nil == model[Data.INSTANCE]._[role], -- check template
-                         table.concat{'member name already defined: "', 
-                                      role, '"'})
-               
+                  assert(nil == model[Data.INSTANCE]._[role],-- check template
+                     table.concat{'member name already defined: "', role, '"'})
+
+                  role_instance = _.create_role_instance(role, role_defn)              
+
                   -- insert the new member definition 
-                  local role_defn_copy = {}
+                  local role_defn_copy = {} -- make our own local copy
                   for i, v in ipairs(role_defn) do role_defn_copy[i] = v end
                   model[Data.DEFN][key] = {
                       case,                     -- array of length 1
@@ -722,6 +724,22 @@ _.METATABLES[Data.UNION] = { -- applies to a union[Data.MODEL] table
   end
 }
 
+--- Create a union
+-- @param param table with the following structure
+--    { <discriminator>,
+--      { <case>, 
+--        { <field>, <type> } },
+--      :  
+--      { <case>, 
+--        { <field>, <type> } },
+--      { 
+--        { <field>, <type> } },
+--    }
+-- @return a table representing the union data model. The table fields 
+-- contain the string index to de-reference the union's value in 
+-- a top-level DDS Dynamic Data Type 
+--    table._d == '#'
+--    table.<field> == '<container-prefix.field>'
 function Data.union(param) 
 
 	local discriminator_type = _.model_type(param[1])
@@ -754,14 +772,21 @@ function Data.union(param)
   local annotations
 	for i, defn_i in ipairs(param) do	
 	
-      if defn_i[Data.MODEL] then -- annotation at the Union level
+      -- annotation at the Union level
+      if Data.ANNOTATION == _.model_type(defn_i) then 
           annotations = annotations or {} -- build the annotation list
-          table.insert(annotations, _.assert_model(Data.ANNOTATION, defn_i))  
+          table.insert(annotations, defn_i)  
   
   		else -- union member definition
     			local case = nil
-    			if #defn_i > 1 then case = defn_i[1]  table.remove(defn_i, 1) end -- pop case
-    			local role = defn_i[1][1]	   table.remove(defn_i[1], 1) -- pop the role  			
+    			
+    			-- pop case
+    			if #defn_i > 1 then case = defn_i[1]  table.remove(defn_i, 1) end 
+    			
+    			 -- pop the role  
+    			local role = defn_i[1][1]	   table.remove(defn_i[1], 1)			
+    			
+    			-- insert the model definition entry: invokes meta-table __newindex()
     			model[#model+1] = { case, [role] = defn_i[1] }
       end
 	end
@@ -821,7 +846,7 @@ function Data.typedef(param)
 	return instance
 end
 
--- Ensure that case is a valid discriminator value
+--- Ensure that case is a valid discriminator value
 function _.assert_case(discriminator, case)
   if nil == case then return case end -- default case 
 
@@ -846,7 +871,7 @@ end
 
 
 ---
--- Get the model_type of any arbitrary value
+-- Get the model type of any arbitrary value
 -- @param #type value the value for which to retrieve the model type
 -- @return #table the model type or nil (if 'value' does not have a Data.MODEL)
 function _.model_type(value)
@@ -857,8 +882,8 @@ end
 
 ---
 -- Ensure that the value is a model element
--- @param #table kind expected model element kind
--- @param #table value table to see of it is a model element of "kind"
+-- @param kind   expected model element kind
+-- @param value  table to check if it is a model element of "kind"
 -- @return the model table if the kind matches, or nil
 function _.assert_model(kind, value)
     assert('table' == type(value) and 
