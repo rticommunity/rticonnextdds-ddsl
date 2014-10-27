@@ -725,21 +725,30 @@ _.METATABLES[Data.UNION] = { -- applies to a union[Data.MODEL] table
 }
 
 --- Create a union
--- @param param table with the following structure
---    { <discriminator>,
---      { <case>, 
---        { <field>, <type> } },
---      :  
---      { <case>, 
---        { <field>, <type> } },
---      { 
---        { <field>, <type> } },
---    }
+-- @param param a table representing the union declaration  
 -- @return a table representing the union data model. The table fields 
 -- contain the string index to de-reference the union's value in 
 -- a top-level DDS Dynamic Data Type 
---    table._d == '#'
---    table.<field> == '<container-prefix.field>'
+-- @usage
+--    -- Declarative style
+--    MyUnion = Data.union{ discriminator,
+--      { case, 
+--        { field = { type } } },
+--      :  
+--      { case, 
+--        { field = { type } } },
+--      { nil, 
+--        { field = { type } } },
+--    }
+--    
+--  -- Imperative style
+--   MyUnion = Data.union{ discriminator }
+--   MyUnion[Data.MODEL][1] = { case, { field = { type } } },
+--                :              
+--  
+--  After either of the above definition, the following post-condition holds:
+--    MyUnion._d == '#'
+--    MyUnion.field == 'container.prefix.field'
 function Data.union(param) 
 
 	local discriminator_type = _.model_type(param[1])
@@ -778,16 +787,8 @@ function Data.union(param)
           table.insert(annotations, defn_i)  
   
   		else -- union member definition
-    			local case = nil
-    			
-    			-- pop case
-    			if #defn_i > 1 then case = defn_i[1]  table.remove(defn_i, 1) end 
-    			
-    			 -- pop the role  
-    			local role = defn_i[1][1]	   table.remove(defn_i[1], 1)			
-    			
     			-- insert the model definition entry: invokes meta-table __newindex()
-    			model[#model+1] = { case, [role] = defn_i[1] }
+    			model[#model+1] = defn_i
       end
 	end
 	
