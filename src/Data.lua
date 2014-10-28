@@ -1,4 +1,3 @@
-#!/usr/local/bin/lua
 -------------------------------------------------------------------------------
 --  (c) 2005-2014 Copyright, Real-Time Innovations, All rights reserved.     --
 --                                                                           --
@@ -572,6 +571,27 @@ _.METATABLES[Data.STRUCT] = {
   end
 }
 
+--- Create a struct
+-- @param param a table representing the struct declaration  
+-- @return a table representing the struct data model. The table fields 
+-- contain the string index to de-reference the struct's value in 
+-- a top-level DDS Dynamic Data Type 
+-- @usage
+--    -- Declarative style
+--    MyStruct = Data.struct{OptionalBaseStruct, 
+--      { field = { type } },
+--      :  
+--      { field = { type } },
+--    }
+--    
+--  -- Imperative style
+--   MyStruct = Data.struct{}
+--   MyStruct[Data.MODEL][Data.BASE] = BaseStruct, -- optional
+--   MyStruct[Data.MODEL][1] = { field = { type } },
+--                :              
+--  
+--  After either of the above definition, the following post-condition holds:
+--    MyStruct.field == 'container.prefix.field'
 function Data.struct(param) 
   	assert('table' == type(param), 
   		   table.concat{'invalid struct specification: ', tostring(param)})
@@ -582,25 +602,22 @@ function Data.struct(param)
   		[Data.DEFN] = {},     -- will be populated as model elements are defined 
   		[Data.INSTANCE] = {}, -- will be populated as instances are defined
   	}
-  	local instance = { -- top-level instance to be installed in the module
+  	local template = { -- top-level template to be installed in the module
   		[Data.MODEL] = model,
   	}
-  	
-    -- set the meta-table for new instance to be added to the struct
-    setmetatable(instance, _.METATABLES[Data.STRUCT])
+    model[Data.INSTANCE]._ = template -- template instance is always called '_'
+
+    -- set the meta-table for new template to be added to the struct
+    setmetatable(template, _.METATABLES[Data.STRUCT])
     
     
     -- OPTIONAL base: pop the next element if it is a base model element
     local base
-    if 'table' == type(param[1]) 
-        and nil ~= param[1][Data.MODEL]
-        and Data.ANNOTATION ~= param[1][Data.MODEL][Data.TYPE] then
+    if Data.STRUCT == _.model_type(param[1]) then
         base = param[1]   table.remove(param, 1)
-        assert(Data.STRUCT == base[Data.MODEL][Data.TYPE], 
-          table.concat{'base type must be a struct: "', tostring(base), '"'})
-        
+                
         -- insert the base class:
-        instance[Data.BASE] = base -- invokes the meta-table __newindex()
+        template[Data.BASE] = base -- invokes the meta-table __newindex()
     end
         
     -- populate the model table
@@ -608,10 +625,7 @@ function Data.struct(param)
     for i, defn_i in ipairs(param) do 
     
       -- build the struct level annotation list
-      if defn_i[Data.MODEL] then -- annotation at the Struct level
-          assert(Data.ANNOTATION == defn_i[Data.MODEL][Data.TYPE],
-              table.concat{'not an annotation: ', tostring(defn_i)})
-    
+      if Data.ANNOTATION == _.model_type(defn_i) then     
           annotations = annotations or {}
           table.insert(annotations, defn_i)  
           
@@ -619,20 +633,20 @@ function Data.struct(param)
           local role = defn_i[1]     table.remove(defn_i, 1) -- pop the role
           
           -- check for conflicting  member fields
-          assert(nil == instance[role], 
+          assert(nil == template[role], 
                  table.concat{'member name already defined: ', role})
       
           -- insert the member:
-          instance[role] = defn_i    -- invokes the meta-table __newindex()
+          template[role] = defn_i    -- invokes the meta-table __newindex()
         end
     end
   
     if annotations then -- insert the annotations:
         -- invokes the meta-table __newindex()
-        instance[Data.ANNOTATION] = annotations 
+        template[Data.ANNOTATION] = annotations 
     end
     
-	return instance
+	return template
 end
 
 
