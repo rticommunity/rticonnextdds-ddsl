@@ -207,6 +207,55 @@ function Tester:test_struct_imperative()
     assert(DynamicShapeType[data.MODEL][data.ANNOTATION] == nil)
 end
 
+Tester[#Tester+1] = 'test_struct_basechange'
+function Tester:test_struct_basechange()
+  Test.BaseStruct = data.struct{
+    { x = { data.long } },
+    { y = { data.long } },
+  }
+ 
+  Test.DerivedStruct = data.struct{Test.BaseStruct,
+    { speed = { data.double } }
+  }
+
+  print("\n** DerivedStruct **\n")
+  self:print(Test.BaseStruct)
+  self:print(Test.DerivedStruct)
+
+  assert(Test.DerivedStruct.x == 'x')
+  assert(Test.DerivedStruct.y == 'y')
+  assert(Test.DerivedStruct.speed == 'speed')
+ 
+ 
+  -- remove base class
+  Test.DerivedStruct[data.MODEL][data.BASE] = nil
+
+  print("\n** DerivedStruct removed base class **\n")
+  self:print(Test.DerivedStruct)
+  assert(Test.DerivedStruct.x == nil)
+  assert(Test.DerivedStruct.y == nil)
+ 
+   -- change base class and add it
+  Test.BaseStruct[data.MODEL][1] = { w = { data.string() } }
+  Test.DerivedStruct[data.MODEL][data.BASE] = Test.BaseStruct
+  assert(Test.BaseStruct[data.MODEL][1].w[1] == data.string())
+  
+  print("\n** DerivedStruct added modified base class **\n")
+  self:print(Test.BaseStruct)
+  self:print(Test.DerivedStruct)
+  assert(Test.DerivedStruct.w == 'w')
+  assert(Test.DerivedStruct.y == 'y')
+
+
+  -- modify a filed in the base class 
+  Test.BaseStruct[data.MODEL][2] = { z = { data.string() } }
+  assert(Test.BaseStruct[data.MODEL][2].z[1] == data.string())
+  
+  print("\n** DerivedStruct base changed from y : long -> z : string **\n")
+  self:print(Test.BaseStruct)
+  self:print(Test.DerivedStruct)
+  assert(Test.DerivedStruct.z == 'z')
+end
 
 Tester[#Tester+1] = 'test_struct_submodule'
 function Tester:test_struct_submodule()

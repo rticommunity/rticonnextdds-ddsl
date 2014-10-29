@@ -62,7 +62,7 @@
 --        Data.NAME
 --        Data.TYPE
 --        Data.DEFN
---        Data.INSTANCE
+--        Data.INSTANCES
 --    The leaf elements of the table give a fully qualified string to address a
 --    field in a dynamic data sample in Lua. 
 --
@@ -84,7 +84,7 @@
 --				user_role3    = UserModule.UserType3,
 --				user_role_seq = UserModule.UserTypeSeq,
 --          }             
---          [Data.INSTANCE] = {}       -- table of instances of this model 
+--          [Data.INSTANCES] = {}       -- table of instances of this model 
 --                 
 --          -- instance fields --
 --          user_role1 = 'user_role1'  -- name used to index this 'leaf' field
@@ -108,7 +108,7 @@
 --    Now, one can instance all the fields of the resulting table
 --          i1.role1 = 'i1.role1'
 --    or 
---          Model[Data.INSTANCE].i1.role1
+--          Model[Data.INSTANCES].i1.role1
 -- 
 --   Extend builtin atoms and annotations by adding to the Data.builtin module:
 --       Data.builtin.my_atom = Data.atom{}
@@ -135,10 +135,10 @@
 --          For storing the child element info
 --              model[Data.DEFN][role] = role model element 
 --
---       Data.INSTANCE
+--       Data.INSTANCES
 --          For storing instances of this model element, indexed by instance name
---              model[Data.DEFN].user = one of the instances of this model
---          where 'user' is the name of instance (in a container model element)
+--              model[Data.DEFN].name = one of the instances of this model
+--          where 'name' is the name of instance (in a container model element)
 --
 --    Note that instances do not have these the last two meta-data attributes.
 --
@@ -176,7 +176,7 @@ local Data = {
 	NAME      = function() return 'NAME' end,  -- table key for 'model name'	
 	TYPE      = function() return 'TYPE' end,  -- table key for the 'model type name' 
 	DEFN      = function() return 'DEFN' end,  -- table key for element meta-data
-	INSTANCE  = function() return 'INSTANCE' end,-- table key for instances of this model
+	INSTANCES  = function() return 'INSTANCES' end,-- table key for instances of this model
 	
 		
 	-- meta-data types - i.e. list of possible user defined types ---
@@ -240,7 +240,7 @@ function Data.module()
     [Data.NAME] = nil,     -- nil only for the ROOT i.e. top-level unnamed module
     [Data.TYPE] = Data.MODULE,
     [Data.DEFN] = {},      -- populated as members are added to the module  
-    [Data.INSTANCE] = nil, -- always nil
+    [Data.INSTANCES] = nil, -- always nil
   } 
   local instance = {
     [Data.MODEL] = model,
@@ -257,7 +257,7 @@ function Data.atom()
     [Data.NAME] = nil,      -- populated when the atom is assigned to a module
     [Data.TYPE] = Data.ATOM,
     [Data.DEFN] = nil,      -- always nil
-    [Data.INSTANCE] = nil,  -- always nil
+    [Data.INSTANCES] = nil,  -- always nil
   }  
   local instance = { -- top-level instance to be installed in the module
     [Data.MODEL] = model,
@@ -328,7 +328,7 @@ function Data.annotation(...)
 		[Data.NAME] = nil,      -- populated when inserted into a module
 		[Data.TYPE] = Data.ANNOTATION,
 		[Data.DEFN] = nil,      -- instance_fn defined below
-		[Data.INSTANCE] = nil,  -- always nil
+		[Data.INSTANCES] = nil,  -- always nil
 	}  
 
 	-- annotation instance function (closure) to be installed in the module
@@ -360,11 +360,11 @@ _.METATABLES[Data.CONST] = {
   -- instance value is obtained by evaluating the table:
   -- eg: MY_CONST()
   __call = function(const)
-      return const[Data.MODEL][Data.INSTANCE]
+      return const[Data.MODEL][Data.INSTANCES]
   end,
   
   __tostring = function(const)
-      local value = const[Data.MODEL][Data.INSTANCE]
+      local value = const[Data.MODEL][Data.INSTANCES]
       local atom = const[Data.MODEL][Data.DEFN]
       if Data.char == atom or Data.wchar == atom then
           return table.concat{"'", tostring(value), "'"}
@@ -433,7 +433,7 @@ function Data.const(param)
     [Data.NAME] = nil,  -- populated when this constant is assigned to a module
     [Data.TYPE] = Data.CONST,
     [Data.DEFN] = atom,
-    [Data.INSTANCE] = value, 
+    [Data.INSTANCES] = value, 
   }  
   local instance = { -- top-level instance to be installed in the module
     [Data.MODEL] = model,
@@ -455,7 +455,7 @@ function Data.enum(param)
 		[Data.NAME] = nil,    -- will get populated when inserted into a module
 		[Data.TYPE] = Data.ENUM,
 		[Data.DEFN] = {},     -- will be populated as enumerations
-		[Data.INSTANCE] = nil,-- always nil
+		[Data.INSTANCES] = nil,-- always nil
 	}
 	local instance = { -- top-level instance to be installed in the module
 		[Data.MODEL] = model,
@@ -516,7 +516,7 @@ end
 --                :              
 --
 --  After either of the above definition, the following post-condition holds:
---    MyStruct.field == 'container.path.to.field'
+--    MyStruct.field == 'container.prefix.upto.field'
 function Data.struct(param) 
   assert('table' == type(param), 
     table.concat{'invalid struct specification: ', tostring(param)})
@@ -525,12 +525,12 @@ function Data.struct(param)
     [Data.NAME] = nil,    -- will get populated when assigned to a module
     [Data.TYPE] = Data.STRUCT,
     [Data.DEFN] = {},     -- will be populated as model elements are defined 
-    [Data.INSTANCE] = {}, -- will be populated as instances are defined
+    [Data.INSTANCES] = {}, -- will be populated as instances are defined
   }
   local template = { -- top-level template to be installed in the module
     [Data.MODEL] = model,
   }
-  model[Data.INSTANCE]._ = template -- template instance is always called '_'
+  model[Data.INSTANCES]._ = template -- template instance is always called '_'
 
   -- set the model meta-table:
   setmetatable(model, _.METATABLES[Data.STRUCT])
@@ -583,7 +583,7 @@ _.METATABLES[Data.STRUCT] = {
 
     __newindex = function (model, key, value)
 
-      local template = model[Data.INSTANCE]._
+      local template = model[Data.INSTANCES]._
       local model_defn = model[Data.DEFN]
 
       if Data.NAME == key then -- set the model name
@@ -646,8 +646,8 @@ _.METATABLES[Data.STRUCT] = {
             end
           end
           
-          -- template is no longer an instance of the old_base
-          -- old_base[Data.MODEL][Data.INSTANCE][template] = nil
+          -- template is no longer an instance of the base struct
+          old_base[Data.MODEL][Data.INSTANCES][template] = nil
      
           -- visit up the base model inheritance hierarchy
           old_base = old_base[Data.MODEL][Data.BASE] -- parent base
@@ -683,6 +683,19 @@ _.METATABLES[Data.STRUCT] = {
 
         -- set the new base in the model definition (may be nil)
         model_defn[Data.BASE] = new_base
+
+        -- template is an instance of the base structs (inheritance hierarchy)
+        base = new_base
+        while base do
+          -- NOTE: Since we don't have a well-defined "name", we make an
+          -- and exception, and use the template (instance) itself to
+          -- index into the INSTANCES table. This is utilized by the
+          -- ._update_instances() to correctly update the template
+          base[Data.MODEL][Data.INSTANCES][template] = template
+
+          -- visit up the base model inheritance hierarchy
+          base = base[Data.MODEL][Data.BASE] -- parent base
+        end        
       end
     end
 }
@@ -721,7 +734,7 @@ _.METATABLES[Data.STRUCT] = {
 --  
 --  After either of the above definition, the following post-condition holds:
 --    MyUnion._d == '#'
---    MyUnion.field == 'container.path.to.field'
+--    MyUnion.field == 'container.prefix.upto.field'
 function Data.union(param) 
 
 	local discriminator_type = _.model_type(param[1])
@@ -735,12 +748,12 @@ function Data.union(param)
   		[Data.NAME] = nil,    -- will get populated when inserted into a module
   		[Data.TYPE] = Data.UNION, -- immutable
   		[Data.DEFN] = {},     -- will be populated as model elements are defined 
-  		[Data.INSTANCE] = {}, -- will be populated as instances are defined
+  		[Data.INSTANCES] = {}, -- will be populated as instances are defined
 	}
 	local template = { -- top-level template to be installed in the module
   		[Data.MODEL] = model,
 	}
-	model[Data.INSTANCE]._ = template -- template instance is always called '_'
+	model[Data.INSTANCES]._ = template -- template instance is always called '_'
 
   -- set the model meta-table:
   setmetatable(model, _.METATABLES[Data.UNION])
@@ -786,7 +799,7 @@ _.METATABLES[Data.UNION] = {
 
     __newindex = function (model, key, value)
 
-      local template = model[Data.INSTANCE]._
+      local template = model[Data.INSTANCES]._
       local model_defn = model[Data.DEFN]
       
       if Data.NAME == key then -- set the model name
@@ -895,7 +908,7 @@ function Data.typedef(param)
 		[Data.NAME] = nil, -- populated when the typedef is assigned to a module
 		[Data.TYPE] = Data.TYPEDEF,
 		[Data.DEFN] = { alias, collection },
-		[Data.INSTANCE] = nil,
+		[Data.INSTANCES] = nil,
 	}
 	local instance = { -- top-level instance to be installed in the module
 		[Data.MODEL] = model,
@@ -1157,9 +1170,9 @@ function Data.instance(name, template)
 	--       underlying concrete (non-typdef) alias type
 	local model = template[Data.MODEL]
 
-	-- try to retrieve the instance from the underlying model
-	model[Data.INSTANCE] = model[Data.INSTANCE] or {}
-	local instance = model[Data.INSTANCE][name]
+	-- try to retrieve the instances from the underlying model
+	model[Data.INSTANCES] = model[Data.INSTANCES] or {}
+	local instance = model[Data.INSTANCES][name]
 	
 	-- not found => create the instance:
 	if not instance then 
@@ -1174,7 +1187,7 @@ function Data.instance(name, template)
 		end
 		
 		-- cache the instance, so that we can reuse it the next time!
-		model[Data.INSTANCE][name] = instance
+		model[Data.INSTANCES][name] = instance
 	end
 	
 	return instance
@@ -1290,11 +1303,11 @@ end
 function _.update_instances(model, role, role_template)
 
    -- update template first
-   local template = model[Data.INSTANCE]._
+   local template = model[Data.INSTANCES]._
    template[role] = role_template
    
    -- update the remaining member instances:
-   for name, instance in pairs(model[Data.INSTANCE]) do
+   for name, instance in pairs(model[Data.INSTANCES]) do
       if instance == name then -- child struct (model is a base struct)
           instance[role] = role_template -- no prefix    
       elseif instance ~= template then -- prefix the 'name' to template[role]
