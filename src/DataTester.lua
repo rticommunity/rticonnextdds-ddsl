@@ -69,8 +69,8 @@ function Tester:test_enum2()
   assert(Test.Months.DEC == 12)
 end
 
-Tester[#Tester+1] = 'test_submodule_enum'
-function Tester:test_submodule_enum()
+Tester[#Tester+1] = 'test_enum_submodule'
+function Tester:test_enum_submodule()
 
   Test.Submodule.Colors = data.enum{
     { 'RED',   -5 },
@@ -83,20 +83,6 @@ function Tester:test_submodule_enum()
   assert(Test.Submodule.Colors.YELLOW == 7)
   assert(Test.Submodule.Colors.GREEN == -9)
   assert(Test.Submodule.Colors.PINK == 3)
-end
-
-Tester[#Tester+1] = 'test_submodule_struct'
-function Tester:test_submodule_struct()
-
-    Test.Submodule.Fruit = data.struct{
-      { weight = { data.double } },
-      { color = { Test.Submodule.Colors } },
-    }
-    
-    self:print(Test.Submodule.Fruit)
-    
-    assert(Test.Submodule.Fruit.weight == 'weight')
-    assert(Test.Submodule.Fruit.color == 'color')
 end
 
 Tester[#Tester+1] = 'test_user_annotation'
@@ -121,31 +107,119 @@ function Tester:test_user_annotation()
     assert(Test.MyAnnotation.value2 == 9.0)
 end
 
-Tester[#Tester+1] = 'test_atoms'
-function Tester:test_atoms()
+Tester[#Tester+1] = 'test_struct_imperative'
+function Tester:test_struct_imperative()
 
-    Test.Atoms = data.struct{
-      { myBoolean = { data.boolean } },
-      { myOctet = { data.octet } },
-      { myChar = { data.char } },
-      { myWChar = { data.wchar } },
-      { myFloat = { data.float } },
-      { myDouble = { data.double } },
-      { myLongDouble = { data.long_double } },
-      { myShort = { data.short } },
-      { myLong = { data.long } },
-      { myLongLong = { data.long_long } },
-      { myUnsignedShort = { data.unsigned_short } },
-      { myUnsignedLong = { data.unsigned_long } },
-      { myUnsignedLongLong = { data.unsigned_long_long } },
+    local DynamicShapeType = data.struct{}
+    DynamicShapeType[data.MODEL][1] = { x = { data.long } }
+    DynamicShapeType[data.MODEL][2] = { y = { data.long } }
+    DynamicShapeType[data.MODEL][3] = { shapesize = { data.double } }
+    DynamicShapeType[data.MODEL][4] = { color = { data.string(128), data.Key } }
+        
+    
+    -- install it under the name 'ShapeType' in the module
+    Test.ShapeType = DynamicShapeType
+    self:print(DynamicShapeType)
+
+    assert(DynamicShapeType.x == 'x')
+    assert(DynamicShapeType.y == 'y')
+    assert(DynamicShapeType.shapesize == 'shapesize')
+    assert(DynamicShapeType.color == 'color')   
+    
+    
+    
+    -- redefine shapesize:
+    DynamicShapeType[data.MODEL][3] = { shapesize = { data.long } } -- redefine
+    print("\n** redefined: double->long shapesize **\n")
+    self:print(DynamicShapeType)
+    assert(DynamicShapeType.shapesize == 'shapesize')
+ 
+ 
+    -- add z:
+    DynamicShapeType[data.MODEL][#DynamicShapeType[data.MODEL]+1] = 
+                                { z = { data.string() , data.Key } }
+    print("\n** added: string z @Key **\n")
+    self:print(DynamicShapeType)
+    assert(DynamicShapeType.z == 'z') 
+    
+    
+    -- remove z:
+    DynamicShapeType[data.MODEL][#DynamicShapeType[data.MODEL]] = nil 
+    print("\n** removed: string z **\n")
+    self:print(DynamicShapeType)
+    assert(DynamicShapeType.z == nil) 
+
+       
+    -- add a base class
+    local Bases = data.module{}
+    Bases.Base1 = data.struct{
+        { org = { data.string() } },
+    }
+    DynamicShapeType[data.MODEL][data.BASE] = Bases.Base1
+    print("\n** added: base class: Base1 **\n")
+    self:print(Bases.Base1)
+    self:print(DynamicShapeType)
+    assert(DynamicShapeType.org == 'org')  
+    assert(DynamicShapeType[data.MODEL][data.BASE] == Bases.Base1)
+    
+    -- redefine base class
+    Bases.Base2 = data.struct{
+        { pattern = { data.long } },
+    }
+    DynamicShapeType[data.MODEL][data.BASE] = Bases.Base2
+    print("\n** replaced: base class: Base2 **\n")
+    self:print(Bases.Base2)
+    self:print(DynamicShapeType)
+    assert(DynamicShapeType.pattern == 'pattern') 
+    assert(DynamicShapeType.org == nil)  
+    -- assert(DynamicShapeType[data.MODEL][data.BASE] == Bases.Base2)
+    
+    -- removed base class
+    DynamicShapeType[data.MODEL][data.BASE] = nil
+    print("\n** erased base class **\n")
+    self:print(DynamicShapeType)
+    assert(DynamicShapeType.pattern == nil) 
+    -- assert(DynamicShapeType[data.MODEL][data.BASE] == nil)
+ 
+ 
+    -- add an annotation
+    DynamicShapeType[data.MODEL][data.ANNOTATION] = { 
+        data.Extensibility{'EXTENSIBLE_EXTENSIBILITY'} 
+    }
+    print("\n** added annotation: @Extensibility **\n")
+    self:print(DynamicShapeType)
+    -- assert(DynamicShapeType[data.MODEL][data.ANNOTATION][1] ~= nil)
+ 
+    -- add another annotation
+    DynamicShapeType[data.MODEL][data.ANNOTATION] = { 
+        data.Extensibility{'EXTENSIBLE_EXTENSIBILITY'},
+        data.Nested{'FALSE'},
+    }  
+    print("\n** added: annotation: @Nested **\n")
+    self:print(DynamicShapeType)
+    assert(DynamicShapeType[data.MODEL][data.ANNOTATION][1] ~= nil)
+    assert(DynamicShapeType[data.MODEL][data.ANNOTATION][2] ~= nil)
+ 
+    -- clear annotations:
+    DynamicShapeType[data.MODEL][data.ANNOTATION] = nil
+    print("\n** erased annotations **\n")
+    self:print(DynamicShapeType)
+    assert(DynamicShapeType[data.MODEL][data.ANNOTATION] == nil)
+end
+
+
+Tester[#Tester+1] = 'test_struct_submodule'
+function Tester:test_struct_submodule()
+
+    Test.Submodule.Fruit = data.struct{
+      { weight = { data.double } },
+      { color = { Test.Submodule.Colors } },
     }
     
-    self:print(Test.Atoms)
+    self:print(Test.Submodule.Fruit)
     
-    assert(Test.Atoms.myBoolean == 'myBoolean')
-    for k, v in pairs(Test.Atoms) do
-        if 'string' == type(k) then assert(k == v) end
-    end
+    assert(Test.Submodule.Fruit.weight == 'weight')
+    assert(Test.Submodule.Fruit.color == 'color')
 end
 
 Tester[#Tester+1] = 'test_struct_basic'
@@ -192,6 +266,128 @@ function Tester:test_struct_nested()
     assert(Test.Address.name.nicknames(1) == 'name.nicknames[1]')
     assert(Test.Address.street == 'street')
     assert(Test.Address.city == 'city')
+end
+
+Tester[#Tester+1] = 'test_union_imperative'
+function Tester:test_union_imperative()
+
+    local DynamicUnion = data.union{data.char} -- switch
+    DynamicUnion[data.MODEL][1] = { 's', m_str = { data.string() } }
+    DynamicUnion[data.MODEL][2] = { 'i', m_int = { data.short } }  
+    DynamicUnion[data.MODEL][3] = { 'n' } -- no definition
+    DynamicUnion[data.MODEL][4] = { nil, m_oct = { data.octet } } -- default case
+
+    --[[ un-comment to test error checking (expected to assert)
+    DynamicUnion[data.MODEL][#DynamicUnion[data.MODEL]+1] = 
+                                  { 'x', m_oct = { data.octet } }
+    --]]
+    
+    -- install it under the name 'ShapeType' in the module
+    Test.DynamicUnion = DynamicUnion
+    self:print(DynamicUnion)
+
+    assert(DynamicUnion._d == '#')
+    assert(DynamicUnion.m_str == 'm_str')
+    assert(DynamicUnion.m_int == 'm_int')
+    assert(DynamicUnion.m_oct == 'm_oct')
+       
+    
+    -- redefine m_int:
+    DynamicUnion[data.MODEL][2] = { 'l', m_int = { data.long, data.Key } }  
+    print("\n** redefined: short->long m_int @Key **\n")
+    self:print(DynamicUnion)
+    assert(DynamicUnion.m_int == 'm_int')
+ 
+ 
+    -- add m_real:
+    DynamicUnion[data.MODEL][#DynamicUnion[data.MODEL]+1] = 
+                      { 'r', m_real = { data.double, data.Key } }
+    print("\n** added: double m_real @Key **\n")
+    self:print(DynamicUnion)
+    assert(DynamicUnion.m_real == 'm_real')
+    
+    -- remove m_real:
+    local case = DynamicUnion[data.MODEL][1] -- save the case
+    DynamicUnion[data.MODEL][1] = nil -- erase m_real
+    print("\n** removed: double m_str **\n")
+    self:print(DynamicUnion)
+    assert(DynamicUnion.m_str == nil) 
+ 
+  
+    -- check the accessor syntax - returned value must be assignable
+    -- add the previously saved case1 at the end, under a new value
+    case[1] = 'S'
+    DynamicUnion[data.MODEL][#DynamicUnion[data.MODEL]+1] = case 
+    print("\n** re-inserted modified case for m_str at the end **\n")
+    self:print(DynamicUnion)
+    assert(DynamicUnion.m_str == 'm_str')
+
+   
+    -- add an annotation
+    DynamicUnion[data.MODEL][data.ANNOTATION] = { 
+        data.Extensibility{'EXTENSIBLE_EXTENSIBILITY'} 
+    }
+    print("\n** added annotation: @Extensibility **\n")
+    self:print(DynamicUnion)
+    assert(DynamicUnion[data.MODEL][data.ANNOTATION][1] ~= nil)
+    
+    -- add another annotation
+    DynamicUnion[data.MODEL][data.ANNOTATION] = { 
+        data.Extensibility{'EXTENSIBLE_EXTENSIBILITY'},
+        data.Nested{'FALSE'},
+    }  
+    print("\n** added: annotation: @Nested **\n")
+    self:print(DynamicUnion)
+    assert(DynamicUnion[data.MODEL][data.ANNOTATION][1] ~= nil)
+    assert(DynamicUnion[data.MODEL][data.ANNOTATION][2] ~= nil)
+ 
+    -- clear annotations:
+    DynamicUnion[data.MODEL][data.ANNOTATION] = nil
+    print("\n** erased annotations **\n")
+    self:print(DynamicUnion)
+    assert(DynamicUnion[data.MODEL][data.ANNOTATION] == nil)
+end
+
+Tester[#Tester+1] = 'test_union_imperative2'
+function Tester:test_union_imperative2()
+    local DynamicUnion2 = data.union{data.char} -- switch
+    DynamicUnion2[data.MODEL][1] = { 's', m_str = { data.string() } }
+    DynamicUnion2[data.MODEL][2] = { 'i', m_int = { data.short } }  
+    DynamicUnion2[data.MODEL][3] = { nil, m_oct = { data.octet } } -- default case
+    
+    local DynamicStruct2 = data.struct{
+        { x = { data.long } },
+        { u = { DynamicUnion2 } },
+    }
+    
+    Test.DynamicUnion2 = DynamicUnion2
+    Test.DynamicStruct = DynamicStruct2
+    
+    self:print(DynamicUnion2)
+    self:print(DynamicStruct2)
+    
+    assert(DynamicStruct2.x == 'x')
+    assert(DynamicStruct2.u._d == 'u#')
+    assert(DynamicStruct2.u.m_str == 'u.m_str')
+    assert(DynamicStruct2.u.m_int == 'u.m_int')
+    assert(DynamicStruct2.u.m_oct == 'u.m_oct')
+    
+    -- add a member to the union, the struct should be updated
+    DynamicUnion2[data.MODEL][#DynamicUnion2[data.MODEL] + 1] =
+                { 'r', m_real = { data.double, data.Key } }
+    print("\n** added to union: double m_real @Key **\n")
+    self:print(DynamicUnion2)
+    assert(DynamicUnion2.m_real == 'm_real')
+    self:print(DynamicStruct2)
+    assert(DynamicStruct2.u.m_real == 'u.m_real')
+    
+    -- remove a member from the union, the struct should be updated
+    DynamicUnion2[data.MODEL][1] = nil -- erase m_str
+    print("\n** removed: string m_str **\n")
+    self:print(DynamicUnion2)
+    assert(DynamicUnion2.m_str == nil)
+    self:print(DynamicStruct2)
+    assert(DynamicUnion2.m_str == nil) 
 end
 
 Tester[#Tester+1] = 'test_union1'
@@ -546,6 +742,56 @@ function Tester:test_struct_inheritance4()
   assert(Test.Calendar.tasks(1).contact.email == 'tasks[1].contact.email')
   
   assert(Test.Calendar.tasks(1).day == 'tasks[1].day')
+end
+
+Tester[#Tester+1] = 'test_struct_recursive'
+function Tester:test_struct_recursive()
+
+    -- NOTE: Forward data declarations are not allowed in IDL
+    --       still, this is just a test to see how it might work
+    
+    Test.RecursiveStruct = data.struct{} -- fwd decl
+    local RecursiveStruct = data.struct{ -- note: won't get installed as a defn
+      { x = { data.long } },
+      { y = { data.long } },
+      { child = { Test.RecursiveStruct } },
+    }
+    Test.RecursiveStruct = nil -- erase from module
+    Test.RecursiveStruct = RecursiveStruct -- reinstall it
+    
+    self:print(Test.RecursiveStruct)
+    
+    assert('x' == Test.RecursiveStruct.x)
+    assert('y' == Test.RecursiveStruct.y)
+    
+    -- assert('child.x' == Test.RecursiveStruct.child.x)
+end
+
+Tester[#Tester+1] = 'test_atoms'
+function Tester:test_atoms()
+
+    Test.Atoms = data.struct{
+      { myBoolean = { data.boolean } },
+      { myOctet = { data.octet } },
+      { myChar = { data.char } },
+      { myWChar = { data.wchar } },
+      { myFloat = { data.float } },
+      { myDouble = { data.double } },
+      { myLongDouble = { data.long_double } },
+      { myShort = { data.short } },
+      { myLong = { data.long } },
+      { myLongLong = { data.long_long } },
+      { myUnsignedShort = { data.unsigned_short } },
+      { myUnsignedLong = { data.unsigned_long } },
+      { myUnsignedLongLong = { data.unsigned_long_long } },
+    }
+    
+    self:print(Test.Atoms)
+    
+    assert(Test.Atoms.myBoolean == 'myBoolean')
+    for k, v in pairs(Test.Atoms) do
+        if 'string' == type(k) then assert(k == v) end
+    end
 end
 
 Tester[#Tester+1] = 'test_typedef'
@@ -1050,258 +1296,13 @@ function Tester:test_const_bounds()
     assert(Test.MyCapacityStruct.myStr == 'myStr')
 end
 
-Tester[#Tester+1] = 'test_struct_recursive'
-function Tester:test_struct_recursive()
-
-    -- NOTE: Forward data declarations are not allowed in IDL
-    --       still, this is just a test to see how it might work
-    
-    Test.RecursiveStruct = data.struct{} -- fwd decl
-    local RecursiveStruct = data.struct{ -- note: won't get installed as a defn
-      { x = { data.long } },
-      { y = { data.long } },
-      { child = { Test.RecursiveStruct } },
-    }
-    Test.RecursiveStruct = nil -- erase from module
-    Test.RecursiveStruct = RecursiveStruct -- reinstall it
-    
-    self:print(Test.RecursiveStruct)
-    
-    assert('x' == Test.RecursiveStruct.x)
-    assert('y' == Test.RecursiveStruct.y)
-    
-    -- assert('child.x' == Test.RecursiveStruct.child.x)
-end
-
-Tester[#Tester+1] = 'test_dynamic_struct'
-function Tester:test_dynamic_struct()
-
-    local DynamicShapeType = data.struct{}
-    DynamicShapeType[data.MODEL][1] = { x = { data.long } }
-    DynamicShapeType[data.MODEL][2] = { y = { data.long } }
-    DynamicShapeType[data.MODEL][3] = { shapesize = { data.double } }
-    DynamicShapeType[data.MODEL][4] = { color = { data.string(128), data.Key } }
-        
-    
-    -- install it under the name 'ShapeType' in the module
-    Test.ShapeType = DynamicShapeType
-    self:print(DynamicShapeType)
-
-    assert(DynamicShapeType.x == 'x')
-    assert(DynamicShapeType.y == 'y')
-    assert(DynamicShapeType.shapesize == 'shapesize')
-    assert(DynamicShapeType.color == 'color')   
-    
-    
-    
-    -- redefine shapesize:
-    DynamicShapeType[data.MODEL][3] = { shapesize = { data.long } } -- redefine
-    print("\n** redefined: double->long shapesize **\n")
-    self:print(DynamicShapeType)
-    assert(DynamicShapeType.shapesize == 'shapesize')
- 
- 
-    -- add z:
-    DynamicShapeType[data.MODEL][#DynamicShapeType[data.MODEL]+1] = 
-                                { z = { data.string() , data.Key } }
-    print("\n** added: string z @Key **\n")
-    self:print(DynamicShapeType)
-    assert(DynamicShapeType.z == 'z') 
-    
-    
-    -- remove z:
-    DynamicShapeType[data.MODEL][#DynamicShapeType[data.MODEL]] = nil 
-    print("\n** removed: string z **\n")
-    self:print(DynamicShapeType)
-    assert(DynamicShapeType.z == nil) 
-
-       
-    -- add a base class
-    local Bases = data.module{}
-    Bases.Base1 = data.struct{
-        { org = { data.string() } },
-    }
-    DynamicShapeType[data.MODEL][data.BASE] = Bases.Base1
-    print("\n** added: base class: Base1 **\n")
-    self:print(Bases.Base1)
-    self:print(DynamicShapeType)
-    assert(DynamicShapeType.org == 'org')  
-    assert(DynamicShapeType[data.MODEL][data.BASE] == Bases.Base1)
-    
-    -- redefine base class
-    Bases.Base2 = data.struct{
-        { pattern = { data.long } },
-    }
-    DynamicShapeType[data.MODEL][data.BASE] = Bases.Base2
-    print("\n** replaced: base class: Base2 **\n")
-    self:print(Bases.Base2)
-    self:print(DynamicShapeType)
-    assert(DynamicShapeType.pattern == 'pattern') 
-    assert(DynamicShapeType.org == nil)  
-    -- assert(DynamicShapeType[data.MODEL][data.BASE] == Bases.Base2)
-    
-    -- removed base class
-    DynamicShapeType[data.MODEL][data.BASE] = nil
-    print("\n** erased base class **\n")
-    self:print(DynamicShapeType)
-    assert(DynamicShapeType.pattern == nil) 
-    -- assert(DynamicShapeType[data.MODEL][data.BASE] == nil)
- 
- 
-    -- add an annotation
-    DynamicShapeType[data.MODEL][data.ANNOTATION] = { 
-        data.Extensibility{'EXTENSIBLE_EXTENSIBILITY'} 
-    }
-    print("\n** added annotation: @Extensibility **\n")
-    self:print(DynamicShapeType)
-    -- assert(DynamicShapeType[data.MODEL][data.ANNOTATION][1] ~= nil)
- 
-    -- add another annotation
-    DynamicShapeType[data.MODEL][data.ANNOTATION] = { 
-        data.Extensibility{'EXTENSIBLE_EXTENSIBILITY'},
-        data.Nested{'FALSE'},
-    }  
-    print("\n** added: annotation: @Nested **\n")
-    self:print(DynamicShapeType)
-    assert(DynamicShapeType[data.MODEL][data.ANNOTATION][1] ~= nil)
-    assert(DynamicShapeType[data.MODEL][data.ANNOTATION][2] ~= nil)
- 
-    -- clear annotations:
-    DynamicShapeType[data.MODEL][data.ANNOTATION] = nil
-    print("\n** erased annotations **\n")
-    self:print(DynamicShapeType)
-    assert(DynamicShapeType[data.MODEL][data.ANNOTATION] == nil)
-end
-
-Tester[#Tester+1] = 'test_dynamic_union'
-function Tester:test_dynamic_union()
-
-    local DynamicUnion = data.union{data.char} -- switch
-    DynamicUnion[data.MODEL][1] = { 's', m_str = { data.string() } }
-    DynamicUnion[data.MODEL][2] = { 'i', m_int = { data.short } }  
-    DynamicUnion[data.MODEL][3] = { 'n' } -- no definition
-    DynamicUnion[data.MODEL][4] = { nil, m_oct = { data.octet } } -- default case
-
-    --[[ un-comment to test error checking (expected to assert)
-    DynamicUnion[data.MODEL][#DynamicUnion[data.MODEL]+1] = 
-                                  { 'x', m_oct = { data.octet } }
-    --]]
-    
-    -- install it under the name 'ShapeType' in the module
-    Test.DynamicUnion = DynamicUnion
-    self:print(DynamicUnion)
-
-    assert(DynamicUnion._d == '#')
-    assert(DynamicUnion.m_str == 'm_str')
-    assert(DynamicUnion.m_int == 'm_int')
-    assert(DynamicUnion.m_oct == 'm_oct')
-       
-    
-    -- redefine m_int:
-    DynamicUnion[data.MODEL][2] = { 'l', m_int = { data.long, data.Key } }  
-    print("\n** redefined: short->long m_int @Key **\n")
-    self:print(DynamicUnion)
-    assert(DynamicUnion.m_int == 'm_int')
- 
- 
-    -- add m_real:
-    DynamicUnion[data.MODEL][#DynamicUnion[data.MODEL]+1] = 
-                      { 'r', m_real = { data.double, data.Key } }
-    print("\n** added: double m_real @Key **\n")
-    self:print(DynamicUnion)
-    assert(DynamicUnion.m_real == 'm_real')
-    
-    -- remove m_real:
-    local case = DynamicUnion[data.MODEL][1] -- save the case
-    DynamicUnion[data.MODEL][1] = nil -- erase m_real
-    print("\n** removed: double m_str **\n")
-    self:print(DynamicUnion)
-    assert(DynamicUnion.m_str == nil) 
- 
-  
-    -- check the accessor syntax - returned value must be assignable
-    -- add the previously saved case1 at the end, under a new value
-    case[1] = 'S'
-    DynamicUnion[data.MODEL][#DynamicUnion[data.MODEL]+1] = case 
-    print("\n** re-inserted modified case for m_str at the end **\n")
-    self:print(DynamicUnion)
-    assert(DynamicUnion.m_str == 'm_str')
-
-   
-    -- add an annotation
-    DynamicUnion[data.MODEL][data.ANNOTATION] = { 
-        data.Extensibility{'EXTENSIBLE_EXTENSIBILITY'} 
-    }
-    print("\n** added annotation: @Extensibility **\n")
-    self:print(DynamicUnion)
-    assert(DynamicUnion[data.MODEL][data.ANNOTATION][1] ~= nil)
-    
-    -- add another annotation
-    DynamicUnion[data.MODEL][data.ANNOTATION] = { 
-        data.Extensibility{'EXTENSIBLE_EXTENSIBILITY'},
-        data.Nested{'FALSE'},
-    }  
-    print("\n** added: annotation: @Nested **\n")
-    self:print(DynamicUnion)
-    assert(DynamicUnion[data.MODEL][data.ANNOTATION][1] ~= nil)
-    assert(DynamicUnion[data.MODEL][data.ANNOTATION][2] ~= nil)
- 
-    -- clear annotations:
-    DynamicUnion[data.MODEL][data.ANNOTATION] = nil
-    print("\n** erased annotations **\n")
-    self:print(DynamicUnion)
-    assert(DynamicUnion[data.MODEL][data.ANNOTATION] == nil)
-end
-
-Tester[#Tester+1] = 'test_dynamic_union2'
-function Tester:test_dynamic_union2()
-    local DynamicUnion2 = data.union{data.char} -- switch
-    DynamicUnion2[data.MODEL][1] = { 's', m_str = { data.string() } }
-    DynamicUnion2[data.MODEL][2] = { 'i', m_int = { data.short } }  
-    DynamicUnion2[data.MODEL][3] = { nil, m_oct = { data.octet } } -- default case
-    
-    local DynamicStruct2 = data.struct{
-        { x = { data.long } },
-        { u = { DynamicUnion2 } },
-    }
-    
-    Test.DynamicUnion2 = DynamicUnion2
-    Test.DynamicStruct = DynamicStruct2
-    
-    self:print(DynamicUnion2)
-    self:print(DynamicStruct2)
-    
-    assert(DynamicStruct2.x == 'x')
-    assert(DynamicStruct2.u._d == 'u#')
-    assert(DynamicStruct2.u.m_str == 'u.m_str')
-    assert(DynamicStruct2.u.m_int == 'u.m_int')
-    assert(DynamicStruct2.u.m_oct == 'u.m_oct')
-    
-    -- add a member to the union, the struct should be updated
-    DynamicUnion2[data.MODEL][#DynamicUnion2[data.MODEL] + 1] =
-                { 'r', m_real = { data.double, data.Key } }
-    print("\n** added to union: double m_real @Key **\n")
-    self:print(DynamicUnion2)
-    assert(DynamicUnion2.m_real == 'm_real')
-    self:print(DynamicStruct2)
-    assert(DynamicStruct2.u.m_real == 'u.m_real')
-    
-    -- remove a member from the union, the struct should be updated
-    DynamicUnion2[data.MODEL][1] = nil -- erase m_str
-    print("\n** removed: string m_str **\n")
-    self:print(DynamicUnion2)
-    assert(DynamicUnion2.m_str == nil)
-    self:print(DynamicStruct2)
-    assert(DynamicUnion2.m_str == nil) 
-end
-
 Tester[#Tester+1] = 'test_root'
 function Tester:test_root()
   self:print(Test)
 end
 
-Tester[#Tester+1] = 'test_struct_nomodule'
-function Tester:test_struct_nomodule()
+Tester[#Tester+1] = 'test_nomodule'
+function Tester:test_nomodule()
   local ShapeType = data.struct{
     { x = { data.long } },
     { y = { data.long } },
