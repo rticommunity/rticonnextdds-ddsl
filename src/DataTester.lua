@@ -89,8 +89,8 @@ Tester[#Tester+1] = 'test_submodule_struct'
 function Tester:test_submodule_struct()
 
     Test.Submodule.Fruit = data.struct{
-      { 'weight', data.double },
-      { 'color' , Test.Submodule.Colors },
+      { weight = { data.double } },
+      { color = { Test.Submodule.Colors } },
     }
     
     self:print(Test.Submodule.Fruit)
@@ -105,12 +105,12 @@ function Tester:test_user_annotation()
     -- user defined annotation
     Test.MyAnnotation = data.annotation{value1 = 42, value2 = 9.0}
     Test.MyAnnotationStruct = data.struct{
-      { 'id',     data.long, data.Key },
-      { 'org',    data.long, data.Key{GUID=3} },
-      { 'weight', data.double, Test.MyAnnotation }, -- default 
-      { 'height', data.double, Test.MyAnnotation{} },
-      { 'color' , Test.Submodule.Colors, 
-                  Test.MyAnnotation{value1 = 10} },
+      { id = { data.long, data.Key } },
+      { org = { data.long, data.Key{GUID=3} } },
+      { weight = { data.double, Test.MyAnnotation } }, -- default 
+      { height = { data.double, Test.MyAnnotation{} } },
+      { color = { Test.Submodule.Colors, 
+                  Test.MyAnnotation{value1 = 10} } },
     }
     
     self:print(Test.MyAnnotation)
@@ -125,19 +125,19 @@ Tester[#Tester+1] = 'test_atoms'
 function Tester:test_atoms()
 
     Test.Atoms = data.struct{
-      { 'myBoolean', data.boolean },
-      { 'myOctet', data.octet },
-      { 'myChar', data.char },
-      { 'myWChar', data.wchar },
-      { 'myFloat', data.float },
-      { 'myDouble', data.double },
-      { 'myLongDouble', data.long_double },
-      { 'myShort', data.short },
-      { 'myLong', data.long },
-      { 'myLongLong', data.long_long },
-      { 'myUnsignedShort', data.unsigned_short },
-      { 'myUnsignedLong', data.unsigned_long },
-      { 'myUnsignedLongLong', data.unsigned_long_long },
+      { myBoolean = { data.boolean } },
+      { myOctet = { data.octet } },
+      { myChar = { data.char } },
+      { myWChar = { data.wchar } },
+      { myFloat = { data.float } },
+      { myDouble = { data.double } },
+      { myLongDouble = { data.long_double } },
+      { myShort = { data.short } },
+      { myLong = { data.long } },
+      { myLongLong = { data.long_long } },
+      { myUnsignedShort = { data.unsigned_short } },
+      { myUnsignedLong = { data.unsigned_long } },
+      { myUnsignedLongLong = { data.unsigned_long_long } },
     }
     
     self:print(Test.Atoms)
@@ -152,13 +152,12 @@ Tester[#Tester+1] = 'test_struct_basic'
 function Tester:test_struct_basic()
   
     Test.Name = data.struct{
-      -- { first = { data.string(10), data.Key } },
-      { 'first', data.string(10), data.Key },
-      { 'last',  data.wstring() },
-      { 'nicknames',  data.string(), data.sequence(3) },
-      { 'aliases',  data.string(7), data.sequence() },
-      { 'birthday', Test.Days, data.Optional },
-      { 'favorite', Test.Submodule.Colors, data.sequence(2), data.Optional },
+      { first = { data.string(10), data.Key } },
+      { last = { data.wstring() } },
+      { nicknames = { data.string(), data.sequence(3) } },
+      { aliases = { data.string(7), data.sequence() } },
+      { birthday = { Test.Days, data.Optional } },
+      { favorite = { Test.Submodule.Colors, data.sequence(2), data.Optional } },
     }
     
     self:print(Test.Name)
@@ -179,10 +178,10 @@ function Tester:test_struct_nested()
 
     Test.Address = data.struct{
       data.Extensibility{'EXTENSIBLE_EXTENSIBILITY'},
-      { 'name', Test.Name },
-      { 'street', data.string() },
-      { 'city',  data.string(10), 
-                    Test.MyAnnotation{value1 = 10, value2 = 17} },
+      { name = { Test.Name } },
+      { street = { data.string() } },
+      { city = { data.string(10), 
+                    Test.MyAnnotation{value1 = 10, value2 = 17} } },
       data.Nested{'FALSE'},
     }
 
@@ -200,11 +199,11 @@ function Tester:test_union1()
 
   Test.TestUnion1 = data.union{data.short,
     { 1, 
-      {'x', data.string() }},
+        x = { data.string() } },
     { 2, 
-      {'y', data.long_double }},
-    { -- default
-      {'z', data.boolean}},
+        y = { data.long_double } },
+    { nil, -- default 
+        z = { data.boolean } },
   }
 
   self:print(Test.TestUnion1)
@@ -220,11 +219,11 @@ function Tester:test_union2()
 
   Test.TestUnion2 = data.union{data.char,
     { 'c', 
-      {'name', Test.Name, data.Key }},
+      name = { Test.Name, data.Key } },
     { 'a', 
-      {'address', Test.Address}},
-    { -- default
-      {'x', data.double}},
+      address = { Test.Address } },
+    { nil, -- default
+      x = { data.double } },
   }
 
   self:print(Test.TestUnion2)
@@ -251,11 +250,11 @@ function Tester:test_union3()
 
   Test.TestUnion3 = data.union{Test.Days,
     { 'MON', 
-      {'name', Test.Name}},
+      name = { Test.Name } },
     { 'TUE', 
-      {'address', Test.Address}},
-    { -- default
-      {'x', data.double}},    
+      address = { Test.Address } },
+    { nil, -- default
+       x = { data.double } },    
     data.Extensibility{'EXTENSIBLE_EXTENSIBILITY',domain=5},
   }
 
@@ -286,9 +285,9 @@ function Tester:test_union4()
 
   Test.NameOrAddress = data.union{data.boolean,
     { true, 
-      {'name', Test.Name}},
+       name = { Test.Name } },
     { false, 
-      {'address', Test.Address}},
+       address =  { Test.Address } },
   }
   
   self:print(Test.NameOrAddress)
@@ -311,10 +310,10 @@ Tester[#Tester+1] = 'test_struct_complex1'
 function Tester:test_struct_complex1()
 
   Test.Company = data.struct{
-    { 'entity', Test.NameOrAddress},
-    { 'hq', data.string(), data.sequence(2) },
-    { 'offices', Test.Address, data.sequence(10) },
-    { 'employees', Test.Name, data.sequence() }
+    { entity = { Test.NameOrAddress } },
+    { hq = { data.string(), data.sequence(2) } },
+    { offices = { Test.Address, data.sequence(10) } },
+    { employees = { Test.Name, data.sequence() } }
   }
 
   self:print(Test.Company)
@@ -352,8 +351,8 @@ Tester[#Tester+1] = 'test_struct_complex2'
 function Tester:test_struct_complex2()
 
   Test.BigCompany = data.struct{
-    { 'parent', Test.Company},
-    { 'divisions', Test.Company, data.sequence()}
+    { parent = { Test.Company } },
+    { divisions = { Test.Company, data.sequence() } }
   }
 
   self:print(Test.BigCompany)
@@ -424,7 +423,7 @@ Tester[#Tester+1] = 'test_struct_inheritance1'
 function Tester:test_struct_inheritance1()
 
   Test.FullName = data.struct{Test.Name,
-    { 'middle',  data.string() },
+    { middle = { data.string() } },
     data.Extensibility{'EXTENSIBLE_EXTENSIBILITY'},
   }
 
@@ -449,8 +448,8 @@ Tester[#Tester+1] = 'test_struct_inheritance2'
 function Tester:test_struct_inheritance2()
 
   Test.Contact = data.struct{Test.FullName,
-    { 'address',  Test.Address },
-    { 'email',  data.string() },
+    { address = { Test.Address } },
+    { email = { data.string() } },
   }
 
   self:print(Test.Contact)
@@ -482,8 +481,8 @@ Tester[#Tester+1] = 'test_struct_inheritance3'
 function Tester:test_struct_inheritance3()
 
   Test.Tasks = data.struct{
-    { 'contact',  Test.Contact },
-    { 'day',  Test.Days },
+    { contact = { Test.Contact } },
+    { day = { Test.Days } },
   }
 
   self:print(Test.Tasks)
@@ -517,7 +516,7 @@ Tester[#Tester+1] = 'test_struct_inheritance4'
 function Tester:test_struct_inheritance4()
 
   Test.Calendar = data.struct{
-    { 'tasks',  Test.Tasks, data.sequence() },
+    { tasks = { Test.Tasks, data.sequence() } },
   }
 
   self:print(Test.Calendar)
@@ -564,17 +563,17 @@ function Tester:test_typedef()
   Test.MyAddress2 = data.typedef{Test.MyAddress}
   
   Test.MyTypedef = data.struct{
-    { 'rawDouble', data.double },
-    { 'myDouble', Test.MyDouble },
-    { 'myDouble2', Test.MyDouble2 },
+    { rawDouble =  { data.double } },
+    { myDouble =  { Test.MyDouble } },
+    { myDouble2 =  { Test.MyDouble2 } },
     
-    { 'name',  Test.Name },
-    { 'myName',  Test.MyName },
-    { 'myName2',  Test.MyName2 },
+    { name =  { Test.Name } },
+    { myName =  { Test.MyName } },
+    { myName2 =  { Test.MyName2 } },
     
-    { 'address', Test.Address },
-    { 'myAddress', Test.MyAddress },
-    { 'myAddress2', Test.MyAddress2 },
+    { address =  { Test.Address } },
+    { myAddress =  { Test.MyAddress } },
+    { myAddress2 =  { Test.MyAddress2 } },
   }
 
   self:print(Test.MyDouble)
@@ -620,21 +619,21 @@ function Tester:test_typedef_seq()
   Test.MyNameSeqSeq = data.typedef{Test.MyNameSeq, data.sequence(10) }
   
   Test.MyTypedefSeq = data.struct{
-    { 'myDoubleSeq', Test.MyDouble, data.sequence() },
-    { 'myDoubleSeqA', Test.MyDoubleSeq },
-    { 'myStringSeqA', Test.MyStringSeq },
+    { myDoubleSeq = { Test.MyDouble, data.sequence() } },
+    { myDoubleSeqA = { Test.MyDoubleSeq } },
+    { myStringSeqA = { Test.MyStringSeq } },
     
-    { 'nameSeq', Test.Name, data.sequence() },
-    { 'nameSeqA', Test.NameSeq },
-    { 'nameSeqSeq', Test.NameSeq, data.sequence() },
-    { 'nameSeqSeqA', Test.NameSeqSeq },
-    { 'nameSeqSeqASeq', Test.NameSeqSeq, data.sequence() },
+    { nameSeq = { Test.Name, data.sequence() } },
+    { nameSeqA = { Test.NameSeq } },
+    { nameSeqSeq = { Test.NameSeq, data.sequence() } },
+    { nameSeqSeqA = { Test.NameSeqSeq } },
+    { nameSeqSeqASeq = { Test.NameSeqSeq, data.sequence() } },
   
-    { 'myNameSeq', Test.MyName, data.sequence() },
-    { 'myNameSeqA', Test.MyNameSeq },
-    { 'myNameSeqSeq', Test.MyNameSeq, data.sequence() },
-    { 'myNameSeqSeqA', Test.MyNameSeqSeq },
-    { 'myNameSeqSeqASeq', Test.MyNameSeqSeq, data.sequence() },
+    { myNameSeq = { Test.MyName, data.sequence() } },
+    { myNameSeqA = { Test.MyNameSeq } },
+    { myNameSeqSeq = { Test.MyNameSeq, data.sequence() } },
+    { myNameSeqSeqA = { Test.MyNameSeqSeq } },
+    { myNameSeqSeqASeq = { Test.MyNameSeqSeq, data.sequence() } },
   }
 
   self:print(Test.MyDoubleSeq)
@@ -723,13 +722,13 @@ function Tester:test_arrays1()
     -- Arrays
     Test.MyArrays1 = data.struct{
       -- 1-D
-      { 'ints', data.double, data.array(3) },
+      { ints = { data.double, data.array(3) } },
     
       -- 2-D
-      { 'days', Test.Days, data.array(6, 9) },
+      { days = { Test.Days, data.array(6, 9) } },
       
       -- 3-D
-      { 'names', Test.Name, data.array(12, 15, 18) },
+      { names = { Test.Name, data.array(12, 15, 18) } },
     }
 
 	-- structure with arrays
@@ -759,15 +758,15 @@ function Tester:test_arrays2()
     Test.MyArrays2 = data.union{Test.Days,
       -- 1-D
       { 'MON',
-        {'ints', data.double, data.array(3) }},
+        ints = { data.double, data.array(3) }},
     
       -- 2-D
       { 'TUE',
-        { 'days', Test.Days, data.array(6, 9) }},
+        days = { Test.Days, data.array(6, 9) }},
       
       -- 3-D
-      {--
-        { 'names', Test.Name, data.array(12, 15, 18) }},  
+      {nil,
+        names = { Test.Name, data.array(12, 15, 18) }},  
     }
 
 	-- union with arrays
@@ -799,25 +798,25 @@ function Tester:test_arrays3()
 	
 	Test.MyArrays3 = data.struct{
 		-- 1-D
-		{ 'myNames', Test.MyNameArray },
+		{ myNames = { Test.MyNameArray } },
 
 		-- 2-D
-		{ 'myNamesArray', Test.MyNameArray, data.array(10) },
+		{ myNamesArray = { Test.MyNameArray, data.array(10) } },
 	
 		-- 2-D
-		{ 'myNames2', Test.MyNameArray2 },
+		{ myNames2 = { Test.MyNameArray2 } },
 				
 		-- 3-D
-		{ 'myNames2Array', Test.MyNameArray2, data.array(10) },
+		{ myNames2Array = { Test.MyNameArray2, data.array(10) } },
 
 		-- 4-D
-		{ 'myNames2Array2', Test.MyNameArray2, data.array(10, 20) },
+		{ myNames2Array2 = { Test.MyNameArray2, data.array(10, 20) } },
 		
 		-- 2D: 2x2
-		{ 'myName2x2', Test.MyName2x2 },
+		{ myName2x2 = { Test.MyName2x2 } },
 
 		-- 4D: 2x2 x2x2
-		{ 'myName2x2x2x2', Test.MyName2x2, data.array(4,5) },
+		{ myName2x2x2x2 = { Test.MyName2x2, data.array(4,5) } },
 	}
 
     self:print(Test.MyNameArray)
@@ -887,25 +886,25 @@ function Tester:test_sequences_multi_dim()
 	
 	Test.MySeqs3 = data.struct{
 		-- 1-D
-		{ 'myNames', Test.MyNameSeq },
+		{ myNames = { Test.MyNameSeq } },
 
 		-- 2-D
-		{ 'myNamesSeq', Test.MyNameSeq1, data.sequence(10) },
+		{ myNamesSeq = { Test.MyNameSeq1, data.sequence(10) } },
 	
 		-- 2-D
-		{ 'myNames2', Test.MyNameSeq2 },
+		{ myNames2 = { Test.MyNameSeq2 } },
 				
 		-- 3-D
-		{ 'myNames2Seq', Test.MyNameSeq2, data.sequence(10) },
+		{ myNames2Seq = { Test.MyNameSeq2, data.sequence(10) } },
 
 		-- 4-D
-		{ 'myNames2Seq2', Test.MyNameSeq2, data.sequence(10, 20) },
+		{ myNames2Seq2 = { Test.MyNameSeq2, data.sequence(10, 20) } },
 		
 		-- 2D: 2x2
-		{ 'myName2x2', Test.MyName2x2 },
+		{ myName2x2 = { Test.MyName2x2 } },
 
 		-- 4D: 2x2 x2x2
-		{ 'myName2x2x2x2', Test.MyNameSeq2x2, data.sequence(4,5) },
+		{ myName2x2x2x2 = { Test.MyNameSeq2x2, data.sequence(4,5) } },
 	}
 
     self:print(Test.MyNameSeq1)
@@ -1012,13 +1011,13 @@ function Tester:test_const_bounds()
                       data.array(Test.CAPACITY, Test.CAPACITY) }
   
     Test.MyCapacityStruct = data.struct{ 
-        { 'myNames', Test.MyCapacitySeq },
-        { 'myNames2', Test.MyCapacityArr },
-        { 'myStrings', data.string(), 
-                       data.array(Test.CAPACITY, Test.CAPACITY)},
-        { 'myNums', data.double, 
-                    data.sequence(Test.CAPACITY, Test.CAPACITY)},
-        { 'myStr', data.string(Test.CAPACITY) },                                       
+        { myNames = { Test.MyCapacitySeq } },
+        { myNames2 = { Test.MyCapacityArr } },
+        { myStrings = { data.string(), 
+                       data.array(Test.CAPACITY, Test.CAPACITY)} },
+        { myNums = { data.double, 
+                    data.sequence(Test.CAPACITY, Test.CAPACITY)} },
+        { myStr = { data.string(Test.CAPACITY) } },                                       
     }
                                  
     self:print(Test.CAPACITY)
@@ -1059,9 +1058,9 @@ function Tester:test_struct_recursive()
     
     Test.RecursiveStruct = data.struct{} -- fwd decl
     local RecursiveStruct = data.struct{ -- note: won't get installed as a defn
-      { 'x', data.long },
-      { 'y', data.long },
-      { 'child', Test.RecursiveStruct },
+      { x = { data.long } },
+      { y = { data.long } },
+      { child = { Test.RecursiveStruct } },
     }
     Test.RecursiveStruct = nil -- erase from module
     Test.RecursiveStruct = RecursiveStruct -- reinstall it
@@ -1078,10 +1077,10 @@ Tester[#Tester+1] = 'test_dynamic_struct'
 function Tester:test_dynamic_struct()
 
     local DynamicShapeType = data.struct{}
-    DynamicShapeType.x = { data.long }
-    DynamicShapeType.y = { data.long }
-    DynamicShapeType.shapesize = { data.double }
-    DynamicShapeType.color = { data.string(128), data.Key  }
+    DynamicShapeType[data.MODEL][1] = { x = { data.long } }
+    DynamicShapeType[data.MODEL][2] = { y = { data.long } }
+    DynamicShapeType[data.MODEL][3] = { shapesize = { data.double } }
+    DynamicShapeType[data.MODEL][4] = { color = { data.string(128), data.Key } }
         
     
     -- install it under the name 'ShapeType' in the module
@@ -1096,54 +1095,44 @@ function Tester:test_dynamic_struct()
     
     
     -- redefine shapesize:
-    DynamicShapeType.shapesize = nil -- erase member (for redefinition)
-    DynamicShapeType.shapesize = { data.long } -- redefine it
+    DynamicShapeType[data.MODEL][3] = { shapesize = { data.long } } -- redefine
     print("\n** redefined: double->long shapesize **\n")
     self:print(DynamicShapeType)
     assert(DynamicShapeType.shapesize == 'shapesize')
  
  
     -- add z:
-    DynamicShapeType.z = { data.string() , data.Key }
+    DynamicShapeType[data.MODEL][#DynamicShapeType[data.MODEL]+1] = 
+                                { z = { data.string() , data.Key } }
     print("\n** added: string z @Key **\n")
     self:print(DynamicShapeType)
     assert(DynamicShapeType.z == 'z') 
     
     
     -- remove z:
-    DynamicShapeType.z = nil -- erase member (for redefinition)
-    DynamicShapeType.z = nil -- redefine it as empty
+    DynamicShapeType[data.MODEL][#DynamicShapeType[data.MODEL]] = nil 
     print("\n** removed: string z **\n")
     self:print(DynamicShapeType)
     assert(DynamicShapeType.z == nil) 
 
-    --[[ TODO
-    -- check the accessor syntax - returned value must be assignable
-    -- add the previously saved case1 at the end, under a new value
-    case[1] = 'S'
-    DynamicUnion[data.MODEL][#DynamicUnion[data.MODEL]+1] = case 
-    print("\n** re-inserted modified case for m_str at the end **\n")
-    self:print(DynamicUnion)
-    assert(DynamicUnion.m_str == 'm_str')
-    --]]
        
     -- add a base class
     local Bases = data.module{}
     Bases.Base1 = data.struct{
-        { 'org', data.string() },
+        { org = { data.string() } },
     }
-    DynamicShapeType[data.BASE] = Bases.Base1
+    DynamicShapeType[data.MODEL][data.BASE] = Bases.Base1
     print("\n** added: base class: Base1 **\n")
     self:print(Bases.Base1)
     self:print(DynamicShapeType)
     assert(DynamicShapeType.org == 'org')  
-    -- assert(DynamicShapeType[data.MODEL][data.BASE] == Bases.Base1)
+    assert(DynamicShapeType[data.MODEL][data.BASE] == Bases.Base1)
     
     -- redefine base class
     Bases.Base2 = data.struct{
-        { 'pattern', data.long },
+        { pattern = { data.long } },
     }
-    DynamicShapeType[data.BASE] = Bases.Base2
+    DynamicShapeType[data.MODEL][data.BASE] = Bases.Base2
     print("\n** replaced: base class: Base2 **\n")
     self:print(Bases.Base2)
     self:print(DynamicShapeType)
@@ -1152,7 +1141,7 @@ function Tester:test_dynamic_struct()
     -- assert(DynamicShapeType[data.MODEL][data.BASE] == Bases.Base2)
     
     -- removed base class
-    DynamicShapeType[data.BASE] = nil
+    DynamicShapeType[data.MODEL][data.BASE] = nil
     print("\n** erased base class **\n")
     self:print(DynamicShapeType)
     assert(DynamicShapeType.pattern == nil) 
@@ -1160,7 +1149,7 @@ function Tester:test_dynamic_struct()
  
  
     -- add an annotation
-    DynamicShapeType[data.ANNOTATION] = { 
+    DynamicShapeType[data.MODEL][data.ANNOTATION] = { 
         data.Extensibility{'EXTENSIBLE_EXTENSIBILITY'} 
     }
     print("\n** added annotation: @Extensibility **\n")
@@ -1168,20 +1157,20 @@ function Tester:test_dynamic_struct()
     -- assert(DynamicShapeType[data.MODEL][data.ANNOTATION][1] ~= nil)
  
     -- add another annotation
-    DynamicShapeType[data.ANNOTATION] = { 
+    DynamicShapeType[data.MODEL][data.ANNOTATION] = { 
         data.Extensibility{'EXTENSIBLE_EXTENSIBILITY'},
         data.Nested{'FALSE'},
     }  
     print("\n** added: annotation: @Nested **\n")
     self:print(DynamicShapeType)
-    -- assert(DynamicShapeType[data.MODEL][data.ANNOTATION][1] ~= nil)
-    -- assert(DynamicShapeType[data.MODEL][data.ANNOTATION][2] ~= nil)
+    assert(DynamicShapeType[data.MODEL][data.ANNOTATION][1] ~= nil)
+    assert(DynamicShapeType[data.MODEL][data.ANNOTATION][2] ~= nil)
  
     -- clear annotations:
-    DynamicShapeType[data.ANNOTATION] = nil
+    DynamicShapeType[data.MODEL][data.ANNOTATION] = nil
     print("\n** erased annotations **\n")
     self:print(DynamicShapeType)
-    -- assert(DynamicShapeType[data.MODEL][data.ANNOTATION] == nil)
+    assert(DynamicShapeType[data.MODEL][data.ANNOTATION] == nil)
 end
 
 Tester[#Tester+1] = 'test_dynamic_union'
@@ -1272,8 +1261,8 @@ function Tester:test_dynamic_union2()
     DynamicUnion2[data.MODEL][3] = { nil, m_oct = { data.octet } } -- default case
     
     local DynamicStruct2 = data.struct{
-        { 'x', data.long },
-        { 'u', DynamicUnion2 },
+        { x = { data.long } },
+        { u = { DynamicUnion2 } },
     }
     
     Test.DynamicUnion2 = DynamicUnion2
@@ -1314,10 +1303,10 @@ end
 Tester[#Tester+1] = 'test_struct_nomodule'
 function Tester:test_struct_nomodule()
   local ShapeType = data.struct{
-    { 'x', data.long },
-    { 'y', data.long },
-    { 'shapesize', data.long },
-    { 'color', data.string(128), data.Key },
+    { x = { data.long } },
+    { y = { data.long } },
+    { shapesize = { data.long } },
+    { color = { data.string(128), data.Key } },
   }
   
   self:print(ShapeType)

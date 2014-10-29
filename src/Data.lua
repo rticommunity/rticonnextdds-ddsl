@@ -486,92 +486,8 @@ function Data.enum(param)
 	return instance
 end
 
-
-_.METATABLES[Data.STRUCT] = {
-  -- __index(): Don't want to overload it. Want it to be very FAST since it is
-  --            in the critical data access path
-  
-  __newindex = function (struct, key, value)
-
-      if 'string' == type(key) then -- member definition 
-          --  Structs:
-          --  { role = { template, [collection,] [annotation1, annotation2, ...] } }
-          local role, role_defn, role_instance = key, value
-               
-          -- not erasing the member definition:
-          if nil ~= role_defn then
-              role_instance, role_defn = _.create_role_instance(role, role_defn) 
-          end
-          
-          -- insert into the struct definition
-          local defn = struct[Data.MODEL][Data.DEFN]
-          local replaced = false
-          for i = #defn, 1, -1 do -- count down, latest first
-              local role_i, role_defn_i = next(defn[i])
-              if role == role_i then
-                  if role_defn then -- replace the old definition
-                      defn[i][role] = role_defn
-                  else -- erase the entry for definition
-                      table.remove(defn,i)
-                  end
-                  replaced = true 
-                  break
-              end
-          end
-          if not replaced and role_defn then -- insert at the end
-              table.insert(defn, { [role] = role_defn } )
-          end
-          
-          -- add an index entry to the struct
-          rawset(struct, role, role_instance)
-          
-          -- TODO: update the struct instances for this member (re)-definition
-      
-      elseif Data.BASE == key then -- base definition
-          local base
-          
-          -- establish a valid base struct, if any:
-          if nil ~= value then
-              base = _.assert_model(Data.STRUCT, value)
-          end
-         
-          -- clear the instance fields from the current base type (if any)
-          local old_base = struct[Data.MODEL][Data.DEFN][Data.BASE]
-          if old_base then
-              for k, v in pairs(struct[Data.MODEL][Data.DEFN][Data.BASE]) do
-                  if 'string' == type(k) then -- copy only the base instance fields 
-                      rawset(struct, k, nil)
-                      
-                      -- TODO: update the struct instances to remove this member
-                  end
-              end
-              old_base[Data.MODEL][Data.INSTANCE][struct] = nil -- struct is no longer its instance
-          end
-          
-          -- set the new base in the model definition (may be nil)
-          struct[Data.MODEL][Data.DEFN][Data.BASE] = base
-        
-          -- populate the instance fields from the base type
-          if base then
-              for k, v in pairs(base) do
-                  if 'string' == type(k) then -- copy the base instance fields 
-                      rawset(struct, k, v)
-                      
-                      -- TODO: update the struct instances to add this member
-                  end
-              end
-              base[Data.MODEL][Data.INSTANCE][struct] = struct -- struct is its special instance
-          end
-          
-      elseif Data.ANNOTATION == key then -- annotation definition
-          -- set the new annotations in the model definition (may be nil)
-          struct[Data.MODEL][Data.DEFN][Data.ANNOTATION] = _.assert_annotation_array(value)    
-      end
-           
-  end
-}
-
---- Create a struct
+--------------------------------------------------------------------------------
+--- Create a struct type
 -- @param param a table representing the struct declaration  
 -- @return a table representing the struct data model. The table fields 
 -- contain the string index to de-reference the struct's value in 
@@ -579,166 +495,200 @@ _.METATABLES[Data.STRUCT] = {
 -- @usage
 --    -- Declarative style
 --    MyStruct = Data.struct{OptionalBaseStruct, 
---      { field = { type } },
+--      { field = { type, multiplicity?, annotation? } },
 --      :  
---      { field = { type } },
+--      { field = { type, multiplicity?, annotation? } },
+--      annotation?,
+--       :
+--      annotation?,
 --    }
 --    
 --  -- Imperative style
 --   MyStruct = Data.struct{}
+--   
 --   MyStruct[Data.MODEL][Data.BASE] = BaseStruct, -- optional
---   MyStruct[Data.MODEL][1] = { field = { type } },
+--   MyStruct[data.MODEL][data.ANNOTATION] = {     -- optional
+--        data.Extensibility{'EXTENSIBLE_EXTENSIBILITY'},
+--        data.Nested{'FALSE'},
+--      }
+--      
+--   MyStruct[Data.MODEL][i] = { field = { type, multiplicity?, annotation? } },
 --                :              
---  
+--
 --  After either of the above definition, the following post-condition holds:
---    MyStruct.field == 'container.prefix.field'
+--    MyStruct.field == 'container.path.to.field'
 function Data.struct(param) 
-  	assert('table' == type(param), 
-  		   table.concat{'invalid struct specification: ', tostring(param)})
-  
-  	local model = { -- meta-data defining the struct
-  		[Data.NAME] = nil,    -- will get populated when assigned to a module
-  		[Data.TYPE] = Data.STRUCT,
-  		[Data.DEFN] = {},     -- will be populated as model elements are defined 
-  		[Data.INSTANCE] = {}, -- will be populated as instances are defined
-  	}
-  	local template = { -- top-level template to be installed in the module
-  		[Data.MODEL] = model,
-  	}
-    model[Data.INSTANCE]._ = template -- template instance is always called '_'
+  assert('table' == type(param), 
+    table.concat{'invalid struct specification: ', tostring(param)})
 
-    -- set the meta-table for new template to be added to the struct
-    setmetatable(template, _.METATABLES[Data.STRUCT])
-    
-    
-    -- OPTIONAL base: pop the next element if it is a base model element
-    local base
-    if Data.STRUCT == _.model_type(param[1]) then
-        base = param[1]   table.remove(param, 1)
-                
-        -- insert the base class:
-        template[Data.BASE] = base -- invokes the meta-table __newindex()
+  local model = { -- meta-data defining the struct
+    [Data.NAME] = nil,    -- will get populated when assigned to a module
+    [Data.TYPE] = Data.STRUCT,
+    [Data.DEFN] = {},     -- will be populated as model elements are defined 
+    [Data.INSTANCE] = {}, -- will be populated as instances are defined
+  }
+  local template = { -- top-level template to be installed in the module
+    [Data.MODEL] = model,
+  }
+  model[Data.INSTANCE]._ = template -- template instance is always called '_'
+
+  -- set the model meta-table:
+  setmetatable(model, _.METATABLES[Data.STRUCT])
+
+
+  -- OPTIONAL base: pop the next element if it is a base model element
+  local base
+  if Data.STRUCT == _.model_type(param[1]) then
+    base = param[1]   table.remove(param, 1)
+
+    -- insert the base class:
+    model[Data.BASE] = base -- invokes the meta-table __newindex()
+  end
+
+  -- populate the model table
+  local annotations
+  for i, defn_i in ipairs(param) do 
+
+    -- build the struct level annotation list
+    if Data.ANNOTATION == _.model_type(defn_i) then     
+      annotations = annotations or {}
+      table.insert(annotations, defn_i)  
+
+    else -- struct member definition
+      -- insert the model definition entry: invokes meta-table __newindex()
+      model[#model+1] = defn_i  
     end
-        
-    -- populate the model table
-    local annotations
-    for i, defn_i in ipairs(param) do 
-    
-      -- build the struct level annotation list
-      if Data.ANNOTATION == _.model_type(defn_i) then     
-          annotations = annotations or {}
-          table.insert(annotations, defn_i)  
-          
-      else -- struct member definition
-          local role = defn_i[1]     table.remove(defn_i, 1) -- pop the role
-          
-          -- check for conflicting  member fields
-          assert(nil == template[role], 
-                 table.concat{'member name already defined: ', role})
-      
-          -- insert the member:
-          template[role] = defn_i    -- invokes the meta-table __newindex()
-        end
-    end
-  
-    if annotations then -- insert the annotations:
-        -- invokes the meta-table __newindex()
-        template[Data.ANNOTATION] = annotations 
-    end
-    
-	return template
+  end
+
+  if annotations then -- insert the annotations:
+    model[Data.ANNOTATION] = annotations -- invokes meta-table __newindex()
+  end
+
+  return template
 end
 
 
-_.METATABLES[Data.UNION] = { -- applies to a union[Data.MODEL] table
+--- Metatable for a struct[Data.MODEL] table
+-- struct[Data.MODEL] table serves as a virtual table and manipulates
+-- the underlying struct[Data.MODEL][Data.DEFN] and attached instances
+_.METATABLES[Data.STRUCT] = {
 
-  -- NOTE: union[Data.MODEL] table serves as a virtual table and manipulates
-  --       the underlying union[Data.MODEL][Data.DEFN] and attaches instances
-  
-  __len = function (model)
+    __len = function (model)
       return #model[Data.DEFN]
-  end,
+    end,
 
-  __index = function (model, key)
+    __index = function (model, key)
       return model[Data.DEFN][key]
-  end,
-  
-  __newindex = function (model, key, value)
+    end,
 
-      if 'number' == type(key) then -- member definition
-          --  Unions:
-          --   { case, 
-          --     role = { template, [collection,] [annotation1, annotation2, ...] } 
-          --   }
-          
-          -- clear the old member definition
-          if model[Data.DEFN][key] then
-              local old_role = next(model[Data.DEFN][key], 1) -- 2nd item
-        
-              -- update instances: remove the old_role_defn
-              if old_role then
-                  _.update_instances(model, old_role, nil) -- clear the role
-              end
-          end
-                    
-          -- set the new role_defn
-          local case, role, role_defn, role_instance
-          if nil ~= value then -- 
-              case = _.assert_case(model[Data.DEFN][Data.SWITCH], value[1])
-              
-              -- is the case already defined?
-              for i, defn_i in ipairs(model[Data.DEFN]) do
-                  assert(case ~= defn_i[1], 
-                         table.concat{'case exists: "', tostring(case), '"'})
-              end
+    __newindex = function (model, key, value)
 
-              -- get the role and definition
-              for k, v in pairs(value) do
-                 if 'string' == type(k) then 
-                    role = k         role_defn = v
-                    break -- only 1 member definition allowed per case
-                 end
-              end
-           
-              -- add the role
-              if role then                    
-                  -- is the role already defined?
-                  assert(nil == model[Data.INSTANCE]._[role],-- check template
-                     table.concat{'member name already defined: "', role, '"'})
+      local template = model[Data.INSTANCE]._
+      local model_defn = model[Data.DEFN]
 
-                  role_instance = _.create_role_instance(role, role_defn)              
+      if Data.NAME == key then -- set the model name
+        rawset(model, Data.NAME, value)
 
-                  -- insert the new member definition 
-                  local role_defn_copy = {} -- make our own local copy
-                  for i, v in ipairs(role_defn) do role_defn_copy[i] = v end
-                  model[Data.DEFN][key] = {
-                      case,                     -- array of length 1
-                      [role] = role_defn_copy   -- map with one entry
-                  }          
-                  
-                 -- update instances: add the new role_defn
-                 _.update_instances(model, role, role_instance)
-              else
-                 model[Data.DEFN][key] = {
-                      case,         -- array of length 1
-                 }
-              end
-           
-          else -- nil: remove the key-th member definition
-              table.remove(model[Data.DEFN], key) -- do not want holes in array
-          end
-          
       elseif Data.ANNOTATION == key then -- annotation definition
-          -- set the new annotations in the model definition (may be nil)
-          model[Data.DEFN][Data.ANNOTATION] = _.assert_annotation_array(value) 
-      
-      elseif Data.NAME == key then -- set the model name
-          rawset(model, Data.NAME, value)
+        -- set the new annotations in the model definition (may be nil)
+        model_defn[Data.ANNOTATION] = _.assert_annotation_array(value)
+
+      elseif 'number' == type(key) then -- member definition
+        --  Format:
+        --  { role = { template, [collection,] [annotation1, annotation2, ...] } }
+
+        -- clear the old member definition and instance fields
+        if model_defn[key] then
+          local old_role = next(model_defn[key])
+
+          -- update instances: remove the old_role
+          if old_role then
+            _.update_instances(model, old_role, nil) -- clear the role
+          end
       end
-  end
+
+      -- set the new member definition
+      if nil == value then
+        -- nil => remove the key-th member definition
+        table.remove(model_defn, key) -- do not want holes in array
+
+      else
+        -- get the new role and role_defn
+        local role, role_defn = next(value)
+
+        -- is the role already defined?
+        assert(nil == template[role],-- check template
+          table.concat{'member name already defined: "', role, '"'})
+
+        -- create role instance (checks for pre-conditions, may fail!)
+        local role_instance = _.create_role_instance(role, role_defn)
+
+        -- update instances: add the new role_defn
+        _.update_instances(model, role, role_instance)
+
+        -- insert the new member definition
+        local role_defn_copy = {} -- make our own local copy
+        for i, v in ipairs(role_defn) do role_defn_copy[i] = v end
+        model_defn[key] = {
+          [role] = role_defn_copy   -- map with one entry
+        }
+      end
+
+      elseif Data.BASE == key then -- inherits from 'base' struct
+
+        -- clear the instance fields from the old base struct (if any)
+        local old_base = model_defn[Data.BASE]
+        while old_base do
+          for k, v in pairs(old_base) do
+            if 'string' == type(k) then -- copy only the base instance fields
+              -- update instances: remove the old_base role
+              _.update_instances(model, k, nil) -- clear the role
+            end
+          end
+          
+          -- template is no longer an instance of the old_base
+          -- old_base[Data.MODEL][Data.INSTANCE][template] = nil
+     
+          -- visit up the base model inheritance hierarchy
+          old_base = old_base[Data.MODEL][Data.BASE] -- parent base
+        end
+
+        -- get the base model, if any:
+        local new_base
+        if nil ~= value then
+          new_base = _.assert_model(Data.STRUCT, value)
+        end
+
+        -- populate the instance fields from the base model struct
+        local base = new_base
+        while base do
+          for i = 1, #base[Data.MODEL] do
+            local base_role, base_role_defn = next(base[Data.MODEL][i])
+            
+            -- is the base_role already defined?
+            assert(nil == template[base_role],-- check template
+              table.concat{'member name already defined: "', base_role, '"'})
+
+            -- create base role instance (checks for pre-conditions, may fail)
+            local base_role_instance =
+              _.create_role_instance(base_role, base_role_defn)
+
+            -- update instances: add the new role_defn
+            _.update_instances(model, base_role, base_role_instance)
+          end
+            
+          -- visit up the base model inheritance hierarchy
+          base = base[Data.MODEL][Data.BASE] -- parent base
+        end
+
+        -- set the new base in the model definition (may be nil)
+        model_defn[Data.BASE] = new_base
+      end
+    end
 }
 
---- Create a union
+--------------------------------------------------------------------------------
+--- Create a union type
 -- @param param a table representing the union declaration  
 -- @return a table representing the union data model. The table fields 
 -- contain the string index to de-reference the union's value in 
@@ -747,22 +697,31 @@ _.METATABLES[Data.UNION] = { -- applies to a union[Data.MODEL] table
 --    -- Declarative style
 --    MyUnion = Data.union{ discriminator,
 --      { case, 
---        { field = { type } } },
+--        { field = { type, multiplicity?, annotation? } } },
 --      :  
 --      { case, 
---        { field = { type } } },
+--        { field = { type, multiplicity?, annotation? } } },
 --      { nil, 
---        { field = { type } } },
+--        { field = { type, multiplicity?, annotation? } } },
+--      annotation?,
+--       :
+--      annotation?,
 --    }
 --    
 --  -- Imperative style
 --   MyUnion = Data.union{ discriminator }
---   MyUnion[Data.MODEL][1] = { case, { field = { type } } },
+--   
+--   MyUnion[data.MODEL][data.ANNOTATION] = {     -- optional
+--        data.Extensibility{'EXTENSIBLE_EXTENSIBILITY'},
+--        data.Nested{'FALSE'},
+--      }
+--
+--   MyUnion[Data.MODEL][i] = { field = { type, multiplicity?, annotation? } },
 --                :              
 --  
 --  After either of the above definition, the following post-condition holds:
 --    MyUnion._d == '#'
---    MyUnion.field == 'container.prefix.field'
+--    MyUnion.field == 'container.path.to.field'
 function Data.union(param) 
 
 	local discriminator_type = _.model_type(param[1])
@@ -812,8 +771,92 @@ function Data.union(param)
     
 	return template
 end
+--- Metatable for a union[Data.MODEL] table
+-- union[Data.MODEL] table serves as a virtual table and manipulates
+-- the underlying union[Data.MODEL][Data.DEFN] and attached instances
+_.METATABLES[Data.UNION] = {
 
+    __len = function (model)
+      return #model[Data.DEFN]
+    end,
 
+    __index = function (model, key)
+      return model[Data.DEFN][key]
+    end,
+
+    __newindex = function (model, key, value)
+
+      local template = model[Data.INSTANCE]._
+      local model_defn = model[Data.DEFN]
+      
+      if Data.NAME == key then -- set the model name
+        rawset(model, Data.NAME, value)
+
+      elseif Data.ANNOTATION == key then -- annotation definition
+        -- set the new annotations in the model definition (may be nil)
+        model_defn[Data.ANNOTATION] = _.assert_annotation_array(value)
+
+      elseif 'number' == type(key) then -- member definition
+        --  Format:
+        --   { case,
+        --     role = { template, [collection,] [annotation1, annotation2, ...] }
+        --   }
+
+        -- clear the old member definition
+        if model_defn[key] then
+          local old_role = next(model_defn[key], 1) -- 2nd array item
+
+          -- update instances: remove the old_role
+          if old_role then
+            _.update_instances(model, old_role, nil) -- clear the role
+          end
+      end
+
+      if nil == value then
+        -- remove the key-th member definition
+        table.remove(model_defn, key) -- do not want holes in array
+      else
+        -- set the new role_defn
+        local case = _.assert_case(model_defn[Data.SWITCH], value[1])
+
+        -- is the case already defined?
+        for i, defn_i in ipairs(model_defn) do
+          assert(case ~= defn_i[1],
+            table.concat{'case exists: "', tostring(case), '"'})
+        end
+
+        -- get the role and definition
+        local role, role_defn = next(value, 1) -- 2nd item after the 'case'
+
+        -- add the role
+        if role then
+          -- is the role already defined?
+          assert(nil == template[role],-- check template
+            table.concat{'member name already defined: "', role, '"'})
+
+          local role_instance = _.create_role_instance(role, role_defn)
+
+          -- insert the new member definition
+          local role_defn_copy = {} -- make our own local copy
+          for i, v in ipairs(role_defn) do role_defn_copy[i] = v end
+          model_defn[key] = {
+            case,                     -- array of length 1
+            [role] = role_defn_copy   -- map with one entry
+          }
+
+          -- update instances: add the new role_defn
+          _.update_instances(model, role, role_instance)
+        else
+          model_defn[key] = {
+            case,         -- array of length 1
+          }
+        end
+      end
+      end
+    end
+}
+
+--------------------------------------------------------------------------------
 --  Typedefs:
 --     { template, [collection,] [annotation1, annotation2, ...] } 
 --[[
