@@ -173,8 +173,9 @@ local Data = {
 	NAME      = function() return 'NAME' end,  -- table key for 'model name'	
 	TYPE      = function() return 'TYPE' end,  -- table key for the 'model type name' 
 	DEFN      = function() return 'DEFN' end,  -- table key for element meta-data
-	INSTANCES  = function() return 'INSTANCES' end,-- table key for instances of this model
-	
+	INSTANCES = function() return 'INSTANCES' end,-- table key for instances of this model
+  TEMPLATE  = function() return 'TEMPLATE' end,-- table key for the template instance
+
 		
 	-- meta-data types - i.e. list of possible user defined types ---
 	-- possible 'model[Data.TYPE]' values implemented as closures
@@ -527,7 +528,7 @@ function Data.struct(param)
   local template = { -- top-level template to be installed in the module
     [Data.MODEL] = model,
   }
-  model[Data.INSTANCES]._ = template -- template instance is always called '_'
+  model[Data.TEMPLATE] = template
 
   -- set the model meta-table:
   setmetatable(model, _.METATABLES[Data.STRUCT])
@@ -580,7 +581,7 @@ _.METATABLES[Data.STRUCT] = {
 
     __newindex = function (model, key, value)
 
-      local template = model[Data.INSTANCES]._
+      local template = model[Data.TEMPLATE]
       local model_defn = model[Data.DEFN]
 
       if Data.NAME == key then -- set the model name
@@ -750,7 +751,7 @@ function Data.union(param)
 	local template = { -- top-level template to be installed in the module
   		[Data.MODEL] = model,
 	}
-	model[Data.INSTANCES]._ = template -- template instance is always called '_'
+	model[Data.TEMPLATE] = template 
 
   -- set the model meta-table:
   setmetatable(model, _.METATABLES[Data.UNION])
@@ -796,7 +797,7 @@ _.METATABLES[Data.UNION] = {
 
     __newindex = function (model, key, value)
 
-      local template = model[Data.INSTANCES]._
+      local template = model[Data.TEMPLATE]
       local model_defn = model[Data.DEFN]
       
       if Data.NAME == key then -- set the model name
@@ -1287,12 +1288,12 @@ end
 function _.update_instances(model, role, role_template)
 
    -- update template first
-   local template = model[Data.INSTANCES]._
+   local template = model[Data.TEMPLATE]
    template[role] = role_template
    
    -- update the remaining member instances:
    for instance, name in pairs(model[Data.INSTANCES]) do
-      if instance == '_' or instance == template then -- template
+      if instance == template then -- template
           -- do nothing (already updated the template)
       elseif instance == name then -- child struct (model is a base struct)
           instance[role] = role_template -- no prefix    
