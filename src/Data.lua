@@ -10,9 +10,6 @@
 -- Created: Rajive Joshi, 2014 Feb 14
 -------------------------------------------------------------------------------
 
--- TODO: Design Overview 
--- TODO: Create a github project for DDSL
-
 -------------------------------------------------------------------------------
 -- Data - meta-data (meta-table) class implementing a semantic data definition 
 --        model equivalent to OMG IDL, and easily mappable to various 
@@ -1163,28 +1160,22 @@ function Data.instance(name, template)
 	-- Establish the underlying model definition to create an instance
 	-- NOTE: typedef's do not hold any instances; the instances are held by the
 	--       underlying concrete (non-typdef) alias type
-	local model = template[Data.MODEL]
+  local model = template[Data.MODEL]
 
-	-- try to retrieve the instances from the underlying model
-	model[Data.INSTANCES] = model[Data.INSTANCES] or {}
-	local instance = model[Data.INSTANCES][name]
-	
-	-- not found => create the instance:
-	if not instance then 
-		instance = { -- the underlying model, of which this is an instance 
-			 [Data.MODEL] = template[Data.MODEL], 		
-		}
-		for k, v in pairs(template) do
-  			-- skip meta-data attributes
-  			if 'string' == type(k) then 
-            instance[k] = _.prefix(name, v)
-  			end
-		end
-		
-		-- cache the instance, so that we can reuse it the next time!
-		model[Data.INSTANCES][name] = instance
-	end
-	
+  -- create the instance:
+  local instance = { -- the underlying model, of which this is an instance
+    [Data.MODEL] = template[Data.MODEL],
+  }
+  for k, v in pairs(template) do
+    -- skip meta-data attributes
+    if 'string' == type(k) then
+      instance[k] = _.prefix(name, v)
+    end
+  end
+
+  -- cache the instance, so that we can update it when the model changes
+  model[Data.INSTANCES][instance] = name
+
 	return instance
 end
 
@@ -1300,10 +1291,13 @@ function _.update_instances(model, role, role_template)
    template[role] = role_template
    
    -- update the remaining member instances:
-   for name, instance in pairs(model[Data.INSTANCES]) do
-      if instance == name then -- child struct (model is a base struct)
+   for instance, name in pairs(model[Data.INSTANCES]) do
+      if instance == '_' or instance == template then -- template
+          -- do nothing (already updated the template)
+      elseif instance == name then -- child struct (model is a base struct)
           instance[role] = role_template -- no prefix    
-      elseif instance ~= template then -- prefix the 'name' to template[role]
+      else -- instance: may be user defined or occurring in another type model
+          -- prefix the 'name' to the role_template
           instance[role] = _.prefix(name, role_template)
       end
    end

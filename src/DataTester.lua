@@ -85,28 +85,6 @@ function Tester:test_enum_submodule()
   assert(Test.Submodule.Colors.PINK == 3)
 end
 
-Tester[#Tester+1] = 'test_user_annotation'
-function Tester:test_user_annotation()
-
-    -- user defined annotation
-    Test.MyAnnotation = data.annotation{value1 = 42, value2 = 9.0}
-    Test.MyAnnotationStruct = data.struct{
-      { id = { data.long, data.Key } },
-      { org = { data.long, data.Key{GUID=3} } },
-      { weight = { data.double, Test.MyAnnotation } }, -- default 
-      { height = { data.double, Test.MyAnnotation{} } },
-      { color = { Test.Submodule.Colors, 
-                  Test.MyAnnotation{value1 = 10} } },
-    }
-    
-    self:print(Test.MyAnnotation)
-    self:print(Test.MyAnnotationStruct)
-     
-    assert(Test.MyAnnotation ~= nil)
-    assert(Test.MyAnnotation.value1 == 42)
-    assert(Test.MyAnnotation.value2 == 9.0)
-end
-
 Tester[#Tester+1] = 'test_struct_imperative'
 function Tester:test_struct_imperative()
 
@@ -294,6 +272,28 @@ function Tester:test_struct_basic()
     assert(Test.Name.birthday == 'birthday')
     assert(Test.Name.favorite() == 'favorite#')
     assert(Test.Name.favorite(1) == 'favorite[1]')
+end
+
+Tester[#Tester+1] = 'test_user_annotation'
+function Tester:test_user_annotation()
+
+    -- user defined annotation
+    Test.MyAnnotation = data.annotation{value1 = 42, value2 = 9.0}
+    Test.MyAnnotationStruct = data.struct{
+      { id = { data.long, data.Key } },
+      { org = { data.long, data.Key{GUID=3} } },
+      { weight = { data.double, Test.MyAnnotation } }, -- default 
+      { height = { data.double, Test.MyAnnotation{} } },
+      { color = { Test.Submodule.Colors, 
+                  Test.MyAnnotation{value1 = 10} } },
+    }
+    
+    self:print(Test.MyAnnotation)
+    self:print(Test.MyAnnotationStruct)
+     
+    assert(Test.MyAnnotation ~= nil)
+    assert(Test.MyAnnotation.value1 == 42)
+    assert(Test.MyAnnotation.value2 == 9.0)
 end
 
 Tester[#Tester+1] = 'test_struct_nested'
@@ -562,18 +562,17 @@ function Tester:test_struct_complex1()
   }
 
   self:print(Test.Company)
- 
-  -- TODO: fix failing test
-  --[[ 
+  
   -- entity
   assert(Test.Company.entity._d == 'entity#')
+  print(Test.Company.entity, Test.Company.entity.name, Test.Company.entity.name.first)
+  print(Test.Company.entity.address, Test.Company.entity.address.name, Test.Company.entity.address.name.first)
   assert(Test.Company.entity.name.first == 'entity.name.first')
   assert(Test.Company.entity.name.nicknames() == 'entity.name.nicknames#')  
   assert(Test.Company.entity.name.nicknames(1) == 'entity.name.nicknames[1]')
   assert(Test.Company.entity.address.name.first == 'entity.address.name.first')
   assert(Test.Company.entity.address.name.nicknames() == 'entity.address.name.nicknames#')  
   assert(Test.Company.entity.address.name.nicknames(1) == 'entity.address.name.nicknames[1]')
-  --]]
   
   -- hq
   assert(Test.Company.hq() == 'hq#')
@@ -601,9 +600,7 @@ function Tester:test_struct_complex2()
   }
 
   self:print(Test.BigCompany)
-
-  -- TODO: fix failing test
-  --[[ 
+ 
   -- parent.entity
   assert(Test.BigCompany.parent.entity._d == 'parent.entity#')
   assert(Test.BigCompany.parent.entity.name.first == 'parent.entity.name.first')
@@ -612,7 +609,6 @@ function Tester:test_struct_complex2()
   assert(Test.BigCompany.parent.entity.address.name.first == 'parent.entity.address.name.first')
   assert(Test.BigCompany.parent.entity.address.name.nicknames() == 'parent.entity.address.name.nicknames#')  
   assert(Test.BigCompany.parent.entity.address.name.nicknames(1) == 'parent.entity.address.name.nicknames[1]')
-  --]]
   
   -- parent.hq
   assert(Test.BigCompany.parent.hq() == 'parent.hq#')
@@ -633,10 +629,6 @@ function Tester:test_struct_complex2()
 
   -- divisions
   assert(Test.BigCompany.divisions() == 'divisions#')
-  
-  -- TODO: fix failing test
-  --[[ 
-  -- divisions(1).entity
   assert(Test.BigCompany.divisions(1).entity._d == 'divisions[1].entity#')
   assert(Test.BigCompany.divisions(1).entity.name.first == 'divisions[1].entity.name.first')
   assert(Test.BigCompany.divisions(1).entity.name.nicknames() == 'divisions[1].entity.name.nicknames#')  
@@ -644,7 +636,6 @@ function Tester:test_struct_complex2()
   assert(Test.BigCompany.divisions(1).entity.address.name.first == 'divisions[1].entity.address.name.first')
   assert(Test.BigCompany.divisions(1).entity.address.name.nicknames() == 'divisions[1].entity.address.name.nicknames#')  
   assert(Test.BigCompany.divisions(1).entity.address.name.nicknames(1) == 'divisions[1].entity.address.name.nicknames[1]')
-  --]]
   
   -- divisions(1).hq
   assert(Test.BigCompany.divisions(1).hq() == 'divisions[1].hq#')
