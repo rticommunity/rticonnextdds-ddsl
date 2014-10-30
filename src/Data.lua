@@ -1304,11 +1304,9 @@ function _.update_instances(model, role, role_template)
 end
 
 --- Fully qualified name of a model element
--- @function [parent=Data]fqname
--- @param #table instance a model element whose fully qualified name is desired
--- @return #string the fully qualified name of the instance if any
---                 if instance is not a model element, returns the string value
---                 of the argument
+-- @param instance a model element whose fully qualified name is desired
+-- @return the fully qualified name of the instance if any or 
+--         the string value of instance
 function Data.fqname(instance)
     return 'table' == type(instance) and 
               (instance[Data.MODEL] and 

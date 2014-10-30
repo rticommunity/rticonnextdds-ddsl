@@ -183,6 +183,13 @@ function Tester:test_struct_imperative()
     print("\n** erased annotations **\n")
     self:print(DynamicShapeType)
     assert(DynamicShapeType[data.MODEL][data.ANNOTATION] == nil)
+    
+    
+    -- enumerate the struct definition
+    print("\n** struct definition **\n")
+    for i, v in pairs(DynamicShapeType[data.MODEL][data.DEFN]) do
+      print(i, next(DynamicShapeType[data.MODEL][i]))
+    end
 end
 
 Tester[#Tester+1] = 'test_struct_basechange'
