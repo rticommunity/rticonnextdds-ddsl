@@ -941,8 +941,7 @@ function _.assert_case(discriminator, case)
 end
 
 
----
--- Get the model type of any arbitrary value
+--- Get the model type of any arbitrary value
 -- @param #type value the value for which to retrieve the model type
 -- @return #table the model type or nil (if 'value' does not have a Data.MODEL)
 function _.model_type(value)
@@ -951,8 +950,7 @@ function _.model_type(value)
            or nil
 end
 
----
--- Ensure that the value is a model element
+--- Ensure that the value is a model element
 -- @param kind   expected model element kind
 -- @param value  table to check if it is a model element of "kind"
 -- @return the model table if the kind matches, or nil
@@ -965,8 +963,7 @@ function _.assert_model(kind, value)
     return value
 end
 
----
--- Ensure all elements in the 'value' array are annotations
+--- Ensure all elements in the 'value' array are annotations
 -- @return the annotation array
 function _.assert_annotation_array(value)
     -- establish valid annotations, if any
@@ -980,7 +977,7 @@ function _.assert_annotation_array(value)
     return annotations
 end
 
--- Define a role (member) instance
+--- Define a role (member) instance
 -- @param #string role - the member name to instantiate (may be 'nil')
 -- @param #list<#table> role_defn - array consists of entries in the 
 --           { template, [collection,] [annotation1, annotation2, ...] }
@@ -1052,16 +1049,14 @@ end
 -- Model Instances  ---
 --------------------------------------------------------------------------------
 
--- Data.instance() - creates an instance, using another instance as a template
--- Purpose:
---    Define a table that can be used to index into an instance of a model
--- Parameters:
--- 	  <<in>> name  - the role|instance name
--- 	  <<in>> template - the template to use for creating an instance; must be a
---                      a model table 
---    <<returns>> the newly created instance (seq) that supports 
---                indexing by 'name'
--- Usage:
+--- Create an instance, using another instance as a template
+--  Defines a table that can be used to index into an instance of a model
+-- 
+-- @param	name      <<in>> the role|instance name
+-- @param template  <<in>> the template to use for creating an instance; 
+--                         must be a model table 
+-- @return the newly created instance (seq) that supports indexing by 'name'
+-- @usage
 --    -- As an index into sample[]
 --    local myInstance = Data.instance("my", template)
 --    local member = sample[myInstance.member] 
@@ -1262,8 +1257,7 @@ function Data.seq(name, template)
 	end
 end
 
----
--- Prefix an index value with the given name
+--- Prefix an index value with the given name
 -- @param #string name name to prefix with
 -- @param #type v index value
 -- @return #type index value with the 'name' prefix
@@ -1295,8 +1289,7 @@ function _.prefix(name, v)
     return result
 end
 
----
--- Propagate member 'role' update to all instances of a model
+--- Propagate member 'role' update to all instances of a model
 -- @param #table model the model 
 -- @param #string role the role to propagate
 -- @param #type value the value of the role instance
@@ -1316,8 +1309,7 @@ function _.update_instances(model, role, role_template)
    end
 end
 
----
--- Fully qualified name of a model element
+--- Fully qualified name of a model element
 -- @function [parent=Data]fqname
 -- @param #table instance a model element whose fully qualified name is desired
 -- @return #string the fully qualified name of the instance if any
@@ -1334,14 +1326,12 @@ end
 --- Builtin Module - Predefined Model Elements
 --------------------------------------------------------------------------------
 
---- 
--- 'builtin' module
+--- 'builtin' module
 -- Built-in data types (atomic types) and annotations belong to this module
 -- @type [parent=#Data]builtin
 Data.builtin = Data.module{}
 
---- 
--- Built-in atomic types
+--- Built-in atomic types
 Data.builtin.boolean = Data.atom{}
 Data.builtin.octet = Data.atom{}
 
@@ -1360,8 +1350,7 @@ Data.builtin.unsigned_short = Data.atom{}
 Data.builtin.unsigned_long = Data.atom{}
 Data.builtin.unsigned_long_long = Data.atom{}
 
---- 
--- Built-in annotations
+--- Built-in annotations
 Data.builtin.Key = Data.annotation{}
 Data.builtin.Extensibility = Data.annotation{}
 Data.builtin.ID = Data.annotation{}
@@ -1373,8 +1362,7 @@ Data.builtin.Nested = Data.annotation{}
 Data.builtin.top_level = Data.annotation{} -- legacy
 
 
----
--- Local helper method to define a string on maximum length 'n'.
+--- Local helper method to define a string on maximum length 'n'.
 -- Used by Data.string() and Data.wstring().
 -- 
 -- A string of length n (i.e. string<n>) is implemented as an automatically 
@@ -1417,8 +1405,7 @@ function _.string(n, name)
   return instance
 end 
 
----
--- string of length n (i.e. string<n>) is an Atom
+--- string of length n (i.e. string<n>) is an Atom
 -- @function string 
 -- @param #number n the maximum length of the string
 -- @return #table the string data model instance
@@ -1426,8 +1413,7 @@ function Data.string(n)
   return _.string(n, 'string')
 end
 
----
--- wstring of length n (i.e. string<n>) is an Atom
+--- wstring of length n (i.e. string<n>) is an Atom
 -- @function wstring 
 -- @param #number n the maximum length of the wstring
 -- @return #table the string data model instance
@@ -1483,8 +1469,7 @@ end
 -- Helpers
 --------------------------------------------------------------------------------
 
----
--- For some model elements, the IDL display string is not the same as the model
+--- For some model elements, the IDL display string is not the same as the model
 -- element name. This table maps to the corresponding display string in IDL.
 -- #map<#table, #string>
 
@@ -1636,8 +1621,7 @@ function Data.print_idl(instance, indent_string)
 end
 
 
----
--- IDL string representation of a role
+--- IDL string representation of a role
 -- @function tostring_role
 -- @param #string role role name
 -- @param #list role_defn the definition of the role in the following format:
