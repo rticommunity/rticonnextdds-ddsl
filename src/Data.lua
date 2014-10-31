@@ -265,7 +265,68 @@ function Data.atom()
   return template
 end
 
+--------------------------------------------------------------------------------
+--- Create an annotation
+--  Annotations attributes are not interpreted, and kept intact 
+--
+-- @param ...  optional 'default' attributes 
+-- @return an annotation table
+-- @usage
+--   -- IDL @Key
+--     Data.Key
+--     Data.Key{GUID=N}
+--     
+--  --  IDL @Exensibility(EXTENSIBLE_EXTENSIBILITY)
+--    Data.Extensibility{'EXTENSIBLE_EXTENSIBILITY'},
+-- 
+--  -- Create user defined annotation @MyAnnotation(value1 = 42, value2 = 42.0)
+--     MyAnnotation = Data.annotation{value1 = 42, value2 = 9.0}
+--
+--  -- Use user defined annotation with custom attributes
+--     MyAnnotation{value1 = 942, value2 = 999.0}
+--        
+function Data.annotation(...) 	
+ 
+	local model = {
+		[Data.NAME] = nil,      -- populated when inserted into a module
+		[Data.TYPE] = Data.ANNOTATION,
+		[Data.DEFN] = nil,      -- instance_fn defined below
+		[Data.INSTANCES] = nil,  -- always nil (we don't need to track them)
+    [Data.TEMPLATE] = {}, -- empty
+  }
+  local template = model[Data.TEMPLATE]
+  template[MODEL] = model
 
+  -- set the template meta-table:
+  setmetatable(template, _.API[Data.ANNOTATION])
+  
+	-- annotation definition function (closure)
+	-- NOTE: the attributes passed to the annotation are not interpreted,
+	--       and are kept intact; we simply add the MODEL definition
+	--   A function that returns a model table, with user defined 
+	--   annotation attributes passed as a table of {name = value} pairs
+	--      eg: Data.MyAnnotation{value1 = 42, value2 = 42.0}
+	model[Data.DEFN] = function (attributes) -- parameters to the annotation
+		if attributes then
+		  assert('table' == type(attributes), 
+		    table.concat{'table with {name=value, ...} attributes expected: ', 
+		       		     tostring(attributes)})
+		end
+		local instance = attributes or template
+		instance[MODEL] = model
+	  setmetatable(instance, _.API[Data.ANNOTATION]) -- needed for __tostring()
+		return instance		
+	end
+	
+	-- initialize template with the attributes
+	template = template(...)
+	
+	return template
+end
+
+---
+-- API metatble for annotations
+---
 _.API[Data.ANNOTATION] = {
 
     __call = function(annotation, ...)
@@ -303,56 +364,6 @@ _.API[Data.ANNOTATION] = {
       return output
     end
 }
-
--- Annotations are modeled like Atomic types, expect that 
---    - are installed in a nested name space '_' to avoid conflicts
---      with user defined types, and also to stand out in the declarations
---    - are installed as closures so that user can pass in custom attributes
---    - attributes are not interpreted, and are preserved i.e. kept intact 
---
--- @param #table ...  = optional 'default' attributes 
--- @return $table the annotation table, closure, and model
---          instance = annotation with the default attributes
---          instance_fn = the instance function to instantiate this annotation
---          model = the data model describing this annotation
--- Examples:
---        IDL:      @Key
---        Lua:      Data.Key
---
---        IDL:  	@MyAnnotation(value1 = 42, value2 = 42.0)
---        Lua:      Data.MyAnnotation{value1 = 42, value2 = 42.0}
-function Data.annotation(...) 	
- 
-	local model = {
-		[Data.NAME] = nil,      -- populated when inserted into a module
-		[Data.TYPE] = Data.ANNOTATION,
-		[Data.DEFN] = nil,      -- instance_fn defined below
-		[Data.INSTANCES] = nil,  -- always nil
-	}  
-
-	-- annotation instance function (closure) to be installed in the module
-	-- NOTE: the attributes passed to the annotation are not interpreted,
-	--       and are kept intact; we simply add the MODEL definition
-	--   A function that returns a model table, with user defined 
-	--   annotation attributes passed as a table of {name = value} pairs
-	--      eg: Data.MyAnnotation{value1 = 42, value2 = 42.0}
-	local instance_fn = function (attributes) -- parameters to the annotation
-		if attributes then
-		  assert('table' == type(attributes), 
-		    table.concat{'table with {name=value, ...} attributes expected: ', 
-		       		     tostring(attributes)})
-		end
-		local instance = attributes or {}
-		instance[MODEL] = model
-		setmetatable(instance, _.API[Data.ANNOTATION])
-		return instance		
-	end
-	
-	model[Data.DEFN] = instance_fn
-	
-	-- default attributes, instance function, model
-	return instance_fn(...)
-end
 
 
 _.API[Data.CONST] = {
@@ -548,7 +559,7 @@ function Data.struct(param)
   local template = model[Data.TEMPLATE] 
   template[MODEL] = model
   
-  -- set the model meta-table:
+  -- set the template meta-table:
   setmetatable(template, _.API[Data.STRUCT])
 
 
@@ -802,7 +813,7 @@ function Data.union(param)
 	local template = model[Data.TEMPLATE] 
   template[MODEL] = model
   
-  -- set the model meta-table:
+  -- set the template meta-table:
   setmetatable(template, _.API[Data.UNION])
 
 	-- pop the discriminator
