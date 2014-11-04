@@ -57,7 +57,7 @@
 --
 --    Every user defined (model) is a table with the following meta-data keys
 --        Data.NAME
---        Data.TYPE
+--        Data.KIND
 --        Data.DEFN
 --        Data.INSTANCES
 --    The leaf elements of the table give a fully qualified string to address a
@@ -74,7 +74,7 @@
 --    results in the following table ('model') being defined:
 --       UserModule.UserType = {
 --          [Data.NAME] = 'UserType'     -- name of this model 
---          [Data.TYPE] = Data.STRUCT    -- one of Data.* type definitions
+--          [Data.KIND] = Data.STRUCT    -- one of Data.* type definitions
 --          [Data.DEFN] = {              -- meta-data for the contained elements
 --              user_role1    = Data.String(),
 --              user_role2    = UserModule.UserType2,
@@ -115,10 +115,10 @@
 --    The meta-model pre-defines the following meta-data 
 --    attributes for a model element:
 --
---       Data.TYPE
+--       Data.KIND
 --          Every model element 'model' is represented as a table with a 
 --          non-nil key
---             model[Data.TYPE] = one of the Data.* type definitions
+--             model[Data.KIND] = one of the Data.* type definitions
 --
 --       Data.NAME
 --          For named i.e. composite model elements
@@ -172,14 +172,14 @@ local Data = {
 	-- model meta-data attributes ---
 	-- every 'model' meta-data table has these keys defined 
 	NAME      = function() return 'NAME' end,  -- table key for 'model name'	
-	TYPE      = function() return 'TYPE' end,  -- table key for the 'model type name' 
+	KIND      = function() return 'KIND' end,  -- table key for the 'model type name' 
 	DEFN      = function() return 'DEFN' end,  -- table key for element meta-data
 	INSTANCES = function() return 'INSTANCES' end,-- table key for instances of this model
   TEMPLATE  = function() return 'TEMPLATE' end,-- table key for the template instance
 
 		
 	-- meta-data types - i.e. list of possible user defined types ---
-	-- possible 'model[Data.TYPE]' values implemented as closures
+	-- possible 'model[Data.KIND]' values implemented as closures
 	MODULE     = function() return 'module' end,
 	STRUCT     = function() return 'struct' end,
 	UNION      = function() return 'union' end,
@@ -198,6 +198,29 @@ local Data = {
 local _ = {
   API = {}
 }
+
+--- Create a new 'empty' template
+-- @param kind  <<in>> the kind of template
+-- @return a new template with the correct meta-model
+function _.new_template(kind, param)
+  assert('table' == type(param), 
+       table.concat{'invalid type specification: ', tostring(param)})
+
+  local model = { -- meta-data defining the enum
+    [Data.NAME] = nil,    -- will get populated when inserted into a module
+    [Data.KIND] = kind,
+    [Data.DEFN] = {},     -- will be populated as enumerations
+    [Data.INSTANCES] = nil,-- always nil
+    [Data.TEMPLATE] = {}, -- top-level instance to be installed in the module
+  }
+  local template = model[Data.TEMPLATE]
+  template[MODEL] = model
+
+  -- set the template meta-table:
+  setmetatable(template, _.API[kind])
+  
+  return template
+end
 
 --------------------------------------------------------------------------------
 -- Model Definitions -- 
@@ -237,7 +260,7 @@ function Data.module()
   -- empty module instance
   local model = { 
     [Data.NAME] = nil,     -- nil only for the ROOT i.e. top-level unnamed module
-    [Data.TYPE] = Data.MODULE,
+    [Data.KIND] = Data.MODULE,
     [Data.DEFN] = {},      -- populated as members are added to the module  
     [Data.INSTANCES] = nil, -- always nil
     [Data.TEMPLATE] = {}, -- top-level instance to be installed in the module
@@ -254,7 +277,7 @@ end
 function Data.atom() 
   local model = {
     [Data.NAME] = nil,      -- populated when the atom is assigned to a module
-    [Data.TYPE] = Data.ATOM,
+    [Data.KIND] = Data.ATOM,
     [Data.DEFN] = nil,      -- always nil
     [Data.INSTANCES] = nil,  -- always nil
     [Data.TEMPLATE] = {}, -- top-level instance to be installed in the module
@@ -289,7 +312,7 @@ function Data.annotation(...)
  
 	local model = {
 		[Data.NAME] = nil,      -- populated when inserted into a module
-		[Data.TYPE] = Data.ANNOTATION,
+		[Data.KIND] = Data.ANNOTATION,
 		[Data.DEFN] = nil,      -- instance_fn defined below
 		[Data.INSTANCES] = nil,  -- always nil (we don't need to track them)
     [Data.TEMPLATE] = {}, -- empty
@@ -399,7 +422,7 @@ function Data.const(param)
   
   assert('table' == type(atom), 
          table.concat{'invalid const primitive (atom) type: ', tostring(atom)})
-  assert(Data.ATOM == atom[MODEL][Data.TYPE], 
+  assert(Data.ATOM == atom[MODEL][Data.KIND], 
          table.concat{'const must of of primitive (atom) type: ', 
                       tostring(atom)})
   assert(nil ~= value, 
@@ -441,7 +464,7 @@ function Data.const(param)
   -- Construct model
   local model = {
     [Data.NAME] = nil,  -- populated when this constant is assigned to a module
-    [Data.TYPE] = Data.CONST,
+    [Data.KIND] = Data.CONST,
     [Data.DEFN] = atom,
     [Data.INSTANCES] = value, 
   }  
@@ -454,23 +477,26 @@ function Data.const(param)
   return instance
 end
 
----
--- @function Define an Enum
--- @return @map<#string,#number> a table of (name=value) pairs
+--------------------------------------------------------------------------------
+--- Create an enum
+-- @param param a table representing the enum declaration  
+-- @return a table representing the enum data model. The table fields 
+--         enum (name=value) pairs
+-- @usage
 function Data.enum(param) 
 	assert('table' == type(param), 
 		   table.concat{'invalid enum specification: ', tostring(param)})
 
 	local model = { -- meta-data defining the enum
 		[Data.NAME] = nil,    -- will get populated when inserted into a module
-		[Data.TYPE] = Data.ENUM,
+		[Data.KIND] = Data.ENUM,
 		[Data.DEFN] = {},     -- will be populated as enumerations
 		[Data.INSTANCES] = nil,-- always nil
     [Data.TEMPLATE] = {}, -- top-level instance to be installed in the module
 	}
 	local template = model[Data.TEMPLATE]
 	template[MODEL] = model
-	
+
 	-- populate the model table
 	for i, defn_i in ipairs(param) do	
 		local role, ordinal = defn_i[1], defn_i[2]	
@@ -549,7 +575,7 @@ function Data.struct(param)
 
   local model = { -- meta-data defining the struct
     [Data.NAME] = nil,    -- will get populated when assigned to a module
-    [Data.TYPE] = Data.STRUCT,
+    [Data.KIND] = Data.STRUCT,
     [Data.DEFN] = {},     -- will be populated as model elements are defined 
     [Data.INSTANCES] = {}, -- will be populated as instances are defined
     [Data.TEMPLATE] = {} -- the template associated with this model
@@ -604,7 +630,7 @@ _.API[Data.STRUCT] = {
     __tostring = function(template) 
       -- the name or the kind (if no name has been assigned)
       return template[MODEL][Data.NAME] or 
-             template[MODEL][Data.TYPE]() -- evaluate the function
+             template[MODEL][Data.KIND]() -- evaluate the function
     end,
     
     __len = function (template)
@@ -620,8 +646,8 @@ _.API[Data.STRUCT] = {
       local model = template[MODEL]
       if Data.NAME == key then
         return model[Data.NAME]
-      elseif Data.TYPE == key then
-        return model[Data.TYPE]
+      elseif Data.KIND == key then
+        return model[Data.KIND]
       else -- delegate to the model definition
          return template[MODEL][Data.DEFN][key]
       end
@@ -803,7 +829,7 @@ function Data.union(param)
                 
 	local model = { -- meta-data defining the union
   		[Data.NAME] = nil,    -- will get populated when inserted into a module
-  		[Data.TYPE] = Data.UNION, -- immutable
+  		[Data.KIND] = Data.UNION, -- immutable
   		[Data.DEFN] = {},     -- will be populated as model elements are defined 
   		[Data.INSTANCES] = {}, -- will be populated as instances are defined
       [Data.TEMPLATE] = {} -- the template associated with this model
@@ -850,7 +876,7 @@ _.API[Data.UNION] = {
     __tostring = function(template) 
       -- the name or the kind (if no name has been assigned)
       return template[MODEL][Data.NAME] or 
-             template[MODEL][Data.TYPE]() -- evaluate the function
+             template[MODEL][Data.KIND]() -- evaluate the function
     end,
 
     __len = function (template)
@@ -865,8 +891,8 @@ _.API[Data.UNION] = {
       local model = template[MODEL]
       if Data.NAME == key then
         return model[Data.NAME]
-      elseif Data.TYPE == key then
-        return model[Data.TYPE]
+      elseif Data.KIND == key then
+        return model[Data.KIND]
       else -- delegate to the model definition
          return template[MODEL][Data.DEFN][key]
       end
@@ -974,7 +1000,7 @@ function Data.typedef(param)
 		table.concat{'undefined alias type for typedef: "', tostring(alias), '"'})
 	assert(nil ~= alias[MODEL], 
 		table.concat{'alias must be a data model for typedef "', tostring(alias), '"'})
-	local alias_type = alias[MODEL][Data.TYPE]
+	local alias_type = alias[MODEL][Data.KIND]
 	assert(Data.ATOM == alias_type or
 		   Data.ENUM == alias_type or
 		   Data.STRUCT == alias_type or 
@@ -992,7 +1018,7 @@ function Data.typedef(param)
    
 	local model = { -- meta-data defining the typedef
 		[Data.NAME] = nil, -- populated when the typedef is assigned to a module
-		[Data.TYPE] = Data.TYPEDEF,
+		[Data.KIND] = Data.TYPEDEF,
 		[Data.DEFN] = { alias, collection },
 		[Data.INSTANCES] = nil,
 	}
@@ -1017,7 +1043,7 @@ function _.assert_case(discriminator, case)
     assert('string' == type(case) and 1 == string.len(case), err_msg) 
    elseif Data.boolean == discriminator then -- boolean
     assert(true == case or false == case, err_msg)
-   elseif Data.ENUM == discriminator[MODEL][Data.TYPE] then -- enum
+   elseif Data.ENUM == discriminator[MODEL][Data.KIND] then -- enum
     assert(discriminator[case], err_msg)
    else -- invalid 
     assert(false, err_msg)
@@ -1032,7 +1058,7 @@ end
 -- @return #table the model type or nil (if 'value' does not have a MODEL)
 function _.model_type(value)
     return ('table' == type(value) and value[MODEL]) 
-           and value[MODEL][Data.TYPE]
+           and value[MODEL][Data.KIND]
            or nil
 end
 
@@ -1043,7 +1069,7 @@ end
 function _.assert_model(kind, value)
     assert('table' == type(value) and 
            value[MODEL] and 
-           kind == value[MODEL][Data.TYPE],
+           kind == value[MODEL][Data.KIND],
            table.concat{'expected model kind "', kind(), 
                         '", instead got "', tostring(value), '"'})
     return value
@@ -1085,7 +1111,7 @@ function _.create_role_instance(role, role_defn)
 		   table.concat{'invalid type for struct member "', 
 		   tostring(role), '"'})
 
-	local template_type = template[MODEL][Data.TYPE]
+	local template_type = template[MODEL][Data.KIND]
 	assert(Data.ATOM == template_type or
 		   Data.ENUM == template_type or
 		   Data.STRUCT == template_type or 
@@ -1101,7 +1127,7 @@ function _.create_role_instance(role, role_defn)
 		assert('table' == type(role_defn[j]),
 				table.concat{'annotation expected "', tostring(role), 
 						     '" : ', tostring(role_defn[j])})
-		assert(Data.ANNOTATION == role_defn[j][MODEL][Data.TYPE],
+		assert(Data.ANNOTATION == role_defn[j][MODEL][Data.KIND],
 				table.concat{'not an annotation: "', tostring(role), 
 							'" : ', tostring(role_defn[j])})	
 
@@ -1169,7 +1195,7 @@ function Data.instance(name, template)
 	assert('table' == type(template), 'invalid template!')
 	assert(template[MODEL],
 		   table.concat{'template must have a model definition: ', tostring(name)})
-	local template_type = template[MODEL][Data.TYPE]
+	local template_type = template[MODEL][Data.KIND]
 	assert(Data.ATOM == template_type or
 		   Data.ENUM == template_type or
 		   Data.STRUCT == template_type or 
@@ -1188,7 +1214,7 @@ function Data.instance(name, template)
 	if Data.TYPEDEF == template_type then
 		local defn = template[MODEL][Data.DEFN]
 		alias = defn[1]
-		alias_type = alias[MODEL][Data.TYPE]
+		alias_type = alias[MODEL][Data.KIND]
 		
 		for j = 2, #defn do
 			if Data.ARRAY == defn[j][MODEL] or 
@@ -1299,7 +1325,7 @@ function Data.seq(name, template)
 		   	  			   'must be an instance table or function: "',
 		   	 			   tostring(name), '"'})
 	if 'table' == type_template then
-		local element_type = template[MODEL][Data.TYPE]
+		local element_type = template[MODEL][Data.KIND]
 		assert(Data.ATOM == element_type or
 			   Data.ENUM == element_type or
 			   Data.STRUCT == element_type or 
@@ -1462,7 +1488,7 @@ function _.string(n, name)
     -- if the dim is a CONST, use its value for validation
     if 'table' == type(n) and 
        'nil' ~= n[MODEL] and 
-       Data.CONST == n[MODEL][Data.TYPE] then
+       Data.CONST == n[MODEL][Data.KIND] then
        dim = n()
     end
      
@@ -1514,7 +1540,7 @@ function _.collection(annotation, n, ...)
     -- if the dim is a CONST, validate its value
     if 'table' == type(v) and 
        'nil' ~= v[MODEL] and 
-       Data.CONST == v[MODEL][Data.TYPE] then
+       Data.CONST == v[MODEL][Data.KIND] then
        dim = v()
     end
    
@@ -1593,7 +1619,7 @@ function Data.print_idl(instance, indent_string)
 	local content_indent_string = indent_string
 	local model = instance[MODEL]
 	local myname = model[Data.NAME]
-	local mytype = model[Data.TYPE]
+	local mytype = model[Data.KIND]
 	local mydefn = model[Data.DEFN]
 		
 	-- print('DEBUG print_idl: ', Data, model, mytype(), myname)
@@ -1796,7 +1822,7 @@ function Data.index(instance, result, model)
 	end
 	
 	-- struct or union
-	local mytype = instance[MODEL][Data.TYPE]
+	local mytype = instance[MODEL][Data.KIND]
 	local model = model or instance[MODEL]
 	local mydefn = model[Data.DEFN]
 

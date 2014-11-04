@@ -41,19 +41,6 @@ function Tester:test_submodule()
   assert(Test.Submodule ~= nil)
 end
 
-Tester[#Tester+1] = 'test_enum_imperative'
-function Tester:test_enum_imperative()
-
-  Test.Days = data.enum{
-    {'MON'}, {'TUE'}, {'WED'}, {'THU'}, {'FRI'}, {'SAT'}, {'SUN'}
-  }
-  
-  self:print(Test.Days)
-  
-  assert(Test.Days.MON == 0)
-  assert(Test.Days.SUN == 6)
-end
-
 Tester[#Tester+1] = 'test_enum1'
 function Tester:test_enum1()
 
@@ -200,7 +187,7 @@ function Tester:test_struct_imperative()
     
     -- iterate over the struct definition
     print("\n-- struct definition iteration --", DynamicShapeType)
-    print(DynamicShapeType[data.TYPE](), DynamicShapeType[data.NAME], #DynamicShapeType)
+    print(DynamicShapeType[data.KIND](), DynamicShapeType[data.NAME], #DynamicShapeType)
     for i, v in ipairs(DynamicShapeType) do
       print(next(v))
     end
@@ -419,7 +406,7 @@ function Tester:test_union_imperative()
     
     -- iterate over the union definition
     print("\n-- union definition iteration --", DynamicUnion)
-    print(DynamicUnion[data.TYPE](), DynamicUnion[data.NAME], #DynamicUnion)
+    print(DynamicUnion[data.KIND](), DynamicUnion[data.NAME], #DynamicUnion)
     for i, v in ipairs(DynamicUnion) do print(v[1], ':', next(v, 1)) end
 end
 
