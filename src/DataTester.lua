@@ -1507,13 +1507,17 @@ function Tester:test_module_manipulation()
   assert(MyModule.MyEnum == table.pack(next(MyModule[3]))[2]) 
   assert(3 == #MyModule)  
    
-   
   print("\n-- module definition iteration (ordered) --")
   print(MyModule[data.KIND](), MyModule[data.NAME], #MyModule)
   for i, v in ipairs(MyModule) do
     print(next(v))
   end
   assert(3 == #MyModule)
+  
+  print("\n-- module namespace iteration (unordered) --")
+  for k, v in pairs(MyModule) do
+    print(k, v)
+  end
 end
 
 ---

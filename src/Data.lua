@@ -189,8 +189,9 @@ local Data = {
 	TYPEDEF    = function() return 'typedef' end,
 	CONST      = function() return 'const' end,
 	
-	BASE       = function() return ' : ' end,
-	SWITCH     = function() return 'switch' end,
+	BASE       = function() return ' : ' end,    -- struct base
+	SWITCH     = function() return 'switch' end, -- union switch
+  NS         = function() return '' end,       -- module namespace
 }
 
 ---
@@ -201,7 +202,7 @@ local _ = {
 
 --- Create a new 'empty' template
 -- @param kind  [in] the kind of template
--- @return a new template with the correct meta-model
+-- @return a new template ith the correct meta-model
 function _.new_template(kind)
  
   local model = {           -- meta-data
@@ -589,7 +590,7 @@ _.API[Data.ANNOTATION] = {
 --    for i, v in ipairs(MyEnum) do print(next(v)) end
 --    for i = 1, #MyEnum do print(next(MyEnum[i])) end
 --
---  -- Iterate over enum and ordinal values:
+--  -- Iterate over enum and ordinal values (unordered):
 --    for k, v in pairs(MyEnum) do print(k, v) end
 --
 function Data.enum(param) 
@@ -1138,6 +1139,9 @@ _.API[Data.UNION] = {
 --   for i, v in ipairs(MyModule) do print(next(v)) end
 --   for i = 1, #MyModule do print(next(MyModule[i])) end
 --
+--  -- Iterate over module namespace (unordered):
+--   for k, v in pairs(MyModule) do print(k, v) end
+--   
 function Data.module(param) 
   -- pre-condition: parameters are specified
   assert(nil == param or 'table' == type(param), 
@@ -1145,6 +1149,7 @@ function Data.module(param)
        
   --create the template
   local template = _.new_template(Data.MODULE)
+  template[MODEL][Data.DEFN][Data.NS] = {} -- empty namespace
  
   -- populate the template
   return _.populate_template(template, param)
@@ -1167,6 +1172,9 @@ _.API[Data.MODULE] = {
     return ipairs(template[MODEL][Data.DEFN])
   end,
 
+  __pairs = function(template)
+    return pairs(template[MODEL][Data.DEFN][Data.NS])
+  end,
 
   __index = function (template, key)
     local model = template[MODEL]
@@ -1174,20 +1182,25 @@ _.API[Data.MODULE] = {
       return model[Data.NAME]
     elseif Data.KIND == key then
       return model[Data.KIND]
-    else -- delegate to the model definition
+    elseif 'number' == type(key) then -- delegate to the model definition
       return model[Data.DEFN][key]
+    else -- delegate to the module namespace
+      return model[Data.DEFN][Data.NS][key]
     end
   end,
-
-
+  
   __newindex = function (template, key, value)
 
     local model = template[MODEL]
     local model_defn = model[Data.DEFN]
     
-    -- NOTE: Since a module does not have instances, the model definition stores
-    -- the data model elements, both by numeric index and by role name
-        
+    -- NOTE: Modules are special in two ways
+    -- 1. Since a module does not have instances, the model definition
+    --    [Data.NS] keys stores by role name
+    -- 2. When model elements are added to a module, they are assigned a name
+    --    in the context of the module. A model element can belong to 
+    --    only one module.
+            
     if Data.NAME == key then -- set the model name
       rawset(model, Data.NAME, value)
 
@@ -1200,8 +1213,8 @@ _.API[Data.MODULE] = {
       if model_defn[key] then
         local old_role = next(model_defn[key])
         
-        -- update index: remove the old_role
-        model_defn[old_role] = nil
+        -- update namespace: remove the old_role
+        model_defn[Data.NS][old_role] = nil
       end
 
       -- set the new member definition
@@ -1226,10 +1239,12 @@ _.API[Data.MODULE] = {
         assert(nil == rawget(template, role),-- check template
           table.concat{'member name already defined: "', role, '"'})
     
+        -- update namespace
+        model_defn[Data.NS][role] = role_defn
+        
         -- update the module definition
         model_defn[key] = { [role] = role_defn } -- index
-        model_defn[role] = role_defn             -- role name
-
+        
         -- set the role instance (template) name
         role_defn[MODEL][Data.NAME] = role
       end
@@ -1244,7 +1259,7 @@ _.API[Data.MODULE] = {
 
       -- lookup the element to replace
       local position = #model_defn+1 -- append at the end, unless being replaced
-      if nil ~= model_defn[role] then -- role already defined
+      if nil ~= model_defn[Data.NS][role] then -- role already defined?
         for i = #model_defn, 1, -1 do -- count down, latest first
           if next(model_defn[i]) == role then 
             position = i break
@@ -1252,8 +1267,10 @@ _.API[Data.MODULE] = {
         end
       end
       
+      -- update namespace
+      model_defn[Data.NS][role] = role_defn
+     
       -- update the module definition
-      model_defn[role] = role_defn
       if nil == role_defn then
         -- remove the position-th member definition
         table.remove(model_defn, position) -- do not want holes in array
