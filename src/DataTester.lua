@@ -41,11 +41,46 @@ function Tester:test_submodule()
   assert(Test.Submodule ~= nil)
 end
 
+Tester[#Tester+1] = 'test_enum_imperative'
+function Tester:test_enum_imperative()
+
+  local MyEnum = data.enum{}
+  MyEnum[1] = { JAN = #MyEnum }
+  MyEnum[2] = { FEB = 102 }
+  MyEnum[3] = { MAR = #MyEnum }
+  MyEnum[4] = { APR = #MyEnum }
+  MyEnum[5] = { MAY = 105 }
+  MyEnum[6] = 'JUN'
+
+  -- install it under the name 'MyEnum' in the module
+  Test.MyEnum = MyEnum
+  self:print(MyEnum)
+  
+  assert(Test.MyEnum.JAN == 0)
+  assert(Test.MyEnum.FEB == 102)
+  assert(Test.MyEnum.MAR == 2)
+  assert(Test.MyEnum.APR == 3)
+  assert(Test.MyEnum.MAY == 105)
+  assert(Test.MyEnum.JUN == 5)
+  
+  -- delete an entry
+  print("\n-- deleted 3rd entry --\n")
+  MyEnum[3] = nil
+  self:print(MyEnum)
+  assert(Test.MyEnum.MAR == nil)
+ 
+   -- change 1st entry
+  print("\n-- changed 1st entry --\n")
+  MyEnum[1] = { JAN = 100 }
+  self:print(MyEnum)
+  assert(Test.MyEnum.JAN == 100)
+end
+
 Tester[#Tester+1] = 'test_enum1'
 function Tester:test_enum1()
 
   Test.Days = data.enum{
-    {'MON'}, {'TUE'}, {'WED'}, {'THU'}, {'FRI'}, {'SAT'}, {'SUN'}
+    'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN',
   }
   
   self:print(Test.Days)
@@ -58,9 +93,9 @@ Tester[#Tester+1] = 'test_enum2'
 function Tester:test_enum2()
 
   Test.Months = data.enum{
-    { 'OCT', 10 },
-    { 'NOV', 11 },
-    { 'DEC', 12 }
+    { OCT = 10 },
+    { NOV = 11 },
+    { DEC = 12 }
   }
 
   self:print(Test.Months)
@@ -73,10 +108,10 @@ Tester[#Tester+1] = 'test_enum_submodule'
 function Tester:test_enum_submodule()
 
   Test.Submodule.Colors = data.enum{
-    { 'RED',   -5 },
-    { 'YELLOW',  7 },
-    { 'GREEN', -9 },
-    { 'PINK' }
+    { RED =  -5 },
+    { YELLOW =  7 },
+    { GREEN = -9 },
+    'PINK',
   }
   self:print(Test.Submodule.Colors)
   

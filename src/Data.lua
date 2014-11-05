@@ -207,11 +207,11 @@ function _.new_template(kind, param)
        table.concat{'invalid type specification: ', tostring(param)})
 
   local model = { -- meta-data defining the enum
-    [Data.NAME] = nil,    -- will get populated when inserted into a module
-    [Data.KIND] = kind,
-    [Data.DEFN] = {},     -- will be populated as enumerations
-    [Data.INSTANCES] = nil,-- always nil
-    [Data.TEMPLATE] = {}, -- top-level instance to be installed in the module
+    [Data.NAME] = nil,      -- will get populated when inserted into a module
+    [Data.KIND] = kind,     -- type of the data model
+    [Data.DEFN] = {},       -- will be populated by the declarations
+    [Data.INSTANCES] = nil, -- will be populated when the type is defined
+    [Data.TEMPLATE] = {},   -- top-level instance to be installed in the module
   }
   local template = model[Data.TEMPLATE]
   template[MODEL] = model
@@ -219,6 +219,34 @@ function _.new_template(kind, param)
   -- set the template meta-table:
   setmetatable(template, _.API[kind])
   
+  return template
+end
+
+--- Populate a template
+-- @param template  <<in>> a template, generally empty
+-- @param defn      <<in>> template model definition
+-- @return populated template 
+function _.populate_template(template, defn)
+  -- populate the role definitions
+  local annotations
+  for i, defn_i in ipairs(defn) do 
+
+    -- build the model level annotation list
+    if Data.ANNOTATION == _.model_type(defn_i) then     
+      annotations = annotations or {}
+      table.insert(annotations, defn_i)  
+
+    else --  member definition
+      -- insert the model definition entry: invokes meta-table __newindex()
+      template[#template+1] = defn_i  
+    end
+  end
+
+  -- insert the annotations:
+  if annotations then -- insert the annotations:
+    template[Data.ANNOTATION] = annotations -- invokes meta-table __newindex()
+  end
+
   return template
 end
 
@@ -478,49 +506,158 @@ function Data.const(param)
 end
 
 --------------------------------------------------------------------------------
---- Create an enum
+--- Create an enum type
 -- @param param a table representing the enum declaration  
 -- @return a table representing the enum data model. The table fields 
---         enum (name=value) pairs
+-- contain the string index to de-reference the enum's constants in 
+-- a top-level DDS Dynamic Data Type 
 -- @usage
+--    -- Create enum: Declarative style
+--    MyEnum = Data.enum{ 
+--      { role_1 = ordinal_value },
+--      :
+--      { role_M = ordinal_value },
+--      
+--      -- OR --
+--
+--      role_A,
+--      :
+--      role_Z,
+--      
+--      -- OPTIONAL --
+--      annotation?,
+--       :
+--      annotation?,
+--    }
+--    
+-- -- Create enum: Declarative style
+--   MyEnum = Data.enum{}
+--   
+--  -- Get | Set an annotation:
+--   print(MyEnum[Data.ANNOTATION])
+--   MyEnum[Data.ANNOTATION] = {    
+--        Data.Extensibility{'EXTENSIBLE_EXTENSIBILITY'},
+--      }
+--      
+--  -- Get | Set a member:
+--   print(next(MyEnum[i]))
+--   MyEnum[i] = { role = ordinal_value },
+--   -- OR --
+--   MyEnum[i] = role -- ordinal value = #MyEnum
+--
+--  -- After either of the above definition, the following post-condition holds:
+--    MyEnum.role == ordinal_value
+--  
+--    
+--  -- Iterate over the model definition (ordered):
+--    for i, v in ipairs(MyEnum) do print(next(v)) end
+--    for i = 1, #MyEnum do print(next(MyEnum[i])) end
+--
+--  -- Iterate over enum and ordinal values:
+--    for k, v in pairs(MyEnum) do print(k, v) end
+--
 function Data.enum(param) 
-	assert('table' == type(param), 
-		   table.concat{'invalid enum specification: ', tostring(param)})
+  -- top-level template to be installed in the module
+  local template = _.new_template(Data.ENUM,param)
 
-	local model = { -- meta-data defining the enum
-		[Data.NAME] = nil,    -- will get populated when inserted into a module
-		[Data.KIND] = Data.ENUM,
-		[Data.DEFN] = {},     -- will be populated as enumerations
-		[Data.INSTANCES] = nil,-- always nil
-    [Data.TEMPLATE] = {}, -- top-level instance to be installed in the module
-	}
-	local template = model[Data.TEMPLATE]
-	template[MODEL] = model
-
-	-- populate the model table
-	for i, defn_i in ipairs(param) do	
-		local role, ordinal = defn_i[1], defn_i[2]	
-		assert(type(role) == 'string', 
-				table.concat{'invalid enum member: ', tostring(role)})
-		assert(nil == ordinal or 'number' == type(ordinal), 
-		     table.concat{'invalid enum ordinal value: ', tostring(ordinal) })
-				
-		if ordinal then
-			assert(math.floor(ordinal) == ordinal, -- integer 
-			 table.concat{'enum ordinal not an integer: ', tostring(ordinal) }) 
-		end
-					
-		-- populate the enum elements
-		local myordinal = ordinal or (i - 1) -- ordinals start at 0		
-		template[role] = myordinal
-		
-		-- save the meta-data specification
-		-- as an array to get the correct ordering when printing/visiting
-		table.insert(model[Data.DEFN], { role, ordinal }) 
-	end
-		
-	return template
+  -- populate the template
+  return _.populate_template(template, param)
 end
+
+--- enum API meta-table
+_.API[Data.ENUM] = {
+
+    __tostring = function(template) 
+      -- the name or the kind (if no name has been assigned)
+      return template[MODEL][Data.NAME] or 
+             template[MODEL][Data.KIND]() -- evaluate the function
+    end,
+    
+    __len = function (template)
+      return #template[MODEL][Data.DEFN]
+    end,
+
+    __ipairs = function(template)
+      return ipairs(template[MODEL][Data.DEFN])
+    end,
+
+
+    __index = function (template, key)
+      local model = template[MODEL]
+      if Data.NAME == key then
+        return model[Data.NAME]
+      elseif Data.KIND == key then
+        return model[Data.KIND]
+      else -- delegate to the model definition
+         return template[MODEL][Data.DEFN][key]
+      end
+    end,
+    
+    
+    __newindex = function (template, key, value)
+
+      local model = template[MODEL]
+      local model_defn = model[Data.DEFN]
+
+      if Data.NAME == key then -- set the model name
+        rawset(model, Data.NAME, value)
+
+      elseif Data.ANNOTATION == key then -- annotation definition
+        -- set the new annotations in the model definition (may be nil)
+        model_defn[Data.ANNOTATION] = _.assert_annotation_array(value)
+
+      elseif 'number' == type(key) then -- member definition
+        -- clear the old member definition and instance fields
+        if model_defn[key] then
+          local old_role = next(model_defn[key])
+
+          -- update instances: remove the old_role
+          rawset(template, old_role, nil)
+        end
+
+        -- set the new member definition
+        if nil == value then
+          -- nil => remove the key-th member definition
+          table.remove(model_defn, key) -- do not want holes in array
+
+        else
+          -- get the new role and role_defn
+          --  Format:
+          --    { role = value } 
+          -- OR 
+          --    role 
+          local role, role_defn 
+          if 'table' ==  type(value) then
+            role, role_defn = next(value)        --  { role = value } 
+          else
+             role, role_defn = value, #template  --    role
+          end
+          
+          -- role must be a string
+          assert(type(role) == 'string', 
+            table.concat{'invalid member name: ', tostring(role)})
+  
+          -- ensure the definition is an ordinal value
+          assert('number' == type(role_defn) and 
+                 math.floor(role_defn) == role_defn, -- integer  
+          table.concat{'invalid definition: ', 
+                        tostring(role), ' = ', tostring(role_defn) })
+            
+          -- is the role already defined?
+          assert(nil == rawget(template, role),-- check template
+            table.concat{'member name already defined: "', role, '"'})
+          
+          -- insert the new role
+          rawset(template, role, role_defn)
+          
+          -- insert the new member definition
+          model_defn[key] = {
+            [role] = role_defn   -- map with one entry
+          }
+        end
+      end
+    end
+}
 
 --------------------------------------------------------------------------------
 --- Create a struct type
@@ -564,31 +701,16 @@ end
 --    
 --  -- Iterate over the model definition (ordered):
 --    for i, v in ipairs(MyStruct) do print(next(v)) end
---    for i = 1, #MyStruct do print(next(t[i])) end
+--    for i = 1, #MyStruct do print(next(MyStruct[i])) end
 --
 --  -- Iterate over instance members and the indexes (unordered):
 --    for k, v in pairs(MyStruct) do print(k, v) end
 --
 function Data.struct(param) 
-  assert('table' == type(param), 
-    table.concat{'invalid struct specification: ', tostring(param)})
-
-  local model = { -- meta-data defining the struct
-    [Data.NAME] = nil,    -- will get populated when assigned to a module
-    [Data.KIND] = Data.STRUCT,
-    [Data.DEFN] = {},     -- will be populated as model elements are defined 
-    [Data.INSTANCES] = {}, -- will be populated as instances are defined
-    [Data.TEMPLATE] = {} -- the template associated with this model
-  }
-  
   -- top-level template to be installed in the module
-  local template = model[Data.TEMPLATE] 
-  template[MODEL] = model
+  local template = _.new_template(Data.STRUCT, param)
+  template[MODEL][Data.INSTANCES] = {}
   
-  -- set the template meta-table:
-  setmetatable(template, _.API[Data.STRUCT])
-
-
   -- OPTIONAL base: pop the next element if it is a base model element
   local base
   if Data.STRUCT == _.model_type(param[1]) then
@@ -598,29 +720,9 @@ function Data.struct(param)
     template[Data.BASE] = base -- invokes the meta-table __newindex()
   end
 
-  -- populate the role definitions
-  local annotations
-  for i, defn_i in ipairs(param) do 
-
-    -- build the struct level annotation list
-    if Data.ANNOTATION == _.model_type(defn_i) then     
-      annotations = annotations or {}
-      table.insert(annotations, defn_i)  
-
-    else -- struct member definition
-      -- insert the model definition entry: invokes meta-table __newindex()
-      template[#template+1] = defn_i  
-    end
-  end
-
-  -- insert the annotations:
-  if annotations then -- insert the annotations:
-    template[Data.ANNOTATION] = annotations -- invokes meta-table __newindex()
-  end
-
-  return template
+  -- populate the template
+  return _.populate_template(template, param)
 end
-
 
 --- API Metatable for a struct[MODEL] table
 -- struct[MODEL] table serves as a virtual table and manipulates
@@ -678,34 +780,38 @@ _.API[Data.STRUCT] = {
           if old_role then
             _.update_instances(model, old_role, nil) -- clear the role
           end
-      end
+        end
+  
+        -- set the new member definition
+        if nil == value then
+          -- nil => remove the key-th member definition
+          table.remove(model_defn, key) -- do not want holes in array
+  
+        else
+          -- get the new role and role_defn
+          local role, role_defn = next(value)
 
-      -- set the new member definition
-      if nil == value then
-        -- nil => remove the key-th member definition
-        table.remove(model_defn, key) -- do not want holes in array
-
-      else
-        -- get the new role and role_defn
-        local role, role_defn = next(value)
-
-        -- is the role already defined?
-        assert(nil == rawget(template, role),-- check template
-          table.concat{'member name already defined: "', role, '"'})
-
-        -- create role instance (checks for pre-conditions, may fail!)
-        local role_instance = _.create_role_instance(role, role_defn)
-
-        -- update instances: add the new role_defn
-        _.update_instances(model, role, role_instance)
-
-        -- insert the new member definition
-        local role_defn_copy = {} -- make our own local copy
-        for i, v in ipairs(role_defn) do role_defn_copy[i] = v end
-        model_defn[key] = {
-          [role] = role_defn_copy   -- map with one entry
-        }
-      end
+          -- role must be a string
+          assert(type(role) == 'string', 
+            table.concat{'invalid member name: ', tostring(role)})
+            
+          -- is the role already defined?
+          assert(nil == rawget(template, role),-- check template
+            table.concat{'member name already defined: "', role, '"'})
+  
+          -- create role instance (checks for pre-conditions, may fail!)
+          local role_instance = _.create_role_instance(role, role_defn)
+  
+          -- update instances: add the new role_defn
+          _.update_instances(model, role, role_instance)
+  
+          -- insert the new member definition
+          local role_defn_copy = {} -- make our own local copy
+          for i, v in ipairs(role_defn) do role_defn_copy[i] = v end
+          model_defn[key] = {
+            [role] = role_defn_copy   -- map with one entry
+          }
+        end
 
       elseif Data.BASE == key then -- inherits from 'base' struct
 
@@ -820,54 +926,24 @@ _.API[Data.STRUCT] = {
 --    
 --  -- Iterate over the model definition (ordered):
 --    for i, v in ipairs(MyUnion) do print(v[1], ':', next(v, 1)) end
---    for i = 1, #MyUnion do print(t[i][1], ':', next(t[i], 1)) end
+--    for i = 1, #MyUnion do print(t[i][1], ':', next(MyUnion[i], 1)) end
 --
 --  -- Iterate over instance members and the indexes (unordered):
 --    for k, v in pairs(MyUnion) do print(k, v) end
 --
 function Data.union(param) 
-                
-	local model = { -- meta-data defining the union
-  		[Data.NAME] = nil,    -- will get populated when inserted into a module
-  		[Data.KIND] = Data.UNION, -- immutable
-  		[Data.DEFN] = {},     -- will be populated as model elements are defined 
-  		[Data.INSTANCES] = {}, -- will be populated as instances are defined
-      [Data.TEMPLATE] = {} -- the template associated with this model
-	}
-	
-	-- top-level template to be installed in the module
-	local template = model[Data.TEMPLATE] 
-  template[MODEL] = model
-  
-  -- set the template meta-table:
-  setmetatable(template, _.API[Data.UNION])
-
-	-- pop the discriminator
+  -- top-level template to be installed in the module
+  local template = _.new_template(Data.UNION, param)
+  template[MODEL][Data.INSTANCES] = {}
+ 
+ 	-- pop the discriminator
 	template[Data.SWITCH] = param[1] -- invokes meta-table __newindex()
   table.remove(param, 1)
 
-	-- populate the role definitions
-  local annotations
-	for i, defn_i in ipairs(param) do	
-	
-      -- annotation at the Union level
-      if Data.ANNOTATION == _.model_type(defn_i) then 
-          annotations = annotations or {} -- build the annotation list
-          table.insert(annotations, defn_i)  
-  
-  		else -- union member definition
-    			-- insert the model definition entry: invokes meta-table __newindex()
-    			template[#template+1] = defn_i
-      end
-	end
-	
-	-- insert the annotations:
-  if annotations then 
-      template[Data.ANNOTATION] = annotations -- invokes meta-table __newindex()
-  end
-    
-	return template
+  -- populate the template
+  return _.populate_template(template, param)
 end
+
 --- API Metatable for a union[MODEL] table
 -- union[MODEL] table serves as a virtual table and manipulates
 -- the underlying union[MODEL][Data.DEFN] and attached instances
@@ -952,9 +1028,13 @@ _.API[Data.UNION] = {
   
           -- get the role and definition
           local role, role_defn = next(value, 1) -- 2nd item after the 'case'
-  
+ 
           -- add the role
           if role then
+            -- role must be a string
+            assert(type(role) == 'string', 
+            table.concat{'invalid member name: ', tostring(role)})
+            
             -- is the role already defined?
             assert(nil == rawget(template, role),-- check template
               table.concat{'member name already defined: "', role, '"'})
@@ -1709,7 +1789,7 @@ function Data.print_idl(instance, indent_string)
 		
 	elseif Data.ENUM == mytype then
 		for i, defn_i in ipairs(mydefn) do -- walk through the model definition	
-			local role, ordinal = defn_i[1], defn_i[2]
+			local role, ordinal = next(defn_i)
 			if ordinal then
 				print(string.format('%s%s = %s,', content_indent_string, role, 
 								    ordinal))
