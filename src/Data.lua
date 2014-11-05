@@ -1134,12 +1134,9 @@ _.API[Data.UNION] = {
 --    MyModule.role == template
 -- 
 --    
---  -- Iterate over the model definition (ordered):
---   for i, v in ipairs(MyModule) do print(v) end
---   for i = 1, #MyModule do print(MyModule[i]) end
---
---  -- Iterate over data model elements (unordered):
---    for k, v in pairs(MyModule) do print(k, v) end
+--  -- Iterate over the module definition (ordered):
+--   for i, v in ipairs(MyModule) do print(next(v)) end
+--   for i = 1, #MyModule do print(next(MyModule[i])) end
 --
 function Data.module(param) 
   -- pre-condition: parameters are specified
@@ -1148,7 +1145,6 @@ function Data.module(param)
        
   --create the template
   local template = _.new_template(Data.MODULE)
-  template[MODEL][Data.INSTANCES] = {}
  
   -- populate the template
   return _.populate_template(template, param)
@@ -1171,6 +1167,7 @@ _.API[Data.MODULE] = {
     return ipairs(template[MODEL][Data.DEFN])
   end,
 
+
   __index = function (template, key)
     local model = template[MODEL]
     if Data.NAME == key then
@@ -1178,36 +1175,96 @@ _.API[Data.MODULE] = {
     elseif Data.KIND == key then
       return model[Data.KIND]
     else -- delegate to the model definition
-      return template[MODEL][Data.DEFN][key]
+      return model[Data.DEFN][key]
     end
   end,
 
+
   __newindex = function (template, key, value)
 
+    local model = template[MODEL]
+    local model_defn = model[Data.DEFN]
+    
+    -- NOTE: Since a module does not have instances, the model definition stores
+    -- the data model elements, both by numeric index and by role name
+        
+    if Data.NAME == key then -- set the model name
+      rawset(model, Data.NAME, value)
 
-    -- if we are not 'erasing' an entry, the value must be a model instance
-    assert(nil == value or nil ~= _.model_type(value))
+    elseif Data.ANNOTATION == key then -- annotation definition
+      -- set the new annotations in the model definition (may be nil)
+      model_defn[Data.ANNOTATION] = _.assert_annotation_array(value)
 
-    -- set the instance name
-    value[MODEL][Data.NAME] = key
+    elseif 'number' == type(key) then -- member definition
+      -- clear the old member definition and instance fields
+      if model_defn[key] then
+        local old_role = next(model_defn[key])
+        
+        -- update index: remove the old_role
+        model_defn[old_role] = nil
+      end
 
-    -- insert in the module definition, so that the instance can be
-    -- iterated in the correct order (eg when outputting IDL)
-    local definition = template[MODEL][Data.DEFN]
-    local replaced = false
-    for i = #definition, 1, -1 do -- count down, latest first
-      if definition[i][MODEL][Data.NAME] == key then
-        replaced = true -- replace an old definition
-        definition[i] = value
+      -- set the new member definition
+      if nil == value then
+        -- nil => remove the key-th member definition
+        table.remove(model_defn, key) -- do not want holes in array
+
+      else
+        --  Format:
+        --    { role = role_defn (i.e. role template) } 
+        local role, role_defn = next(value)  
+                      
+        -- pre-condition: role must be a string
+        assert(type(role) == 'string', 
+          table.concat{'invalid member name: ', tostring(role)})
+
+        -- pre-condition: ensure the definition is a template
+        assert(nil ~= _.model_type(role_defn),
+               table.concat{'invalid member definition: ', tostring(role)})
+          
+        -- is the role already defined?
+        assert(nil == rawget(template, role),-- check template
+          table.concat{'member name already defined: "', role, '"'})
+    
+        -- update the module definition
+        model_defn[key] = { [role] = role_defn } -- index
+        model_defn[role] = role_defn             -- role name
+
+        -- set the role instance (template) name
+        role_defn[MODEL][Data.NAME] = role
+      end
+
+    elseif 'string' == type(key) then
+      --  Format:
+      --    role_defn (i.e. role template)
+      local role, role_defn = key, value
+  
+      -- pre-condition: ensure that the value is nil or a model instance
+      assert(nil == value or nil ~= _.model_type(role_defn))
+
+      -- lookup the element to replace
+      local position = #model_defn+1 -- append at the end, unless being replaced
+      if nil ~= model_defn[role] then -- role already defined
+        for i = #model_defn, 1, -1 do -- count down, latest first
+          if next(model_defn[i]) == role then 
+            position = i break
+          end
+        end
+      end
+      
+      -- update the module definition
+      model_defn[role] = role_defn
+      if nil == role_defn then
+        -- remove the position-th member definition
+        table.remove(model_defn, position) -- do not want holes in array
+      else
+        model_defn[position] = { [role] = role_defn }
+        
+        -- set the role instance (template) name
+        role_defn[MODEL][Data.NAME] = role
+      end
     end
-    end
-    if not replaced then -- insert at the end
-      table.insert(definition, value)
-    end
-
-    -- add an index entry to the module
-    rawset(template, key, value)
-  end
+  end,
 }
 
 --------------------------------------------------------------------------------
@@ -1215,8 +1272,8 @@ _.API[Data.MODULE] = {
 --------------------------------------------------------------------------------
 
 --- Get the model type of any arbitrary value
--- @param #type value the value for which to retrieve the model type
--- @return #table the model type or nil (if 'value' does not have a MODEL)
+-- @param value  [in] the value for which to retrieve the model type
+-- @return the model type or nil (if 'value' does not have a MODEL)
 function _.model_type(value)
     return ('table' == type(value) and value[MODEL]) 
            and value[MODEL][Data.KIND]
@@ -1224,8 +1281,8 @@ function _.model_type(value)
 end
 
 --- Ensure that the value is a model element
--- @param kind   expected model element kind
--- @param value  table to check if it is a model element of "kind"
+-- @param kind   [in] expected model element kind
+-- @param value  [in] table to check if it is a model element of "kind"
 -- @return the model table if the kind matches, or nil
 function _.assert_model(kind, value)
     assert('table' == type(value) and 
@@ -1854,8 +1911,9 @@ function Data.print_idl(instance, indent_string)
 	end
 		
 	if Data.MODULE == mytype then 
-		for i, member in ipairs(mydefn) do -- walk through the module definition
-			Data.print_idl(member, content_indent_string)
+		for i, defn_i in ipairs(mydefn) do -- walk through the module definition
+		  local role, role_defn = next(defn_i)
+			Data.print_idl(role_defn, content_indent_string)
 		end
 		
 	elseif Data.STRUCT == mytype then

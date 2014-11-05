@@ -74,6 +74,8 @@ function Tester:test_enum_imperative()
   MyEnum[1] = { JAN = 100 }
   self:print(MyEnum)
   assert(Test.MyEnum.JAN == 100)
+  
+  assert(5 == #MyEnum)
 end
 
 Tester[#Tester+1] = 'test_enum1'
@@ -226,6 +228,7 @@ function Tester:test_struct_imperative()
     for i, v in ipairs(DynamicShapeType) do
       print(next(v))
     end
+    assert(4 == #DynamicShapeType)
 end
 
 Tester[#Tester+1] = 'test_struct_basechange'
@@ -443,6 +446,7 @@ function Tester:test_union_imperative()
     print("\n-- union definition iteration --", DynamicUnion)
     print(DynamicUnion[data.KIND](), DynamicUnion[data.NAME], #DynamicUnion)
     for i, v in ipairs(DynamicUnion) do print(v[1], ':', next(v, 1)) end
+    assert(5 == #DynamicUnion)
 end
 
 Tester[#Tester+1] = 'test_union_imperative2'
@@ -1404,6 +1408,112 @@ function Tester:test_nomodule()
   assert('y' == ShapeType.y)
   assert('shapesize' == ShapeType.shapesize)
   assert('color' == ShapeType.color)   
+end
+
+Tester[#Tester+1] = 'test_module_manipulation'
+function Tester:test_module_manipulation()
+
+  -- declarative 
+  local MyModule = data.module{
+   
+    { 
+      ShapeType = data.struct{
+        { x = { data.long } },
+        { y = { data.long } },
+        { shapesize = { data.long } },
+        { color = { data.string(128), data.Key } }
+      }
+    },
+    
+    { 
+      StringSeq = data.typedef{ data.string(10), data.sequence(10) }
+    },
+  }
+  
+  print("\n-- declarative module definition ---")
+  self:print(MyModule)
+  
+  assert(nil ~= MyModule.ShapeType) 
+  assert('x' == MyModule.ShapeType.x)
+  assert('y' ==  MyModule.ShapeType.y)
+  assert('shapesize' ==  MyModule.ShapeType.shapesize)
+  assert('color' ==  MyModule.ShapeType.color)   
+  
+  assert(nil ~= MyModule.StringSeq) 
+  assert(2 == #MyModule)
+
+  print("\n-- add to module: 3rd definition: Nested::Point ---")
+  MyModule[3] = {
+    Nested = data.module{
+      {
+        Point = data.struct{
+          { x = { data.double } },
+          { y = { data.double } }
+        },
+      }
+    },
+  }
+  self:print(MyModule)  
+  assert(nil ~= MyModule.Nested) 
+  assert(MyModule.Nested == table.pack(next(MyModule[3]))[2]) 
+  assert(3 == #MyModule)
+   
+   
+  print("\n-- add to module: last definition: MyEnum ---")
+  MyModule.MyEnum = data.enum{'Q1', 'Q2', 'Q3', 'Q4'}
+  self:print(MyModule)
+  assert(nil ~= MyModule.MyEnum) 
+  assert(4 == #MyModule)
+ 
+ 
+  print("\n-- change 3rd definition ---")
+  MyModule[3] = {
+      MyEnum2 = data.enum{'SUN', 'MON', 'TUE'}
+  }   
+  self:print(MyModule)
+  assert(nil ~= MyModule.MyEnum2)
+  assert(4 == #MyModule)  
+  
+  
+  print("\n-- change 3rd definition again ---")
+  MyModule[3] = {
+    Sub = data.module{
+      { 
+        Point = data.struct{
+          { coord = { data.double, data.sequence(2) } },
+        },
+      }
+    },
+  }
+  self:print(MyModule)
+  assert(nil ~= MyModule.Sub)
+  print(MyModule.Sub.Point.coord(1))
+  assert('coord[1]' == MyModule.Sub.Point.coord(1))
+  assert(4 == #MyModule)  
+  
+  
+  print("\n-- delete from module: 2nd definition ---")
+  MyModule[2] = nil
+  self:print(MyModule)
+  print(MyModule.StringSeq)
+  assert(nil == MyModule.StringSeq)
+  assert(3 == #MyModule)  
+
+
+  print("\n-- change MyEnum ---") -- TODO: fix: meta-table not invoked
+  MyModule.MyEnum = data.enum{'JAN', 'FEB', 'MAR'}
+  self:print(MyModule)
+  assert(nil ~= MyModule.MyEnum and nil ~= MyModule.MyEnum.JAN) 
+  assert(MyModule.MyEnum == table.pack(next(MyModule[3]))[2]) 
+  assert(3 == #MyModule)  
+   
+   
+  print("\n-- module definition iteration (ordered) --")
+  print(MyModule[data.KIND](), MyModule[data.NAME], #MyModule)
+  for i, v in ipairs(MyModule) do
+    print(next(v))
+  end
+  assert(3 == #MyModule)
 end
 
 ---
