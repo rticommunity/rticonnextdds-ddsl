@@ -200,13 +200,11 @@ local _ = {
 }
 
 --- Create a new 'empty' template
--- @param kind  <<in>> the kind of template
+-- @param kind  [in] the kind of template
 -- @return a new template with the correct meta-model
-function _.new_template(kind, param)
-  assert('table' == type(param), 
-       table.concat{'invalid type specification: ', tostring(param)})
-
-  local model = { -- meta-data defining the enum
+function _.new_template(kind)
+ 
+  local model = {           -- meta-data
     [Data.NAME] = nil,      -- will get populated when inserted into a module
     [Data.KIND] = kind,     -- type of the data model
     [Data.DEFN] = {},       -- will be populated by the declarations
@@ -254,205 +252,66 @@ end
 -- Model Definitions -- 
 --------------------------------------------------------------------------------
 
---- Module Metatable
-_.API[Data.MODULE] = {
+--------------------------------------------------------------------------------
 
-  __newindex = function (module, name, instance)
-      
-      -- if we are not 'erasing' an entry, the value must be a model instance
-      assert(nil == instance or nil ~= _.model_type(instance))
-      
-      -- set the instance name
-      instance[MODEL][Data.NAME] = name
-      
-      -- insert in the module definition, so that the instance can be 
-      -- iterated in the correct order (eg when outputting IDL)
-      local definition = module[MODEL][Data.DEFN]
-      local replaced = false
-      for i = #definition, 1, -1 do -- count down, latest first
-          if definition[i][MODEL][Data.NAME] == name then
-              replaced = true -- replace an old definition
-              definition[i] = instance
-          end
-      end
-      if not replaced then -- insert at the end
-          table.insert(definition, instance)
-      end
-      
-      -- add an index entry to the module
-      rawset(module, name, instance)
+--- Define an atomic type
+-- @return an immutable table representing an atomic type
+-- @usage
+--  -- Create an atomic type
+--     MyAtom = Data.atom{}
+function Data.atom()
+  -- create the template
+  local template = _.new_template(Data.ATOM) 
+  return template
+end
+
+--- Atom API meta-table
+_.API[Data.ATOM] = {
+
+  __tostring = function(template)
+    -- the name or the kind (if no name has been assigned)
+    return template[MODEL][Data.NAME] or
+      template[MODEL][Data.KIND]() -- evaluate the function
+  end,
+
+  __newindex = function (template, key, value)
+    -- immutable: do-nothing
   end
 }
 
-function Data.module() 
-  -- empty module instance
-  local model = { 
-    [Data.NAME] = nil,     -- nil only for the ROOT i.e. top-level unnamed module
-    [Data.KIND] = Data.MODULE,
-    [Data.DEFN] = {},      -- populated as members are added to the module  
-    [Data.INSTANCES] = nil, -- always nil
-    [Data.TEMPLATE] = {}, -- top-level instance to be installed in the module
-  }
-  local template = model[Data.TEMPLATE]
-  template[MODEL] = model
-  
-  -- set the meta-table for new template to be added to the module
-  setmetatable(template, _.API[Data.MODULE])
-  return template
-end
-
--- Define an atomic type in the module
-function Data.atom() 
-  local model = {
-    [Data.NAME] = nil,      -- populated when the atom is assigned to a module
-    [Data.KIND] = Data.ATOM,
-    [Data.DEFN] = nil,      -- always nil
-    [Data.INSTANCES] = nil,  -- always nil
-    [Data.TEMPLATE] = {}, -- top-level instance to be installed in the module
-  }
-  local template = model[Data.TEMPLATE]
-  template[MODEL] = model
-
-  return template
-end
-
 --------------------------------------------------------------------------------
---- Create an annotation
---  Annotations attributes are not interpreted, and kept intact 
---
--- @param ...  optional 'default' attributes 
--- @return an annotation table
+
+--- Define an constant
+-- @param param  [in] a table containing an atom and the constant value, e.g.
+--                       { Data.atom, const_value_of_atom_type }
+-- @return a table representing a constant
 -- @usage
---   -- IDL @Key
---     Data.Key
---     Data.Key{GUID=N}
---     
---  --  IDL @Exensibility(EXTENSIBLE_EXTENSIBILITY)
---    Data.Extensibility{'EXTENSIBLE_EXTENSIBILITY'},
+--  -- Create a constant type
+--       MY_CONST = Data.const{Data.<atom>, <const_value_of_atom_type> }
+--  
+--  -- Examples
+--       PI = Data.const{ Data.double, 3.14 }
 -- 
---  -- Create user defined annotation @MyAnnotation(value1 = 42, value2 = 42.0)
---     MyAnnotation = Data.annotation{value1 = 42, value2 = 9.0}
---
---  -- Use user defined annotation with custom attributes
---     MyAnnotation{value1 = 942, value2 = 999.0}
---        
-function Data.annotation(...) 	
- 
-	local model = {
-		[Data.NAME] = nil,      -- populated when inserted into a module
-		[Data.KIND] = Data.ANNOTATION,
-		[Data.DEFN] = nil,      -- instance_fn defined below
-		[Data.INSTANCES] = nil,  -- always nil (we don't need to track them)
-    [Data.TEMPLATE] = {}, -- empty
-  }
-  local template = model[Data.TEMPLATE]
-  template[MODEL] = model
-
-  -- set the template meta-table:
-  setmetatable(template, _.API[Data.ANNOTATION])
-  
-	-- annotation definition function (closure)
-	-- NOTE: the attributes passed to the annotation are not interpreted,
-	--       and are kept intact; we simply add the MODEL definition
-	--   A function that returns a model table, with user defined 
-	--   annotation attributes passed as a table of {name = value} pairs
-	--      eg: Data.MyAnnotation{value1 = 42, value2 = 42.0}
-	model[Data.DEFN] = function (attributes) -- parameters to the annotation
-		if attributes then
-		  assert('table' == type(attributes), 
-		    table.concat{'table with {name=value, ...} attributes expected: ', 
-		       		     tostring(attributes)})
-		end
-		local instance = attributes or template
-		instance[MODEL] = model
-	  setmetatable(instance, _.API[Data.ANNOTATION]) -- needed for __tostring()
-		return instance		
-	end
-	
-	-- initialize template with the attributes
-	template = template(...)
-	
-	return template
-end
-
----
--- API metatble for annotations
----
-_.API[Data.ANNOTATION] = {
-
-    __call = function(annotation, ...)
-      return annotation[MODEL][Data.DEFN](...)
-    end,
-    
-    __tostring = function(annotation)
-      -- output the attributes if any
-      local output = nil
-    
-      -- assertions
-      for i, v in ipairs(annotation) do
-        output = string.format('%s%s%s', 
-                  output or '', -- output or nothing
-                  output and ',' or '', -- put a comma or not?
-                  tostring(v))
-      end
-      
-      -- name value pairs {name=value}
-      for k, v in pairs(annotation) do
-        if 'string' == type(k) then
-          output = string.format('%s%s%s=%s', 
-                output or '', -- output or nothing
-                output and ',' or '', -- put a comma or not?
-                tostring(k), tostring(v))
-        end
-      end
-      
-      if output then
-        output = string.format('@%s(%s)', annotation[MODEL][Data.NAME], output)  
-      else
-        output = string.format('@%s', annotation[MODEL][Data.NAME])
-      end
-      
-      return output
-    end
-}
-
-
-_.API[Data.CONST] = {
-  -- instance value is obtained by evaluating the table:
-  -- eg: MY_CONST()
-  __call = function(const)
-      return const[MODEL][Data.INSTANCES]
-  end,
-  
-  __tostring = function(const)
-      local value = const[MODEL][Data.INSTANCES]
-      local atom = const[MODEL][Data.DEFN]
-      if Data.char == atom or Data.wchar == atom then
-          return table.concat{"'", tostring(value), "'"}
-      elseif Data.string() == atom or Data.wstring() == atom then
-          return table.concat{'"', tostring(value), '"'}
-      else
-          return tostring(value)
-      end
-  end           
-}
-
----
--- Const - define a constant
--- @function Const
--- @param #list param { name, Data.<atom>, const_value }
--- @return #map an table to index into the constant
--- @usage Define a const: Data:Const{'MY_CONST', Data.short, 10 }
--- @usage Use a const: { 'mySeq', Data.string, Data.Sequence(Data.MY_CONST) }
--- @usage Use a const: Data:Const{'NEW_CONST', Data.short, Data.MY_CONST()*2 }
+--       MY_CONST = Data.const{ Data.short, 10 }
+--       
+--       MY_STRING = Data.const{ Data.string(), "String Constant" }   
+--       
+--       MyStringSeq =  Data.typedef{ Data.string, Data.sequence(MY_CONST) }
 function Data.const(param) 
-  local atom, value = param[1], param[2]
-  
+  -- pre-condition: parameters are specified
+  assert('table' == type(param), 
+       table.concat{'invalid type specification: ', tostring(param)})
+       
+  -- pre-condition: ensure that the 1st parameter is a valid type
+  local atom = param[1]
   assert('table' == type(atom), 
          table.concat{'invalid const primitive (atom) type: ', tostring(atom)})
   assert(Data.ATOM == atom[MODEL][Data.KIND], 
          table.concat{'const must of of primitive (atom) type: ', 
                       tostring(atom)})
+         
+  -- pre-condition: ensure that the 2nd parameter is a valid value
+  local value = param[2]
   assert(nil ~= value, 
          table.concat{'const value must be non-nil: ', tostring(value)})
   assert((Data.boolean == atom and 'boolean' == type(value) or
@@ -471,6 +330,7 @@ function Data.const(param)
          table.concat{'const value must be non-negative and of the type: ', 
                       atom[MODEL][Data.NAME] })
          
+
   -- char: truncate value to 1st char; warn if truncated
   if (Data.char == atom or Data.wchar == atom) and #value > 1 then
     value = string.sub(value, 1, 1)
@@ -488,24 +348,200 @@ function Data.const(param)
     print(table.concat{'WARNING: truncating decimal value for integer constant ', 
                        'to: ', value})
   end
-  
-  -- Construct model
-  local model = {
-    [Data.NAME] = nil,  -- populated when this constant is assigned to a module
-    [Data.KIND] = Data.CONST,
-    [Data.DEFN] = atom,
-    [Data.INSTANCES] = value, 
-  }  
-  local instance = { -- top-level instance to be installed in the module
-    [MODEL] = model,
-  }
 
-  setmetatable(instance, _.API[Data.CONST])
-  
-  return instance
+  -- create the template
+  local template = _.new_template(Data.CONST) 
+  template[MODEL][Data.DEFN] = atom
+  template[MODEL][Data.INSTANCES] = value
+  return template
 end
 
+
+--- Const API meta-table
+_.API[Data.CONST] = {
+
+  __tostring = function(const)
+    local value = const[MODEL][Data.INSTANCES]
+    local atom = const[MODEL][Data.DEFN]
+    if Data.char == atom or Data.wchar == atom then
+      return table.concat{"'", tostring(value), "'"}
+    elseif Data.string() == atom or Data.wstring() == atom then
+      return table.concat{'"', tostring(value), '"'}
+    else
+      return tostring(value)
+    end
+  end,
+
+  __newindex = function (template, key, value)
+    -- immutable: do-nothing
+  end,
+
+  -- instance value is obtained by evaluating the table:
+  -- eg: MY_CONST()
+  __call = function(const)
+    return const[MODEL][Data.INSTANCES]
+  end,
+}
+
 --------------------------------------------------------------------------------
+
+--- Create a typedef. 
+-- 
+-- Typedefs are aliases for underlying primitive or composite types 
+-- @param param [in] the underlying type definition and optional multiplicity
+--                   and annotations, e.g.
+--                 { template, [collection,] [annotation1, annotation2, ...] } 
+-- @return a table represensing the typedef
+-- @usage
+--  IDL: typedef sequence<MyStruct> MyStructSeq
+--  Lua: MyStructSeq = Data.typedef{ Data.MyStruct, Data.sequence() }
+--
+--  IDL: typedef MyStruct MyStructArray[10][20]
+--  Lua: MyStructArray = Data.typedef{ Data.MyStruct, Data.array(10, 20) }
+function Data.typedef(param) 
+  -- pre-condition: parameters are specified
+  assert('table' == type(param), 
+       table.concat{'invalid type specification: ', tostring(param)})
+
+  -- pre-condition: ensure that the 1st parameter is a valid type
+  local alias = param[1]
+  assert('table' == type(alias), 
+    table.concat{'undefined alias type for typedef: "', tostring(alias), '"'})
+  assert(nil ~= alias[MODEL], 
+    table.concat{'alias must be a data model for typedef "', tostring(alias), 
+                 '"'})
+  local alias_type = alias[MODEL][Data.KIND]
+  assert(Data.ATOM == alias_type or
+       Data.ENUM == alias_type or
+       Data.STRUCT == alias_type or 
+       Data.UNION == alias_type or
+       Data.TYPEDEF == alias_type,
+       table.concat{'alias must be a atom|enum|struct|union|typedef: ', 
+                    tostring(alias)})
+
+  -- pre-condition: ensure that the 2nd parameter if present 
+  -- is a 'collection' type
+  local collection = param[2]  
+  assert(nil == collection or
+        Data.ARRAY == collection[MODEL] or
+        Data.SEQUENCE == collection[MODEL],
+    table.concat{'invalid collection for typedef "', tostring(collection), '"'})
+ 
+
+  -- create the template
+  local template = _.new_template(Data.TYPEDEF) 
+  template[MODEL][Data.DEFN] = { alias, collection }
+  return template
+end
+
+--- Atom API meta-table
+_.API[Data.TYPEDEF] = {
+
+  __tostring = function(template)
+    -- the name or the kind (if no name has been assigned)
+    return template[MODEL][Data.NAME] or
+      template[MODEL][Data.KIND]() -- evaluate the function
+  end,
+
+  __newindex = function (template, key, value)
+    -- immutable: do-nothing
+  end
+}
+
+--------------------------------------------------------------------------------
+
+--- Create an annotation
+--  Annotations attributes are not interpreted, and kept intact 
+-- @param ...  optional 'default' attributes of the annotation
+-- @return an annotation table
+-- @usage
+--   -- IDL @Key
+--     Data.Key
+--     Data.Key{GUID=N}
+--     
+--  --  IDL @Exensibility(EXTENSIBLE_EXTENSIBILITY)
+--    Data.Extensibility{'EXTENSIBLE_EXTENSIBILITY'},
+-- 
+--  -- Create user defined annotation @MyAnnotation(value1 = 42, value2 = 42.0)
+--     MyAnnotation = Data.annotation{value1 = 42, value2 = 9.0}
+--
+--  -- Use user defined annotation with custom attributes
+--     MyAnnotation{value1 = 942, value2 = 999.0}
+--        
+function Data.annotation(...)   
+  -- create the template
+  local template = _.new_template(Data.ANNOTATION)
+  local model = template[MODEL]
+  
+  -- annotation definition function (closure)
+  -- NOTE: the attributes passed to the annotation are not interpreted,
+  --       and are kept intact; we simply add the MODEL definition
+  --   A function that returns a model table, with user defined 
+  --   annotation attributes passed as a table of {name = value} pairs
+  --      eg: Data.MyAnnotation{value1 = 42, value2 = 42.0}
+  model[Data.DEFN] = function (attributes) -- parameters to the annotation
+    if attributes then
+      assert('table' == type(attributes), 
+        table.concat{'table with {name=value, ...} attributes expected: ', 
+                   tostring(attributes)})
+    end
+    local instance = attributes or template
+    instance[MODEL] = model
+    setmetatable(instance, _.API[Data.ANNOTATION]) -- needed for __tostring()
+    return instance   
+  end
+  
+  -- initialize template with the attributes
+  template = template(...)
+  
+  return template
+end
+
+--- Annotations API meta-table
+_.API[Data.ANNOTATION] = {
+
+  __tostring = function(annotation)
+    -- output the attributes if any
+    local output = nil
+
+    -- assertions
+    for i, v in ipairs(annotation) do
+      output = string.format('%s%s%s',
+        output or '', -- output or nothing
+        output and ',' or '', -- put a comma or not?
+        tostring(v))
+    end
+
+    -- name value pairs {name=value}
+    for k, v in pairs(annotation) do
+      if 'string' == type(k) then
+        output = string.format('%s%s%s=%s',
+          output or '', -- output or nothing
+          output and ',' or '', -- put a comma or not?
+          tostring(k), tostring(v))
+      end
+    end
+
+    if output then
+      output = string.format('@%s(%s)', annotation[MODEL][Data.NAME], output)
+    else
+      output = string.format('@%s', annotation[MODEL][Data.NAME])
+    end
+
+    return output
+  end,
+
+  __newindex = function (template, key, value)
+  -- immutable: do-nothing
+  end,
+
+  __call = function(annotation, ...)
+    return annotation[MODEL][Data.DEFN](...)
+  end
+}
+
+--------------------------------------------------------------------------------
+
 --- Create an enum type
 -- @param param a table representing the enum declaration  
 -- @return a table representing the enum data model. The table fields 
@@ -557,109 +593,111 @@ end
 --    for k, v in pairs(MyEnum) do print(k, v) end
 --
 function Data.enum(param) 
-  -- top-level template to be installed in the module
-  local template = _.new_template(Data.ENUM,param)
+  -- pre-condition: parameters are specified
+  assert(nil == param or 'table' == type(param), 
+       table.concat{'invalid type specification: ', tostring(param)})
+       
+  -- create the template
+  local template = _.new_template(Data.ENUM)
 
   -- populate the template
   return _.populate_template(template, param)
 end
 
---- enum API meta-table
+--- Enum API meta-table
 _.API[Data.ENUM] = {
 
-    __tostring = function(template) 
-      -- the name or the kind (if no name has been assigned)
-      return template[MODEL][Data.NAME] or 
-             template[MODEL][Data.KIND]() -- evaluate the function
-    end,
-    
-    __len = function (template)
-      return #template[MODEL][Data.DEFN]
-    end,
-
-    __ipairs = function(template)
-      return ipairs(template[MODEL][Data.DEFN])
-    end,
-
-
-    __index = function (template, key)
-      local model = template[MODEL]
-      if Data.NAME == key then
-        return model[Data.NAME]
-      elseif Data.KIND == key then
-        return model[Data.KIND]
-      else -- delegate to the model definition
-         return template[MODEL][Data.DEFN][key]
-      end
-    end,
-    
-    
-    __newindex = function (template, key, value)
-
-      local model = template[MODEL]
-      local model_defn = model[Data.DEFN]
-
-      if Data.NAME == key then -- set the model name
-        rawset(model, Data.NAME, value)
-
-      elseif Data.ANNOTATION == key then -- annotation definition
-        -- set the new annotations in the model definition (may be nil)
-        model_defn[Data.ANNOTATION] = _.assert_annotation_array(value)
-
-      elseif 'number' == type(key) then -- member definition
-        -- clear the old member definition and instance fields
-        if model_defn[key] then
-          local old_role = next(model_defn[key])
-
-          -- update instances: remove the old_role
-          rawset(template, old_role, nil)
-        end
-
-        -- set the new member definition
-        if nil == value then
-          -- nil => remove the key-th member definition
-          table.remove(model_defn, key) -- do not want holes in array
-
-        else
-          -- get the new role and role_defn
-          --  Format:
-          --    { role = value } 
-          -- OR 
-          --    role 
-          local role, role_defn 
-          if 'table' ==  type(value) then
-            role, role_defn = next(value)        --  { role = value } 
-          else
-             role, role_defn = value, #template  --    role
-          end
-          
-          -- role must be a string
-          assert(type(role) == 'string', 
-            table.concat{'invalid member name: ', tostring(role)})
+  __tostring = function(template) 
+    -- the name or the kind (if no name has been assigned)
+    return template[MODEL][Data.NAME] or 
+           template[MODEL][Data.KIND]() -- evaluate the function
+  end,
   
-          -- ensure the definition is an ordinal value
-          assert('number' == type(role_defn) and 
-                 math.floor(role_defn) == role_defn, -- integer  
-          table.concat{'invalid definition: ', 
-                        tostring(role), ' = ', tostring(role_defn) })
-            
-          -- is the role already defined?
-          assert(nil == rawget(template, role),-- check template
-            table.concat{'member name already defined: "', role, '"'})
-          
-          -- insert the new role
-          rawset(template, role, role_defn)
-          
-          -- insert the new member definition
-          model_defn[key] = {
-            [role] = role_defn   -- map with one entry
-          }
+  __len = function (template)
+    return #template[MODEL][Data.DEFN]
+  end,
+
+  __ipairs = function(template)
+    return ipairs(template[MODEL][Data.DEFN])
+  end,
+
+  __index = function (template, key)
+    local model = template[MODEL]
+    if Data.NAME == key then
+      return model[Data.NAME]
+    elseif Data.KIND == key then
+      return model[Data.KIND]
+    else -- delegate to the model definition
+       return template[MODEL][Data.DEFN][key]
+    end
+  end,
+  
+  __newindex = function (template, key, value)
+
+    local model = template[MODEL]
+    local model_defn = model[Data.DEFN]
+
+    if Data.NAME == key then -- set the model name
+      rawset(model, Data.NAME, value)
+
+    elseif Data.ANNOTATION == key then -- annotation definition
+      -- set the new annotations in the model definition (may be nil)
+      model_defn[Data.ANNOTATION] = _.assert_annotation_array(value)
+
+    elseif 'number' == type(key) then -- member definition
+      -- clear the old member definition and instance fields
+      if model_defn[key] then
+        local old_role = next(model_defn[key])
+
+        -- update instances: remove the old_role
+        rawset(template, old_role, nil)
+      end
+
+      -- set the new member definition
+      if nil == value then
+        -- nil => remove the key-th member definition
+        table.remove(model_defn, key) -- do not want holes in array
+
+      else
+        --  Format:
+        --    { role = role_defn (i.e. ordinal value) } 
+        -- OR 
+        --    role 
+        local role, role_defn 
+        if 'table' ==  type(value) then
+          role, role_defn = next(value)        --  { role = value } 
+        else
+           role, role_defn = value, #template  --    role
         end
+        
+        -- role must be a string
+        assert(type(role) == 'string', 
+          table.concat{'invalid member name: ', tostring(role)})
+
+        -- ensure the definition is an ordinal value
+        assert('number' == type(role_defn) and 
+               math.floor(role_defn) == role_defn, -- integer  
+        table.concat{'invalid definition: ', 
+                      tostring(role), ' = ', tostring(role_defn) })
+          
+        -- is the role already defined?
+        assert(nil == rawget(template, role),-- check template
+          table.concat{'member name already defined: "', role, '"'})
+        
+        -- insert the new role
+        rawset(template, role, role_defn)
+        
+        -- insert the new member definition
+        model_defn[key] = {
+          [role] = role_defn   -- map with one entry
+        }
       end
     end
+  end
 }
 
 --------------------------------------------------------------------------------
+
 --- Create a struct type
 -- @param param a table representing the struct declaration  
 -- @return a table representing the struct data model. The table fields 
@@ -707,8 +745,12 @@ _.API[Data.ENUM] = {
 --    for k, v in pairs(MyStruct) do print(k, v) end
 --
 function Data.struct(param) 
-  -- top-level template to be installed in the module
-  local template = _.new_template(Data.STRUCT, param)
+  -- pre-condition: parameters are specified
+  assert(nil == param or 'table' == type(param), 
+       table.concat{'invalid type specification: ', tostring(param)})
+       
+  -- create the template
+  local template = _.new_template(Data.STRUCT)
   template[MODEL][Data.INSTANCES] = {}
   
   -- OPTIONAL base: pop the next element if it is a base model element
@@ -724,163 +766,160 @@ function Data.struct(param)
   return _.populate_template(template, param)
 end
 
---- API Metatable for a struct[MODEL] table
--- struct[MODEL] table serves as a virtual table and manipulates
--- the underlying struct[MODEL][Data.DEFN] and attached instances
+--- Struct API meta-table
 _.API[Data.STRUCT] = {
 
-    __tostring = function(template) 
-      -- the name or the kind (if no name has been assigned)
-      return template[MODEL][Data.NAME] or 
-             template[MODEL][Data.KIND]() -- evaluate the function
-    end,
-    
-    __len = function (template)
-      return #template[MODEL][Data.DEFN]
-    end,
+  __tostring = function(template)
+    -- the name or the kind (if no name has been assigned)
+    return template[MODEL][Data.NAME] or
+      template[MODEL][Data.KIND]() -- evaluate the function
+  end,
 
-    __ipairs = function(template)
-      return ipairs(template[MODEL][Data.DEFN])
-    end,
+  __len = function (template)
+    return #template[MODEL][Data.DEFN]
+  end,
 
+  __ipairs = function(template)
+    return ipairs(template[MODEL][Data.DEFN])
+  end,
 
-    __index = function (template, key)
-      local model = template[MODEL]
-      if Data.NAME == key then
-        return model[Data.NAME]
-      elseif Data.KIND == key then
-        return model[Data.KIND]
-      else -- delegate to the model definition
-         return template[MODEL][Data.DEFN][key]
+  __index = function (template, key)
+    local model = template[MODEL]
+    if Data.NAME == key then
+      return model[Data.NAME]
+    elseif Data.KIND == key then
+      return model[Data.KIND]
+    else -- delegate to the model definition
+      return template[MODEL][Data.DEFN][key]
+    end
+  end,
+
+  __newindex = function (template, key, value)
+
+    local model = template[MODEL]
+    local model_defn = model[Data.DEFN]
+
+    if Data.NAME == key then -- set the model name
+      rawset(model, Data.NAME, value)
+
+    elseif Data.ANNOTATION == key then -- annotation definition
+      -- set the new annotations in the model definition (may be nil)
+      model_defn[Data.ANNOTATION] = _.assert_annotation_array(value)
+
+    elseif 'number' == type(key) then -- member definition
+      --  Format:
+      --  { role = { template, [collection,] [annotation1, annotation2, ...] } }
+
+      -- clear the old member definition and instance fields
+      if model_defn[key] then
+        local old_role = next(model_defn[key])
+
+        -- update instances: remove the old_role
+        if old_role then
+          _.update_instances(model, old_role, nil) -- clear the role
+        end
+    end
+
+    -- set the new member definition
+    if nil == value then
+      -- nil => remove the key-th member definition
+      table.remove(model_defn, key) -- do not want holes in array
+
+    else
+      -- get the new role and role_defn
+      local role, role_defn = next(value)
+
+      -- role must be a string
+      assert(type(role) == 'string',
+        table.concat{'invalid member name: ', tostring(role)})
+
+      -- is the role already defined?
+      assert(nil == rawget(template, role),-- check template
+        table.concat{'member name already defined: "', role, '"'})
+
+      -- create role instance (checks for pre-conditions, may fail!)
+      local role_instance = _.create_role_instance(role, role_defn)
+
+      -- update instances: add the new role_defn
+      _.update_instances(model, role, role_instance)
+
+      -- insert the new member definition
+      local role_defn_copy = {} -- make our own local copy
+      for i, v in ipairs(role_defn) do role_defn_copy[i] = v end
+      model_defn[key] = {
+        [role] = role_defn_copy   -- map with one entry
+      }
+    end
+
+    elseif Data.BASE == key then -- inherits from 'base' struct
+
+      -- clear the instance fields from the old base struct (if any)
+      local old_base = model_defn[Data.BASE]
+      while old_base do
+        for k, v in pairs(old_base) do
+          if 'string' == type(k) then -- copy only the base instance fields
+            -- update instances: remove the old_base role
+            _.update_instances(model, k, nil) -- clear the role
+          end
+        end
+
+        -- template is no longer an instance of the base struct
+        old_base[MODEL][Data.INSTANCES][template] = nil
+
+        -- visit up the base model inheritance hierarchy
+        old_base = old_base[Data.BASE] -- parent base
       end
-    end,
-    
-    
-    __newindex = function (template, key, value)
 
-      local model = template[MODEL]
-      local model_defn = model[Data.DEFN]
+      -- get the base model, if any:
+      local new_base
+      if nil ~= value then
+        new_base = _.assert_model(Data.STRUCT, value)
+      end
 
-      if Data.NAME == key then -- set the model name
-        rawset(model, Data.NAME, value)
+      -- populate the instance fields from the base model struct
+      local base = new_base
+      while base do
+        for i = 1, #base[MODEL][Data.DEFN] do
+          local base_role, base_role_defn = next(base[MODEL][Data.DEFN][i])
 
-      elseif Data.ANNOTATION == key then -- annotation definition
-        -- set the new annotations in the model definition (may be nil)
-        model_defn[Data.ANNOTATION] = _.assert_annotation_array(value)
+          -- is the base_role already defined?
+          assert(nil == rawget(template, base_role),-- check template
+            table.concat{'member name already defined: "', base_role, '"'})
 
-      elseif 'number' == type(key) then -- member definition
-        --  Format:
-        --  { role = { template, [collection,] [annotation1, annotation2, ...] } }
+          -- create base role instance (checks for pre-conditions, may fail)
+          local base_role_instance =
+            _.create_role_instance(base_role, base_role_defn)
 
-        -- clear the old member definition and instance fields
-        if model_defn[key] then
-          local old_role = next(model_defn[key])
 
-          -- update instances: remove the old_role
-          if old_role then
-            _.update_instances(model, old_role, nil) -- clear the role
-          end
-        end
-  
-        -- set the new member definition
-        if nil == value then
-          -- nil => remove the key-th member definition
-          table.remove(model_defn, key) -- do not want holes in array
-  
-        else
-          -- get the new role and role_defn
-          local role, role_defn = next(value)
-
-          -- role must be a string
-          assert(type(role) == 'string', 
-            table.concat{'invalid member name: ', tostring(role)})
-            
-          -- is the role already defined?
-          assert(nil == rawget(template, role),-- check template
-            table.concat{'member name already defined: "', role, '"'})
-  
-          -- create role instance (checks for pre-conditions, may fail!)
-          local role_instance = _.create_role_instance(role, role_defn)
-  
           -- update instances: add the new role_defn
-          _.update_instances(model, role, role_instance)
-  
-          -- insert the new member definition
-          local role_defn_copy = {} -- make our own local copy
-          for i, v in ipairs(role_defn) do role_defn_copy[i] = v end
-          model_defn[key] = {
-            [role] = role_defn_copy   -- map with one entry
-          }
+          _.update_instances(model, base_role, base_role_instance)
         end
 
-      elseif Data.BASE == key then -- inherits from 'base' struct
+        -- visit up the base model inheritance hierarchy
+        base = base[MODEL][Data.DEFN][Data.BASE] -- parent base
+      end
 
-        -- clear the instance fields from the old base struct (if any)
-        local old_base = model_defn[Data.BASE]
-        while old_base do
-          for k, v in pairs(old_base) do
-            if 'string' == type(k) then -- copy only the base instance fields
-              -- update instances: remove the old_base role
-              _.update_instances(model, k, nil) -- clear the role
-            end
-          end
-          
-          -- template is no longer an instance of the base struct
-          old_base[MODEL][Data.INSTANCES][template] = nil
-     
-          -- visit up the base model inheritance hierarchy
-          old_base = old_base[Data.BASE] -- parent base
-        end
+      -- set the new base in the model definition (may be nil)
+      model_defn[Data.BASE] = new_base
 
-        -- get the base model, if any:
-        local new_base
-        if nil ~= value then
-          new_base = _.assert_model(Data.STRUCT, value)
-        end
-            
-        -- populate the instance fields from the base model struct
-        local base = new_base
-        while base do
-          for i = 1, #base[MODEL][Data.DEFN] do
-            local base_role, base_role_defn = next(base[MODEL][Data.DEFN][i])
-     
-            -- is the base_role already defined?
-            assert(nil == rawget(template, base_role),-- check template
-              table.concat{'member name already defined: "', base_role, '"'})
+      -- template is an instance of the base structs (inheritance hierarchy)
+      base = new_base
+      while base do
+        -- NOTE: Since we don't have a well-defined "name", we make an
+        -- and exception, and use the template (instance) itself to
+        -- index into the INSTANCES table. This is utilized by the
+        -- ._update_instances() to correctly update the template
+        base[MODEL][Data.INSTANCES][template] = template
 
-            -- create base role instance (checks for pre-conditions, may fail)
-            local base_role_instance =
-                            _.create_role_instance(base_role, base_role_defn)
-
-          
-            -- update instances: add the new role_defn
-            _.update_instances(model, base_role, base_role_instance)
-          end
-            
-          -- visit up the base model inheritance hierarchy
-          base = base[MODEL][Data.DEFN][Data.BASE] -- parent base
-        end
-
-        -- set the new base in the model definition (may be nil)
-        model_defn[Data.BASE] = new_base
-
-        -- template is an instance of the base structs (inheritance hierarchy)
-        base = new_base
-        while base do
-          -- NOTE: Since we don't have a well-defined "name", we make an
-          -- and exception, and use the template (instance) itself to
-          -- index into the INSTANCES table. This is utilized by the
-          -- ._update_instances() to correctly update the template
-          base[MODEL][Data.INSTANCES][template] = template
-
-          -- visit up the base model inheritance hierarchy
-          base = base[MODEL][Data.DEFN][Data.BASE] -- parent base
-        end        
+        -- visit up the base model inheritance hierarchy
+        base = base[MODEL][Data.DEFN][Data.BASE] -- parent base
       end
     end
+  end
 }
 
 --------------------------------------------------------------------------------
+
 --- Create a union type
 -- @param param a table representing the union declaration  
 -- @return a table representing the union data model. The table fields 
@@ -932,8 +971,12 @@ _.API[Data.STRUCT] = {
 --    for k, v in pairs(MyUnion) do print(k, v) end
 --
 function Data.union(param) 
-  -- top-level template to be installed in the module
-  local template = _.new_template(Data.UNION, param)
+  -- pre-condition: parameters are specified
+  assert(nil == param or 'table' == type(param), 
+       table.concat{'invalid type specification: ', tostring(param)})
+       
+  -- create the template 
+  local template = _.new_template(Data.UNION)
   template[MODEL][Data.INSTANCES] = {}
  
  	-- pop the discriminator
@@ -944,194 +987,232 @@ function Data.union(param)
   return _.populate_template(template, param)
 end
 
---- API Metatable for a union[MODEL] table
--- union[MODEL] table serves as a virtual table and manipulates
--- the underlying union[MODEL][Data.DEFN] and attached instances
+--- Union API meta-table 
 _.API[Data.UNION] = {
 
-    __tostring = function(template) 
-      -- the name or the kind (if no name has been assigned)
-      return template[MODEL][Data.NAME] or 
-             template[MODEL][Data.KIND]() -- evaluate the function
-    end,
+  __tostring = function(template) 
+    -- the name or the kind (if no name has been assigned)
+    return template[MODEL][Data.NAME] or 
+           template[MODEL][Data.KIND]() -- evaluate the function
+  end,
 
-    __len = function (template)
-      return #template[MODEL][Data.DEFN]
-    end,
+  __len = function (template)
+    return #template[MODEL][Data.DEFN]
+  end,
 
-    __ipairs = function(template)
-      return ipairs(template[MODEL][Data.DEFN])
-    end,
+  __ipairs = function(template)
+    return ipairs(template[MODEL][Data.DEFN])
+  end,
 
-    __index = function (template, key)
-      local model = template[MODEL]
-      if Data.NAME == key then
-        return model[Data.NAME]
-      elseif Data.KIND == key then
-        return model[Data.KIND]
-      else -- delegate to the model definition
-         return template[MODEL][Data.DEFN][key]
+  __index = function (template, key)
+    local model = template[MODEL]
+    if Data.NAME == key then
+      return model[Data.NAME]
+    elseif Data.KIND == key then
+      return model[Data.KIND]
+    else -- delegate to the model definition
+       return template[MODEL][Data.DEFN][key]
+    end
+  end,
+
+  __newindex = function (template, key, value)
+
+    local model = template[MODEL]
+    local model_defn = model[Data.DEFN]
+
+    if Data.NAME == key then -- set the model name
+      model[Data.NAME] = value
+
+    elseif Data.ANNOTATION == key then -- annotation definition
+      -- set the new annotations in the model definition (may be nil)
+      model_defn[Data.ANNOTATION] = _.assert_annotation_array(value)
+
+    elseif Data.SWITCH == key then -- switch definition
+
+      local discriminator_type = _.model_type(value)
+      assert(Data.ATOM == discriminator_type or
+        Data.ENUM == discriminator_type,
+        'discriminator type must be an "atom" or an "enum"')
+      model[Data.DEFN][Data.SWITCH] = value
+      rawset(template, '_d', '#')
+     
+      -- TODO: ensure that 'cases' are compatible with new discriminator
+        
+    elseif 'number' == type(key) then -- member definition
+      --  Format:
+      --   { case,
+      --     role = { template, [collection,] [annotation1, annotation2, ...] }
+      --   }
+
+      -- clear the old member definition
+      if model_defn[key] then
+        local old_role = next(model_defn[key], 1) -- 2nd array item
+
+        -- update instances: remove the old_role
+        if old_role then
+          _.update_instances(model, old_role, nil) -- clear the role
+        end
       end
-    end,
 
-    __newindex = function (template, key, value)
+      if nil == value then
+        -- remove the key-th member definition
+        table.remove(model_defn, key) -- do not want holes in array
+      else
+        -- set the new role_defn
+        local case = _.assert_case(model_defn[Data.SWITCH], value[1])
 
-      local model = template[MODEL]
-      local model_defn = model[Data.DEFN]
-
-      if Data.NAME == key then -- set the model name
-        model[Data.NAME] = value
-
-      elseif Data.ANNOTATION == key then -- annotation definition
-        -- set the new annotations in the model definition (may be nil)
-        model_defn[Data.ANNOTATION] = _.assert_annotation_array(value)
-
-      elseif Data.SWITCH == key then -- switch definition
-
-        local discriminator_type = _.model_type(value)
-        assert(Data.ATOM == discriminator_type or
-          Data.ENUM == discriminator_type,
-          'discriminator type must be an "atom" or an "enum"')
-        model[Data.DEFN][Data.SWITCH] = value
-        rawset(template, '_d', '#')
-       
-        -- TODO: ensure that 'cases' are compatible with new discriminator
-          
-      elseif 'number' == type(key) then -- member definition
-        --  Format:
-        --   { case,
-        --     role = { template, [collection,] [annotation1, annotation2, ...] }
-        --   }
-
-        -- clear the old member definition
-        if model_defn[key] then
-          local old_role = next(model_defn[key], 1) -- 2nd array item
-
-          -- update instances: remove the old_role
-          if old_role then
-            _.update_instances(model, old_role, nil) -- clear the role
-          end
+        -- is the case already defined?
+        for i, defn_i in ipairs(model_defn) do
+          assert(case ~= defn_i[1],
+            table.concat{'case exists: "', tostring(case), '"'})
         end
 
-        if nil == value then
-          -- remove the key-th member definition
-          table.remove(model_defn, key) -- do not want holes in array
-        else
-          -- set the new role_defn
-          local case = _.assert_case(model_defn[Data.SWITCH], value[1])
-  
-          -- is the case already defined?
-          for i, defn_i in ipairs(model_defn) do
-            assert(case ~= defn_i[1],
-              table.concat{'case exists: "', tostring(case), '"'})
-          end
-  
-          -- get the role and definition
-          local role, role_defn = next(value, 1) -- 2nd item after the 'case'
+        -- get the role and definition
+        local role, role_defn = next(value, 1) -- 2nd item after the 'case'
  
           -- add the role
-          if role then
-            -- role must be a string
-            assert(type(role) == 'string', 
-            table.concat{'invalid member name: ', tostring(role)})
-            
-            -- is the role already defined?
-            assert(nil == rawget(template, role),-- check template
-              table.concat{'member name already defined: "', role, '"'})
-  
-            local role_instance = _.create_role_instance(role, role_defn)
-  
-            -- insert the new member definition
-            local role_defn_copy = {} -- make our own local copy
-            for i, v in ipairs(role_defn) do role_defn_copy[i] = v end
-            model_defn[key] = {
-              case,                     -- array of length 1
-              [role] = role_defn_copy   -- map with one entry
-            }
-  
-            -- update instances: add the new role_defn
-            _.update_instances(model, role, role_instance)
-          else
-            model_defn[key] = {
-              case,         -- array of length 1
-            }
-          end
+        if role then
+          -- role must be a string
+          assert(type(role) == 'string', 
+          table.concat{'invalid member name: ', tostring(role)})
+          
+          -- is the role already defined?
+          assert(nil == rawget(template, role),-- check template
+            table.concat{'member name already defined: "', role, '"'})
+
+          local role_instance = _.create_role_instance(role, role_defn)
+
+          -- insert the new member definition
+          local role_defn_copy = {} -- make our own local copy
+          for i, v in ipairs(role_defn) do role_defn_copy[i] = v end
+          model_defn[key] = {
+            case,                     -- array of length 1
+            [role] = role_defn_copy   -- map with one entry
+          }
+
+          -- update instances: add the new role_defn
+          _.update_instances(model, role, role_instance)
+        else
+          model_defn[key] = {
+            case,         -- array of length 1
+          }
         end
       end
     end
+  end
 }
 
 --------------------------------------------------------------------------------
---  Typedefs:
---     { template, [collection,] [annotation1, annotation2, ...] } 
---[[
-	IDL: typedef sequence<MyStruct> MyStructSeq
-	Lua: Data:Typedef{'MyStructSeq', Data.MyStruct, Data.Sequence() }
-	
-	IDL: typedef MyStruct MyStructArray[10][20]
-	Lua: Data:Typedef{'MyStructArray', Data.MyStruct, Data.Array(10, 20) }
---]]
-function Data.typedef(param) 
-	assert('table' == type(param), 
-		   table.concat{'invalid typedef specification: ', tostring(param)})
 
-	local alias = param[1]
-	assert('table' == type(alias), 
-		table.concat{'undefined alias type for typedef: "', tostring(alias), '"'})
-	assert(nil ~= alias[MODEL], 
-		table.concat{'alias must be a data model for typedef "', tostring(alias), '"'})
-	local alias_type = alias[MODEL][Data.KIND]
-	assert(Data.ATOM == alias_type or
-		   Data.ENUM == alias_type or
-		   Data.STRUCT == alias_type or 
-		   Data.UNION == alias_type or
-		   Data.TYPEDEF == alias_type,
-		   table.concat{'alias must be a atom|enum|struct|union|typedef: ', 
-		   				 tostring(name)})
-		   		
-	local collection = param[2]	 
-	assert(nil == collection or 'number' == type(collection) or
-		   Data.ARRAY == collection[MODEL] or
-		   Data.SEQUENCE == collection[MODEL],
-		table.concat{'invalid collection for typedef "', tostring(collection), '"'})
+--- Create a module 
+-- 
+-- A module represents a name-space that holds various user defined types
+-- @param param a table representing the module declaration  
+-- @return a table representing the module data model. The table fields 
+-- contain the string index to de-reference the **user-defined** data types
+-- @usage
+--    -- Create module: Declarative style
+--    MyModule    = Data.module{
+--      MY_SIZE   = Data.const{...},
+--      MyTypedef = Data.typedef{...},
+--      MyEnum    = Data.enum{...},
+--      MyStruct  = Data.struct{...},
+--      MyUnion   = Data.union{...},
+--      :
+--    }
+--    
+--  -- Create module: Imperative style
+--   MyModule = Data.module{}
+--   
+--  -- Get | Set a member:
+--   print(MyModule[i])
+--   MyModule[i] = { role = template }
+--    -- or --
+--   MyModule.role = template -- inserts at the end: MyModule[#MyModule+1]
+--
+--  -- After either of the above definition, the following post-condition holds:
+--    MyModule.role == template
+-- 
+--    
+--  -- Iterate over the model definition (ordered):
+--   for i, v in ipairs(MyModule) do print(v) end
+--   for i = 1, #MyModule do print(MyModule[i]) end
+--
+--  -- Iterate over data model elements (unordered):
+--    for k, v in pairs(MyModule) do print(k, v) end
+--
+function Data.module(param) 
+  -- pre-condition: parameters are specified
+  assert(nil == param or 'table' == type(param), 
+       table.concat{'invalid type specification: ', tostring(param)})
+       
+  --create the template
+  local template = _.new_template(Data.MODULE)
+  template[MODEL][Data.INSTANCES] = {}
  
-   
-	local model = { -- meta-data defining the typedef
-		[Data.NAME] = nil, -- populated when the typedef is assigned to a module
-		[Data.KIND] = Data.TYPEDEF,
-		[Data.DEFN] = { alias, collection },
-		[Data.INSTANCES] = nil,
-	}
-	local instance = { -- top-level instance to be installed in the module
-		[MODEL] = model,
-	}
-		
-	return instance
+  -- populate the template
+  return _.populate_template(template, param)
 end
 
---- Ensure that case is a valid discriminator value
-function _.assert_case(discriminator, case)
-  if nil == case then return case end -- default case 
+--- Module API meta-table
+_.API[Data.MODULE] = {
 
-  local err_msg = table.concat{'invalid case value: ', tostring(case)}
-  
-  if Data.long == discriminator or -- integral type
-     Data.short == discriminator or 
-     Data.octet == discriminator then
-    assert(tonumber(case) and math.floor(case) == case, err_msg)     
-   elseif Data.char == discriminator then -- character
-    assert('string' == type(case) and 1 == string.len(case), err_msg) 
-   elseif Data.boolean == discriminator then -- boolean
-    assert(true == case or false == case, err_msg)
-   elseif Data.ENUM == discriminator[MODEL][Data.KIND] then -- enum
-    assert(discriminator[case], err_msg)
-   else -- invalid 
-    assert(false, err_msg)
-   end
-  
-   return case
-end
+  __tostring = function(template)
+    -- the name or the kind (if no name has been assigned)
+    return template[MODEL][Data.NAME] or
+      template[MODEL][Data.KIND]() -- evaluate the function
+  end,
 
+  __len = function (template)
+    return #template[MODEL][Data.DEFN]
+  end,
+
+  __ipairs = function(template)
+    return ipairs(template[MODEL][Data.DEFN])
+  end,
+
+  __index = function (template, key)
+    local model = template[MODEL]
+    if Data.NAME == key then
+      return model[Data.NAME]
+    elseif Data.KIND == key then
+      return model[Data.KIND]
+    else -- delegate to the model definition
+      return template[MODEL][Data.DEFN][key]
+    end
+  end,
+
+  __newindex = function (template, key, value)
+
+
+    -- if we are not 'erasing' an entry, the value must be a model instance
+    assert(nil == value or nil ~= _.model_type(value))
+
+    -- set the instance name
+    value[MODEL][Data.NAME] = key
+
+    -- insert in the module definition, so that the instance can be
+    -- iterated in the correct order (eg when outputting IDL)
+    local definition = template[MODEL][Data.DEFN]
+    local replaced = false
+    for i = #definition, 1, -1 do -- count down, latest first
+      if definition[i][MODEL][Data.NAME] == key then
+        replaced = true -- replace an old definition
+        definition[i] = value
+    end
+    end
+    if not replaced then -- insert at the end
+      table.insert(definition, value)
+    end
+
+    -- add an index entry to the module
+    rawset(template, key, value)
+  end
+}
+
+--------------------------------------------------------------------------------
+-- Helpers
+--------------------------------------------------------------------------------
 
 --- Get the model type of any arbitrary value
 -- @param #type value the value for which to retrieve the model type
@@ -1167,6 +1248,29 @@ function _.assert_annotation_array(value)
         annotations = value
     end
     return annotations
+end
+
+--- Ensure that case is a valid discriminator value
+function _.assert_case(discriminator, case)
+  if nil == case then return case end -- default case 
+
+  local err_msg = table.concat{'invalid case value: ', tostring(case)}
+  
+  if Data.long == discriminator or -- integral type
+     Data.short == discriminator or 
+     Data.octet == discriminator then
+    assert(tonumber(case) and math.floor(case) == case, err_msg)     
+   elseif Data.char == discriminator then -- character
+    assert('string' == type(case) and 1 == string.len(case), err_msg) 
+   elseif Data.boolean == discriminator then -- boolean
+    assert(true == case or false == case, err_msg)
+   elseif Data.ENUM == discriminator[MODEL][Data.KIND] then -- enum
+    assert(discriminator[case], err_msg)
+   else -- invalid 
+    assert(false, err_msg)
+   end
+  
+   return case
 end
 
 --- Define a role (member) instance
