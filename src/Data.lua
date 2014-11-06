@@ -201,12 +201,14 @@ local _ = {
 }
 
 --- Create a new 'empty' template
--- @param kind  [in] the kind of template
--- @return a new template ith the correct meta-model
-function _.new_template(kind)
+-- @param kind  [in] the kind of underlying model
+-- @param name  [in] the name of the underlying model
+-- @return a new template with the correct meta-model
+function _.new_template(kind, name)
  
   local model = {           -- meta-data
-    [Data.NAME] = nil,      -- will get populated when inserted into a module
+    [Data.NS]   = nil,      -- namespace: module to which this model belongs
+    [Data.NAME] = name,     -- string: name of the model with the namespace
     [Data.KIND] = kind,     -- type of the data model
     [Data.DEFN] = {},       -- will be populated by the declarations
     [Data.INSTANCES] = nil, -- will be populated when the type is defined
@@ -258,10 +260,15 @@ end
 -- @return the fully qualified name of the instance if any or 
 --         the string value of instance
 function _.fqname(instance)
-    return 'table' == type(instance) and 
-              (instance[MODEL] and 
-                instance[MODEL][Data.NAME]) or 
-              tostring(instance)
+  -- pre-condition: instance must be a model element
+  assert(nil ~= _.model_type(instance), "fqname(): not a valid instance")
+
+  local model = instance[MODEL]
+  if model[Data.NS] then
+    return table.concat{_.fqname(model[Data.NS]), '::', model[Data.NAME]}
+  else 
+    return model[Data.NAME]
+  end
 end
 
 --- Get the model type of any arbitrary value
@@ -657,9 +664,10 @@ function _.string(n, name)
     
   -- construct name of the atom: 'string<n>'
     local dim = n
-           
+    local n_kind = _.model_type(n)
+            
     -- if the dim is a CONST, use its value for validation
-    if  Data.CONST == _.model_type(n) then
+    if  Data.CONST == n_kind then
        dim = n()
     end
      
@@ -669,7 +677,11 @@ function _.string(n, name)
                table.concat{'invalid string capacity: ', tostring(n)})
       assert(dim > 0, 
              table.concat{'string capacity must be > 0: ', tostring(n)})
+      if Data.CONST == n_kind then
         name = table.concat{name, '<', _.fqname(n), '>'}
+      else 
+        name = table.concat{name, '<', tostring(n), '>'}
+      end
     end
             
   -- lookup the atom name in the builtin module
@@ -1693,17 +1705,20 @@ _.API[Data.MODULE] = {
                table.concat{'invalid member definition: ', tostring(role)})
           
         -- is the role already defined?
-        assert(nil == rawget(template, role),-- check template
+        assert(nil == rawget(model_defn[Data.NS], role),-- check template -- TODO
           table.concat{'member name already defined: "', role, '"'})
     
         -- update namespace
-        model_defn[Data.NS][role] = role_defn
+        model_defn[Data.NS][role] = role_defn -- TODO: remove
         
         -- update the module definition
         model_defn[key] = { [role] = role_defn } -- index
         
         -- set the role instance (template) name
         role_defn[MODEL][Data.NAME] = role
+        
+        -- move the model element to this module 
+        -- role_defn[MODEL][Data.NS] = template -- TODO:
       end
 
     elseif 'string' == type(key) then
@@ -1736,6 +1751,9 @@ _.API[Data.MODULE] = {
         
         -- set the role instance (template) name
         role_defn[MODEL][Data.NAME] = role
+        
+        -- move the model element to this module 
+        -- role_defn[MODEL][Data.NS] = template -- TODO
       end
     end
   end,
@@ -2000,7 +2018,8 @@ function _.tostring_role(role, role_defn)
 		end
 		output_member = string.format('%s%s', output_member, _.IDL_DISPLAY[template])
 		for i = 1, #seq do
-			output_member = string.format('%s,%s>', output_member, _.fqname(seq[i])) 
+			output_member = string.format('%s,%s>', output_member, 
+			          _.model_type(seq[i]) and _.fqname(seq[i]) or tostring(seq[i])) 
 		end
 		output_member = string.format('%s %s', output_member, role)
 	end
@@ -2014,7 +2033,8 @@ function _.tostring_role(role, role_defn)
 		if Data.ARRAY == role_defn[j][MODEL] then
 			for i = 1, #role_defn[j] do
 				output_member = string.format('%s[%s]', output_member, 
-				                                 _.fqname(role_defn[j][i])) 
+				   _.model_type(role_defn[j][i]) and 
+				       _.fqname(role_defn[j][i]) or tostring(role_defn[j][i]) ) 
 			end
 		elseif Data.SEQUENCE ~= role_defn[j][MODEL] then
 			output_annotations = string.format('%s%s ', 
