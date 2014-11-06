@@ -85,9 +85,9 @@
 --                 
 --          -- instance fields --
 --          user_role1 = 'user_role1'  -- name used to index this 'leaf' field
---          user_role2 = Data.instance('user_role2', UserModule.UserType2)
---          user_role3 = Data.instance('user_role3', UserModule.UserType3)
---          user_role_seq = Data.seq('user_role_seq', UserModule.UserTypeSeq)
+--          user_role2 = _.instance('user_role2', UserModule.UserType2)
+--          user_role3 = _.instance('user_role3', UserModule.UserType3)
+--          user_role_seq = _.seq('user_role_seq', UserModule.UserTypeSeq)
 --          :
 --       }
 --    and also returns the above table.
@@ -101,7 +101,7 @@
 --    Note that if a definition already exists, it is cleared and re-defined.
 --
 --    To create an instance named 'i1' from a structure named 'Model'
---          i1 = Data.instance('i1', Model)
+--          i1 = _.instance('i1', Model)
 --    Now, one can instance all the fields of the resulting table
 --          i1.role1 = 'i1.role1'
 --    or 
@@ -145,9 +145,9 @@
 --          Either a primitive field
 --              model.role = 'role'
 --          Or a composite field 
---              model.role = Data.instance('role', RoleModel)
+--              model.role = _.instance('role', RoleModel)
 --          or a sequence
---              model.role = Data.seq('role', RoleModel)
+--              model.role = _.seq('role', RoleModel)
 --
 --    Note that all the meta-data attributes are functions, so it is 
 --    straightforward to skip them, when traversing a model table.
@@ -247,6 +247,466 @@ function _.populate_template(template, defn)
   end
 
   return template
+end
+
+--------------------------------------------------------------------------------
+-- Helpers
+--------------------------------------------------------------------------------
+
+--- Fully qualified name of a model element
+-- @param instance a model element whose fully qualified name is desired
+-- @return the fully qualified name of the instance if any or 
+--         the string value of instance
+function _.fqname(instance)
+    return 'table' == type(instance) and 
+              (instance[MODEL] and 
+                instance[MODEL][Data.NAME]) or 
+              tostring(instance)
+end
+
+--- Get the model type of any arbitrary value
+-- @param value  [in] the value for which to retrieve the model type
+-- @return the model type or nil (if 'value' does not have a MODEL)
+function _.model_type(value)
+    return ('table' == type(value) and value[MODEL]) 
+           and value[MODEL][Data.KIND]
+           or nil
+end
+
+--- Ensure that the value is a model element
+-- @param kind   [in] expected model element kind
+-- @param value  [in] table to check if it is a model element of "kind"
+-- @return the model table if the kind matches, or nil
+function _.assert_model(kind, value)
+    assert('table' == type(value) and 
+           value[MODEL] and 
+           kind == value[MODEL][Data.KIND],
+           table.concat{'expected model kind "', kind(), 
+                        '", instead got "', tostring(value), '"'})
+    return value
+end
+
+--- Ensure all elements in the 'value' array are annotations
+-- @return the annotation array
+function _.assert_annotation_array(value)
+    -- establish valid annotations, if any
+    local annotations
+    if nil ~= value then
+        for i, v in ipairs(value) do
+            _.assert_model(Data.ANNOTATION, v)
+        end
+        annotations = value
+    end
+    return annotations
+end
+
+--- Ensure that case is a valid discriminator value
+function _.assert_case(discriminator, case)
+  if nil == case then return case end -- default case 
+
+  local err_msg = table.concat{'invalid case value: ', tostring(case)}
+  
+  if Data.long == discriminator or -- integral type
+     Data.short == discriminator or 
+     Data.octet == discriminator then
+    assert(tonumber(case) and math.floor(case) == case, err_msg)     
+   elseif Data.char == discriminator then -- character
+    assert('string' == type(case) and 1 == string.len(case), err_msg) 
+   elseif Data.boolean == discriminator then -- boolean
+    assert(true == case or false == case, err_msg)
+   elseif Data.ENUM == discriminator[MODEL][Data.KIND] then -- enum
+    assert(discriminator[case], err_msg)
+   else -- invalid 
+    assert(false, err_msg)
+   end
+  
+   return case
+end
+
+--- Define a role (member) instance
+-- @param #string role - the member name to instantiate (may be 'nil')
+-- @param #list<#table> role_defn - array consists of entries in the 
+--           { template, [collection,] [annotation1, annotation2, ...] }
+--      following order:
+--           template - the kind of member to instantiate (previously defined)
+--           ...      - optional list of annotations including whether the 
+--                      member is an array or sequence    
+-- @return the role (member) instance and the role_defn
+function _.create_role_instance(role, role_defn)
+  
+  -- pre-condition: role 
+  assert(nil == role or 'string' == type(role), 
+      table.concat{'invalid member name: ', tostring(role)})
+
+  -- pre-condition: role_defn
+  local template = role_defn[1]
+  local template_type = _.model_type(template)
+  assert(Data.ATOM == template_type or
+       Data.ENUM == template_type or
+       Data.STRUCT == template_type or 
+       Data.UNION == template_type or
+       Data.TYPEDEF == template_type,
+       table.concat{'member "', tostring(role), 
+              '" must be a atom|enum|struct|union|typedef: '})
+
+  -- pre-condition: ensure that the rest of the member definition entries are 
+  -- annotations: also look for the 1st 'collection' annotation (if any)
+  local collection = nil
+  for j = 2, #role_defn do
+    _.assert_model(Data.ANNOTATION, role_defn[j])
+
+    -- is this a collection?
+    if not collection and  -- the 1st 'collection' definition is used
+       (Data.ARRAY == role_defn[j][MODEL] or
+        Data.SEQUENCE == role_defn[j][MODEL]) then
+      collection = role_defn[j]
+    end
+  end
+
+  -- populate the role_instance fields
+  local role_instance = nil
+
+  if role then -- skip member instance if role is not specified 
+    if collection then
+      local iterator = template
+      for i = 1, #collection - 1  do -- create iterator for inner dimensions
+        iterator = _.seq('', iterator) -- unnamed iterator
+      end
+      role_instance = _.seq(role, iterator)
+    else
+      role_instance = _.instance(role, template)
+    end
+  end
+  
+  return role_instance, role_defn
+end
+
+--------------------------------------------------------------------------------
+-- Model Instances  ---
+--------------------------------------------------------------------------------
+
+--- Create an instance, using another instance as a template
+--  Defines a table that can be used to index into an instance of a model
+-- 
+-- @param name      <<in>> the role|instance name
+-- @param template  <<in>> the template to use for creating an instance; 
+--                         must be a model table 
+-- @return the newly created instance (seq) that supports indexing by 'name'
+-- @usage
+--    -- As an index into sample[]
+--    local myInstance = _.instance("my", template)
+--    local member = sample[myInstance.member] 
+--    for i = 1, sample[myInstance.memberSeq()] do -- length of the sequence
+--       local element_i = sample[memberSeq(i)] -- access the i-th element
+--    end  
+--
+--    -- As a sample itself
+--    local myInstance = _.instance("my", template)
+--    myInstance.member = "value"
+--
+--    -- NOTE: Assignment not yet supported for sequences:
+--    myInstance.memberSeq() = 10 -- length
+--    for i = 1, myInstance.memberSeq() do -- length of the sequence
+--       memberSeq(i) = "element_i"
+--    end  
+--
+function _.instance(name, template) 
+  -- print('DEBUG Data.instance 1: ', name, template[MODEL][Data.NAME])
+
+  -- pre-condition: name
+  assert('string' == type(name), 
+       table.concat{'invalid instance name: ', tostring(name)})
+  
+  -- pre-condition: ensure valid template
+  local template_type = _.model_type(template)
+  assert(Data.ATOM == template_type or
+       Data.ENUM == template_type or
+       Data.STRUCT == template_type or 
+       Data.UNION == template_type or
+       Data.TYPEDEF == template_type,
+       table.concat{'template must be a atom|enum|struct|union|typedef: ', 
+               tostring(name)})
+  local instance = nil
+
+  ---------------------------------------------------------------------------
+  -- typedef? switch the template to the underlying alias
+  ---------------------------------------------------------------------------
+
+  local alias, alias_type, alias_sequence, alias_collection
+  
+  if Data.TYPEDEF == template_type then
+    local defn = template[MODEL][Data.DEFN]
+    alias = defn[1]
+    alias_type = alias[MODEL][Data.KIND]
+    
+    for j = 2, #defn do
+      if Data.ARRAY == defn[j][MODEL] or 
+         Data.SEQUENCE == defn[j][MODEL] then
+        alias_collection = defn[j]
+        -- print('DEBUG Data.instance 2: ', name, alias_collection)
+        break -- 1st 'collection' is used
+      end
+    end
+  end
+
+  -- switch template to the underlying alias
+  if alias then template = alias end
+   
+  ---------------------------------------------------------------------------
+  -- typedef is a collection:
+  ---------------------------------------------------------------------------
+  
+  -- collection of underlying types (which is not a typedef)
+  if alias_sequence then -- the sequence of alias elements
+    instance = _.seq(name, template) 
+    return instance
+  end
+
+  if  alias_collection then
+    local iterator = template
+    for i = 1, #alias_collection - 1  do -- create iterator for inner dimensions
+      iterator = _.seq('', iterator) -- unnamed iterator
+    end
+    instance = _.seq(name, iterator)
+    return instance
+  end
+  
+  ---------------------------------------------------------------------------
+  -- typedef is recursive:
+  ---------------------------------------------------------------------------
+  
+  if Data.TYPEDEF == template_type and Data.TYPEDEF == alias_type then
+    instance = _.instance(name, template) -- recursive
+    return instance
+  end
+  
+  ---------------------------------------------------------------------------
+  -- leaf instances
+  ---------------------------------------------------------------------------
+
+  if Data.ATOM == template_type or Data.ENUM == template_type or 
+     Data.ATOM == alias_type or Data.ENUM == alias_type then
+    instance = name 
+    return instance
+  end
+  
+  ---------------------------------------------------------------------------
+  -- composite instances 
+  ---------------------------------------------------------------------------
+  -- Data.STRUCT or Data.UNION
+  
+  -- Establish the underlying model definition to create an instance
+  -- NOTE: typedef's do not hold any instances; the instances are held by the
+  --       underlying concrete (non-typdef) alias type
+  local model = template[MODEL]
+
+  -- create the instance:
+  local instance = { -- the underlying model, of which this is an instance
+    [MODEL] = template[MODEL],
+  }
+  for k, v in pairs(template) do
+    -- skip meta-data attributes
+    if 'string' == type(k) then
+      instance[k] = _.prefix(name, v)
+    end
+  end
+
+  -- cache the instance, so that we can update it when the model changes
+  model[Data.INSTANCES][instance] = name
+
+  return instance
+end
+
+-- Name: 
+--    _.seq() - creates a sequence, of elements specified by the template
+-- Purpose:
+--    Define a sequence iterator (closure) for indexing
+-- Parameters:
+--    <<in>> name  - the role or instance name
+--    <<in>> template - the template to use for creating an instance
+--                          may be a table when it is an non-collection type OR
+--                          may be a closure for collections (sequences/arrays)
+--    <<returns>> the newly created closure for indexing a sequence of 
+--          of template elements
+-- Usage:
+--    local mySeq = _.seq("my", template)
+--    for i = 1, sample[mySeq()] do -- length of the sequence
+--       local element_i = sample[mySeq(i)] -- access the i-th element
+--    end    
+function _.seq(name, template) 
+
+  -- print('DEBUG Data.seq', name, template)
+  
+  -- pre-condition: name
+  assert(type(name) == 'string', 
+       table.concat{'sequence name must be a string: ', tostring(name)})
+  
+  -- pre-condition: ensure valid template
+  local type_template = type(template)
+  assert('table' == type_template and template[MODEL] or 
+         'function' == type_template, -- collection iterator
+          table.concat{'sequence template ',
+                   'must be an instance table or function: "',
+                 tostring(name), '"'})
+  if 'table' == type_template then
+    local element_type = template[MODEL][Data.KIND]
+    assert(Data.ATOM == element_type or
+         Data.ENUM == element_type or
+         Data.STRUCT == element_type or 
+         Data.UNION == element_type or
+         Data.TYPEDEF == element_type,
+         table.concat{'sequence template must be a ', 
+                'atom|enum|struct|union|typedef: ', 
+                 tostring(name)})
+  end
+
+  ---------------------------------------------------------------------------
+  -- return a closure that will generate the correct index string for 'name'
+  ---------------------------------------------------------------------------
+  -- closure behavior:
+  --    if no argument is provided then generate the length operator string
+  --    else generate the element i access string
+  return function (i, prefix_i)
+  
+    local prefix_i = prefix_i or ''
+    return i -- index 
+         and (('table' == type_template) -- composite
+            and 
+              _.instance(string.format('%s%s[%d]', prefix_i, name, i), 
+                      template)
+            or (('function' == type_template -- collection
+                 and 
+                   function(j, prefix_j) -- allow further prefixing
+                   return template(j, 
+                           string.format('%s%s[%d]', prefix_i, name, i))
+                 end
+                 or -- primitive
+                     string.format('%s%s[%d]', prefix_i, name, i))))
+         -- length
+           or string.format('%s%s#', prefix_i, name)
+  end
+end
+
+--- Prefix an index value with the given name
+-- @param #string name name to prefix with
+-- @param #type v index value
+-- @return #type index value with the 'name' prefix
+function _.prefix(name, v)
+
+    local type_v = type(v)
+    local result 
+    
+    -- prefix the member names
+    if 'function' == type_v then -- seq
+      result = -- use member as a closure template
+        function(j, prefix_j) -- allow further prefixing
+          return v(j, table.concat{prefix_j or '', name, '.'}) 
+        end
+
+    elseif 'table' == type_v then -- struct or union
+      result = _.instance(name, v) -- use member as template
+
+    elseif 'string' == type_v then -- atom/leaf
+
+      if '#' == v then -- _d: leaf level union discriminator
+        result = table.concat{name, '', v} -- no dot separator
+      else
+        result = table.concat{name, '.', v}
+      end
+
+    end
+    
+    return result
+end
+
+--- Propagate member 'role' update to all instances of a model
+-- @param #table model the model 
+-- @param #string role the role to propagate
+-- @param #type value the value of the role instance
+function _.update_instances(model, role, role_template)
+
+   -- update template first
+   local template = model[Data.TEMPLATE]
+   rawset(template, role, role_template)
+   
+   -- update the remaining member instances:
+   for instance, name in pairs(model[Data.INSTANCES]) do
+      if instance == template then -- template
+          -- do nothing (already updated the template)
+      elseif instance == name then -- child struct (model is a base struct)
+          rawset(instance, role, role_template) -- no prefix    
+      else -- instance: may be user defined or occurring in another type model
+          -- prefix the 'name' to the role_template
+          rawset(instance, role, _.prefix(name, role_template))
+      end
+   end
+end
+
+--- Local helper method to define a string on maximum length 'n'.
+-- Used by Data.string() and Data.wstring().
+-- 
+-- A string of length n (i.e. string<n>) is implemented as an automatically 
+-- defined Atom with the correct name.
+-- 
+-- @function string 
+-- @param #number n the maximum length of the string
+-- @param #string name the name of the underlying type: string or wstring
+-- @return #table the string data model instance, the name under which to 
+--                install the atom
+function _.string(n, name)
+    
+  -- construct name of the atom: 'string<n>'
+    local dim = n
+           
+    -- if the dim is a CONST, use its value for validation
+    if  Data.CONST == _.model_type(n) then
+       dim = n()
+    end
+     
+    -- validate the dimension
+    if nil ~= dim then
+      assert(type(dim)=='number', 
+               table.concat{'invalid string capacity: ', tostring(n)})
+      assert(dim > 0, 
+             table.concat{'string capacity must be > 0: ', tostring(n)})
+        name = table.concat{name, '<', _.fqname(n), '>'}
+    end
+            
+  -- lookup the atom name in the builtin module
+  local instance = Data.builtin[name]
+  if nil == instance then
+    -- not found => create it
+    instance = Data.atom()
+    Data.builtin[name] = instance -- install it in the builtin module
+  end  
+  
+  return instance
+end
+
+-- collection() - helper method to define collections, i.e. sequences and arrays
+function _.collection(annotation, n, ...)
+
+  -- ensure that we have an array of positive numbers
+  local dimensions = {...}
+  table.insert(dimensions, 1, n) -- insert n at the begining
+  for i, v in ipairs(dimensions) do
+    local dim = v
+         
+    -- if the dim is a CONST, use its value for validation
+    if  Data.CONST == _.model_type(v) then
+       dim = v()
+    end
+   
+    -- check if the 'dim' is valid
+    assert(type(dim)=='number',  
+      table.concat{'invalid collection bound: ', tostring(dim)})
+    assert(dim > 0 and dim - math.floor(dim) == 0, -- positive integer  
+      table.concat{'collection bound must be > 0: ', dim})
+  end
+  
+  -- return the predefined annotation instance, whose attributes are 
+  -- the collection dimension bounds
+  return annotation[MODEL][Data.DEFN](dimensions)
 end
 
 --------------------------------------------------------------------------------
@@ -912,7 +1372,7 @@ _.API[Data.STRUCT] = {
 --------------------------------------------------------------------------------
 
 --- Create a union type
--- @param param a table representing the union declaration  
+-- @param param [in] a table representing the union declaration  
 -- @return a table representing the union data model. The table fields 
 -- contain the string index to de-reference the union's value in 
 -- a top-level DDS Dynamic Data Type 
@@ -1281,398 +1741,6 @@ _.API[Data.MODULE] = {
   end,
 }
 
---------------------------------------------------------------------------------
--- Helpers
---------------------------------------------------------------------------------
-
---- Get the model type of any arbitrary value
--- @param value  [in] the value for which to retrieve the model type
--- @return the model type or nil (if 'value' does not have a MODEL)
-function _.model_type(value)
-    return ('table' == type(value) and value[MODEL]) 
-           and value[MODEL][Data.KIND]
-           or nil
-end
-
---- Ensure that the value is a model element
--- @param kind   [in] expected model element kind
--- @param value  [in] table to check if it is a model element of "kind"
--- @return the model table if the kind matches, or nil
-function _.assert_model(kind, value)
-    assert('table' == type(value) and 
-           value[MODEL] and 
-           kind == value[MODEL][Data.KIND],
-           table.concat{'expected model kind "', kind(), 
-                        '", instead got "', tostring(value), '"'})
-    return value
-end
-
---- Ensure all elements in the 'value' array are annotations
--- @return the annotation array
-function _.assert_annotation_array(value)
-    -- establish valid annotations, if any
-    local annotations
-    if nil ~= value then
-        for i, v in ipairs(value) do
-            _.assert_model(Data.ANNOTATION, v)
-        end
-        annotations = value
-    end
-    return annotations
-end
-
---- Ensure that case is a valid discriminator value
-function _.assert_case(discriminator, case)
-  if nil == case then return case end -- default case 
-
-  local err_msg = table.concat{'invalid case value: ', tostring(case)}
-  
-  if Data.long == discriminator or -- integral type
-     Data.short == discriminator or 
-     Data.octet == discriminator then
-    assert(tonumber(case) and math.floor(case) == case, err_msg)     
-   elseif Data.char == discriminator then -- character
-    assert('string' == type(case) and 1 == string.len(case), err_msg) 
-   elseif Data.boolean == discriminator then -- boolean
-    assert(true == case or false == case, err_msg)
-   elseif Data.ENUM == discriminator[MODEL][Data.KIND] then -- enum
-    assert(discriminator[case], err_msg)
-   else -- invalid 
-    assert(false, err_msg)
-   end
-  
-   return case
-end
-
---- Define a role (member) instance
--- @param #string role - the member name to instantiate (may be 'nil')
--- @param #list<#table> role_defn - array consists of entries in the 
---           { template, [collection,] [annotation1, annotation2, ...] }
---      following order:
---           template - the kind of member to instantiate (previously defined)
---           ...      - optional list of annotations including whether the 
---                      member is an array or sequence    
--- @return the role (member) instance and the role_defn
-function _.create_role_instance(role, role_defn)
-	
-	-- pre-condition: role 
-	assert(nil == role or 'string' == type(role), 
-			table.concat{'invalid member name: ', tostring(role)})
-
-  -- pre-condition: role_defn
-  local template = role_defn[1]
-	local template_type = _.model_type(template)
-	assert(Data.ATOM == template_type or
-		   Data.ENUM == template_type or
-		   Data.STRUCT == template_type or 
-		   Data.UNION == template_type or
-		   Data.TYPEDEF == template_type,
-		   table.concat{'member "', tostring(role), 
-					    '" must be a atom|enum|struct|union|typedef: '})
-
-	-- pre-condition: ensure that the rest of the member definition entries are 
-	-- annotations:	also look for the 1st 'collection' annotation (if any)
-	local collection = nil
-	for j = 2, #role_defn do
-	  _.assert_model(Data.ANNOTATION, role_defn[j])
-
-		-- is this a collection?
-		if not collection and  -- the 1st 'collection' definition is used
-		   (Data.ARRAY == role_defn[j][MODEL] or
-		    Data.SEQUENCE == role_defn[j][MODEL]) then
-			collection = role_defn[j]
-		end
-	end
-
-	-- populate the role_instance fields
-	local role_instance = nil
-
-	if role then -- skip member instance if role is not specified 
-		if collection then
-			local iterator = template
-			for i = 1, #collection - 1  do -- create iterator for inner dimensions
-				iterator = Data.seq('', iterator) -- unnamed iterator
-			end
-			role_instance = Data.seq(role, iterator)
-		else
-			role_instance = Data.instance(role, template)
-		end
-	end
-	
-	return role_instance, role_defn
-end
-
---------------------------------------------------------------------------------
--- Model Instances  ---
---------------------------------------------------------------------------------
-
---- Create an instance, using another instance as a template
---  Defines a table that can be used to index into an instance of a model
--- 
--- @param	name      <<in>> the role|instance name
--- @param template  <<in>> the template to use for creating an instance; 
---                         must be a model table 
--- @return the newly created instance (seq) that supports indexing by 'name'
--- @usage
---    -- As an index into sample[]
---    local myInstance = Data.instance("my", template)
---    local member = sample[myInstance.member] 
---    for i = 1, sample[myInstance.memberSeq()] do -- length of the sequence
---       local element_i = sample[memberSeq(i)] -- access the i-th element
---    end  
---
---    -- As a sample itself
---    local myInstance = Data.instance("my", template)
---    myInstance.member = "value"
---
---    -- NOTE: Assignment not yet supported for sequences:
---    myInstance.memberSeq() = 10 -- length
---    for i = 1, myInstance.memberSeq() do -- length of the sequence
---       memberSeq(i) = "element_i"
---    end  
---
-function Data.instance(name, template) 
-	-- print('DEBUG Data.instance 1: ', name, template[MODEL][Data.NAME])
-
-	-- pre-condition: name
-	assert('string' == type(name), 
-		   table.concat{'invalid instance name: ', tostring(name)})
-	
-	-- pre-condition: ensure valid template
-  local template_type = _.model_type(template)
-	assert(Data.ATOM == template_type or
-		   Data.ENUM == template_type or
-		   Data.STRUCT == template_type or 
-		   Data.UNION == template_type or
-		   Data.TYPEDEF == template_type,
-		   table.concat{'template must be a atom|enum|struct|union|typedef: ', 
-		   				 tostring(name)})
-	local instance = nil
-
-	---------------------------------------------------------------------------
-	-- typedef? switch the template to the underlying alias
-	---------------------------------------------------------------------------
-
-	local alias, alias_type, alias_sequence, alias_collection
-	
-	if Data.TYPEDEF == template_type then
-		local defn = template[MODEL][Data.DEFN]
-		alias = defn[1]
-		alias_type = alias[MODEL][Data.KIND]
-		
-		for j = 2, #defn do
-			if Data.ARRAY == defn[j][MODEL] or 
-			   Data.SEQUENCE == defn[j][MODEL] then
-				alias_collection = defn[j]
-				-- print('DEBUG Data.instance 2: ', name, alias_collection)
-				break -- 1st 'collection' is used
-			end
-		end
-	end
-
-	-- switch template to the underlying alias
-	if alias then template = alias end
-	 
-	---------------------------------------------------------------------------
-	-- typedef is a collection:
-	---------------------------------------------------------------------------
-	
-	-- collection of underlying types (which is not a typedef)
-	if alias_sequence then -- the sequence of alias elements
-		instance = Data.seq(name, template) 
-		return instance
-	end
-
-	if  alias_collection then
-		local iterator = template
-		for i = 1, #alias_collection - 1  do -- create iterator for inner dimensions
-			iterator = Data.seq('', iterator) -- unnamed iterator
-		end
-		instance = Data.seq(name, iterator)
-		return instance
-	end
-	
-	---------------------------------------------------------------------------
-	-- typedef is recursive:
-	---------------------------------------------------------------------------
-	
-	if Data.TYPEDEF == template_type and Data.TYPEDEF == alias_type then
-		instance = Data.instance(name, template) -- recursive
-		return instance
-	end
-	
-	---------------------------------------------------------------------------
-	-- leaf instances
-	---------------------------------------------------------------------------
-
-	if Data.ATOM == template_type or Data.ENUM == template_type or 
-	   Data.ATOM == alias_type or Data.ENUM == alias_type then
-		instance = name 
-		return instance
-	end
-	
-	---------------------------------------------------------------------------
-	-- composite instances 
-	---------------------------------------------------------------------------
-	-- Data.STRUCT or Data.UNION
-	
-	-- Establish the underlying model definition to create an instance
-	-- NOTE: typedef's do not hold any instances; the instances are held by the
-	--       underlying concrete (non-typdef) alias type
-  local model = template[MODEL]
-
-  -- create the instance:
-  local instance = { -- the underlying model, of which this is an instance
-    [MODEL] = template[MODEL],
-  }
-  for k, v in pairs(template) do
-    -- skip meta-data attributes
-    if 'string' == type(k) then
-      instance[k] = _.prefix(name, v)
-    end
-  end
-
-  -- cache the instance, so that we can update it when the model changes
-  model[Data.INSTANCES][instance] = name
-
-	return instance
-end
-
--- Name: 
---    Data.seq() - creates a sequence, of elements specified by the template
--- Purpose:
---    Define a sequence iterator (closure) for indexing
--- Parameters:
--- 	  <<in>> name  - the role or instance name
--- 	  <<in>> template - the template to use for creating an instance
---                          may be a table when it is an non-collection type OR
---                          may be a closure for collections (sequences/arrays)
---    <<returns>> the newly created closure for indexing a sequence of 
---          of template elements
--- Usage:
---    local mySeq = Data.seq("my", template)
---    for i = 1, sample[mySeq()] do -- length of the sequence
---       local element_i = sample[mySeq(i)] -- access the i-th element
---    end    
-function Data.seq(name, template) 
-
-	-- print('DEBUG Data.seq', name, template)
-	
-  -- pre-condition: name
-	assert(type(name) == 'string', 
-		   table.concat{'sequence name must be a string: ', tostring(name)})
-	
-	-- pre-condition: ensure valid template
-	local type_template = type(template)
-	assert('table' == type_template and template[MODEL] or 
-	       'function' == type_template, -- collection iterator
-		   	  table.concat{'sequence template ',
-		   	  			   'must be an instance table or function: "',
-		   	 			   tostring(name), '"'})
-	if 'table' == type_template then
-		local element_type = template[MODEL][Data.KIND]
-		assert(Data.ATOM == element_type or
-			   Data.ENUM == element_type or
-			   Data.STRUCT == element_type or 
-			   Data.UNION == element_type or
-			   Data.TYPEDEF == element_type,
-			   table.concat{'sequence template must be a ', 
-			   				'atom|enum|struct|union|typedef: ', 
-			   				 tostring(name)})
-	end
-
-	---------------------------------------------------------------------------
-	-- return a closure that will generate the correct index string for 'name'
-	---------------------------------------------------------------------------
-	-- closure behavior:
-	--    if no argument is provided then generate the length operator string
-	--    else generate the element i access string
-	return function (i, prefix_i)
-	
-		local prefix_i = prefix_i or ''
-		return i -- index 
-				 and (('table' == type_template) -- composite
-					  and 
-					  	Data.instance(string.format('%s%s[%d]', prefix_i, name, i), 
-					  				  template)
-					  or (('function' == type_template -- collection
-					       and 
-					         function(j, prefix_j) -- allow further prefixing
-							     return template(j, 
-				  	               string.format('%s%s[%d]', prefix_i, name, i))
-								 end
-					       or -- primitive
-				      	     string.format('%s%s[%d]', prefix_i, name, i))))
-				 -- length
-			     or string.format('%s%s#', prefix_i, name)
-	end
-end
-
---- Prefix an index value with the given name
--- @param #string name name to prefix with
--- @param #type v index value
--- @return #type index value with the 'name' prefix
-function _.prefix(name, v)
-
-    local type_v = type(v)
-    local result 
-    
-    -- prefix the member names
-    if 'function' == type_v then -- seq
-      result = -- use member as a closure template
-        function(j, prefix_j) -- allow further prefixing
-          return v(j, table.concat{prefix_j or '', name, '.'}) 
-        end
-
-    elseif 'table' == type_v then -- struct or union
-      result = Data.instance(name, v) -- use member as template
-
-    elseif 'string' == type_v then -- atom/leaf
-
-      if '#' == v then -- _d: leaf level union discriminator
-        result = table.concat{name, '', v} -- no dot separator
-      else
-        result = table.concat{name, '.', v}
-      end
-
-    end
-    
-    return result
-end
-
---- Propagate member 'role' update to all instances of a model
--- @param #table model the model 
--- @param #string role the role to propagate
--- @param #type value the value of the role instance
-function _.update_instances(model, role, role_template)
-
-   -- update template first
-   local template = model[Data.TEMPLATE]
-   rawset(template, role, role_template)
-   
-   -- update the remaining member instances:
-   for instance, name in pairs(model[Data.INSTANCES]) do
-      if instance == template then -- template
-          -- do nothing (already updated the template)
-      elseif instance == name then -- child struct (model is a base struct)
-          rawset(instance, role, role_template) -- no prefix    
-      else -- instance: may be user defined or occurring in another type model
-          -- prefix the 'name' to the role_template
-          rawset(instance, role, _.prefix(name, role_template))
-      end
-   end
-end
-
---- Fully qualified name of a model element
--- @param instance a model element whose fully qualified name is desired
--- @return the fully qualified name of the instance if any or 
---         the string value of instance
-function Data.fqname(instance)
-    return 'table' == type(instance) and 
-              (instance[MODEL] and 
-                instance[MODEL][Data.NAME]) or 
-              tostring(instance)
-end
 
 --------------------------------------------------------------------------------
 --- Builtin Module - Predefined Model Elements
@@ -1713,50 +1781,6 @@ Data.builtin.BitSet = Data.annotation{}
 Data.builtin.Nested = Data.annotation{}
 Data.builtin.top_level = Data.annotation{} -- legacy
 
-
---- Local helper method to define a string on maximum length 'n'.
--- Used by Data.string() and Data.wstring().
--- 
--- A string of length n (i.e. string<n>) is implemented as an automatically 
--- defined Atom with the correct name.
--- 
--- @function string 
--- @param #number n the maximum length of the string
--- @param #string name the name of the underlying type: string or wstring
--- @return #table the string data model instance, the name under which to 
---                install the atom
-function _.string(n, name)
-    
-  -- construct name of the atom: 'string<n>'
-    local dim = n
-           
-    -- if the dim is a CONST, use its value for validation
-    if 'table' == type(n) and 
-       'nil' ~= n[MODEL] and 
-       Data.CONST == n[MODEL][Data.KIND] then
-       dim = n()
-    end
-     
-    -- validate the dimension
-    if nil ~= dim then
-      assert(type(dim)=='number', 
-               table.concat{'invalid string capacity: ', tostring(n)})
-      assert(dim > 0, 
-             table.concat{'string capacity must be > 0: ', tostring(n)})
-        name = table.concat{name, '<', Data.fqname(n), '>'}
-    end
-            
-  -- lookup the atom name in the builtin module
-  local instance = Data.builtin[name]
-  if nil == instance then
-    -- not found => create it
-    instance = Data.atom()
-    Data.builtin[name] = instance -- install it in the builtin module
-  end  
-  
-  return instance
-end 
-
 --- string of length n (i.e. string<n>) is an Atom
 -- @function string 
 -- @param #number n the maximum length of the string
@@ -1771,34 +1795,6 @@ end
 -- @return #table the string data model instance
 function Data.wstring(n)
   return _.string(n, 'wstring')
-end
-
--- collection() - helper method to define collections, i.e. sequences and arrays
-function _.collection(annotation, n, ...)
-
-  -- ensure that we have an array of positive numbers
-  local dimensions = {...}
-  table.insert(dimensions, 1, n) -- insert n at the begining
-  for i, v in ipairs(dimensions) do
-    local dim = v
-         
-    -- if the dim is a CONST, validate its value
-    if 'table' == type(v) and 
-       'nil' ~= v[MODEL] and 
-       Data.CONST == v[MODEL][Data.KIND] then
-       dim = v()
-    end
-   
-    -- check if the 'dim' is valid
-    assert(type(dim)=='number',  
-      table.concat{'invalid collection bound: ', tostring(dim)})
-    assert(dim > 0 and dim - math.floor(dim) == 0, -- positive integer  
-      table.concat{'collection bound must be > 0: ', dim})
-  end
-  
-  -- return the predefined annotation instance, whose attributes are 
-  -- the collection dimension bounds
-  return annotation[MODEL][Data.DEFN](dimensions)
 end
 
 -- Arrays and Sequences are implemented as a special annotations, whose 
@@ -2004,7 +2000,7 @@ function _.tostring_role(role, role_defn)
 		end
 		output_member = string.format('%s%s', output_member, _.IDL_DISPLAY[template])
 		for i = 1, #seq do
-			output_member = string.format('%s,%s>', output_member, Data.fqname(seq[i])) 
+			output_member = string.format('%s,%s>', output_member, _.fqname(seq[i])) 
 		end
 		output_member = string.format('%s %s', output_member, role)
 	end
@@ -2018,7 +2014,7 @@ function _.tostring_role(role, role_defn)
 		if Data.ARRAY == role_defn[j][MODEL] then
 			for i = 1, #role_defn[j] do
 				output_member = string.format('%s[%s]', output_member, 
-				                                 Data.fqname(role_defn[j][i])) 
+				                                 _.fqname(role_defn[j][i])) 
 			end
 		elseif Data.SEQUENCE ~= role_defn[j][MODEL] then
 			output_annotations = string.format('%s%s ', 
