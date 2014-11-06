@@ -6,35 +6,35 @@
 -- This software is provided "as is", without warranty, express or implied.  --
 --                                                                           --
 -------------------------------------------------------------------------------
--- File: TestTester.lua 
+-- File: DataTester.lua 
 -- Purpose: Tester for DDSL: Test type definition Domain Specific Language (DSL)
 -- Created: Rajive Joshi, 2014 Feb 14
 -------------------------------------------------------------------------------
 
-local data = require "Data"
-
-local Test -- top-level data-space (to be defined using 'data' methods)
+local idl = require "Data"
 
 --------------------------------------------------------------------------------
 -- Tester - the unit tests
 --------------------------------------------------------------------------------
 
 local Tester = {} -- array of test functions
+local Test = {}   -- table to hold the types created by the tests
 
 Tester[#Tester+1] = 'test_module'
 function Tester:test_module()
 
-    Test = data.module{} -- define a module
+    Test.MyModule = idl.module{MyModule=idl.EMPTY} -- define a module
 
-    self:print(Test)
+    self:print(Test.MyModule)
     
-    assert(Test ~= nil)
+    assert(Test.MyModule ~= nil)
 end
 
 Tester[#Tester+1] = 'test_submodule'
 function Tester:test_submodule()
 
-  Test.Submodule = data.module{} -- submodule 
+  Test.Submodule = idl.module{Submodule=idl.EMPTY} -- submodule 
+  -- Test.MyModule[#Test.MyModule+1] = Test.Submodule
   
   self:print(Test.Submodule)
   
@@ -44,7 +44,7 @@ end
 Tester[#Tester+1] = 'test_enum_imperative'
 function Tester:test_enum_imperative()
 
-  local MyEnum = data.enum{}
+  local MyEnum = idl.enum{MyEnum=idl.EMPTY}
   MyEnum[1] = { JAN = #MyEnum }
   MyEnum[2] = { FEB = 102 }
   MyEnum[3] = { MAR = #MyEnum }
@@ -52,28 +52,26 @@ function Tester:test_enum_imperative()
   MyEnum[5] = { MAY = 105 }
   MyEnum[6] = 'JUN'
 
-  -- install it under the name 'MyEnum' in the module
-  Test.MyEnum = MyEnum
   self:print(MyEnum)
   
-  assert(Test.MyEnum.JAN == 0)
-  assert(Test.MyEnum.FEB == 102)
-  assert(Test.MyEnum.MAR == 2)
-  assert(Test.MyEnum.APR == 3)
-  assert(Test.MyEnum.MAY == 105)
-  assert(Test.MyEnum.JUN == 5)
+  assert(MyEnum.JAN == 0)
+  assert(MyEnum.FEB == 102)
+  assert(MyEnum.MAR == 2)
+  assert(MyEnum.APR == 3)
+  assert(MyEnum.MAY == 105)
+  assert(MyEnum.JUN == 5)
   
   -- delete an entry
   print("\n-- deleted 3rd entry --\n")
   MyEnum[3] = nil
   self:print(MyEnum)
-  assert(Test.MyEnum.MAR == nil)
+  assert(MyEnum.MAR == nil)
  
    -- change 1st entry
   print("\n-- changed 1st entry --\n")
   MyEnum[1] = { JAN = 100 }
   self:print(MyEnum)
-  assert(Test.MyEnum.JAN == 100)
+  assert(MyEnum.JAN == 100)
   
   assert(5 == #MyEnum)
 end
@@ -81,8 +79,10 @@ end
 Tester[#Tester+1] = 'test_enum1'
 function Tester:test_enum1()
 
-  Test.Days = data.enum{
-    'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN',
+  Test.Days = idl.enum{
+    Days = {  
+      'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN',
+    }
   }
   
   self:print(Test.Days)
@@ -94,12 +94,14 @@ end
 Tester[#Tester+1] = 'test_enum2'
 function Tester:test_enum2()
 
-  Test.Months = data.enum{
-    { OCT = 10 },
-    { NOV = 11 },
-    { DEC = 12 }
+  Test.Months = idl.enum{
+    Months = {
+      { OCT = 10 },
+      { NOV = 11 },
+      { DEC = 12 }
+    }
   }
-
+  
   self:print(Test.Months)
   
   assert(Test.Months.OCT == 10)
@@ -109,11 +111,13 @@ end
 Tester[#Tester+1] = 'test_enum_submodule'
 function Tester:test_enum_submodule()
 
-  Test.Submodule.Colors = data.enum{
-    { RED =  -5 },
-    { YELLOW =  7 },
-    { GREEN = -9 },
-    'PINK',
+  Test.Submodule.Colors = idl.enum{
+    Colors = {
+      { RED =  -5 },
+      { YELLOW =  7 },
+      { GREEN = -9 },
+      'PINK',
+    }
   }
   self:print(Test.Submodule.Colors)
   
@@ -125,11 +129,11 @@ end
 Tester[#Tester+1] = 'test_struct_imperative'
 function Tester:test_struct_imperative()
 
-    local DynamicShapeType = data.struct{}
-    DynamicShapeType[1] = { x = { data.long } }
-    DynamicShapeType[2] = { y = { data.long } }
-    DynamicShapeType[3] = { shapesize = { data.double } }
-    DynamicShapeType[4] = { color = { data.string(128), data.Key } }
+    local DynamicShapeType = idl.struct{DynamicShapeType=idl.EMPTY}
+    DynamicShapeType[1] = { x = { idl.long } }
+    DynamicShapeType[2] = { y = { idl.long } }
+    DynamicShapeType[3] = { shapesize = { idl.double } }
+    DynamicShapeType[4] = { color = { idl.string(128), idl.Key } }
         
     
     -- install it under the name 'ShapeType' in the module
@@ -144,7 +148,7 @@ function Tester:test_struct_imperative()
     
     
     -- redefine shapesize:
-    DynamicShapeType[3] = { shapesize = { data.long } } -- redefine
+    DynamicShapeType[3] = { shapesize = { idl.long } } -- redefine
     print("\n-- redefined: double->long shapesize --\n")
     self:print(DynamicShapeType)
     assert(DynamicShapeType.shapesize == 'shapesize')
@@ -152,7 +156,7 @@ function Tester:test_struct_imperative()
  
     -- add z:
     DynamicShapeType[#DynamicShapeType+1] = 
-                                { z = { data.string() , data.Key } }
+                                { z = { idl.string() , idl.Key } }
     print("\n-- added: string z @Key --\n")
     self:print(DynamicShapeType)
     assert(DynamicShapeType.z == 'z') 
@@ -166,65 +170,69 @@ function Tester:test_struct_imperative()
 
        
     -- add a base class
-    local Bases = data.module{}
-    Bases.Base1 = data.struct{
-        { org = { data.string() } },
+    local Bases = {}
+    Bases.Base1 = idl.struct{
+      Base1 = {
+        { org = { idl.string() } },
+      }
     }
-    DynamicShapeType[data.BASE] = Bases.Base1
+    DynamicShapeType[idl.BASE] = Bases.Base1
     print("\n-- added: base class: Base1 --\n")
     self:print(Bases.Base1)
     self:print(DynamicShapeType)
     assert(DynamicShapeType.org == 'org')  
-    assert(DynamicShapeType[data.BASE] == Bases.Base1)
+    assert(DynamicShapeType[idl.BASE] == Bases.Base1)
     
     -- redefine base class
-    Bases.Base2 = data.struct{
-        { pattern = { data.long } },
+    Bases.Base2 = idl.struct{
+      Base2 = {
+        { pattern = { idl.long } },
+      }
     }
-    DynamicShapeType[data.BASE] = Bases.Base2
+    DynamicShapeType[idl.BASE] = Bases.Base2
     print("\n-- replaced: base class: Base2 --\n")
     self:print(Bases.Base2)
     self:print(DynamicShapeType)
     assert(DynamicShapeType.pattern == 'pattern') 
     assert(DynamicShapeType.org == nil)  
-    -- assert(DynamicShapeType[data.BASE] == Bases.Base2)
+    -- assert(DynamicShapeType[idl.BASE] == Bases.Base2)
     
     -- removed base class
-    DynamicShapeType[data.BASE] = nil
+    DynamicShapeType[idl.BASE] = nil
     print("\n-- erased base class --\n")
     self:print(DynamicShapeType)
     assert(DynamicShapeType.pattern == nil) 
-    -- assert(DynamicShapeType[data.BASE] == nil)
+    -- assert(DynamicShapeType[idl.BASE] == nil)
  
  
     -- add an annotation
-    DynamicShapeType[data.ANNOTATION] = { 
-        data.Extensibility{'EXTENSIBLE_EXTENSIBILITY'} 
+    DynamicShapeType[idl.ANNOTATION] = { 
+        idl.Extensibility{'EXTENSIBLE_EXTENSIBILITY'} 
     }
     print("\n-- added annotation: @Extensibility --\n")
     self:print(DynamicShapeType)
-    -- assert(DynamicShapeType[data.ANNOTATION][1] ~= nil)
+    -- assert(DynamicShapeType[idl.ANNOTATION][1] ~= nil)
  
     -- add another annotation
-    DynamicShapeType[data.ANNOTATION] = { 
-        data.Extensibility{'EXTENSIBLE_EXTENSIBILITY'},
-        data.Nested{'FALSE'},
+    DynamicShapeType[idl.ANNOTATION] = { 
+        idl.Extensibility{'EXTENSIBLE_EXTENSIBILITY'},
+        idl.Nested{'FALSE'},
     }  
     print("\n-- added: annotation: @Nested --\n")
     self:print(DynamicShapeType)
-    assert(DynamicShapeType[data.ANNOTATION][1] ~= nil)
-    assert(DynamicShapeType[data.ANNOTATION][2] ~= nil)
+    assert(DynamicShapeType[idl.ANNOTATION][1] ~= nil)
+    assert(DynamicShapeType[idl.ANNOTATION][2] ~= nil)
  
     -- clear annotations:
-    DynamicShapeType[data.ANNOTATION] = nil
+    DynamicShapeType[idl.ANNOTATION] = nil
     print("\n-- erased annotations --\n")
     self:print(DynamicShapeType)
-    assert(DynamicShapeType[data.ANNOTATION] == nil)
+    assert(DynamicShapeType[idl.ANNOTATION] == nil)
     
     
     -- iterate over the struct definition
     print("\n-- struct definition iteration --", DynamicShapeType)
-    print(DynamicShapeType[data.KIND](), DynamicShapeType[data.NAME], #DynamicShapeType)
+    print(DynamicShapeType[idl.KIND](), DynamicShapeType[idl.NAME], #DynamicShapeType)
     for i, v in ipairs(DynamicShapeType) do
       print(next(v))
     end
@@ -233,15 +241,18 @@ end
 
 Tester[#Tester+1] = 'test_struct_basechange'
 function Tester:test_struct_basechange()
-  Test.BaseStruct = data.struct{
-    { x = { data.long } },
-    { y = { data.long } },
+  Test.BaseStruct = idl.struct{
+    BaseStruct = {
+      { x = { idl.long } },
+      { y = { idl.long } },
+    }
   }
- 
-  Test.DerivedStruct = data.struct{Test.BaseStruct,
-    { speed = { data.double } }
+  
+  Test.DerivedStruct = idl.struct{
+    DerivedStruct = {Test.BaseStruct,
+      { speed = { idl.double } }
+    }
   }
-
   print("\n-- DerivedStruct --\n")
   self:print(Test.BaseStruct)
   self:print(Test.DerivedStruct)
@@ -252,7 +263,7 @@ function Tester:test_struct_basechange()
  
  
   -- remove base class
-  Test.DerivedStruct[data.BASE] = nil
+  Test.DerivedStruct[idl.BASE] = nil
 
   print("\n-- DerivedStruct removed base class --\n")
   self:print(Test.DerivedStruct)
@@ -260,9 +271,9 @@ function Tester:test_struct_basechange()
   assert(Test.DerivedStruct.y == nil)
  
    -- change base class and add it
-  Test.BaseStruct[1] = { w = { data.string() } }
-  Test.DerivedStruct[data.BASE] = Test.BaseStruct
-  assert(Test.BaseStruct[1].w[1] == data.string())
+  Test.BaseStruct[1] = { w = { idl.string() } }
+  Test.DerivedStruct[idl.BASE] = Test.BaseStruct
+  assert(Test.BaseStruct[1].w[1] == idl.string())
   
   print("\n-- DerivedStruct added modified base class --\n")
   self:print(Test.BaseStruct)
@@ -272,8 +283,8 @@ function Tester:test_struct_basechange()
 
 
   -- modify a filed in the base class 
-  Test.BaseStruct[2] = { z = { data.string() } }
-  assert(Test.BaseStruct[2].z[1] == data.string())
+  Test.BaseStruct[2] = { z = { idl.string() } }
+  assert(Test.BaseStruct[2].z[1] == idl.string())
   
   print("\n-- DerivedStruct base changed from y : long -> z : string --\n")
   self:print(Test.BaseStruct)
@@ -284,11 +295,12 @@ end
 Tester[#Tester+1] = 'test_struct_submodule'
 function Tester:test_struct_submodule()
 
-    Test.Submodule.Fruit = data.struct{
-      { weight = { data.double } },
-      { color = { Test.Submodule.Colors } },
+    Test.Submodule.Fruit = idl.struct{
+      Fruit = {
+        { weight = { idl.double } },
+        { color = { Test.Submodule.Colors } },
+      }
     }
-    
     self:print(Test.Submodule.Fruit)
     
     assert(Test.Submodule.Fruit.weight == 'weight')
@@ -298,15 +310,16 @@ end
 Tester[#Tester+1] = 'test_struct_basic'
 function Tester:test_struct_basic()
   
-    Test.Name = data.struct{
-      { first = { data.string(10), data.Key } },
-      { last = { data.wstring() } },
-      { nicknames = { data.string(), data.sequence(3) } },
-      { aliases = { data.string(7), data.sequence() } },
-      { birthday = { Test.Days, data.Optional } },
-      { favorite = { Test.Submodule.Colors, data.sequence(2), data.Optional } },
+    Test.Name = idl.struct{
+      Name = {
+        { first = { idl.string(10), idl.Key } },
+        { last = { idl.wstring() } },
+        { nicknames = { idl.string(), idl.sequence(3) } },
+        { aliases = { idl.string(7), idl.sequence() } },
+        { birthday = { Test.Days, idl.Optional } },
+        { favorite = { Test.Submodule.Colors, idl.sequence(2), idl.Optional } },
+      }
     }
-    
     self:print(Test.Name)
 
     assert(Test.Name.first == 'first')
@@ -324,16 +337,19 @@ Tester[#Tester+1] = 'test_user_annotation'
 function Tester:test_user_annotation()
 
     -- user defined annotation
-    Test.MyAnnotation = data.annotation{value1 = 42, value2 = 9.0}
-    Test.MyAnnotationStruct = data.struct{
-      { id = { data.long, data.Key } },
-      { org = { data.long, data.Key{GUID=3} } },
-      { weight = { data.double, Test.MyAnnotation } }, -- default 
-      { height = { data.double, Test.MyAnnotation{} } },
-      { color = { Test.Submodule.Colors, 
-                  Test.MyAnnotation{value1 = 10} } },
+    Test.MyAnnotation = idl.annotation{
+      MyAnnotation = {value1 = 42, value2 = 9.0}
     }
-    
+    Test.MyAnnotationStruct = idl.struct{
+      MyAnnotationStruct = {
+        { id = { idl.long, idl.Key } },
+        { org = { idl.long, idl.Key{GUID=3} } },
+        { weight = { idl.double, Test.MyAnnotation } }, -- default 
+        { height = { idl.double, Test.MyAnnotation{} } },
+        { color = { Test.Submodule.Colors, 
+                    Test.MyAnnotation{value1 = 10} } },
+      }
+    }
     self:print(Test.MyAnnotation)
     self:print(Test.MyAnnotationStruct)
      
@@ -345,15 +361,16 @@ end
 Tester[#Tester+1] = 'test_struct_nested'
 function Tester:test_struct_nested()
 
-    Test.Address = data.struct{
-      data.Extensibility{'EXTENSIBLE_EXTENSIBILITY'},
-      { name = { Test.Name } },
-      { street = { data.string() } },
-      { city = { data.string(10), 
-                    Test.MyAnnotation{value1 = 10, value2 = 17} } },
-      data.Nested{'FALSE'},
+    Test.Address = idl.struct{
+      Address = {
+        idl.Extensibility{'EXTENSIBLE_EXTENSIBILITY'},
+        { name = { Test.Name } },
+        { street = { idl.string() } },
+        { city = { idl.string(10), 
+                      Test.MyAnnotation{value1 = 10, value2 = 17} } },
+        idl.Nested{'FALSE'},
+      }
     }
-
     self:print(Test.Address)
     
     assert(Test.Address.name.first == 'name.first')
@@ -366,15 +383,15 @@ end
 Tester[#Tester+1] = 'test_union_imperative'
 function Tester:test_union_imperative()
 
-    local DynamicUnion = data.union{data.char} -- switch
-    DynamicUnion[1] = { 's', m_str = { data.string() } }
-    DynamicUnion[2] = { 'i', m_int = { data.short } }  
+    local DynamicUnion = idl.union{DynamicUnion={idl.char}} -- switch
+    DynamicUnion[1] = { 's', m_str = { idl.string() } }
+    DynamicUnion[2] = { 'i', m_int = { idl.short } }  
     DynamicUnion[3] = { 'n' } -- no definition
-    DynamicUnion[4] = { nil, m_oct = { data.octet } } -- default case
+    DynamicUnion[4] = { nil, m_oct = { idl.octet } } -- default case
 
     --[[ un-comment to test error checking (expected to assert)
     DynamicUnion[#DynamicUnion+1] = 
-                                  { 'x', m_oct = { data.octet } }
+                                  { 'x', m_oct = { idl.octet } }
     --]]
     
     -- install it in the module
@@ -387,7 +404,7 @@ function Tester:test_union_imperative()
     assert(DynamicUnion.m_oct == 'm_oct')
     
     -- redefine m_int:
-    DynamicUnion[2] = { 'l', m_int = { data.long, data.Key } }  
+    DynamicUnion[2] = { 'l', m_int = { idl.long, idl.Key } }  
     print("\n-- redefined: short->long m_int @Key --\n")
     self:print(DynamicUnion)
     assert(DynamicUnion.m_int == 'm_int')
@@ -395,7 +412,7 @@ function Tester:test_union_imperative()
  
     -- add m_real:
     DynamicUnion[#DynamicUnion+1] = 
-                      { 'r', m_real = { data.double, data.Key } }
+                      { 'r', m_real = { idl.double, idl.Key } }
     print("\n-- added: double m_real @Key --\n")
     self:print(DynamicUnion)
     assert(DynamicUnion.m_real == 'm_real')
@@ -418,48 +435,49 @@ function Tester:test_union_imperative()
 
    
     -- add an annotation
-    DynamicUnion[data.ANNOTATION] = { 
-        data.Extensibility{'EXTENSIBLE_EXTENSIBILITY'} 
+    DynamicUnion[idl.ANNOTATION] = { 
+        idl.Extensibility{'EXTENSIBLE_EXTENSIBILITY'} 
     }
     print("\n-- added annotation: @Extensibility --\n")
     self:print(DynamicUnion)
-    assert(DynamicUnion[data.ANNOTATION][1] ~= nil)
+    assert(DynamicUnion[idl.ANNOTATION][1] ~= nil)
     
     -- add another annotation
-    DynamicUnion[data.ANNOTATION] = { 
-        data.Extensibility{'EXTENSIBLE_EXTENSIBILITY'},
-        data.Nested{'FALSE'},
+    DynamicUnion[idl.ANNOTATION] = { 
+        idl.Extensibility{'EXTENSIBLE_EXTENSIBILITY'},
+        idl.Nested{'FALSE'},
     }  
     print("\n-- added: annotation: @Nested --\n")
     self:print(DynamicUnion)
-    assert(DynamicUnion[data.ANNOTATION][1] ~= nil)
-    assert(DynamicUnion[data.ANNOTATION][2] ~= nil)
+    assert(DynamicUnion[idl.ANNOTATION][1] ~= nil)
+    assert(DynamicUnion[idl.ANNOTATION][2] ~= nil)
  
     -- clear annotations:
-    DynamicUnion[data.ANNOTATION] = nil
+    DynamicUnion[idl.ANNOTATION] = nil
     print("\n-- erased annotations --\n")
     self:print(DynamicUnion)
-    assert(DynamicUnion[data.ANNOTATION] == nil)
+    assert(DynamicUnion[idl.ANNOTATION] == nil)
     
     -- iterate over the union definition
     print("\n-- union definition iteration --", DynamicUnion)
-    print(DynamicUnion[data.KIND](), DynamicUnion[data.NAME], #DynamicUnion)
+    print(DynamicUnion[idl.KIND](), DynamicUnion[idl.NAME], #DynamicUnion)
     for i, v in ipairs(DynamicUnion) do print(v[1], ':', next(v, 1)) end
     assert(5 == #DynamicUnion)
 end
 
 Tester[#Tester+1] = 'test_union_imperative2'
 function Tester:test_union_imperative2()
-    local DynamicUnion2 = data.union{data.char} -- switch
-    DynamicUnion2[1] = { 's', m_str = { data.string() } }
-    DynamicUnion2[2] = { 'i', m_int = { data.short } }  
-    DynamicUnion2[3] = { nil, m_oct = { data.octet } } -- default case
+    local DynamicUnion2 = idl.union{DynamicUnion2={idl.char}} -- switch
+    DynamicUnion2[1] = { 's', m_str = { idl.string() } }
+    DynamicUnion2[2] = { 'i', m_int = { idl.short } }  
+    DynamicUnion2[3] = { nil, m_oct = { idl.octet } } -- default case
     
-    local DynamicStruct2 = data.struct{
-        { x = { data.long } },
-        { u = { DynamicUnion2 } },
+    local DynamicStruct2 = idl.struct{
+      DynamicStruct2 = {
+          { x = { idl.long } },
+          { u = { DynamicUnion2 } },
+      }
     }
-    
     Test.DynamicUnion2 = DynamicUnion2
     Test.DynamicStruct = DynamicStruct2
     
@@ -474,7 +492,7 @@ function Tester:test_union_imperative2()
     
     -- add a member to the union, the struct should be updated
     DynamicUnion2[#DynamicUnion2 + 1] =
-                { 'r', m_real = { data.double, data.Key } }
+                { 'r', m_real = { idl.double, idl.Key } }
     print("\n-- added to union: double m_real @Key --\n")
     self:print(DynamicUnion2)
     assert(DynamicUnion2.m_real == 'm_real')
@@ -493,13 +511,15 @@ end
 Tester[#Tester+1] = 'test_union1'
 function Tester:test_union1()
 
-  local TestUnion1 = data.union{data.short,
-    { 1, 
-        x = { data.string() } },
-    { 2, 
-        y = { data.long_double } },
-    { nil, -- default 
-        z = { data.boolean } },
+  local TestUnion1 = idl.union{
+    TestUnion1 = {idl.short,
+      { 1, 
+          x = { idl.string() } },
+      { 2, 
+          y = { idl.long_double } },
+      { nil, -- default 
+          z = { idl.boolean } },
+    }
   }
   Test.TestUnion1 = TestUnion1
   
@@ -511,7 +531,7 @@ function Tester:test_union1()
   assert(TestUnion1.z == 'z')
   
   print("\n-- changed discriminator: short -> long --")
-  TestUnion1[data.SWITCH] = data.long
+  TestUnion1[idl.SWITCH] = idl.long
   self:print(TestUnion1)
   assert(TestUnion1._d == '#')
 end
@@ -519,15 +539,16 @@ end
 Tester[#Tester+1] = 'test_union2'
 function Tester:test_union2()
 
-  Test.TestUnion2 = data.union{data.char,
-    { 'c', 
-      name = { Test.Name, data.Key } },
-    { 'a', 
-      address = { Test.Address } },
-    { nil, -- default
-      x = { data.double } },
+  Test.TestUnion2 = idl.union{
+    TestUnion2 = {idl.char,
+      { 'c', 
+        name = { Test.Name, idl.Key } },
+      { 'a', 
+        address = { Test.Address } },
+      { nil, -- default
+        x = { idl.double } },
+    }
   }
-
   self:print(Test.TestUnion2)
   
   -- discriminator
@@ -550,16 +571,17 @@ end
 Tester[#Tester+1] = 'test_union3'
 function Tester:test_union3()
 
-  Test.TestUnion3 = data.union{Test.Days,
-    { 'MON', 
-      name = { Test.Name } },
-    { 'TUE', 
-      address = { Test.Address } },
-    { nil, -- default
-       x = { data.double } },    
-    data.Extensibility{'EXTENSIBLE_EXTENSIBILITY',domain=5},
+  Test.TestUnion3 = idl.union{
+    TestUnion3 = {Test.Days,
+      { 'MON', 
+        name = { Test.Name } },
+      { 'TUE', 
+        address = { Test.Address } },
+      { nil, -- default
+         x = { idl.double } },    
+      idl.Extensibility{'EXTENSIBLE_EXTENSIBILITY',domain=5},
+    }
   }
-
   self:print(Test.TestUnion3)
 
   -- discriminator
@@ -579,19 +601,20 @@ function Tester:test_union3()
   assert(Test.TestUnion3.x == 'x')
   
   -- annotation
-  assert(Test.TestUnion3[data.ANNOTATION][1] ~= nil)
+  assert(Test.TestUnion3[idl.ANNOTATION][1] ~= nil)
 end
 
 Tester[#Tester+1] = 'test_union4'
 function Tester:test_union4()
 
-  Test.NameOrAddress = data.union{data.boolean,
-    { true, 
-       name = { Test.Name } },
-    { false, 
-       address =  { Test.Address } },
+  Test.NameOrAddress = idl.union{
+    NameOrAddress = {idl.boolean,
+      { true, 
+         name = { Test.Name } },
+      { false, 
+         address =  { Test.Address } },
+    }
   }
-  
   self:print(Test.NameOrAddress)
 
   -- discriminator
@@ -611,13 +634,14 @@ end
 Tester[#Tester+1] = 'test_struct_complex1'
 function Tester:test_struct_complex1()
 
-  Test.Company = data.struct{
-    { entity = { Test.NameOrAddress } },
-    { hq = { data.string(), data.sequence(2) } },
-    { offices = { Test.Address, data.sequence(10) } },
-    { employees = { Test.Name, data.sequence() } }
+  Test.Company = idl.struct{
+    Company = {
+      { entity = { Test.NameOrAddress } },
+      { hq = { idl.string(), idl.sequence(2) } },
+      { offices = { Test.Address, idl.sequence(10) } },
+      { employees = { Test.Name, idl.sequence() } }
+    }
   }
-
   self:print(Test.Company)
   
   -- entity
@@ -651,11 +675,12 @@ end
 Tester[#Tester+1] = 'test_struct_complex2'
 function Tester:test_struct_complex2()
 
-  Test.BigCompany = data.struct{
-    { parent = { Test.Company } },
-    { divisions = { Test.Company, data.sequence() } }
+  Test.BigCompany = idl.struct{
+    BigCompany = {
+      { parent = { Test.Company } },
+      { divisions = { Test.Company, idl.sequence() } }
+    }
   }
-
   self:print(Test.BigCompany)
  
   -- parent.entity
@@ -715,11 +740,12 @@ end
 Tester[#Tester+1] = 'test_struct_inheritance1'
 function Tester:test_struct_inheritance1()
 
-  Test.FullName = data.struct{Test.Name,
-    { middle = { data.string() } },
-    data.Extensibility{'EXTENSIBLE_EXTENSIBILITY'},
+  Test.FullName = idl.struct{
+    FullName = {Test.Name,
+      { middle = { idl.string() } },
+      idl.Extensibility{'EXTENSIBLE_EXTENSIBILITY'},
+    }
   }
-
   self:print(Test.FullName)
   
   -- base: Name
@@ -740,11 +766,12 @@ end
 Tester[#Tester+1] = 'test_struct_inheritance2'
 function Tester:test_struct_inheritance2()
 
-  Test.Contact = data.struct{Test.FullName,
-    { address = { Test.Address } },
-    { email = { data.string() } },
+  Test.Contact = idl.struct{
+    Contact = {Test.FullName,
+      { address = { Test.Address } },
+      { email = { idl.string() } },
+    }
   }
-
   self:print(Test.Contact)
 
   -- base: FullName
@@ -773,11 +800,12 @@ end
 Tester[#Tester+1] = 'test_struct_inheritance3'
 function Tester:test_struct_inheritance3()
 
-  Test.Tasks = data.struct{
-    { contact = { Test.Contact } },
-    { day = { Test.Days } },
+  Test.Tasks = idl.struct{
+    Tasks = {
+      { contact = { Test.Contact } },
+      { day = { Test.Days } },
+    }
   }
-
   self:print(Test.Tasks)
 
   -- Tasks.contact
@@ -808,10 +836,11 @@ end
 Tester[#Tester+1] = 'test_struct_inheritance4'
 function Tester:test_struct_inheritance4()
 
-  Test.Calendar = data.struct{
-    { tasks = { Test.Tasks, data.sequence() } },
+  Test.Calendar = idl.struct{
+    Calendar = {
+      { tasks = { Test.Tasks, idl.sequence() } },
+    }
   }
-
   self:print(Test.Calendar)
   
   assert(Test.Calendar.tasks() == 'tasks#')
@@ -847,11 +876,13 @@ function Tester:test_struct_recursive()
     -- NOTE: Forward data declarations are not allowed in IDL
     --       still, this is just a test to see how it might work
     
-    Test.RecursiveStruct = data.struct{} -- fwd decl
-    local RecursiveStruct = data.struct{ -- note: won't get installed as a defn
-      { x = { data.long } },
-      { y = { data.long } },
-      { child = { Test.RecursiveStruct } },
+    Test.RecursiveStruct = idl.struct{RecursiveStruct=idl.EMPTY} -- fwd decl
+    local RecursiveStruct = idl.struct{
+      RecursiveStruct = { -- note: won't get installed as a defn
+        { x = { idl.long } },
+        { y = { idl.long } },
+        { child = { Test.RecursiveStruct } },
+      }
     }
     Test.RecursiveStruct = nil -- erase from module
     Test.RecursiveStruct = RecursiveStruct -- reinstall it
@@ -867,22 +898,23 @@ end
 Tester[#Tester+1] = 'test_atoms'
 function Tester:test_atoms()
 
-    Test.Atoms = data.struct{
-      { myBoolean = { data.boolean } },
-      { myOctet = { data.octet } },
-      { myChar = { data.char } },
-      { myWChar = { data.wchar } },
-      { myFloat = { data.float } },
-      { myDouble = { data.double } },
-      { myLongDouble = { data.long_double } },
-      { myShort = { data.short } },
-      { myLong = { data.long } },
-      { myLongLong = { data.long_long } },
-      { myUnsignedShort = { data.unsigned_short } },
-      { myUnsignedLong = { data.unsigned_long } },
-      { myUnsignedLongLong = { data.unsigned_long_long } },
+    Test.Atoms = idl.struct{
+      Atoms = {
+        { myBoolean = { idl.boolean } },
+        { myOctet = { idl.octet } },
+        { myChar = { idl.char } },
+        { myWChar = { idl.wchar } },
+        { myFloat = { idl.float } },
+        { myDouble = { idl.double } },
+        { myLongDouble = { idl.long_double } },
+        { myShort = { idl.short } },
+        { myLong = { idl.long } },
+        { myLongLong = { idl.long_long } },
+        { myUnsignedShort = { idl.unsigned_short } },
+        { myUnsignedLong = { idl.unsigned_long } },
+        { myUnsignedLongLong = { idl.unsigned_long_long } },
+      }
     }
-    
     self:print(Test.Atoms)
     
     assert(Test.Atoms.myBoolean == 'myBoolean')
@@ -895,30 +927,31 @@ Tester[#Tester+1] = 'test_typedef'
 function Tester:test_typedef()  
 
   -- typedefs
-  Test.MyDouble = data.typedef{data.double}
-  Test.MyDouble2 = data.typedef{Test.MyDouble}
-  Test.MyString = data.typedef{data.string(10) }
+  Test.MyDouble = idl.typedef{MyDouble = { idl.double} }
+  Test.MyDouble2 = idl.typedef{MyDouble2 = { Test.MyDouble } }
+  Test.MyString = idl.typedef{MyString = { idl.string(10) } }
   
-  Test.MyName = data.typedef{Test.Name}
-  Test.MyName2 = data.typedef{Test.MyName}
+  Test.MyName = idl.typedef{MyName = { Test.Name } }
+  Test.MyName2 = idl.typedef{MyName2 = { Test.MyName} }
   
-  Test.MyAddress = data.typedef{Test.Address}
-  Test.MyAddress2 = data.typedef{Test.MyAddress}
+  Test.MyAddress = idl.typedef{MyAddress = { Test.Address } }
+  Test.MyAddress2 = idl.typedef{MyAddress2 = { Test.MyAddress } }
   
-  Test.MyTypedef = data.struct{
-    { rawDouble =  { data.double } },
-    { myDouble =  { Test.MyDouble } },
-    { myDouble2 =  { Test.MyDouble2 } },
-    
-    { name =  { Test.Name } },
-    { myName =  { Test.MyName } },
-    { myName2 =  { Test.MyName2 } },
-    
-    { address =  { Test.Address } },
-    { myAddress =  { Test.MyAddress } },
-    { myAddress2 =  { Test.MyAddress2 } },
+  Test.MyTypedef = idl.struct{
+    MyTypedef = {
+      { rawDouble =  { idl.double } },
+      { myDouble =  { Test.MyDouble } },
+      { myDouble2 =  { Test.MyDouble2 } },
+      
+      { name =  { Test.Name } },
+      { myName =  { Test.MyName } },
+      { myName2 =  { Test.MyName2 } },
+      
+      { address =  { Test.Address } },
+      { myAddress =  { Test.MyAddress } },
+      { myAddress2 =  { Test.MyAddress2 } },
+    }
   }
-
   self:print(Test.MyDouble)
   self:print(Test.MyDouble2)  
   self:print(Test.MyString)
@@ -952,33 +985,40 @@ end
 Tester[#Tester+1] = 'test_typedef_seq'
 function Tester:test_typedef_seq()  
 
-  Test.MyDoubleSeq = data.typedef{Test.MyDouble, data.sequence() }
-  Test.MyStringSeq = data.typedef{Test.MyString, data.sequence(10) }
+  Test.MyDoubleSeq = idl.typedef{
+    MyDoubleSeq = {Test.MyDouble, idl.sequence() }}
+  Test.MyStringSeq = idl.typedef{
+    MyStringSeq = {Test.MyString, idl.sequence(10) }}
   
-  Test.NameSeq = data.typedef{Test.Name, data.sequence(10) }
-  Test.NameSeqSeq = data.typedef{Test.NameSeq, data.sequence(10) }
+  Test.NameSeq = idl.typedef{
+    NameSeq = {Test.Name, idl.sequence(10) } }
+  Test.NameSeqSeq = idl.typedef{
+    NameSeqSeq = {Test.NameSeq, idl.sequence(10) }}
   
-  Test.MyNameSeq = data.typedef{Test.MyName, data.sequence(10) }
-  Test.MyNameSeqSeq = data.typedef{Test.MyNameSeq, data.sequence(10) }
+  Test.MyNameSeq = idl.typedef{
+    MyNameSeq = {Test.MyName, idl.sequence(10) }}
+  Test.MyNameSeqSeq = idl.typedef{
+    MyNameSeqSeq = {Test.MyNameSeq, idl.sequence(10) }}
   
-  Test.MyTypedefSeq = data.struct{
-    { myDoubleSeq = { Test.MyDouble, data.sequence() } },
-    { myDoubleSeqA = { Test.MyDoubleSeq } },
-    { myStringSeqA = { Test.MyStringSeq } },
+  Test.MyTypedefSeq = idl.struct{
+    MyTypedefSeq = {
+      { myDoubleSeq = { Test.MyDouble, idl.sequence() } },
+      { myDoubleSeqA = { Test.MyDoubleSeq } },
+      { myStringSeqA = { Test.MyStringSeq } },
+      
+      { nameSeq = { Test.Name, idl.sequence() } },
+      { nameSeqA = { Test.NameSeq } },
+      { nameSeqSeq = { Test.NameSeq, idl.sequence() } },
+      { nameSeqSeqA = { Test.NameSeqSeq } },
+      { nameSeqSeqASeq = { Test.NameSeqSeq, idl.sequence() } },
     
-    { nameSeq = { Test.Name, data.sequence() } },
-    { nameSeqA = { Test.NameSeq } },
-    { nameSeqSeq = { Test.NameSeq, data.sequence() } },
-    { nameSeqSeqA = { Test.NameSeqSeq } },
-    { nameSeqSeqASeq = { Test.NameSeqSeq, data.sequence() } },
-  
-    { myNameSeq = { Test.MyName, data.sequence() } },
-    { myNameSeqA = { Test.MyNameSeq } },
-    { myNameSeqSeq = { Test.MyNameSeq, data.sequence() } },
-    { myNameSeqSeqA = { Test.MyNameSeqSeq } },
-    { myNameSeqSeqASeq = { Test.MyNameSeqSeq, data.sequence() } },
+      { myNameSeq = { Test.MyName, idl.sequence() } },
+      { myNameSeqA = { Test.MyNameSeq } },
+      { myNameSeqSeq = { Test.MyNameSeq, idl.sequence() } },
+      { myNameSeqSeqA = { Test.MyNameSeqSeq } },
+      { myNameSeqSeqASeq = { Test.MyNameSeqSeq, idl.sequence() } },
+    }
   }
-
   self:print(Test.MyDoubleSeq)
   self:print(Test.MyStringSeq)
   
@@ -1063,17 +1103,18 @@ Tester[#Tester+1] = 'test_arrays1'
 function Tester:test_arrays1()
 
     -- Arrays
-    Test.MyArrays1 = data.struct{
-      -- 1-D
-      { ints = { data.double, data.array(3) } },
-    
-      -- 2-D
-      { days = { Test.Days, data.array(6, 9) } },
+    Test.MyArrays1 = idl.struct{
+      MyArrays1 = {
+        -- 1-D
+        { ints = { idl.double, idl.array(3) } },
       
-      -- 3-D
-      { names = { Test.Name, data.array(12, 15, 18) } },
-    }
-
+        -- 2-D
+        { days = { Test.Days, idl.array(6, 9) } },
+        
+        -- 3-D
+        { names = { Test.Name, idl.array(12, 15, 18) } },
+      }
+  }
 	-- structure with arrays
 	self:print(Test.MyArrays1)
 	
@@ -1098,20 +1139,21 @@ end
 Tester[#Tester+1] = 'test_arrays2'
 function Tester:test_arrays2()
 
-    Test.MyArrays2 = data.union{Test.Days,
-      -- 1-D
-      { 'MON',
-        ints = { data.double, data.array(3) }},
-    
-      -- 2-D
-      { 'TUE',
-        days = { Test.Days, data.array(6, 9) }},
+    Test.MyArrays2 = idl.union{
+      MyArrays2 = {Test.Days,
+        -- 1-D
+        { 'MON',
+          ints = { idl.double, idl.array(3) }},
       
-      -- 3-D
-      {nil,
-        names = { Test.Name, data.array(12, 15, 18) }},  
-    }
-
+        -- 2-D
+        { 'TUE',
+          days = { Test.Days, idl.array(6, 9) }},
+        
+        -- 3-D
+        {nil,
+          names = { Test.Name, idl.array(12, 15, 18) }},  
+      }
+  }
 	-- union with arrays
 	self:print(Test.MyArrays2)
 	
@@ -1135,36 +1177,43 @@ end
 
 Tester[#Tester+1] = 'test_arrays3'
 function Tester:test_arrays3()
-	Test.MyNameArray = data.typedef{Test.Name, data.array(10) }
-	Test.MyNameArray2 = data.typedef{Test.MyNameArray, data.array(10) }
-	Test.MyName2x2 = data.typedef{Test.Name, data.array(2, 3) }
-	
-	Test.MyArrays3 = data.struct{
-		-- 1-D
-		{ myNames = { Test.MyNameArray } },
-
-		-- 2-D
-		{ myNamesArray = { Test.MyNameArray, data.array(10) } },
-	
-		-- 2-D
-		{ myNames2 = { Test.MyNameArray2 } },
-				
-		-- 3-D
-		{ myNames2Array = { Test.MyNameArray2, data.array(10) } },
-
-		-- 4-D
-		{ myNames2Array2 = { Test.MyNameArray2, data.array(10, 20) } },
-		
-		-- 2D: 2x2
-		{ myName2x2 = { Test.MyName2x2 } },
-
-		-- 4D: 2x2 x2x2
-		{ myName2x2x2x2 = { Test.MyName2x2, data.array(4,5) } },
+	Test.MyNameArray = idl.typedef{
+	   MyNameArray = { Test.Name, idl.array(10) }
 	}
-
-    self:print(Test.MyNameArray)
-    self:print(Test.MyNameArray2)
-    self:print(Test.MyName2x2)
+	Test.MyNameArray2 = idl.typedef{
+	   MyNameArray2 = {Test.MyNameArray, idl.array(10) }
+	}
+	Test.MyName2x2 = idl.typedef{
+	   MyName2x2 = {Test.Name, idl.array(2, 3) }
+	}
+	
+	Test.MyArrays3 = idl.struct{
+	 MyArrays3 = {
+  		-- 1-D
+  		{ myNames = { Test.MyNameArray } },
+  
+  		-- 2-D
+  		{ myNamesArray = { Test.MyNameArray, idl.array(10) } },
+  	
+  		-- 2-D
+  		{ myNames2 = { Test.MyNameArray2 } },
+  				
+  		-- 3-D
+  		{ myNames2Array = { Test.MyNameArray2, idl.array(10) } },
+  
+  		-- 4-D
+  		{ myNames2Array2 = { Test.MyNameArray2, idl.array(10, 20) } },
+  		
+  		-- 2D: 2x2
+  		{ myName2x2 = { Test.MyName2x2 } },
+  
+  		-- 4D: 2x2 x2x2
+  		{ myName2x2x2x2 = { Test.MyName2x2, idl.array(4,5) } },
+  	}
+  }
+  self:print(Test.MyNameArray)
+  self:print(Test.MyNameArray2)
+  self:print(Test.MyName2x2)
 	self:print(Test.MyArrays3)
 
 	-- myNames
@@ -1223,36 +1272,43 @@ end
 
 Tester[#Tester+1] = 'test_sequences_multi_dim'
 function Tester:test_sequences_multi_dim()
-	Test.MyNameSeq1 = data.typedef{Test.Name, data.sequence(10) }
-	Test.MyNameSeq2 = data.typedef{Test.MyNameSeq, data.sequence(10) }
-	Test.MyNameSeq2x2 = data.typedef{Test.Name, data.sequence(2, 3) }
-	
-	Test.MySeqs3 = data.struct{
-		-- 1-D
-		{ myNames = { Test.MyNameSeq } },
-
-		-- 2-D
-		{ myNamesSeq = { Test.MyNameSeq1, data.sequence(10) } },
-	
-		-- 2-D
-		{ myNames2 = { Test.MyNameSeq2 } },
-				
-		-- 3-D
-		{ myNames2Seq = { Test.MyNameSeq2, data.sequence(10) } },
-
-		-- 4-D
-		{ myNames2Seq2 = { Test.MyNameSeq2, data.sequence(10, 20) } },
-		
-		-- 2D: 2x2
-		{ myName2x2 = { Test.MyName2x2 } },
-
-		-- 4D: 2x2 x2x2
-		{ myName2x2x2x2 = { Test.MyNameSeq2x2, data.sequence(4,5) } },
+	Test.MyNameSeq1 = idl.typedef{
+	   MyNameSeq1 = {Test.Name, idl.sequence(10) }
 	}
-
-    self:print(Test.MyNameSeq1)
-    self:print(Test.MyNameSeq2)
-    self:print(Test.MySeqs3)
+	Test.MyNameSeq2 = idl.typedef{
+	   MyNameSeq2 = {Test.MyNameSeq, idl.sequence(10) }
+	}
+	Test.MyNameSeq2x2 = idl.typedef{
+	   MyNameSeq2x2 = {Test.Name, idl.sequence(2, 3) }
+	}
+	
+	Test.MySeqs3 = idl.struct{
+	 MySeqs3 = {
+  		-- 1-D
+  		{ myNames = { Test.MyNameSeq } },
+  
+  		-- 2-D
+  		{ myNamesSeq = { Test.MyNameSeq1, idl.sequence(10) } },
+  	
+  		-- 2-D
+  		{ myNames2 = { Test.MyNameSeq2 } },
+  				
+  		-- 3-D
+  		{ myNames2Seq = { Test.MyNameSeq2, idl.sequence(10) } },
+  
+  		-- 4-D
+  		{ myNames2Seq2 = { Test.MyNameSeq2, idl.sequence(10, 20) } },
+  		
+  		-- 2D: 2x2
+  		{ myName2x2 = { Test.MyName2x2 } },
+  
+  		-- 4D: 2x2 x2x2
+  		{ myName2x2x2x2 = { Test.MyNameSeq2x2, idl.sequence(4,5) } },
+  	}
+  }
+  self:print(Test.MyNameSeq1)
+  self:print(Test.MyNameSeq2)
+  self:print(Test.MySeqs3)
 	self:print(Test.MyNameSeq2x2)
 
 	-- myNames
@@ -1311,16 +1367,16 @@ end
 
 Tester[#Tester+1] = 'test_const'
 function Tester:test_const()
-  Test.FLOAT = data.const{data.float, 3.14 }
-  Test.DOUBLE = data.const{data.double, 3.14 * 3.14 }  
-  Test.LDOUBLE = data.const{data.long_double, 3.14 * 3.14 * 3.14 }   
-  Test.STRING = data.const{data.string(), "String Constant" }   
-  Test.BOOL = data.const{data.boolean, true } 
-  Test.CHAR = data.const{data.char, "String Constant" } -- warning  
-  Test.LONG = data.const{data.long, 10.7 } -- warning
-  Test.LLONG = data.const{data.long_long, 10^10 }
-  Test.SHORT = data.const{data.short, 5 }
-  Test.WSTRING = data.const{data.wstring(), "WString Constant" }
+  Test.FLOAT = idl.const{FLOAT = { idl.float, 3.14 } }
+  Test.DOUBLE = idl.const{DOUBLE = { idl.double, 3.14 * 3.14 } } 
+  Test.LDOUBLE = idl.const{LDOUBLE = { idl.long_double, 3.14 * 3.14 * 3.14 }}   
+  Test.STRING = idl.const{STRING = { idl.string(), "String Constant" } }   
+  Test.BOOL = idl.const{BOOL = { idl.boolean, true } }
+  Test.CHAR = idl.const{CHAR = { idl.char, "String Constant" } } -- warning  
+  Test.LONG = idl.const{LONG = { idl.long, 10.7 } } -- warning
+  Test.LLONG = idl.const{LLONG = { idl.long_long, 10^10 } }
+  Test.SHORT = idl.const{SHORT = { idl.short, 5 } }
+  Test.WSTRING = idl.const{WSTRING = { idl.wstring(), "WString Constant" } }
 
   self:print(Test.FLOAT)
   self:print(Test.DOUBLE)
@@ -1347,28 +1403,33 @@ end
 
 Tester[#Tester+1] = 'test_const_bounds'
 function Tester:test_const_bounds()
-    Test.CAPACITY = data.const{data.short, 5 }
-    Test.MyCapacitySeq = data.typedef{Test.Name, 
-                      data.sequence(Test.CAPACITY, Test.CAPACITY) }
-    Test.MyCapacityArr = data.typedef{Test.Name, 
-                      data.array(Test.CAPACITY, Test.CAPACITY) }
-  
-    Test.MyCapacityStruct = data.struct{ 
-        { myNames = { Test.MyCapacitySeq } },
-        { myNames2 = { Test.MyCapacityArr } },
-        { myStrings = { data.string(), 
-                       data.array(Test.CAPACITY, Test.CAPACITY)} },
-        { myNums = { data.double, 
-                    data.sequence(Test.CAPACITY, Test.CAPACITY)} },
-        { myStr = { data.string(Test.CAPACITY) } },                                       
+    local CAPACITY = idl.const{
+      CAPACITY = { idl.short, 5 } 
     }
-                                 
-    self:print(Test.CAPACITY)
+    Test.MyCapacitySeq = idl.typedef{
+      MyCapacitySeq = {Test.Name, idl.sequence(CAPACITY, CAPACITY) }
+    }
+    Test.MyCapacityArr = idl.typedef{
+      MyCapacityArr = {Test.Name, idl.array(CAPACITY, CAPACITY) }
+    }
+    
+    Test.MyCapacityStruct = idl.struct{
+      MyCapacityStruct = { 
+          { myNames = { Test.MyCapacitySeq } },
+          { myNames2 = { Test.MyCapacityArr } },
+          { myStrings = { idl.string(), 
+                         idl.array(CAPACITY, CAPACITY)} },
+          { myNums = { idl.double, 
+                      idl.sequence(CAPACITY, CAPACITY)} },
+          { myStr = { idl.string(CAPACITY) } },                                       
+      }
+    }                               
+    self:print(CAPACITY)
     self:print(Test.MyCapacitySeq)
     self:print(Test.MyCapacityArr)
     self:print(Test.MyCapacityStruct)
     
-    assert(Test.CAPACITY() == 5)
+    assert(CAPACITY() == 5)
     
     -- myNames
     assert(Test.MyCapacityStruct.myNames() == 'myNames#')
@@ -1395,18 +1456,20 @@ end
 
 Tester[#Tester+1] = 'test_root'
 function Tester:test_root()
-  self:print(Test)
+  -- TODO: fix this!
+  self:print(Test.MyModule)
 end
 
 Tester[#Tester+1] = 'test_nomodule'
 function Tester:test_nomodule()
-  local ShapeType = data.struct{
-    { x = { data.long } },
-    { y = { data.long } },
-    { shapesize = { data.long } },
-    { color = { data.string(128), data.Key } },
+  local ShapeType = idl.struct{
+    ShapeType = {
+      { x = { idl.long } },
+      { y = { idl.long } },
+      { shapesize = { idl.long } },
+      { color = { idl.string(128), idl.Key } },
+    }
   }
-  
   self:print(ShapeType)
   
   assert('x' == ShapeType.x)
@@ -1419,21 +1482,43 @@ Tester[#Tester+1] = 'test_module_manipulation'
 function Tester:test_module_manipulation()
 
   -- declarative 
-  local MyModule = data.module{
-   
-    { 
-      ShapeType = data.struct{
-        { x = { data.long } },
-        { y = { data.long } },
-        { shapesize = { data.long } },
-        { color = { data.string(128), data.Key } }
-      }
-    },
-    
-    { 
-      StringSeq = data.typedef{ data.string(10), data.sequence(10) }
-    },
+  local MyModule = idl.module{
+    MyModule = {
+      { 
+        ShapeType = idl.struct{
+          ShapeType = {
+            { x = { idl.long } },
+            { y = { idl.long } },
+            { shapesize = { idl.long } },
+            { color = { idl.string(128), idl.Key } }
+          }
+        }
+      },
+      
+      { 
+        StringSeq = idl.typedef{ 
+          StringSeq = { idl.string(10), idl.sequence(10) }
+        }
+      },
+    }
   }
+  --[[
+  local MyModule = idl.module{
+    MyModule = { 
+      idl.struct{
+        ShapeType = {
+          { x = { idl.long } },
+          { y = { idl.long } },
+          { shapesize = { idl.long } },
+          { color = { idl.string(128), idl.Key } }
+        }
+      },
+    
+      idl.typedef{
+        StringSeq = { idl.string(10), idl.sequence(10) }
+      },
+  }}
+  --]]
   
   print("\n-- declarative module definition ---")
   self:print(MyModule)
@@ -1449,12 +1534,16 @@ function Tester:test_module_manipulation()
 
   print("\n-- add to module: 3rd definition: Nested::Point ---")
   MyModule[3] = {
-    Nested = data.module{
-      {
-        Point = data.struct{
-          { x = { data.double } },
-          { y = { data.double } }
-        },
+    Nested = idl.module{
+      Nested = {
+        {
+          Point = idl.struct{
+            Point = {
+              { x = { idl.double } },
+              { y = { idl.double } }
+            }
+          },
+        }
       }
     },
   }
@@ -1465,16 +1554,20 @@ function Tester:test_module_manipulation()
    
    
   print("\n-- add to module: last definition: MyEnum ---")
-  MyModule.MyEnum = data.enum{'Q1', 'Q2', 'Q3', 'Q4'}
+  MyModule.MyEnum = idl.enum{
+    MyEnum = {'Q1', 'Q2', 'Q3', 'Q4'}
+  }
   self:print(MyModule)
   assert(nil ~= MyModule.MyEnum) 
   assert(4 == #MyModule)
  
  
-  print("\n-- change 3rd definition ---")
+  print("\n-- change 3rd definition ---")   
   MyModule[3] = {
-      MyEnum2 = data.enum{'SUN', 'MON', 'TUE'}
-  }   
+      MyEnum2 = idl.enum{
+        MyEnum2 = {'SUN', 'MON', 'TUE'}
+      }
+  }
   self:print(MyModule)
   assert(nil ~= MyModule.MyEnum2)
   assert(4 == #MyModule)  
@@ -1482,11 +1575,15 @@ function Tester:test_module_manipulation()
   
   print("\n-- change 3rd definition again ---")
   MyModule[3] = {
-    Sub = data.module{
-      { 
-        Point = data.struct{
-          { coord = { data.double, data.sequence(2) } },
-        },
+    Sub = idl.module{
+      Sub = {
+        { 
+          Point = idl.struct{
+            Point = {
+              { coord = { idl.double, idl.sequence(2) } },
+            }
+          },
+        }
       }
     },
   }
@@ -1506,14 +1603,16 @@ function Tester:test_module_manipulation()
 
 
   print("\n-- change MyEnum ---") -- TODO: fix: meta-table not invoked
-  MyModule.MyEnum = data.enum{'JAN', 'FEB', 'MAR'}
+  MyModule.MyEnum = idl.enum{
+    MyEnum = {'JAN', 'FEB', 'MAR'}
+  }
   self:print(MyModule)
   assert(nil ~= MyModule.MyEnum and nil ~= MyModule.MyEnum.JAN) 
   assert(MyModule.MyEnum == table.pack(next(MyModule[3]))[2]) 
   assert(3 == #MyModule)  
    
   print("\n-- module definition iteration (ordered) --")
-  print(MyModule[data.KIND](), MyModule[data.NAME], #MyModule)
+  print(MyModule[idl.KIND](), MyModule[idl.NAME], #MyModule)
   for i, v in ipairs(MyModule) do
     print(next(v))
   end
@@ -1529,10 +1628,10 @@ end
 -- print - helper method to print the IDL and the index for data definition
 function Tester:print(instance)
     -- print IDL
-    data.print_idl(instance)
+    idl.print_idl(instance)
   
     -- print index
-    local instance = data.index(instance)
+    local instance = idl.index(instance)
     if instance == nil then return end
     print('index:')
     for i, v in ipairs(instance) do

@@ -162,9 +162,9 @@
 --    first as an empty definition, and then as a full definition. Ignore the warning!
 --
 
-local MODEL = function() return 'MODEL' end -- table key for 'model' meta-data 
-
 local Data = {
+  EMPTY = {},               -- a placeholder to indicate an empty definition
+
 	-- instance attributes ---
 	-- every 'instance' table has this meta-data key defined
 	-- the rest of the keys are fields of the instance
@@ -193,6 +193,9 @@ local Data = {
 	SWITCH     = function() return 'switch' end, -- union switch
   NS         = function() return '' end,       -- module namespace
 }
+
+local EMPTY = {}               -- a placeholder to indicate an empty definition
+local MODEL = function() return 'MODEL' end -- table key for 'model' meta-data 
 
 ---
 -- Internal Implementation Details
@@ -251,6 +254,27 @@ function _.populate_template(template, defn)
   return template
 end
 
+--- Parse declaration
+-- @param decl [in] a table containing at least one {name=defn} entry 
+--                where *name* is a string model name
+--                and *defn* is a table containing the definition
+-- @return name, def
+function _.parse_decl(decl)
+  -- pre-condition: decl is a table
+  assert('table' == type(decl), 
+    table.concat{'parse_decl(): invalid declaration: ', tostring(decl)})
+       
+  local name, defn = next(decl)
+  
+  assert('string' == type(name),
+    table.concat{'parse_decl(): invalid model name: ', tostring(name)})
+    
+  assert('table' == type(defn),
+  table.concat{'parse_decl(): invalid model definition: ', tostring(defn)})
+
+  return name, defn
+end
+             
 --------------------------------------------------------------------------------
 -- Helpers
 --------------------------------------------------------------------------------
@@ -688,7 +712,7 @@ function _.string(n, name)
   local instance = Data.builtin[name]
   if nil == instance then
     -- not found => create it
-    instance = Data.atom()
+    instance = Data.atom{name=EMPTY}
     Data.builtin[name] = instance -- install it in the builtin module
   end  
   
@@ -728,14 +752,15 @@ end
 --------------------------------------------------------------------------------
 
 --- Define an atomic type
--- @return an immutable table representing an atomic type
+-- @param decl  [in] a table with a name assigned to arbitrary value (ignored)
+--                         { name = EMPTY }
+-- @return the atom template (an immutable table)
 -- @usage
 --  -- Create an atomic type
---     MyAtom = Data.atom{}
-function Data.atom()
-  -- create the template
-  local template = _.new_template(Data.ATOM) 
-  return template
+--     local MyAtom = Data.atom{MyAtom=EMPTY}
+function Data.atom(decl)
+  local name = _.parse_decl(decl)
+  return _.new_template(Data.ATOM, name) 
 end
 
 --- Atom API meta-table
@@ -755,31 +780,39 @@ _.API[Data.ATOM] = {
 --------------------------------------------------------------------------------
 
 --- Define an constant
--- @param param  [in] a table containing an atom and the constant value, e.g.
---                       { Data.atom, const_value_of_atom_type }
--- @return a table representing a constant
+-- @param decl  [in] a table containing a constant declaration
+--                   { name = { Data.atom, const_value_of_atom_type } }
+-- @return the const template (an immutable table)
 -- @usage
 --  -- Create a constant type
---       MY_CONST = Data.const{Data.<atom>, <const_value_of_atom_type> }
+--       local MY_CONST = Data.const{ 
+--          MY_CONST = { Data.<atom>, <const_value> }
+--       }
 --  
 --  -- Examples
---       PI = Data.const{ Data.double, 3.14 }
+--       local PI = Data.const{ 
+--          PI = { Data.double, 3.14 } 
+--       }
 -- 
---       MY_CONST = Data.const{ Data.short, 10 }
+--       local MY_SHORT = Data.const{ 
+--            MY_SHORT = { Data.short, 10 } 
+--       }
 --       
---       MY_STRING = Data.const{ Data.string(), "String Constant" }   
+--       local MY_STRING = Data.const{ 
+--          MY_STRING = { Data.string(), "String Constant" }
+--       }
 --       
---       MyStringSeq =  Data.typedef{ Data.string, Data.sequence(MY_CONST) }
-function Data.const(param) 
-  -- pre-condition: parameters are specified
-  assert('table' == type(param), 
-       table.concat{'invalid type specification: ', tostring(param)})
+--       local MyStringSeq =  Data.typedef{ 
+--             MyStringSeq = { Data.string, Data.sequence(MY_CONST) } 
+--       }
+function Data.const(decl) 
+  local name, defn = _.parse_decl(decl)
        
-  -- pre-condition: ensure that the 1st parameter is a valid type
-  local atom = _.assert_model(Data.ATOM, param[1])
+  -- pre-condition: ensure that the 1st defn declaration is a valid type
+  local atom = _.assert_model(Data.ATOM, defn[1])
          
-  -- pre-condition: ensure that the 2nd parameter is a valid value
-  local value = param[2]
+  -- pre-condition: ensure that the 2nd defn declaration is a valid value
+  local value = defn[2]
   assert(nil ~= value, 
          table.concat{'const value must be non-nil: ', tostring(value)})
   assert((Data.boolean == atom and 'boolean' == type(value) or
@@ -818,7 +851,7 @@ function Data.const(param)
   end
 
   -- create the template
-  local template = _.new_template(Data.CONST) 
+  local template = _.new_template(Data.CONST, name) 
   template[MODEL][Data.DEFN] = atom
   template[MODEL][Data.INSTANCES] = value
   return template
@@ -856,23 +889,25 @@ _.API[Data.CONST] = {
 --- Create a typedef. 
 -- 
 -- Typedefs are aliases for underlying primitive or composite types 
--- @param param [in] the underlying type definition and optional multiplicity
---                   and annotations, e.g.
---                 { template, [collection,] [annotation1, annotation2, ...] } 
--- @return a table represensing the typedef
+-- @param decl  [in] a table containing a typedef declaration
+--      { name = { template, [collection,] [annotation1, annotation2, ...] }  }
+-- i.e. the underlying type definition and optional multiplicity and annotations                
+-- @return the typedef template
 -- @usage
 --  IDL: typedef sequence<MyStruct> MyStructSeq
---  Lua: MyStructSeq = Data.typedef{ Data.MyStruct, Data.sequence() }
+--  Lua: local MyStructSeq = Data.typedef{ 
+--            MyStructSeq = { Data.MyStruct, Data.sequence() } 
+--       }
 --
 --  IDL: typedef MyStruct MyStructArray[10][20]
---  Lua: MyStructArray = Data.typedef{ Data.MyStruct, Data.array(10, 20) }
-function Data.typedef(param) 
-  -- pre-condition: parameters are specified
-  assert('table' == type(param), 
-       table.concat{'invalid type specification: ', tostring(param)})
+--  Lua: local MyStructArray = Data.typedef{ 
+--          MyStructArray = { Data.MyStruct, Data.array(10, 20) }
+--       }
+function Data.typedef(decl) 
+  local name, defn = _.parse_decl(decl)
 
-  -- pre-condition: ensure that the 1st parameter is a valid type
-  local alias = param[1]
+  -- pre-condition: ensure that the 1st defn element is a valid type
+  local alias = defn[1]
   local alias_type = _.model_type(alias)
   assert(Data.ATOM == alias_type or
        Data.ENUM == alias_type or
@@ -882,9 +917,9 @@ function Data.typedef(param)
        table.concat{'alias must be a atom|enum|struct|union|typedef: ', 
                     tostring(alias)})
 
-  -- pre-condition: ensure that the 2nd parameter if present 
+  -- pre-condition: ensure that the 2nd defn element if present 
   -- is a 'collection' type
-  local collection = param[2]  
+  local collection = defn[2]  
   assert(nil == collection or
         Data.ARRAY == collection[MODEL] or
         Data.SEQUENCE == collection[MODEL],
@@ -892,7 +927,7 @@ function Data.typedef(param)
  
 
   -- create the template
-  local template = _.new_template(Data.TYPEDEF) 
+  local template = _.new_template(Data.TYPEDEF, name) 
   template[MODEL][Data.DEFN] = { alias, collection }
   return template
 end
@@ -915,7 +950,9 @@ _.API[Data.TYPEDEF] = {
 
 --- Create an annotation
 --  Annotations attributes are not interpreted, and kept intact 
--- @param ...  optional 'default' attributes of the annotation
+-- @param decl  [in] a table containing an annotation declaration
+--                 { name = {...}  }
+--    where ...  are the optional 'default' attributes of the annotation
 -- @return an annotation table
 -- @usage
 --   -- IDL @Key
@@ -926,14 +963,18 @@ _.API[Data.TYPEDEF] = {
 --    Data.Extensibility{'EXTENSIBLE_EXTENSIBILITY'},
 -- 
 --  -- Create user defined annotation @MyAnnotation(value1 = 42, value2 = 42.0)
---     MyAnnotation = Data.annotation{value1 = 42, value2 = 9.0}
+--    local MyAnnotation = Data.annotation{
+--            MyAnnotation = {value1 = 42, value2 = 9.0}
+--    }
 --
 --  -- Use user defined annotation with custom attributes
---     MyAnnotation{value1 = 942, value2 = 999.0}
+--    MyAnnotation{value1 = 942, value2 = 999.0}
 --        
-function Data.annotation(...)   
+function Data.annotation(decl)   
+  local name, defn = _.parse_decl(decl)
+  
   -- create the template
-  local template = _.new_template(Data.ANNOTATION)
+  local template = _.new_template(Data.ANNOTATION, name)
   local model = template[MODEL]
   
   -- annotation definition function (closure)
@@ -948,15 +989,15 @@ function Data.annotation(...)
         table.concat{'table with {name=value, ...} attributes expected: ', 
                    tostring(attributes)})
     end
-    local instance = attributes or template
+    local instance = attributes ~= EMPTY and attributes or template
     instance[MODEL] = model
     setmetatable(instance, _.API[Data.ANNOTATION]) -- needed for __tostring()
     return instance   
   end
   
   -- initialize template with the attributes
-  template = template(...)
-  
+  template = template(defn)
+ 
   return template
 end
 
@@ -1006,31 +1047,34 @@ _.API[Data.ANNOTATION] = {
 --------------------------------------------------------------------------------
 
 --- Create an enum type
--- @param param a table representing the enum declaration  
--- @return a table representing the enum data model. The table fields 
--- contain the string index to de-reference the enum's constants in 
--- a top-level DDS Dynamic Data Type 
+-- @param decl  [in] a table containing an enum declaration
+--      { EnumName = { { str1 = ord1 }, { str2 = ord2 }, ... } }
+-- @return The enum template. A table representing the enum data model. 
+-- The table fields  contain the string index to de-reference the enum's 
+-- constants in a top-level DDS Dynamic Data Type 
 -- @usage
 --    -- Create enum: Declarative style
---    MyEnum = Data.enum{ 
---      { role_1 = ordinal_value },
---      :
---      { role_M = ordinal_value },
+--    local MyEnum = Data.enum{ 
+--      MyEnum = {
+--          { role_1 = ordinal_value },
+--          :
+--          { role_M = ordinal_value },
 --      
---      -- OR --
+--          -- OR --
 --
---      role_A,
---      :
---      role_Z,
+--          role_A,
+--          :
+--          role_Z,
 --      
---      -- OPTIONAL --
---      annotation?,
---       :
---      annotation?,
+--          -- OPTIONAL --
+--          annotation?,
+--          :
+--          annotation?,
+--      }
 --    }
 --    
 -- -- Create enum: Declarative style
---   MyEnum = Data.enum{}
+--   MyEnum = Data.enum{MyEnum=EMPTY}
 --   
 --  -- Get | Set an annotation:
 --   print(MyEnum[Data.ANNOTATION])
@@ -1055,16 +1099,14 @@ _.API[Data.ANNOTATION] = {
 --  -- Iterate over enum and ordinal values (unordered):
 --    for k, v in pairs(MyEnum) do print(k, v) end
 --
-function Data.enum(param) 
-  -- pre-condition: parameters are specified
-  assert(nil == param or 'table' == type(param), 
-       table.concat{'invalid type specification: ', tostring(param)})
-       
+function Data.enum(decl) 
+  local name, defn = _.parse_decl(decl)
+    
   -- create the template
-  local template = _.new_template(Data.ENUM)
+  local template = _.new_template(Data.ENUM, name)
 
   -- populate the template
-  return _.populate_template(template, param)
+  return _.populate_template(template, defn)
 end
 
 --- Enum API meta-table
@@ -1162,23 +1204,26 @@ _.API[Data.ENUM] = {
 --------------------------------------------------------------------------------
 
 --- Create a struct type
--- @param param a table representing the struct declaration  
--- @return a table representing the struct data model. The table fields 
--- contain the string index to de-reference the struct's value in 
--- a top-level DDS Dynamic Data Type 
+-- @param decl  [in] a table containing a struct declaration
+--      { Name = { { role1 = {...}, { role2 = {...} }, ... } } 
+-- @return The struct template. A table representing the struct data model. 
+-- The table fields contain the string index to de-reference the struct's 
+-- value in a top-level DDS Dynamic Data Type 
 -- @usage
 --    -- Create struct: Declarative style
---    MyStruct = Data.struct{OptionalBaseStruct, 
---      { role_1 = { type, multiplicity?, annotation? } },
---      :  
---      { role_M = { type, multiplicity?, annotation? } },
---      annotation?,
---       :
---      annotation?,
+--    local MyStruct = Data.struct{
+--      MyStruct = {OptionalBaseStruct, 
+--        { role_1 = { type, multiplicity?, annotation? } },
+--        :  
+--        { role_M = { type, multiplicity?, annotation? } },
+--        annotation?,
+--         :
+--        annotation?,
+--      }
 --    }
 --    
 --  -- Create struct: Imperative style
---   MyStruct = Data.struct{}
+--   local MyStruct = Data.struct{MyStruct={OptionalBaseStruct}|Data.EMPTY}
 --   
 --  -- Get | Set an annotation:
 --   print(MyStruct[Data.ANNOTATION])
@@ -1207,26 +1252,24 @@ _.API[Data.ENUM] = {
 --  -- Iterate over instance members and the indexes (unordered):
 --    for k, v in pairs(MyStruct) do print(k, v) end
 --
-function Data.struct(param) 
-  -- pre-condition: parameters are specified
-  assert(nil == param or 'table' == type(param), 
-       table.concat{'invalid type specification: ', tostring(param)})
+function Data.struct(decl) 
+  local name, defn = _.parse_decl(decl)
        
   -- create the template
-  local template = _.new_template(Data.STRUCT)
+  local template = _.new_template(Data.STRUCT, name)
   template[MODEL][Data.INSTANCES] = {}
   
   -- OPTIONAL base: pop the next element if it is a base model element
   local base
-  if Data.STRUCT == _.model_type(param[1]) then
-    base = param[1]   table.remove(param, 1)
+  if Data.STRUCT == _.model_type(defn[1]) then
+    base = defn[1]   table.remove(defn, 1)
 
     -- insert the base class:
     template[Data.BASE] = base -- invokes the meta-table __newindex()
   end
 
   -- populate the template
-  return _.populate_template(template, param)
+  return _.populate_template(template, defn)
 end
 
 --- Struct API meta-table
@@ -1384,27 +1427,30 @@ _.API[Data.STRUCT] = {
 --------------------------------------------------------------------------------
 
 --- Create a union type
--- @param param [in] a table representing the union declaration  
--- @return a table representing the union data model. The table fields 
--- contain the string index to de-reference the union's value in 
--- a top-level DDS Dynamic Data Type 
+-- @param decl  [in] a table containing a union declaration
+--      { Name = {discriminator, { case, role = {...} }, ... } } 
+-- @return The union template. A table representing the union data model. 
+-- The table fields contain the string index to de-reference the union's value
+-- in a top-level DDS Dynamic Data Type 
 -- @usage
 --    -- Create union: Declarative style
---    MyUnion = Data.union{ discriminator,
---      { case, 
---        [ { role_1 = { type, multiplicity?, annotation? } } ] },
---      :  
---      { case, 
---        [ { role_M = { type, multiplicity?, annotation? } } ] },
---      { nil, 
---        [ { role_Default = { type, multiplicity?, annotation? } } ] },
---      annotation?,
---       :
---      annotation?,
+--    local MyUnion = Data.union{
+--      MyUnion = {discriminator,
+--        { case, 
+--         [ { role_1 = { type, multiplicity?, annotation? } } ] },
+--        :  
+--        { case, 
+--         [ { role_M = { type, multiplicity?, annotation? } } ] },
+--        { nil, 
+--         [ { role_Default = { type, multiplicity?, annotation? } } ] },
+--        annotation?,
+--         :
+--       annotation?,
+--      }
 --    }
 --    
 -- -- Create union: Imperative style
---   MyUnion = Data.union{ discriminator }
+--   local MyUnion = Data.union{MyUnion={discriminator}}
 --   
 --  -- Get | Set an annotation:
 --   print(MyUnion[Data.ANNOTATION])
@@ -1433,21 +1479,19 @@ _.API[Data.STRUCT] = {
 --  -- Iterate over instance members and the indexes (unordered):
 --    for k, v in pairs(MyUnion) do print(k, v) end
 --
-function Data.union(param) 
-  -- pre-condition: parameters are specified
-  assert(nil == param or 'table' == type(param), 
-       table.concat{'invalid type specification: ', tostring(param)})
+function Data.union(decl) 
+  local name, defn = _.parse_decl(decl)
        
   -- create the template 
-  local template = _.new_template(Data.UNION)
+  local template = _.new_template(Data.UNION, name)
   template[MODEL][Data.INSTANCES] = {}
  
  	-- pop the discriminator
-	template[Data.SWITCH] = param[1] -- invokes meta-table __newindex()
-  table.remove(param, 1)
+	template[Data.SWITCH] = defn[1] -- invokes meta-table __newindex()
+  table.remove(defn, 1)
 
   -- populate the template
-  return _.populate_template(template, param)
+  return _.populate_template(template, defn)
 end
 
 --- Union API meta-table 
@@ -1577,32 +1621,39 @@ _.API[Data.UNION] = {
 --- Create a module 
 -- 
 -- A module represents a name-space that holds various user defined types
--- @param param a table representing the module declaration  
--- @return a table representing the module data model. The table fields 
--- contain the string index to de-reference the **user-defined** data types
+-- @param decl  [in] a table containing a sequence of templates (model elements)
+--      { Name = { const{...}, typedef{...}, enum{...},
+--                 struct{...}, union{...}, module{...}, ... } }
+-- @return The module template. A table representing the module data model. 
+-- The table fields contain the templates to produce string indices to 
+-- de-reference the **user-defined** data types
 -- @usage
 --    -- Create module: Declarative style
---    MyModule    = Data.module{
---      MY_SIZE   = Data.const{...},
---      MyTypedef = Data.typedef{...},
---      MyEnum    = Data.enum{...},
---      MyStruct  = Data.struct{...},
---      MyUnion   = Data.union{...},
---      :
+--    local MyModule = Data.module{
+--      MyModule = {
+--        -- templates ---
+--        Data.const{...}, 
+--        Data.typedef{...},
+--        Data.enum{...},
+--        Data.struct{...},
+--        Data.union{...},
+--        Data.module{...}, -- nested name-space
+--        :
+--      }
 --    }
---    
 --  -- Create module: Imperative style
---   MyModule = Data.module{}
+--   local MyModule = Data.module{MyModule=Data.EMPTY}
 --   
 --  -- Get | Set a member:
 --   print(MyModule[i])
---   MyModule[i] = { role = template }
---    -- or --
---   MyModule.role = template -- inserts at the end: MyModule[#MyModule+1]
+--   MyModule[i] = template
 --
 --  -- After either of the above definition, the following post-condition holds:
 --    MyModule.role == template
--- 
+--  where 'role' is the name of the template
+--  
+--  The the fully qualified name of the template includes the fully qualified 
+--  module name (i.e. nested within the module namespace hierarchy).
 --    
 --  -- Iterate over the module definition (ordered):
 --   for i, v in ipairs(MyModule) do print(next(v)) end
@@ -1611,17 +1662,15 @@ _.API[Data.UNION] = {
 --  -- Iterate over module namespace (unordered):
 --   for k, v in pairs(MyModule) do print(k, v) end
 --   
-function Data.module(param) 
-  -- pre-condition: parameters are specified
-  assert(nil == param or 'table' == type(param), 
-       table.concat{'invalid type specification: ', tostring(param)})
+function Data.module(decl) 
+  local name, defn = _.parse_decl(decl)
        
   --create the template
-  local template = _.new_template(Data.MODULE)
+  local template = _.new_template(Data.MODULE, name)
   template[MODEL][Data.DEFN][Data.NS] = {} -- empty namespace
  
   -- populate the template
-  return _.populate_template(template, param)
+  return _.populate_template(template, defn)
 end
 
 --- Module API meta-table
@@ -1767,37 +1816,37 @@ _.API[Data.MODULE] = {
 --- 'builtin' module
 -- Built-in data types (atomic types) and annotations belong to this module
 -- @type [parent=#Data]builtin
-Data.builtin = Data.module{}
+Data.builtin = Data.module{builtin=EMPTY}
 
 --- Built-in atomic types
-Data.builtin.boolean = Data.atom{}
-Data.builtin.octet = Data.atom{}
+Data.builtin.boolean = Data.atom{boolean=EMPTY}
+Data.builtin.octet = Data.atom{octet=EMPTY}
 
-Data.builtin.char = Data.atom{}
-Data.builtin.wchar = Data.atom{}
+Data.builtin.char = Data.atom{char=EMPTY}
+Data.builtin.wchar = Data.atom{wchar=EMPTY}
 
-Data.builtin.float = Data.atom{}
-Data.builtin.double = Data.atom{}
-Data.builtin.long_double = Data.atom{}
+Data.builtin.float = Data.atom{float=EMPTY}
+Data.builtin.double = Data.atom{double=EMPTY}
+Data.builtin.long_double = Data.atom{['long double']=EMPTY}
 
-Data.builtin.short = Data.atom{}
-Data.builtin.long = Data.atom{}
-Data.builtin.long_long = Data.atom{}
+Data.builtin.short = Data.atom{short=EMPTY}
+Data.builtin.long = Data.atom{long=EMPTY}
+Data.builtin.long_long = Data.atom{['long long']=EMPTY}
 
-Data.builtin.unsigned_short = Data.atom{}
-Data.builtin.unsigned_long = Data.atom{}
-Data.builtin.unsigned_long_long = Data.atom{}
+Data.builtin.unsigned_short = Data.atom{['unsigned short']=EMPTY}
+Data.builtin.unsigned_long = Data.atom{['unsigned long']=EMPTY}
+Data.builtin.unsigned_long_long = Data.atom{['unsigned long long']=EMPTY}
 
 --- Built-in annotations
-Data.builtin.Key = Data.annotation{}
-Data.builtin.Extensibility = Data.annotation{}
-Data.builtin.ID = Data.annotation{}
-Data.builtin.MustUnderstand = Data.annotation{}
-Data.builtin.Shared = Data.annotation{}
-Data.builtin.BitBound = Data.annotation{}
-Data.builtin.BitSet = Data.annotation{}
-Data.builtin.Nested = Data.annotation{}
-Data.builtin.top_level = Data.annotation{} -- legacy
+Data.builtin.Key = Data.annotation{Key=EMPTY}
+Data.builtin.Extensibility = Data.annotation{Extensibility=EMPTY}
+Data.builtin.ID = Data.annotation{ID=EMPTY}
+Data.builtin.MustUnderstand = Data.annotation{MustUnderstand=EMPTY}
+Data.builtin.Shared = Data.annotation{Shared=EMPTY}
+Data.builtin.BitBound = Data.annotation{BitBound=EMPTY}
+Data.builtin.BitSet = Data.annotation{BitSet=EMPTY}
+Data.builtin.Nested = Data.annotation{Nested=EMPTY}
+Data.builtin.top_level = Data.annotation{['top-level']=EMPTY} -- legacy
 
 --- string of length n (i.e. string<n>) is an Atom
 -- @function string 
@@ -1819,13 +1868,13 @@ end
 -- attributes are positive integer constants, that specify the dimension bounds
 -- NOTE: Since an array or a sequence is an annotation, it can appear anywhere 
 --       after a member type declaration; the 1st one is used
-_.Array = Data.annotation{}
+_.Array = Data.annotation{Array=EMPTY}
 Data.ARRAY = _.Array[MODEL]
 function Data.array(n, ...)
   return _.collection(_.Array, n, ...)
 end
 
-_.Sequence = Data.annotation{}
+_.Sequence = Data.annotation{Sequence=EMPTY}
 Data.SEQUENCE = _.Sequence[MODEL]
 function Data.sequence(n, ...)
   return _.collection(_.Sequence, n, ...)
