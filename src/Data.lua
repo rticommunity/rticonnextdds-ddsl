@@ -1801,16 +1801,16 @@ end
 -- attributes are positive integer constants, that specify the dimension bounds
 -- NOTE: Since an array or a sequence is an annotation, it can appear anywhere 
 --       after a member type declaration; the 1st one is used
-Data.builtin.Array = Data.annotation{}
-Data.ARRAY = Data.builtin.Array[MODEL]
+_.Array = Data.annotation{}
+Data.ARRAY = _.Array[MODEL]
 function Data.array(n, ...)
-  return _.collection(Data.builtin.Array, n, ...)
+  return _.collection(_.Array, n, ...)
 end
 
-Data.builtin.Sequence = Data.annotation{}
-Data.SEQUENCE = Data.builtin.Sequence[MODEL]
+_.Sequence = Data.annotation{}
+Data.SEQUENCE = _.Sequence[MODEL]
 function Data.sequence(n, ...)
-  return _.collection(Data.builtin.Sequence, n, ...)
+  return _.collection(_.Sequence, n, ...)
 end
 
 --------------------------------------------------------------------------------
