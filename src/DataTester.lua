@@ -377,7 +377,7 @@ function Tester:test_union_imperative()
                                   { 'x', m_oct = { data.octet } }
     --]]
     
-    -- install it under the name 'ShapeType' in the module
+    -- install it in the module
     Test.DynamicUnion = DynamicUnion
     self:print(DynamicUnion)
 
@@ -385,7 +385,6 @@ function Tester:test_union_imperative()
     assert(DynamicUnion.m_str == 'm_str')
     assert(DynamicUnion.m_int == 'm_int')
     assert(DynamicUnion.m_oct == 'm_oct')
-      
     
     -- redefine m_int:
     DynamicUnion[2] = { 'l', m_int = { data.long, data.Key } }  
@@ -494,7 +493,7 @@ end
 Tester[#Tester+1] = 'test_union1'
 function Tester:test_union1()
 
-  Test.TestUnion1 = data.union{data.short,
+  local TestUnion1 = data.union{data.short,
     { 1, 
         x = { data.string() } },
     { 2, 
@@ -502,13 +501,19 @@ function Tester:test_union1()
     { nil, -- default 
         z = { data.boolean } },
   }
-
-  self:print(Test.TestUnion1)
+  Test.TestUnion1 = TestUnion1
   
-  assert(Test.TestUnion1._d == '#')
-  assert(Test.TestUnion1.x == 'x')
-  assert(Test.TestUnion1.y == 'y')
-  assert(Test.TestUnion1.z == 'z')
+  self:print(TestUnion1)
+  
+  assert(TestUnion1._d == '#')
+  assert(TestUnion1.x == 'x')
+  assert(TestUnion1.y == 'y')
+  assert(TestUnion1.z == 'z')
+  
+  print("\n-- changed discriminator: short -> long --")
+  TestUnion1[data.SWITCH] = data.long
+  self:print(TestUnion1)
+  assert(TestUnion1._d == '#')
 end
 
 Tester[#Tester+1] = 'test_union2'

@@ -1030,15 +1030,22 @@ _.API[Data.UNION] = {
 
     elseif Data.SWITCH == key then -- switch definition
 
-      local discriminator_type = _.model_type(value)
+      local discriminator, discriminator_type = value, _.model_type(value)
+      
+      -- pre-condition: ensure discriminator is an atom or enum
       assert(Data.ATOM == discriminator_type or
         Data.ENUM == discriminator_type,
         'discriminator type must be an "atom" or an "enum"')
-      model[Data.DEFN][Data.SWITCH] = value
-      rawset(template, '_d', '#')
      
-      -- TODO: ensure that 'cases' are compatible with new discriminator
-        
+      -- pre-condition: ensure that 'cases' are compatible with discriminator
+      for i, v in ipairs(model_defn) do
+        _.assert_case(discriminator, v[1])
+      end
+     
+      -- update the discriminator
+      model[Data.DEFN][Data.SWITCH] = discriminator
+      rawset(template, '_d', '#')
+           
     elseif 'number' == type(key) then -- member definition
       --  Format:
       --   { case,
