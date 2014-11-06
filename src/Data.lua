@@ -304,12 +304,7 @@ function Data.const(param)
        table.concat{'invalid type specification: ', tostring(param)})
        
   -- pre-condition: ensure that the 1st parameter is a valid type
-  local atom = param[1]
-  assert('table' == type(atom), 
-         table.concat{'invalid const primitive (atom) type: ', tostring(atom)})
-  assert(Data.ATOM == atom[MODEL][Data.KIND], 
-         table.concat{'const must of of primitive (atom) type: ', 
-                      tostring(atom)})
+  local atom = _.assert_model(Data.ATOM, param[1])
          
   -- pre-condition: ensure that the 2nd parameter is a valid value
   local value = param[2]
@@ -406,12 +401,7 @@ function Data.typedef(param)
 
   -- pre-condition: ensure that the 1st parameter is a valid type
   local alias = param[1]
-  assert('table' == type(alias), 
-    table.concat{'undefined alias type for typedef: "', tostring(alias), '"'})
-  assert(nil ~= alias[MODEL], 
-    table.concat{'alias must be a data model for typedef "', tostring(alias), 
-                 '"'})
-  local alias_type = alias[MODEL][Data.KIND]
+  local alias_type = _.model_type(alias)
   assert(Data.ATOM == alias_type or
        Data.ENUM == alias_type or
        Data.STRUCT == alias_type or 
@@ -1364,19 +1354,14 @@ end
 --                      member is an array or sequence    
 -- @return the role (member) instance and the role_defn
 function _.create_role_instance(role, role_defn)
-	local template = role_defn[1]
 	
-	-- ensure pre-conditions
+	-- pre-condition: role 
 	assert(nil == role or 'string' == type(role), 
 			table.concat{'invalid member name: ', tostring(role)})
-	assert('table' == type(template), 
-			table.concat{'undefined type for member "', 
-						  tostring(role), '": ', tostring(template)})
-	assert(nil ~= template[MODEL], 
-		   table.concat{'invalid type for struct member "', 
-		   tostring(role), '"'})
 
-	local template_type = template[MODEL][Data.KIND]
+  -- pre-condition: role_defn
+  local template = role_defn[1]
+	local template_type = _.model_type(template)
 	assert(Data.ATOM == template_type or
 		   Data.ENUM == template_type or
 		   Data.STRUCT == template_type or 
@@ -1385,16 +1370,11 @@ function _.create_role_instance(role, role_defn)
 		   table.concat{'member "', tostring(role), 
 					    '" must be a atom|enum|struct|union|typedef: '})
 
-	-- ensure that the rest of the member definition entries are annotations:	
-	-- also look for the 1st 'collection' annotation (if any)
+	-- pre-condition: ensure that the rest of the member definition entries are 
+	-- annotations:	also look for the 1st 'collection' annotation (if any)
 	local collection = nil
 	for j = 2, #role_defn do
-		assert('table' == type(role_defn[j]),
-				table.concat{'annotation expected "', tostring(role), 
-						     '" : ', tostring(role_defn[j])})
-		assert(Data.ANNOTATION == role_defn[j][MODEL][Data.KIND],
-				table.concat{'not an annotation: "', tostring(role), 
-							'" : ', tostring(role_defn[j])})	
+	  _.assert_model(Data.ANNOTATION, role_defn[j])
 
 		-- is this a collection?
 		if not collection and  -- the 1st 'collection' definition is used
@@ -1453,14 +1433,13 @@ end
 --
 function Data.instance(name, template) 
 	-- print('DEBUG Data.instance 1: ', name, template[MODEL][Data.NAME])
-	assert(type(name) == 'string', 
+
+	-- pre-condition: name
+	assert('string' == type(name), 
 		   table.concat{'invalid instance name: ', tostring(name)})
 	
-	-- ensure valid template
-	assert('table' == type(template), 'invalid template!')
-	assert(template[MODEL],
-		   table.concat{'template must have a model definition: ', tostring(name)})
-	local template_type = template[MODEL][Data.KIND]
+	-- pre-condition: ensure valid template
+  local template_type = _.model_type(template)
 	assert(Data.ATOM == template_type or
 		   Data.ENUM == template_type or
 		   Data.STRUCT == template_type or 
@@ -1578,11 +1557,12 @@ end
 function Data.seq(name, template) 
 
 	-- print('DEBUG Data.seq', name, template)
-
+	
+  -- pre-condition: name
 	assert(type(name) == 'string', 
 		   table.concat{'sequence name must be a string: ', tostring(name)})
 	
-	-- ensure valid template
+	-- pre-condition: ensure valid template
 	local type_template = type(template)
 	assert('table' == type_template and template[MODEL] or 
 	       'function' == type_template, -- collection iterator
@@ -1875,10 +1855,8 @@ setmetatable(_.IDL_DISPLAY, {
 --           or
 --         Data.print_idl(model, '   ')
 function Data.print_idl(instance, indent_string)
-	-- ensure valid instance
-	assert('table' == type(instance), 
-	       table.concat{'instance must be a table: "', tostring(instance), '"'})
-	assert(instance[MODEL], 'invalid instance')
+	-- pre-condition: ensure valid instance
+	assert(_.model_type(instance), 'invalid instance')
 
 	local indent_string = indent_string or ''
 	local content_indent_string = indent_string
