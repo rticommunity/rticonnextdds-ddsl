@@ -1585,6 +1585,8 @@ function Tester:test_module_manipulation()
   for k, v in pairs(MyModule) do
     print(k, v)
   end
+  
+  Test.MyModule[#Test.MyModule+1] = MyModule
 end
 
 Tester[#Tester+1] = 'test_root'
