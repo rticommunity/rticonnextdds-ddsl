@@ -673,50 +673,56 @@ function _.update_instances(model, role, role_template)
    end
 end
 
---- Local helper method to define a string on maximum length 'n'.
--- Used by Data.string() and Data.wstring().
+--- Assert an [w]string<n> atom
 -- 
--- A string of length n (i.e. string<n>) is implemented as an automatically 
--- defined Atom with the correct name.
+-- Retrieves the atom if already defined; else creates it, caches it, and 
+-- returns it.
+--  
+-- A string of length n (e.g. string<n>) is implemented a an atom named
+--      "string<n>"
 -- 
--- @function string 
--- @param #number n the maximum length of the string
--- @param #string name the name of the underlying type: string or wstring
--- @return #table the string data model instance, the name under which to 
---                install the atom
-function _.string(n, name)
-    
-  -- construct name of the atom: 'string<n>'
-    local dim = n
-    local n_kind = _.model_type(n)
-            
-    -- if the dim is a CONST, use its value for validation
-    if  Data.CONST == n_kind then
-       dim = n()
-    end
-     
-    -- validate the dimension
-    if nil ~= dim then
-      assert(type(dim)=='number', 
-               table.concat{'invalid string capacity: ', tostring(n)})
-      assert(dim > 0, 
-             table.concat{'string capacity must be > 0: ', tostring(n)})
-      if Data.CONST == n_kind then
-        name = table.concat{name, '<', _.fqname(n), '>'}
-      else 
-        name = table.concat{name, '<', tostring(n), '>'}
-      end
-    end
-            
-  -- lookup the atom name in the builtin module
-  local instance = Data.builtin[name]
-  if nil == instance then
-    -- not found => create it
-    instance = Data.atom{name=EMPTY}
-    Data.builtin[name] = instance -- install it in the builtin module
-  end  
+-- @param n the maximum length of the string (may be nil; nil => unbounded)
+-- @param basename the name of the underlying string kind: e.g.: 
+--                      string | wstring
+-- @return the string template
+function _.assert_string(n, basename)
+
+  -- construct name of the atom: 'name<n>'
+  local dim = n
+  local n_kind = _.model_type(n)
+ 
+  -- if the dim is a CONST, use its value for validation
+  if  Data.CONST == n_kind then
+    dim = n()
+  end
+
+  -- validate the dimension
+  if nil ~= dim then
+    assert(type(dim)=='number',
+      table.concat{'invalid string capacity: ', tostring(n)})
+    assert(dim > 0,
+      table.concat{'string capacity must be > 0: ', tostring(n)})
+  end
   
-  return instance
+  -- build up the atom template name:
+  local name = basename
+  if Data.CONST == n_kind then
+    name = table.concat{basename, '<', _.fqname(n), '>'}
+  elseif nil ~= dim then
+    name = table.concat{basename, '<', tostring(n), '>'}
+  end
+
+  -- lookup the atom name in the builtin module
+  local template = Data.builtin[name]
+  if nil == template then
+    -- not found => create it
+    template = Data.atom{[name]=EMPTY}
+    Data.builtin[name] = template -- install it in the builtin module
+  end
+
+  -- print('DEBUG assert_string: ', n, basename, name, template)
+
+  return template
 end
 
 -- collection() - helper method to define collections, i.e. sequences and arrays
@@ -1793,22 +1799,24 @@ _.API[Data.MODULE] = {
 
 --------------------------------------------------------------------------------
 
---- string of length n (i.e. string<n>) is an Atom
--- @function string 
--- @param #number n the maximum length of the string
--- @return #table the string data model instance
+--- Create/Use a string<n> atom
+-- 
+-- string of length n (i.e. string<n>) 
+-- @param n the maximum length of the string
+-- @return the string template
 function Data.string(n)
-  return _.string(n, 'string')
+  return _.assert_string(n, 'string')
 end
 
 --------------------------------------------------------------------------------
 
---- wstring of length n (i.e. string<n>) is an Atom
--- @function wstring 
--- @param #number n the maximum length of the wstring
--- @return #table the string data model instance
+--- Create/Use a wstring<n> atom
+-- 
+-- wstring of length n (i.e. wstring<n>) 
+-- @param n the maximum length of the wstring
+-- @return the wstring template
 function Data.wstring(n)
-  return _.string(n, 'wstring')
+  return _.assert_string(n, 'wstring')
 end
 
 --------------------------------------------------------------------------------
