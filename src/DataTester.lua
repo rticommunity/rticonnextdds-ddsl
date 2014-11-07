@@ -34,11 +34,12 @@ Tester[#Tester+1] = 'test_submodule'
 function Tester:test_submodule()
 
   Test.Submodule = idl.module{Submodule=idl.EMPTY} -- submodule 
-  -- Test.MyModule[#Test.MyModule+1] = Test.Submodule
+  Test.MyModule[#Test.MyModule+1] = Test.Submodule -- add to module
   
   self:print(Test.Submodule)
+  self:print(Test.MyModule)
   
-  assert(Test.Submodule ~= nil)
+  assert(Test.MyModule.Submodule == Test.Submodule)
 end
 
 Tester[#Tester+1] = 'test_enum_imperative'
@@ -111,7 +112,7 @@ end
 Tester[#Tester+1] = 'test_enum_submodule'
 function Tester:test_enum_submodule()
 
-  Test.Submodule.Colors = idl.enum{
+  Test.Submodule[#Test.Submodule+1] = idl.enum{
     Colors = {
       { RED =  -5 },
       { YELLOW =  7 },
@@ -134,10 +135,7 @@ function Tester:test_struct_imperative()
     DynamicShapeType[2] = { y = { idl.long } }
     DynamicShapeType[3] = { shapesize = { idl.double } }
     DynamicShapeType[4] = { color = { idl.string(128), idl.Key } }
-        
-    
-    -- install it under the name 'ShapeType' in the module
-    Test.ShapeType = DynamicShapeType
+           
     self:print(DynamicShapeType)
 
     assert(DynamicShapeType.x == 'x')
@@ -292,17 +290,37 @@ function Tester:test_struct_basechange()
   assert(Test.DerivedStruct.z == 'z')
 end
 
+Tester[#Tester+1] = 'test_struct_nomodule'
+function Tester:test_struct_nomodule()
+  local ShapeType = idl.struct{
+    ShapeType = {
+      { x = { idl.long } },
+      { y = { idl.long } },
+      { shapesize = { idl.long } },
+      { color = { idl.string(128), idl.Key } },
+    }
+  }
+  self:print(ShapeType)
+  
+  assert('x' == ShapeType.x)
+  assert('y' == ShapeType.y)
+  assert('shapesize' == ShapeType.shapesize)
+  assert('color' == ShapeType.color)   
+end
+
 Tester[#Tester+1] = 'test_struct_submodule'
 function Tester:test_struct_submodule()
 
-    Test.Submodule.Fruit = idl.struct{
+    Test.Fruit = idl.struct{
       Fruit = {
         { weight = { idl.double } },
         { color = { Test.Submodule.Colors } },
       }
     }
-    self:print(Test.Submodule.Fruit)
-    
+    Test.Submodule[#Test.Submodule+1] = Test.Fruit
+    self:print(Test.Submodule)
+
+    assert(Test.Submodule.Fruit == Test.Fruit) 
     assert(Test.Submodule.Fruit.weight == 'weight')
     assert(Test.Submodule.Fruit.color == 'color')
 end
@@ -1454,71 +1472,26 @@ function Tester:test_const_bounds()
     assert(Test.MyCapacityStruct.myStr == 'myStr')
 end
 
-Tester[#Tester+1] = 'test_root'
-function Tester:test_root()
-  -- TODO: fix this!
-  self:print(Test.MyModule)
-end
-
-Tester[#Tester+1] = 'test_nomodule'
-function Tester:test_nomodule()
-  local ShapeType = idl.struct{
-    ShapeType = {
-      { x = { idl.long } },
-      { y = { idl.long } },
-      { shapesize = { idl.long } },
-      { color = { idl.string(128), idl.Key } },
-    }
-  }
-  self:print(ShapeType)
-  
-  assert('x' == ShapeType.x)
-  assert('y' == ShapeType.y)
-  assert('shapesize' == ShapeType.shapesize)
-  assert('color' == ShapeType.color)   
-end
-
 Tester[#Tester+1] = 'test_module_manipulation'
 function Tester:test_module_manipulation()
 
   -- declarative 
   local MyModule = idl.module{
     MyModule = {
-      { 
-        ShapeType = idl.struct{
+      idl.struct{
           ShapeType = {
             { x = { idl.long } },
             { y = { idl.long } },
             { shapesize = { idl.long } },
             { color = { idl.string(128), idl.Key } }
           }
-        }
       },
       
-      { 
-        StringSeq = idl.typedef{ 
+      idl.typedef{ 
           StringSeq = { idl.string(10), idl.sequence(10) }
-        }
       },
     }
   }
-  --[[
-  local MyModule = idl.module{
-    MyModule = { 
-      idl.struct{
-        ShapeType = {
-          { x = { idl.long } },
-          { y = { idl.long } },
-          { shapesize = { idl.long } },
-          { color = { idl.string(128), idl.Key } }
-        }
-      },
-    
-      idl.typedef{
-        StringSeq = { idl.string(10), idl.sequence(10) }
-      },
-  }}
-  --]]
   
   print("\n-- declarative module definition ---")
   self:print(MyModule)
@@ -1533,19 +1506,15 @@ function Tester:test_module_manipulation()
   assert(2 == #MyModule)
 
   print("\n-- add to module: 3rd definition: Nested::Point ---")
-  MyModule[3] = {
-    Nested = idl.module{
-      Nested = {
-        {
-          Point = idl.struct{
-            Point = {
-              { x = { idl.double } },
-              { y = { idl.double } }
-            }
-          },
+  MyModule[3] = idl.module{
+    Nested = {
+      idl.struct{
+        Point = {
+          { x = { idl.double } },
+          { y = { idl.double } }
         }
-      }
-    },
+      },
+    }
   }
   self:print(MyModule)  
   assert(nil ~= MyModule.Nested) 
@@ -1554,7 +1523,7 @@ function Tester:test_module_manipulation()
    
    
   print("\n-- add to module: last definition: MyEnum ---")
-  MyModule.MyEnum = idl.enum{
+  MyModule[#MyModule+1] = idl.enum{
     MyEnum = {'Q1', 'Q2', 'Q3', 'Q4'}
   }
   self:print(MyModule)
@@ -1563,10 +1532,8 @@ function Tester:test_module_manipulation()
  
  
   print("\n-- change 3rd definition ---")   
-  MyModule[3] = {
-      MyEnum2 = idl.enum{
-        MyEnum2 = {'SUN', 'MON', 'TUE'}
-      }
+  MyModule[3] = idl.enum{
+    MyEnum2 = {'SUN', 'MON', 'TUE'}
   }
   self:print(MyModule)
   assert(nil ~= MyModule.MyEnum2)
@@ -1574,18 +1541,14 @@ function Tester:test_module_manipulation()
   
   
   print("\n-- change 3rd definition again ---")
-  MyModule[3] = {
-    Sub = idl.module{
-      Sub = {
-        { 
-          Point = idl.struct{
-            Point = {
-              { coord = { idl.double, idl.sequence(2) } },
-            }
-          },
+  MyModule[3] = idl.module{
+    Sub = {
+      idl.struct{
+        Point = {
+          { coord = { idl.double, idl.sequence(2) } },
         }
-      }
-    },
+      },
+    }
   }
   self:print(MyModule)
   assert(nil ~= MyModule.Sub)
@@ -1603,7 +1566,7 @@ function Tester:test_module_manipulation()
 
 
   print("\n-- change MyEnum ---") -- TODO: fix: meta-table not invoked
-  MyModule.MyEnum = idl.enum{
+  MyModule[3] = idl.enum{
     MyEnum = {'JAN', 'FEB', 'MAR'}
   }
   self:print(MyModule)
@@ -1622,6 +1585,11 @@ function Tester:test_module_manipulation()
   for k, v in pairs(MyModule) do
     print(k, v)
   end
+end
+
+Tester[#Tester+1] = 'test_root'
+function Tester:test_root()
+  self:print(Test.MyModule)
 end
 
 ---

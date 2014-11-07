@@ -1667,8 +1667,7 @@ function Data.module(decl)
        
   --create the template
   local template = _.new_template(Data.MODULE, name)
-  template[MODEL][Data.DEFN][Data.NS] = {} -- empty namespace
- 
+
   -- populate the template
   return _.populate_template(template, defn)
 end
@@ -1690,20 +1689,14 @@ _.API[Data.MODULE] = {
     return ipairs(template[MODEL][Data.DEFN])
   end,
 
-  __pairs = function(template)
-    return pairs(template[MODEL][Data.DEFN][Data.NS])
-  end,
-
   __index = function (template, key)
     local model = template[MODEL]
     if Data.NAME == key then
       return model[Data.NAME]
     elseif Data.KIND == key then
       return model[Data.KIND]
-    elseif 'number' == type(key) then -- delegate to the model definition
+    else -- delegate to the model definition
       return model[Data.DEFN][key]
-    else -- delegate to the module namespace
-      return model[Data.DEFN][Data.NS][key]
     end
   end,
   
@@ -1711,14 +1704,7 @@ _.API[Data.MODULE] = {
 
     local model = template[MODEL]
     local model_defn = model[Data.DEFN]
-    
-    -- NOTE: Modules are special in two ways
-    -- 1. Since a module does not have instances, the model definition
-    --    [Data.NS] keys stores by role name
-    -- 2. When model elements are added to a module, they are assigned a name
-    --    in the context of the module. A model element can belong to 
-    --    only one module.
-            
+                
     if Data.NAME == key then -- set the model name
       rawset(model, Data.NAME, value)
 
@@ -1732,7 +1718,7 @@ _.API[Data.MODULE] = {
         local old_role = next(model_defn[key])
         
         -- update namespace: remove the old_role
-        model_defn[Data.NS][old_role] = nil
+        rawset(template, old_role, nil)
       end
 
       -- set the new member definition
@@ -1742,35 +1728,31 @@ _.API[Data.MODULE] = {
 
       else
         --  Format:
-        --    { role = role_defn (i.e. role template) } 
-        local role, role_defn = next(value)  
+        --    role_template
+        
+        -- pre-condition: value must be a model instance (template)
+        assert(nil ~= _.model_type(value), 
+               table.concat{'invalid template: ', tostring(value)})
+               
+        local role, role_template = value[MODEL][Data.NAME], value 
                       
-        -- pre-condition: role must be a string
-        assert(type(role) == 'string', 
-          table.concat{'invalid member name: ', tostring(role)})
-
-        -- pre-condition: ensure the definition is a template
-        assert(nil ~= _.model_type(role_defn),
-               table.concat{'invalid member definition: ', tostring(role)})
-          
         -- is the role already defined?
-        assert(nil == rawget(model_defn[Data.NS], role),-- check template -- TODO
+        assert(nil == rawget(template, role),
           table.concat{'member name already defined: "', role, '"'})
+            
+				-- update the module definition
+        model_defn[key] = { [role] = role_template }
     
-        -- update namespace
-        model_defn[Data.NS][role] = role_defn -- TODO: remove
-        
-        -- update the module definition
-        model_defn[key] = { [role] = role_defn } -- index
-        
-        -- set the role instance (template) name
-        role_defn[MODEL][Data.NAME] = role
-        
         -- move the model element to this module 
-        -- role_defn[MODEL][Data.NS] = template -- TODO:
+        role_template[MODEL][Data.NS] = template
+        
+        -- update namespace: add the role
+        rawset(template, role, role_template)
       end
 
     elseif 'string' == type(key) then
+      error("module: key must not be a string")
+      
       --  Format:
       --    role_defn (i.e. role template)
       local role, role_defn = key, value
@@ -1808,45 +1790,7 @@ _.API[Data.MODULE] = {
   end,
 }
 
-
 --------------------------------------------------------------------------------
---- Builtin Module - Predefined Model Elements
---------------------------------------------------------------------------------
-
---- 'builtin' module
--- Built-in data types (atomic types) and annotations belong to this module
--- @type [parent=#Data]builtin
-Data.builtin = Data.module{builtin=EMPTY}
-
---- Built-in atomic types
-Data.builtin.boolean = Data.atom{boolean=EMPTY}
-Data.builtin.octet = Data.atom{octet=EMPTY}
-
-Data.builtin.char = Data.atom{char=EMPTY}
-Data.builtin.wchar = Data.atom{wchar=EMPTY}
-
-Data.builtin.float = Data.atom{float=EMPTY}
-Data.builtin.double = Data.atom{double=EMPTY}
-Data.builtin.long_double = Data.atom{['long double']=EMPTY}
-
-Data.builtin.short = Data.atom{short=EMPTY}
-Data.builtin.long = Data.atom{long=EMPTY}
-Data.builtin.long_long = Data.atom{['long long']=EMPTY}
-
-Data.builtin.unsigned_short = Data.atom{['unsigned short']=EMPTY}
-Data.builtin.unsigned_long = Data.atom{['unsigned long']=EMPTY}
-Data.builtin.unsigned_long_long = Data.atom{['unsigned long long']=EMPTY}
-
---- Built-in annotations
-Data.builtin.Key = Data.annotation{Key=EMPTY}
-Data.builtin.Extensibility = Data.annotation{Extensibility=EMPTY}
-Data.builtin.ID = Data.annotation{ID=EMPTY}
-Data.builtin.MustUnderstand = Data.annotation{MustUnderstand=EMPTY}
-Data.builtin.Shared = Data.annotation{Shared=EMPTY}
-Data.builtin.BitBound = Data.annotation{BitBound=EMPTY}
-Data.builtin.BitSet = Data.annotation{BitSet=EMPTY}
-Data.builtin.Nested = Data.annotation{Nested=EMPTY}
-Data.builtin.top_level = Data.annotation{['top-level']=EMPTY} -- legacy
 
 --- string of length n (i.e. string<n>) is an Atom
 -- @function string 
@@ -1856,6 +1800,8 @@ function Data.string(n)
   return _.string(n, 'string')
 end
 
+--------------------------------------------------------------------------------
+
 --- wstring of length n (i.e. string<n>) is an Atom
 -- @function wstring 
 -- @param #number n the maximum length of the wstring
@@ -1864,6 +1810,9 @@ function Data.wstring(n)
   return _.string(n, 'wstring')
 end
 
+--------------------------------------------------------------------------------
+
+--- 
 -- Arrays and Sequences are implemented as a special annotations, whose 
 -- attributes are positive integer constants, that specify the dimension bounds
 -- NOTE: Since an array or a sequence is an annotation, it can appear anywhere 
@@ -1874,11 +1823,51 @@ function Data.array(n, ...)
   return _.collection(_.Array, n, ...)
 end
 
+--------------------------------------------------------------------------------
+
 _.Sequence = Data.annotation{Sequence=EMPTY}
 Data.SEQUENCE = _.Sequence[MODEL]
 function Data.sequence(n, ...)
   return _.collection(_.Sequence, n, ...)
 end
+
+--------------------------------------------------------------------------------
+
+--- builtin templates
+-- 
+-- Pre-defined atomic types and annotations
+-- 
+Data.builtin = {
+    --- Built-in atomic types
+    boolean = Data.atom{boolean=EMPTY},
+    octet = Data.atom{octet=EMPTY},
+    
+    char= Data.atom{char=EMPTY},
+    wchar = Data.atom{wchar=EMPTY},
+    
+    float = Data.atom{float=EMPTY},
+    double = Data.atom{double=EMPTY},
+    long_double = Data.atom{['long double']=EMPTY},
+    
+    short = Data.atom{short=EMPTY},
+    long = Data.atom{long=EMPTY},
+    long_long = Data.atom{['long long']=EMPTY},
+    
+    unsigned_short = Data.atom{['unsigned short']=EMPTY},
+    unsigned_long = Data.atom{['unsigned long']=EMPTY},
+    unsigned_long_long = Data.atom{['unsigned long long']=EMPTY},
+    
+    --- Built-in annotations
+    Key = Data.annotation{Key=EMPTY},
+    Extensibility = Data.annotation{Extensibility=EMPTY},
+    ID = Data.annotation{ID=EMPTY},
+    MustUnderstand = Data.annotation{MustUnderstand=EMPTY},
+    Shared = Data.annotation{Shared=EMPTY},
+    BitBound = Data.annotation{BitBound=EMPTY},
+    BitSet = Data.annotation{BitSet=EMPTY},
+    Nested = Data.annotation{Nested=EMPTY},
+    top_level = Data.annotation{['top-level']=EMPTY}, -- legacy  
+}
 
 --------------------------------------------------------------------------------
 -- Helpers
