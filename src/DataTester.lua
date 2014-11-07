@@ -1590,6 +1590,45 @@ function Tester:test_root()
   self:print(Test.MyModule)
 end
 
+Tester[#Tester+1] = 'test_ns'
+function Tester:test_ns()
+
+  local m = idl.module{
+    TopModule = {
+      idl.module{
+        Constants = {
+          idl.const{
+            SIZE = { idl.short, 10 }
+          }
+        }
+      },
+ 
+      idl.module{
+        Attributes = {
+          idl.struct{
+            Coord = {
+              { x = { idl.double } },
+              { y = { idl.double } },
+              { z = { idl.double } },
+            }
+          },
+        }
+      },
+    }
+  }
+  
+  m[#m+1] =
+  idl.struct{
+      NewShapeType = {
+        { coords = { m.Attributes.Coord, idl.sequence(m.Constants.SIZE) } },
+        { shapesize = { idl.long } },
+        { color = { idl.string(m.Constants.SIZE), idl.Key } }
+      }
+  }
+
+  self:print(m)
+end
+
 ---
 -- print - helper method to print the IDL and the index for data definition
 function Tester:print(instance)

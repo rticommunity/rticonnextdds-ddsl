@@ -279,19 +279,24 @@ end
 -- Helpers
 --------------------------------------------------------------------------------
 
---- Fully qualified name of a model element
--- @param instance a model element whose fully qualified name is desired
--- @return the fully qualified name of the instance if any or 
---         the string value of instance
-function _.fqname(instance)
-  -- pre-condition: instance must be a model element
-  assert(nil ~= _.model_type(instance), "fqname(): not a valid instance")
-
-  local model = instance[MODEL]
-  if model[Data.NS] then
-    return table.concat{_.fqname(model[Data.NS]), '::', model[Data.NAME]}
-  else 
+--- Name of a model element relative to a module
+-- @param template [in] the data model element whose name is desired in 
+--        the context of the module
+-- @param module [in] the module namespace; if nil, finds the full absolute 
+--                    fully qualified name of the model element
+-- @return the name of the template relative to the module
+function _.nsname(template, module)
+  -- pre-conditions:
+  assert(nil ~= _.model_type(template), "nsname(): not a valid template")
+  assert(nil == module or Data.MODULE == _.model_type(module), 
+                                        "nsname(): not a valid module")
+                           
+  -- traverse up the template namespaces, until 'module' is found
+  local model = template[MODEL]
+  if module == model[Data.NS] or nil == model[Data.NS] then
     return model[Data.NAME]
+  else
+    return table.concat{_.nsname(model[Data.NS], module), '::', model[Data.NAME]}
   end
 end
 
@@ -709,7 +714,7 @@ function _.ensure_string(n, basename)
   -- build up the atom template name:
   local name = basename
   if Data.CONST == n_kind then
-    name = table.concat{basename, '<', _.fqname(n), '>'}
+    name = table.concat{basename, '<', _.nsname(n), '>'}
   elseif nil ~= dim then
     name = table.concat{basename, '<', tostring(n), '>'}
   end
@@ -1933,7 +1938,7 @@ _.IDL_DISPLAY = {
 setmetatable(_.IDL_DISPLAY, {
     -- default: idl display string is the same as the model name
     __index = function(self, instance) 
-        return instance[MODEL] and instance[MODEL][Data.NAME] or nil
+        return _.nsname(instance) 
     end
 })
 
@@ -2099,7 +2104,7 @@ function _.tostring_role(role, role_template)
 		output_member = string.format('%s%s', output_member, _.IDL_DISPLAY[template])
 		for i = 1, #seq do
 			output_member = string.format('%s,%s>', output_member, 
-			          _.model_type(seq[i]) and _.fqname(seq[i]) or tostring(seq[i])) 
+			          _.model_type(seq[i]) and _.nsname(seq[i]) or tostring(seq[i])) 
 		end
 		output_member = string.format('%s %s', output_member, role)
 	end
@@ -2114,7 +2119,7 @@ function _.tostring_role(role, role_template)
 			for i = 1, #role_template[j] do
 				output_member = string.format('%s[%s]', output_member, 
 				   _.model_type(role_template[j][i]) and 
-				       _.fqname(role_template[j][i]) or tostring(role_template[j][i]) ) 
+				       _.nsname(role_template[j][i]) or tostring(role_template[j][i]) ) 
 			end
 		elseif Data.SEQUENCE ~= role_template[j][MODEL] then
 			output_annotations = string.format('%s%s ', 
