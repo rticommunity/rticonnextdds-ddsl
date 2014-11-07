@@ -356,21 +356,21 @@ end
 
 --- Define a role (member) instance
 -- @param #string role - the member name to instantiate (may be 'nil')
--- @param #list<#table> role_defn - array consists of entries in the 
+-- @param #list<#table> role_template - array consists of entries in the 
 --           { template, [collection,] [annotation1, annotation2, ...] }
 --      following order:
 --           template - the kind of member to instantiate (previously defined)
 --           ...      - optional list of annotations including whether the 
 --                      member is an array or sequence    
--- @return the role (member) instance and the role_defn
-function _.create_role_instance(role, role_defn)
+-- @return the role (member) instance and the role_template
+function _.create_role_instance(role, role_template)
   
   -- pre-condition: role 
   assert(nil == role or 'string' == type(role), 
       table.concat{'invalid member name: ', tostring(role)})
 
-  -- pre-condition: role_defn
-  local template = role_defn[1]
+  -- pre-condition: role_template
+  local template = role_template[1]
   local template_type = _.model_type(template)
   assert(Data.ATOM == template_type or
        Data.ENUM == template_type or
@@ -383,14 +383,14 @@ function _.create_role_instance(role, role_defn)
   -- pre-condition: ensure that the rest of the member definition entries are 
   -- annotations: also look for the 1st 'collection' annotation (if any)
   local collection = nil
-  for j = 2, #role_defn do
-    _.assert_model(Data.ANNOTATION, role_defn[j])
+  for j = 2, #role_template do
+    _.assert_model(Data.ANNOTATION, role_template[j])
 
     -- is this a collection?
     if not collection and  -- the 1st 'collection' definition is used
-       (Data.ARRAY == role_defn[j][MODEL] or
-        Data.SEQUENCE == role_defn[j][MODEL]) then
-      collection = role_defn[j]
+       (Data.ARRAY == role_template[j][MODEL] or
+        Data.SEQUENCE == role_template[j][MODEL]) then
+      collection = role_template[j]
     end
   end
 
@@ -409,7 +409,7 @@ function _.create_role_instance(role, role_defn)
     end
   end
   
-  return role_instance, role_defn
+  return role_instance, role_template
 end
 
 --------------------------------------------------------------------------------
@@ -1165,14 +1165,14 @@ _.API[Data.ENUM] = {
 
       else
         --  Format:
-        --    { role = role_defn (i.e. ordinal value) } 
+        --    { role = role_template (i.e. ordinal value) } 
         -- OR 
         --    role 
-        local role, role_defn 
+        local role, role_template 
         if 'table' ==  type(value) then
-          role, role_defn = next(value)        --  { role = value } 
+          role, role_template = next(value)        --  { role = value } 
         else
-           role, role_defn = value, #template  --    role
+           role, role_template = value, #template  --    role
         end
         
         -- role must be a string
@@ -1180,21 +1180,21 @@ _.API[Data.ENUM] = {
           table.concat{'invalid member name: ', tostring(role)})
 
         -- ensure the definition is an ordinal value
-        assert('number' == type(role_defn) and 
-               math.floor(role_defn) == role_defn, -- integer  
+        assert('number' == type(role_template) and 
+               math.floor(role_template) == role_template, -- integer  
         table.concat{'invalid definition: ', 
-                      tostring(role), ' = ', tostring(role_defn) })
+                      tostring(role), ' = ', tostring(role_template) })
           
         -- is the role already defined?
         assert(nil == rawget(template, role),-- check template
           table.concat{'member name already defined: "', role, '"'})
         
         -- insert the new role
-        rawset(template, role, role_defn)
+        rawset(template, role, role_template)
         
         -- insert the new member definition
         model_defn[key] = {
-          [role] = role_defn   -- map with one entry
+          [role] = role_template   -- map with one entry
         }
       end
     end
@@ -1332,8 +1332,8 @@ _.API[Data.STRUCT] = {
       table.remove(model_defn, key) -- do not want holes in array
 
     else
-      -- get the new role and role_defn
-      local role, role_defn = next(value)
+      -- get the new role and role_template
+      local role, role_template = next(value)
 
       -- role must be a string
       assert(type(role) == 'string',
@@ -1344,16 +1344,16 @@ _.API[Data.STRUCT] = {
         table.concat{'member name already defined: "', role, '"'})
 
       -- create role instance (checks for pre-conditions, may fail!)
-      local role_instance = _.create_role_instance(role, role_defn)
+      local role_instance = _.create_role_instance(role, role_template)
 
-      -- update instances: add the new role_defn
+      -- update instances: add the new role_template
       _.update_instances(model, role, role_instance)
 
       -- insert the new member definition
-      local role_defn_copy = {} -- make our own local copy
-      for i, v in ipairs(role_defn) do role_defn_copy[i] = v end
+      local role_template_copy = {} -- make our own local copy
+      for i, v in ipairs(role_template) do role_template_copy[i] = v end
       model_defn[key] = {
-        [role] = role_defn_copy   -- map with one entry
+        [role] = role_template_copy   -- map with one entry
       }
     end
 
@@ -1386,7 +1386,7 @@ _.API[Data.STRUCT] = {
       local base = new_base
       while base do
         for i = 1, #base[MODEL][Data.DEFN] do
-          local base_role, base_role_defn = next(base[MODEL][Data.DEFN][i])
+          local base_role, base_role_template = next(base[MODEL][Data.DEFN][i])
 
           -- is the base_role already defined?
           assert(nil == rawget(template, base_role),-- check template
@@ -1394,10 +1394,10 @@ _.API[Data.STRUCT] = {
 
           -- create base role instance (checks for pre-conditions, may fail)
           local base_role_instance =
-            _.create_role_instance(base_role, base_role_defn)
+            _.create_role_instance(base_role, base_role_template)
 
 
-          -- update instances: add the new role_defn
+          -- update instances: add the new role_template
           _.update_instances(model, base_role, base_role_instance)
         end
 
@@ -1572,7 +1572,7 @@ _.API[Data.UNION] = {
         -- remove the key-th member definition
         table.remove(model_defn, key) -- do not want holes in array
       else
-        -- set the new role_defn
+        -- set the new role_template
         local case = _.assert_case(model_defn[Data.SWITCH], value[1])
 
         -- is the case already defined?
@@ -1582,7 +1582,7 @@ _.API[Data.UNION] = {
         end
 
         -- get the role and definition
-        local role, role_defn = next(value, 1) -- 2nd item after the 'case'
+        local role, role_template = next(value, 1) -- 2nd item after the 'case'
  
           -- add the role
         if role then
@@ -1594,17 +1594,17 @@ _.API[Data.UNION] = {
           assert(nil == rawget(template, role),-- check template
             table.concat{'member name already defined: "', role, '"'})
 
-          local role_instance = _.create_role_instance(role, role_defn)
+          local role_instance = _.create_role_instance(role, role_template)
 
           -- insert the new member definition
-          local role_defn_copy = {} -- make our own local copy
-          for i, v in ipairs(role_defn) do role_defn_copy[i] = v end
+          local role_template_copy = {} -- make our own local copy
+          for i, v in ipairs(role_template) do role_template_copy[i] = v end
           model_defn[key] = {
             case,                     -- array of length 1
-            [role] = role_defn_copy   -- map with one entry
+            [role] = role_template_copy   -- map with one entry
           }
 
-          -- update instances: add the new role_defn
+          -- update instances: add the new role_template
           _.update_instances(model, role, role_instance)
         else
           model_defn[key] = {
@@ -1754,11 +1754,11 @@ _.API[Data.MODULE] = {
       error("module: key must not be a string")
       
       --  Format:
-      --    role_defn (i.e. role template)
-      local role, role_defn = key, value
+      --    role_template (i.e. role template)
+      local role, role_template = key, value
   
       -- pre-condition: ensure that the value is nil or a model instance
-      assert(nil == value or nil ~= _.model_type(role_defn))
+      assert(nil == value or nil ~= _.model_type(role_template))
 
       -- lookup the element to replace
       local position = #model_defn+1 -- append at the end, unless being replaced
@@ -1771,20 +1771,20 @@ _.API[Data.MODULE] = {
       end
       
       -- update namespace
-      model_defn[Data.NS][role] = role_defn
+      model_defn[Data.NS][role] = role_template
      
       -- update the module definition
-      if nil == role_defn then
+      if nil == role_template then
         -- remove the position-th member definition
         table.remove(model_defn, position) -- do not want holes in array
       else
-        model_defn[position] = { [role] = role_defn }
+        model_defn[position] = { [role] = role_template }
         
         -- set the role instance (template) name
-        role_defn[MODEL][Data.NAME] = role
+        role_template[MODEL][Data.NAME] = role
         
         -- move the model element to this module 
-        -- role_defn[MODEL][Data.NS] = template -- TODO
+        -- role_template[MODEL][Data.NS] = template -- TODO
       end
     end
   end,
@@ -1966,17 +1966,17 @@ function Data.print_idl(instance, indent_string)
 		
 	if Data.MODULE == mytype then 
 		for i, defn_i in ipairs(mydefn) do -- walk through the module definition
-		  local role, role_defn = next(defn_i)
-			Data.print_idl(role_defn, content_indent_string)
+		  local role, role_template = next(defn_i)
+			Data.print_idl(role_template, content_indent_string)
 		end
 		
 	elseif Data.STRUCT == mytype then
 	 
 		for i, defn_i in ipairs(mydefn) do -- walk through the model definition
 			if not defn_i[MODEL] then -- skip struct level annotations
-			  local role, role_defn = next(defn_i)
+			  local role, role_template = next(defn_i)
         print(string.format('%s%s', content_indent_string,
-                            _.tostring_role(role, role_defn)))
+                            _.tostring_role(role, role_template)))
 			end
 		end
 
@@ -1997,9 +1997,9 @@ function Data.print_idl(instance, indent_string)
 				end
 				
 				-- member element
-				local role, role_defn = next(defn_i, #defn_i > 0 and #defn_i or nil)
+				local role, role_template = next(defn_i, #defn_i > 0 and #defn_i or nil)
 				print(string.format('%s%s', content_indent_string .. '   ',
-				                             _.tostring_role(role, role_defn)))
+				                             _.tostring_role(role, role_template)))
 			end
 		end
 		
@@ -2027,17 +2027,17 @@ end
 --- IDL string representation of a role
 -- @function tostring_role
 -- @param #string role role name
--- @param #list role_defn the definition of the role in the following format:
+-- @param #list role_template the definition of the role in the following format:
 --           { template, [collection,] [annotation1, annotation2, ...] } 
 -- @return #string IDL string representation of the idl member
-function _.tostring_role(role, role_defn)
+function _.tostring_role(role, role_template)
 
 	local template, seq 
-	if role_defn then
-	  template = role_defn[1]
-  	for i = 2, #role_defn do
-  		if Data.SEQUENCE == role_defn[i][MODEL] then
-  			seq = role_defn[i]
+	if role_template then
+	  template = role_template[1]
+  	for i = 2, #role_template do
+  		if Data.SEQUENCE == role_template[i][MODEL] then
+  			seq = role_template[i]
   			break -- 1st 'collection' is used
   		end
   	end
@@ -2064,20 +2064,20 @@ function _.tostring_role(role, role_defn)
 
 	-- member annotations:	
 	local output_annotations = nil
-	for j = 2, #role_defn do
+	for j = 2, #role_template do
 		
-		local name = role_defn[j][MODEL][Data.NAME]
+		local name = role_template[j][MODEL][Data.NAME]
 		
-		if Data.ARRAY == role_defn[j][MODEL] then
-			for i = 1, #role_defn[j] do
+		if Data.ARRAY == role_template[j][MODEL] then
+			for i = 1, #role_template[j] do
 				output_member = string.format('%s[%s]', output_member, 
-				   _.model_type(role_defn[j][i]) and 
-				       _.fqname(role_defn[j][i]) or tostring(role_defn[j][i]) ) 
+				   _.model_type(role_template[j][i]) and 
+				       _.fqname(role_template[j][i]) or tostring(role_template[j][i]) ) 
 			end
-		elseif Data.SEQUENCE ~= role_defn[j][MODEL] then
+		elseif Data.SEQUENCE ~= role_template[j][MODEL] then
 			output_annotations = string.format('%s%s ', 
 									                        output_annotations or '', 
-									                        tostring(role_defn[j]))	
+									                        tostring(role_template[j]))	
 		end
 	end
 
