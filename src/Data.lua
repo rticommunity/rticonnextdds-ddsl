@@ -1920,27 +1920,6 @@ Data.builtin = {
 -- Helpers
 --------------------------------------------------------------------------------
 
---- For some model elements, the IDL display string is not the same as the model
--- element name. This table maps to the corresponding display string in IDL.
--- #map<#table, #string>
-
-_.IDL_DISPLAY = {
-  -- [model element]                 = "Display string in IDL"
-  [Data.builtin.long_double]         = "long double",
-  [Data.builtin.long_long]           = "long long",
-  [Data.builtin.unsigned_short]      = "unsigned short",
-  [Data.builtin.unsigned_long]       = "unsigned long",
-  [Data.builtin.unsigned_long_long]  = "unsigned long long",
-  [Data.builtin.top_level]           = "top-level",
-}
-
-setmetatable(_.IDL_DISPLAY, {
-    -- default: idl display string is the same as the model name
-    __index = function(self, instance) 
-        return _.nsname(instance) 
-    end
-})
-
 -- Data.print_idl() - prints OMG IDL representation of a data model
 --
 -- Purpose:
@@ -1963,7 +1942,8 @@ function Data.print_idl(instance, indent_string)
 	local myname = model[Data.NAME]
 	local mytype = model[Data.KIND]
 	local mydefn = model[Data.DEFN]
-		
+  local mymodule = model[Data.NS]
+  		
 	-- print('DEBUG print_idl: ', Data, model, mytype(), myname)
 	
 	-- skip: atomic types, annotations
@@ -1975,7 +1955,7 @@ function Data.print_idl(instance, indent_string)
   if Data.CONST == mytype then
      local atom = mydefn
      print(string.format('%sconst %s %s = %s;', content_indent_string, 
-                        _.IDL_DISPLAY[atom], 
+                        atom, 
                         myname, tostring(instance)))
      return instance, indent_string                              
   end
@@ -1983,7 +1963,7 @@ function Data.print_idl(instance, indent_string)
 	if Data.TYPEDEF == mytype then
 		local defn = mydefn	
     print(string.format('%s%s %s', indent_string,  mytype(),
-                                    _.tostring_role(myname, defn)))
+                                    _.tostring_role(myname, defn, mymodule)))
 		return instance, indent_string 
 	end
 	
@@ -2022,7 +2002,7 @@ function Data.print_idl(instance, indent_string)
 			if not defn_i[MODEL] then -- skip struct level annotations
 			  local role, role_defn = next(defn_i)
         print(string.format('%s%s', content_indent_string,
-                            _.tostring_role(role, role_defn)))
+                            _.tostring_role(role, role_defn, mymodule)))
 			end
 		end
 
@@ -2045,7 +2025,7 @@ function Data.print_idl(instance, indent_string)
 				-- member element
 				local role, role_defn = next(defn_i, #defn_i > 0 and #defn_i or nil)
 				print(string.format('%s%s', content_indent_string .. '   ',
-				                             _.tostring_role(role, role_defn)))
+				                             _.tostring_role(role, role_defn, mymodule)))
 			end
 		end
 		
@@ -2094,17 +2074,17 @@ function _.tostring_role(role, role_defn, module)
   if nil == template then return output_member end
 
 	if seq == nil then -- not a sequence
-		output_member = string.format('%s %s', _.IDL_DISPLAY[template], role)
+		output_member = string.format('%s %s', _.nsname(template, module), role)
 	elseif #seq == 0 then -- unbounded sequence
-		output_member = string.format('sequence<%s> %s', _.IDL_DISPLAY[template], role)
+		output_member = string.format('sequence<%s> %s', _.nsname(template, module), role)
 	else -- bounded sequence
 		for i = 1, #seq do
 			output_member = string.format('%ssequence<', output_member) 
 		end
-		output_member = string.format('%s%s', output_member, _.IDL_DISPLAY[template])
+		output_member = string.format('%s%s', output_member, _.nsname(template, module))
 		for i = 1, #seq do
 			output_member = string.format('%s,%s>', output_member, 
-			          _.model_type(seq[i]) and _.nsname(seq[i]) or tostring(seq[i])) 
+			          _.model_type(seq[i]) and _.nsname(seq[i], module) or tostring(seq[i])) 
 		end
 		output_member = string.format('%s %s', output_member, role)
 	end
@@ -2119,7 +2099,7 @@ function _.tostring_role(role, role_defn, module)
 			for i = 1, #role_defn[j] do
 				output_member = string.format('%s[%s]', output_member, 
 				   _.model_type(role_defn[j][i]) and 
-				       _.nsname(role_defn[j][i]) or tostring(role_defn[j][i]) ) 
+				       _.nsname(role_defn[j][i], module) or tostring(role_defn[j][i]) ) 
 			end
 		elseif Data.SEQUENCE ~= role_defn[j][MODEL] then
 			output_annotations = string.format('%s%s ', 
