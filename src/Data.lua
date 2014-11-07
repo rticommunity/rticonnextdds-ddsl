@@ -208,7 +208,7 @@ local _ = {
 -- @param name  [in] the name of the underlying model
 -- @return a new template with the correct meta-model
 function _.new_template(kind, name)
- 
+
   local model = {           -- meta-data
     [Data.NS]   = nil,      -- namespace: module to which this model belongs
     [Data.NAME] = name,     -- string: name of the model with the namespace
@@ -1656,8 +1656,8 @@ _.API[Data.UNION] = {
 --  module name (i.e. nested within the module namespace hierarchy).
 --    
 --  -- Iterate over the module definition (ordered):
---   for i, v in ipairs(MyModule) do print(next(v)) end
---   for i = 1, #MyModule do print(next(MyModule[i])) end
+--   for i, v in ipairs(MyModule) do print(v) end
+--   for i = 1, #MyModule do print(MyModule[i]) end
 --
 --  -- Iterate over module namespace (unordered):
 --   for k, v in pairs(MyModule) do print(k, v) end
@@ -1715,7 +1715,7 @@ _.API[Data.MODULE] = {
     elseif 'number' == type(key) then -- member definition
       -- clear the old member definition and instance fields
       if model_defn[key] then
-        local old_role = next(model_defn[key])
+        local old_role = model_defn[key][MODEL][Data.NAME]
         
         -- update namespace: remove the old_role
         rawset(template, old_role, nil)
@@ -1734,14 +1734,15 @@ _.API[Data.MODULE] = {
         assert(nil ~= _.model_type(value), 
                table.concat{'invalid template: ', tostring(value)})
                
-        local role, role_template = value[MODEL][Data.NAME], value 
-                      
+        local role_template = value 
+        local role = role_template[MODEL][Data.NAME]                  
+                     
         -- is the role already defined?
         assert(nil == rawget(template, role),
           table.concat{'member name already defined: "', role, '"'})
             
 				-- update the module definition
-        model_defn[key] = { [role] = role_template }
+        model_defn[key] = role_template 
     
         -- move the model element to this module 
         role_template[MODEL][Data.NS] = template
@@ -1965,8 +1966,7 @@ function Data.print_idl(instance, indent_string)
 	end
 		
 	if Data.MODULE == mytype then 
-		for i, defn_i in ipairs(mydefn) do -- walk through the module definition
-		  local role, role_template = next(defn_i)
+		for i, role_template in ipairs(mydefn) do -- walk through the module definition
 			Data.print_idl(role_template, content_indent_string)
 		end
 		

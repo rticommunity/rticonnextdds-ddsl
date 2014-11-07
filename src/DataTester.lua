@@ -1518,7 +1518,7 @@ function Tester:test_module_manipulation()
   }
   self:print(MyModule)  
   assert(nil ~= MyModule.Nested) 
-  assert(MyModule.Nested == table.pack(next(MyModule[3]))[2]) 
+  assert(MyModule.Nested == MyModule[3]) 
   assert(3 == #MyModule)
    
    
@@ -1571,20 +1571,16 @@ function Tester:test_module_manipulation()
   }
   self:print(MyModule)
   assert(nil ~= MyModule.MyEnum and nil ~= MyModule.MyEnum.JAN) 
-  assert(MyModule.MyEnum == table.pack(next(MyModule[3]))[2]) 
+  assert(MyModule.MyEnum == MyModule[3]) 
   assert(3 == #MyModule)  
    
   print("\n-- module definition iteration (ordered) --")
   print(MyModule[idl.KIND](), MyModule[idl.NAME], #MyModule)
-  for i, v in ipairs(MyModule) do
-    print(next(v))
-  end
+  for i, v in ipairs(MyModule) do print(v) end
   assert(3 == #MyModule)
   
   print("\n-- module namespace iteration (unordered) --")
-  for k, v in pairs(MyModule) do
-    print(k, v)
-  end
+  for k, v in pairs(MyModule) do print(k, v) end
   
   Test.MyModule[#Test.MyModule+1] = MyModule
 end
