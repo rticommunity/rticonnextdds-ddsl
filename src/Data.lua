@@ -673,7 +673,9 @@ function _.update_instances(model, role, role_template)
    end
 end
 
---- Assert an [w]string<n> atom
+--- Ensure an [w]string<n> atom exists and retrive it
+-- 
+-- Ensure that a valid bound is passed in.
 -- 
 -- Retrieves the atom if already defined; else creates it, caches it, and 
 -- returns it.
@@ -681,11 +683,11 @@ end
 -- A string of length n (e.g. string<n>) is implemented a an atom named
 --      "string<n>"
 -- 
--- @param n the maximum length of the string (may be nil; nil => unbounded)
--- @param basename the name of the underlying string kind: e.g.: 
+-- @param n [in] the maximum length of the string (may be nil; nil => unbounded)
+-- @param basename [in] the name of the underlying string kind: e.g.: 
 --                      string | wstring
 -- @return the string template
-function _.assert_string(n, basename)
+function _.ensure_string(n, basename)
 
   -- construct name of the atom: 'name<n>'
   local dim = n
@@ -725,12 +727,26 @@ function _.assert_string(n, basename)
   return template
 end
 
--- collection() - helper method to define collections, i.e. sequences and arrays
-function _.collection(annotation, n, ...)
+
+--- Ensure a collection (array or sequence) of the kind specified by the
+-- underlying annotation, and retrieve an instance of it with the 
+-- specified dimension attributes.
+-- 
+-- Ensures that a valid set of dimension values is passed in. Returns the 
+-- annotation instance, initialized with the specified dimensions.
+-- 
+-- NOTE: a new annotation instance is created for each dimension. There may be
+-- room for optimization by caching the annotation instances.
+--  
+-- @param annotation [in] the underlying annotation ARRAY or SEQUENCE
+-- @param n [in] the first dimension
+-- @param ... the remaining dimensions
+-- @return the annotation instance describing the collection
+function _.ensure_collection(annotation, n, ...)
 
   -- ensure that we have an array of positive numbers
   local dimensions = {...}
-  table.insert(dimensions, 1, n) -- insert n at the begining
+  table.insert(dimensions, 1, n) -- insert n at the beginning
   for i, v in ipairs(dimensions) do
     local dim = v
          
@@ -1805,7 +1821,7 @@ _.API[Data.MODULE] = {
 -- @param n the maximum length of the string
 -- @return the string template
 function Data.string(n)
-  return _.assert_string(n, 'string')
+  return _.ensure_string(n, 'string')
 end
 
 --------------------------------------------------------------------------------
@@ -1816,7 +1832,7 @@ end
 -- @param n the maximum length of the wstring
 -- @return the wstring template
 function Data.wstring(n)
-  return _.assert_string(n, 'wstring')
+  return _.ensure_string(n, 'wstring')
 end
 
 --------------------------------------------------------------------------------
@@ -1828,16 +1844,34 @@ end
 --       after a member type declaration; the 1st one is used
 _.Array = Data.annotation{Array=EMPTY}
 Data.ARRAY = _.Array[MODEL]
+
+_.Sequence = Data.annotation{Sequence=EMPTY}
+Data.SEQUENCE = _.Sequence[MODEL]
+
+--------------------------------------------------------------------------------
+
+--- Create/use a array with specified dimensions
+-- 
+-- Ensures that a valid set of dimension values is passed in. Returns the 
+-- array instance, initialized with the specified dimensions.
+-- @param n [in] the first dimension
+-- @param ... the remaining dimensions
+-- @return the array data model
 function Data.array(n, ...)
-  return _.collection(_.Array, n, ...)
+  return _.ensure_collection(_.Array, n, ...)
 end
 
 --------------------------------------------------------------------------------
 
-_.Sequence = Data.annotation{Sequence=EMPTY}
-Data.SEQUENCE = _.Sequence[MODEL]
+--- Create/use a sequence with specified dimensions
+-- 
+-- Ensures that a valid set of dimension values is passed in. Returns the 
+-- sequence instance, initialized with the specified dimensions.
+-- @param n [in] the first dimension
+-- @param ... the remaining dimensions
+-- @return the sequence data model
 function Data.sequence(n, ...)
-  return _.collection(_.Sequence, n, ...)
+  return _.ensure_collection(_.Sequence, n, ...)
 end
 
 --------------------------------------------------------------------------------
