@@ -20,6 +20,14 @@ local idl = require "Data"
 local Tester = {} -- array of test functions
 local Test = {}   -- table to hold the types created by the tests
 
+
+Tester[#Tester+1] = 'test_builtin'
+function Tester:test_builtin()
+  for k, v in pairs(idl.builtin) do
+      print('*** builtin: ', k, v)
+  end
+end
+
 Tester[#Tester+1] = 'test_module'
 function Tester:test_module()
 
@@ -1588,13 +1596,6 @@ end
 Tester[#Tester+1] = 'test_root'
 function Tester:test_root()
   self:print(Test.MyModule)
-end
-
-Tester[#Tester+1] = 'test_builtins'
-function Tester:test_builtins()
-  for k, v in pairs(idl.builtin) do
-      print('*** builtin: ', k, v)
-  end
 end
 
 Tester[#Tester+1] = 'test_ns'

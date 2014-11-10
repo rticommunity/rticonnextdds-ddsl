@@ -724,6 +724,8 @@ end
 
 --------------------------------------------------------------------------------
 
+Data.builtin = Data.builtin or {}
+  
 --- Create an atomic type
 -- 
 -- There are two kinds of atomic types:
@@ -769,12 +771,11 @@ function Data.atom(decl)
   end
   
   -- lookup the atom name in the builtins
-  Data.builtin = Data.builtin or {}
   local template = Data.builtin[name]
   if nil == template then
     -- not found => create it
     template = _.new_template(Data.ATOM, name) 
-    template[MODEL][Data.DEFN][1] = dim
+    template[MODEL][Data.DEFN][1] = dim -- may be nil
     Data.builtin[name] = template -- install it in the builtin module
   end
 
@@ -819,6 +820,27 @@ function Data.wstring(n)
   return Data.atom{wstring={n}}
 end
 
+--------------------------------------------------------------------------------
+
+--- Built-in atomic types
+Data.builtin.boolean = Data.atom{boolean=EMPTY}
+Data.builtin.octet = Data.atom{octet=EMPTY}
+
+Data.builtin.char= Data.atom{char=EMPTY}
+Data.builtin.wchar = Data.atom{wchar=EMPTY}
+    
+Data.builtin.float = Data.atom{float=EMPTY}
+Data.builtin.double = Data.atom{double=EMPTY}
+Data.builtin.long_double = Data.atom{['long double']=EMPTY}
+    
+Data.builtin.short = Data.atom{short=EMPTY}
+Data.builtin.long = Data.atom{long=EMPTY}
+Data.builtin.long_long = Data.atom{['long long']=EMPTY}
+    
+Data.builtin.unsigned_short = Data.atom{['unsigned short']=EMPTY}
+Data.builtin.unsigned_long = Data.atom{['unsigned long']=EMPTY}
+Data.builtin.unsigned_long_long = Data.atom{['unsigned long long']=EMPTY}
+    
 --------------------------------------------------------------------------------
 
 --- Define an constant
@@ -1085,6 +1107,19 @@ _.API[Data.ANNOTATION] = {
     return annotation[MODEL][Data.DEFN](...)
   end
 }
+
+--------------------------------------------------------------------------------
+
+--- Built-in annotations
+Data.builtin.Key = Data.annotation{Key=EMPTY}
+Data.builtin.Extensibility = Data.annotation{Extensibility=EMPTY}
+Data.builtin.ID = Data.annotation{ID=EMPTY}
+Data.builtin.MustUnderstand = Data.annotation{MustUnderstand=EMPTY}
+Data.builtin.Shared = Data.annotation{Shared=EMPTY}
+Data.builtin.BitBound = Data.annotation{BitBound=EMPTY}
+Data.builtin.BitSet = Data.annotation{BitSet=EMPTY}
+Data.builtin.Nested = Data.annotation{Nested=EMPTY}
+Data.builtin.top_level = Data.annotation{['top-level']=EMPTY} -- legacy  
 
 --------------------------------------------------------------------------------
 
@@ -1871,44 +1906,6 @@ _.API[Data.MODULE] = {
       rawset(template, role, role_template)
     end
   end,
-}
-
---------------------------------------------------------------------------------
-
---- builtin templates
--- 
--- Pre-defined atomic types and annotations
--- 
-Data.builtin = {
-    --- Built-in atomic types
-    boolean = Data.atom{boolean=EMPTY},
-    octet = Data.atom{octet=EMPTY},
-    
-    char= Data.atom{char=EMPTY},
-    wchar = Data.atom{wchar=EMPTY},
-    
-    float = Data.atom{float=EMPTY},
-    double = Data.atom{double=EMPTY},
-    long_double = Data.atom{['long double']=EMPTY},
-    
-    short = Data.atom{short=EMPTY},
-    long = Data.atom{long=EMPTY},
-    long_long = Data.atom{['long long']=EMPTY},
-    
-    unsigned_short = Data.atom{['unsigned short']=EMPTY},
-    unsigned_long = Data.atom{['unsigned long']=EMPTY},
-    unsigned_long_long = Data.atom{['unsigned long long']=EMPTY},
-    
-    --- Built-in annotations
-    Key = Data.annotation{Key=EMPTY},
-    Extensibility = Data.annotation{Extensibility=EMPTY},
-    ID = Data.annotation{ID=EMPTY},
-    MustUnderstand = Data.annotation{MustUnderstand=EMPTY},
-    Shared = Data.annotation{Shared=EMPTY},
-    BitBound = Data.annotation{BitBound=EMPTY},
-    BitSet = Data.annotation{BitSet=EMPTY},
-    Nested = Data.annotation{Nested=EMPTY},
-    top_level = Data.annotation{['top-level']=EMPTY}, -- legacy  
 }
 
 --------------------------------------------------------------------------------
