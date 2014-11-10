@@ -162,8 +162,10 @@
 --    first as an empty definition, and then as a full definition. Ignore the warning!
 --
 
+local EMPTY = {}               -- a placeholder to indicate an empty definition
+
 local Data = {
-  EMPTY = {},               -- a placeholder to indicate an empty definition
+  EMPTY = EMPTY,               -- a placeholder to indicate an empty definition
 
 	-- instance attributes ---
 	-- every 'instance' table has this meta-data key defined
@@ -194,7 +196,6 @@ local Data = {
   NS         = function() return '' end,       -- module namespace
 }
 
-local EMPTY = {}               -- a placeholder to indicate an empty definition
 local MODEL = function() return 'MODEL' end -- table key for 'model' meta-data 
 
 ---
@@ -624,9 +625,9 @@ function _.seq(name, template)
 end
 
 --- Prefix an index value with the given name
--- @param #string name name to prefix with
--- @param #type v index value
--- @return #type index value with the 'name' prefix
+-- @param name name to prefix with
+-- @param v index value
+-- @return index value with the 'name' prefix
 function _.prefix(name, v)
 
     local type_v = type(v)
@@ -656,9 +657,9 @@ function _.prefix(name, v)
 end
 
 --- Propagate member 'role' update to all instances of a model
--- @param #table model the model 
--- @param #string role the role to propagate
--- @param #type value the value of the role instance
+-- @param model [in] the model 
+-- @param role [in] the role to propagate
+-- @param role_template [in] the value of the role instance
 function _.update_instances(model, role, role_template)
 
    -- update template first
@@ -677,61 +678,6 @@ function _.update_instances(model, role, role_template)
       end
    end
 end
-
---- Ensure an [w]string<n> atom exists and retrive it
--- 
--- Ensure that a valid bound is passed in.
--- 
--- Retrieves the atom if already defined; else creates it, caches it, and 
--- returns it.
---  
--- A string of length n (e.g. string<n>) is implemented a an atom named
---      "string<n>"
--- 
--- @param n [in] the maximum length of the string (may be nil; nil => unbounded)
--- @param basename [in] the name of the underlying string kind: e.g.: 
---                      string | wstring
--- @return the string template
-function _.ensure_string(n, basename)
-
-  -- construct name of the atom: 'name<n>'
-  local dim = n
-  local n_kind = _.model_type(n)
- 
-  -- if the dim is a CONST, use its value for validation
-  if  Data.CONST == n_kind then
-    dim = n()
-  end
-
-  -- validate the dimension
-  if nil ~= dim then
-    assert(type(dim)=='number',
-      table.concat{'invalid string capacity: ', tostring(n)})
-    assert(dim > 0,
-      table.concat{'string capacity must be > 0: ', tostring(n)})
-  end
-  
-  -- build up the atom template name:
-  local name = basename
-  if Data.CONST == n_kind then
-    name = table.concat{basename, '<', _.nsname(n), '>'}
-  elseif nil ~= dim then
-    name = table.concat{basename, '<', tostring(n), '>'}
-  end
-
-  -- lookup the atom name in the builtin module
-  local template = Data.builtin[name]
-  if nil == template then
-    -- not found => create it
-    template = Data.atom{[name]=EMPTY}
-    Data.builtin[name] = template -- install it in the builtin module
-  end
-
-  -- print('DEBUG assert_string: ', n, basename, name, template)
-
-  return template
-end
-
 
 --- Ensure a collection (array or sequence) of the kind specified by the
 -- underlying annotation, and retrieve an instance of it with the 
@@ -778,19 +724,66 @@ end
 
 --------------------------------------------------------------------------------
 
---- Define an atomic type
--- @param decl  [in] a table with a name assigned to arbitrary value (ignored)
---                         { name = EMPTY }
+--- Create an atomic type
+-- 
+-- There are two kinds of atomic types:
+--   - un-dimensioned
+--   - dimensioned, e.g. bounded size/length (eg string)
+--
+-- @param decl  [in] a table with a name assigned to an empty table or 
+--              a table containing a size/length/dimension value
+--                 un-dimensioned:
+--                           { name = EMPTY }
+--                 dimensioned:
+--                         { name = {n} }
+--                         { name = {const_defined_previously} }
+--                   where n a dimension, e.g. max length  
+--        and 'name' specifies the underlying atom
+--              e.g.: string | wstring
 -- @return the atom template (an immutable table)
 -- @usage
---  -- Create an atomic type
+--  -- Create an un-dimensioned atomic type:
 --     local MyAtom = Data.atom{MyAtom=EMPTY}
+--     
+--  -- Create a dimensioned atomic type:
+--     local string10 = Data.atom{string={10}}    -- bounded length string
+--     local wstring10 = Data.atom{wstring={10}}  -- bounded length wstring
 function Data.atom(decl)
-  local name = _.parse_decl(decl)
-  return _.new_template(Data.ATOM, name) 
+  local name, defn = _.parse_decl(decl)
+  local dim, dim_kind = defn[1], _.model_type(defn[1])
+ 
+  -- pre-condition: validate the dimension
+  local dim_value = Data.CONST == dim_kind and dim() or dim
+  if nil ~= dim then
+    assert(type(dim_value)=='number',
+      table.concat{'invalid dimension: ', tostring(dim)})
+    assert(dim_value > 0,
+      table.concat{'dimension must be > 0: ', tostring(dim)})
+  end
+  
+  -- build up the atom template name:
+  if Data.CONST == dim_kind then
+    name = table.concat{name, '<', _.nsname(dim), '>'}
+  elseif nil ~= dim then
+    name = table.concat{name, '<', tostring(dim), '>'}
+  end
+  
+  -- lookup the atom name in the builtins
+  Data.builtin = Data.builtin or {}
+  local template = Data.builtin[name]
+  if nil == template then
+    -- not found => create it
+    template = _.new_template(Data.ATOM, name) 
+    template[MODEL][Data.DEFN][1] = dim
+    Data.builtin[name] = template -- install it in the builtin module
+  end
+
+  return template
 end
 
+
 --- Atom API meta-table
+---[[
 _.API[Data.ATOM] = {
 
   __tostring = function(template)
@@ -803,6 +796,28 @@ _.API[Data.ATOM] = {
     -- immutable: do-nothing
   end
 }
+    
+--------------------------------------------------------------------------------
+
+--- Create/Use a string<n> atom
+-- 
+-- string of length n (i.e. string<n>) 
+-- @param n the maximum length of the string
+-- @return the string template
+function Data.string(n)
+  return Data.atom{string={n}}
+end
+
+--------------------------------------------------------------------------------
+
+--- Create/Use a wstring<n> atom
+-- 
+-- wstring of length n (i.e. wstring<n>) 
+-- @param n the maximum length of the wstring
+-- @return the wstring template
+function Data.wstring(n)
+  return Data.atom{wstring={n}}
+end
 
 --------------------------------------------------------------------------------
 
@@ -999,7 +1014,7 @@ _.API[Data.TYPEDEF] = {
 --        
 function Data.annotation(decl)   
   local name, defn = _.parse_decl(decl)
-  
+	
   -- create the template
   local template = _.new_template(Data.ANNOTATION, name)
   local model = template[MODEL]
@@ -1073,9 +1088,50 @@ _.API[Data.ANNOTATION] = {
 
 --------------------------------------------------------------------------------
 
+--- 
+-- Arrays and Sequences are implemented as a special annotations, whose 
+-- attributes are positive integer constants, that specify the dimension bounds
+-- NOTE: Since an array or a sequence is an annotation, it can appear anywhere 
+--       after a member type declaration; the 1st one is used
+_.Array = Data.annotation{Array=EMPTY}
+Data.ARRAY = _.Array[MODEL]
+
+_.Sequence = Data.annotation{Sequence=EMPTY}
+Data.SEQUENCE = _.Sequence[MODEL]
+
+--------------------------------------------------------------------------------
+
+--- Create/use a array with specified dimensions
+-- 
+-- Ensures that a valid set of dimension values is passed in. Returns the 
+-- array instance, initialized with the specified dimensions.
+-- @param n [in] the first dimension
+-- @param ... the remaining dimensions
+-- @return the array data model
+function Data.array(n, ...)
+  return _.ensure_collection(_.Array, n, ...)
+end
+
+--------------------------------------------------------------------------------
+
+--- Create/use a sequence with specified dimensions
+-- 
+-- Ensures that a valid set of dimension values is passed in. Returns the 
+-- sequence instance, initialized with the specified dimensions.
+-- @param n [in] the first dimension
+-- @param ... the remaining dimensions
+-- @return the sequence data model
+function Data.sequence(n, ...)
+  return _.ensure_collection(_.Sequence, n, ...)
+end
+
+--------------------------------------------------------------------------------
+
 --- Create an enum type
 -- @param decl  [in] a table containing an enum declaration
---      { EnumName = { { str1 = ord1 }, { str2 = ord2 }, ... } }
+--        { EnumName = { { str1 = ord1 }, { str2 = ord2 }, ... } }
+--    or  { EnumName = { str1, str2, ... } }
+--    or a mix of the above
 -- @return The enum template. A table representing the enum data model. 
 -- The table fields  contain the string index to de-reference the enum's 
 -- constants in a top-level DDS Dynamic Data Type 
@@ -1816,67 +1872,6 @@ _.API[Data.MODULE] = {
     end
   end,
 }
-
---------------------------------------------------------------------------------
-
---- Create/Use a string<n> atom
--- 
--- string of length n (i.e. string<n>) 
--- @param n the maximum length of the string
--- @return the string template
-function Data.string(n)
-  return _.ensure_string(n, 'string')
-end
-
---------------------------------------------------------------------------------
-
---- Create/Use a wstring<n> atom
--- 
--- wstring of length n (i.e. wstring<n>) 
--- @param n the maximum length of the wstring
--- @return the wstring template
-function Data.wstring(n)
-  return _.ensure_string(n, 'wstring')
-end
-
---------------------------------------------------------------------------------
-
---- 
--- Arrays and Sequences are implemented as a special annotations, whose 
--- attributes are positive integer constants, that specify the dimension bounds
--- NOTE: Since an array or a sequence is an annotation, it can appear anywhere 
---       after a member type declaration; the 1st one is used
-_.Array = Data.annotation{Array=EMPTY}
-Data.ARRAY = _.Array[MODEL]
-
-_.Sequence = Data.annotation{Sequence=EMPTY}
-Data.SEQUENCE = _.Sequence[MODEL]
-
---------------------------------------------------------------------------------
-
---- Create/use a array with specified dimensions
--- 
--- Ensures that a valid set of dimension values is passed in. Returns the 
--- array instance, initialized with the specified dimensions.
--- @param n [in] the first dimension
--- @param ... the remaining dimensions
--- @return the array data model
-function Data.array(n, ...)
-  return _.ensure_collection(_.Array, n, ...)
-end
-
---------------------------------------------------------------------------------
-
---- Create/use a sequence with specified dimensions
--- 
--- Ensures that a valid set of dimension values is passed in. Returns the 
--- sequence instance, initialized with the specified dimensions.
--- @param n [in] the first dimension
--- @param ... the remaining dimensions
--- @return the sequence data model
-function Data.sequence(n, ...)
-  return _.ensure_collection(_.Sequence, n, ...)
-end
 
 --------------------------------------------------------------------------------
 

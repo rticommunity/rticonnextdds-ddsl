@@ -331,7 +331,7 @@ function Tester:test_struct_basic()
     Test.Name = idl.struct{
       Name = {
         { first = { idl.string(10), idl.Key } },
-        { last = { idl.wstring() } },
+        { last = { idl.wstring(128) } },
         { nicknames = { idl.string(), idl.sequence(3) } },
         { aliases = { idl.string(7), idl.sequence() } },
         { birthday = { Test.Days, idl.Optional } },
@@ -1588,6 +1588,13 @@ end
 Tester[#Tester+1] = 'test_root'
 function Tester:test_root()
   self:print(Test.MyModule)
+end
+
+Tester[#Tester+1] = 'test_builtins'
+function Tester:test_builtins()
+  for k, v in pairs(idl.builtin) do
+      print('*** builtin: ', k, v)
+  end
 end
 
 Tester[#Tester+1] = 'test_ns'
