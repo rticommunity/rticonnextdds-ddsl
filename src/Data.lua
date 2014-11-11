@@ -925,16 +925,9 @@ end
 --- Const API meta-table
 _.API[Data.CONST] = {
 
-  __tostring = function(const)
-    local value = const[MODEL][Data.INSTANCES]
-    local atom = const[MODEL][Data.DEFN]
-    if Data.char == atom or Data.wchar == atom then
-      return table.concat{"'", tostring(value), "'"}
-    elseif Data.string() == atom or Data.wstring() == atom then
-      return table.concat{'"', tostring(value), '"'}
-    else
-      return tostring(value)
-    end
+  __tostring = function(template)
+    return template[MODEL][Data.NAME] or
+      template[MODEL][Data.KIND]() -- evaluate the function  
   end,
 
   __newindex = function (template, key, value)
@@ -943,8 +936,8 @@ _.API[Data.CONST] = {
 
   -- instance value is obtained by evaluating the table:
   -- eg: MY_CONST()
-  __call = function(const)
-    return const[MODEL][Data.INSTANCES]
+  __call = function(template)
+    return template[MODEL][Data.INSTANCES]
   end,
 }
 
@@ -1945,10 +1938,17 @@ function Data.print_idl(instance, indent_string)
 	end
     
   if Data.CONST == mytype then
-     local atom = mydefn
+    local atom = mydefn
+    local value = instance()
+    local atom = instance[MODEL][Data.DEFN]
+    if Data.char == atom or Data.wchar == atom then
+      value = table.concat{"'", tostring(value), "'"}
+    elseif Data.string() == atom or Data.wstring() == atom then
+      value = table.concat{'"', tostring(value), '"'}
+    end
      print(string.format('%sconst %s %s = %s;', content_indent_string, 
                         atom, 
-                        myname, tostring(instance)))
+                        myname, value))
      return instance, indent_string                              
   end
     
