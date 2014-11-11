@@ -1620,18 +1620,23 @@ function Tester:test_ns()
               { z = { idl.double } },
             }
           },
+          
+          idl.typedef{
+            StringSeq = {
+              idl.string(10), idl.sequence(10)
+            },
+          }
         }
       },
     }
   }
   
-  m[#m+1] =
-  idl.struct{
-      NewShapeType = {
-        { coords = { m.Attributes.Coord, idl.sequence(m.Constants.SIZE) } },
-        { shapesize = { idl.long } },
-        { color = { idl.string(m.Constants.SIZE), idl.Key } }
-      }
+  m[#m+1] = idl.struct{
+    NewShapeType = {
+      { coords = { m.Attributes.Coord, idl.sequence(m.Constants.SIZE) } },
+      { shapesize = { idl.long } },
+      { color = { idl.string(m.Constants.SIZE), idl.Key } }
+    }
   }
 
   self:print(m)

@@ -1861,42 +1861,6 @@ _.API[Data.MODULE] = {
         -- update namespace: add the role
         rawset(template, role, role_template)
       end
-
-    elseif 'string' == type(key) then
-      -- TODO: delete this section
-      error("module: key must not be a string")
-      
-      --  Format:
-      --    role_template (i.e. role template)
-      local role, role_template = key, value
-  
-      -- pre-condition: ensure that the value is nil or a model instance
-      assert(nil == value or nil ~= _.model_type(role_template))
-
-      -- lookup the element to replace
-      local position = #model_defn+1 -- append at the end, unless being replaced
-      if nil ~= rawget(template, role) then -- role already defined?
-        for i = #model_defn, 1, -1 do -- count down, latest first
-          if model_defn[i] == role then 
-            position = i break
-          end
-        end
-      end
-     
-      -- update the module definition
-      if nil == role_template then
-        -- remove the position-th member definition
-        table.remove(model_defn, position) -- do not want holes in array
-      else
-        -- update the module definition
-        model_defn[position] = role_template 
-    
-        -- move the model element to this module 
-        role_template[MODEL][Data.NS] = template
-      end
-      
-      -- update namespace: add the role
-      rawset(template, role, role_template)
     end
   end,
 }
