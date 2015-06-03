@@ -1674,6 +1674,8 @@ function Tester:main()
     			print('\n--- Test ' .. k .. ' : ' .. v .. ' ---')
     			if self[v] then self[v](self) end 
     		end
+    		
+    		print('\n All tests completed successfully!')
   	end
 end
 

@@ -237,7 +237,7 @@ function _.populate_template(template, defn)
   for i, defn_i in ipairs(defn) do 
 
     -- build the model level annotation list
-    if Data.ANNOTATION == _.model_type(defn_i) then     
+    if Data.ANNOTATION == _.model_kind(defn_i) then     
       annotations = annotations or {}
       table.insert(annotations, defn_i)  
 
@@ -288,8 +288,8 @@ end
 -- @return the name of the template relative to the module
 function _.nsname(template, module)
   -- pre-conditions:
-  assert(nil ~= _.model_type(template), "nsname(): not a valid template")
-  assert(nil == module or Data.MODULE == _.model_type(module), 
+  assert(nil ~= _.model_kind(template), "nsname(): not a valid template")
+  assert(nil == module or Data.MODULE == _.model_kind(module), 
                                         "nsname(): not a valid module")
                            
   -- traverse up the template namespaces, until 'module' is found
@@ -304,7 +304,7 @@ end
 --- Get the model type of any arbitrary value
 -- @param value  [in] the value for which to retrieve the model type
 -- @return the model type or nil (if 'value' does not have a MODEL)
-function _.model_type(value)
+function _.model_kind(value)
     return ('table' == type(value) and value[MODEL]) 
            and value[MODEL][Data.KIND]
            or nil
@@ -377,7 +377,7 @@ function _.create_role_instance(role, role_defn)
 
   -- pre-condition: role_defn
   local template = role_defn[1]
-  local template_type = _.model_type(template)
+  local template_type = _.model_kind(template)
   assert(Data.ATOM == template_type or
        Data.ENUM == template_type or
        Data.STRUCT == template_type or 
@@ -455,7 +455,7 @@ function _.instance(name, template)
        table.concat{'invalid instance name: ', tostring(name)})
   
   -- pre-condition: ensure valid template
-  local template_type = _.model_type(template)
+  local template_type = _.model_kind(template)
   assert(Data.ATOM == template_type or
        Data.ENUM == template_type or
        Data.STRUCT == template_type or 
@@ -702,7 +702,7 @@ function _.ensure_collection(annotation, n, ...)
     local dim = v
          
     -- if the dim is a CONST, use its value for validation
-    if  Data.CONST == _.model_type(v) then
+    if  Data.CONST == _.model_kind(v) then
        dim = v()
     end
    
@@ -752,7 +752,7 @@ Data.builtin = Data.builtin or {}
 --     local wstring10 = Data.atom{wstring={10}}  -- bounded length wstring
 function Data.atom(decl)
   local name, defn = _.parse_decl(decl)
-  local dim, dim_kind = defn[1], _.model_type(defn[1])
+  local dim, dim_kind = defn[1], _.model_kind(defn[1])
  
   -- pre-condition: validate the dimension
   local dim_value = Data.CONST == dim_kind and dim() or dim
@@ -965,7 +965,7 @@ function Data.typedef(decl)
 
   -- pre-condition: ensure that the 1st defn element is a valid type
   local alias = defn[1]
-  local alias_type = _.model_type(alias)
+  local alias_type = _.model_kind(alias)
   assert(Data.ATOM == alias_type or
        Data.ENUM == alias_type or
        Data.STRUCT == alias_type or 
@@ -1372,7 +1372,7 @@ function Data.struct(decl)
   
   -- OPTIONAL base: pop the next element if it is a base model element
   local base
-  if Data.STRUCT == _.model_type(defn[1]) then
+  if Data.STRUCT == _.model_kind(defn[1]) then
     base = defn[1]   table.remove(defn, 1)
 
     -- insert the base class:
@@ -1647,7 +1647,7 @@ _.API[Data.UNION] = {
 
     elseif Data.SWITCH == key then -- switch definition
 
-      local discriminator, discriminator_type = value, _.model_type(value)
+      local discriminator, discriminator_type = value, _.model_kind(value)
       
       -- pre-condition: ensure discriminator is an atom or enum
       assert(Data.ATOM == discriminator_type or
@@ -1842,7 +1842,7 @@ _.API[Data.MODULE] = {
         --    role_template
         
         -- pre-condition: value must be a model instance (template)
-        assert(nil ~= _.model_type(value), 
+        assert(nil ~= _.model_kind(value), 
                table.concat{'invalid template: ', tostring(value)})
                
         local role_template = value 
@@ -1883,7 +1883,7 @@ _.API[Data.MODULE] = {
 --         Data.print_idl(model, '   ')
 function Data.print_idl(instance, indent_string)
 	-- pre-condition: ensure valid instance
-	assert(_.model_type(instance), 'invalid instance')
+	assert(_.model_kind(instance), 'invalid instance')
 
 	local indent_string = indent_string or ''
 	local content_indent_string = indent_string
@@ -2040,7 +2040,7 @@ function _.tostring_role(role, role_defn, module)
 		output_member = string.format('%s%s', output_member, _.nsname(template, module))
 		for i = 1, #seq do
 			output_member = string.format('%s,%s>', output_member, 
-			          _.model_type(seq[i]) and _.nsname(seq[i], module) or tostring(seq[i])) 
+			          _.model_kind(seq[i]) and _.nsname(seq[i], module) or tostring(seq[i])) 
 		end
 		output_member = string.format('%s %s', output_member, role)
 	end
@@ -2054,7 +2054,7 @@ function _.tostring_role(role, role_defn, module)
 		if Data.ARRAY == role_defn[j][MODEL] then
 			for i = 1, #role_defn[j] do
 				output_member = string.format('%s[%s]', output_member, 
-				   _.model_type(role_defn[j][i]) and 
+				   _.model_kind(role_defn[j][i]) and 
 				       _.nsname(role_defn[j][i], module) or tostring(role_defn[j][i]) ) 
 			end
 		elseif Data.SEQUENCE ~= role_defn[j][MODEL] then
