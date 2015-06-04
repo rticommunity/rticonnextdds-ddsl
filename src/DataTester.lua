@@ -212,28 +212,28 @@ function Tester:test_struct_imperative()
  
  
     -- add an annotation
-    DynamicShapeType[xtypes.ANNOTATION] = { 
+    DynamicShapeType[xtypes.QUALIFIERS] = { 
         xtypes.Extensibility{'EXTENSIBLE_EXTENSIBILITY'} 
     }
     print("\n-- added annotation: @Extensibility --\n")
     self:print(DynamicShapeType)
-    -- assert(DynamicShapeType[xtypes.ANNOTATION][1] ~= nil)
+    -- assert(DynamicShapeType[xtypes.QUALIFIERS][1] ~= nil)
  
     -- add another annotation
-    DynamicShapeType[xtypes.ANNOTATION] = { 
+    DynamicShapeType[xtypes.QUALIFIERS] = { 
         xtypes.Extensibility{'EXTENSIBLE_EXTENSIBILITY'},
         xtypes.Nested{'FALSE'},
     }  
     print("\n-- added: annotation: @Nested --\n")
     self:print(DynamicShapeType)
-    assert(DynamicShapeType[xtypes.ANNOTATION][1] ~= nil)
-    assert(DynamicShapeType[xtypes.ANNOTATION][2] ~= nil)
+    assert(DynamicShapeType[xtypes.QUALIFIERS][1] ~= nil)
+    assert(DynamicShapeType[xtypes.QUALIFIERS][2] ~= nil)
  
     -- clear annotations:
-    DynamicShapeType[xtypes.ANNOTATION] = nil
+    DynamicShapeType[xtypes.QUALIFIERS] = nil
     print("\n-- erased annotations --\n")
     self:print(DynamicShapeType)
-    assert(DynamicShapeType[xtypes.ANNOTATION] == nil)
+    assert(DynamicShapeType[xtypes.QUALIFIERS] == nil)
     
     
     -- iterate over the struct definition
@@ -461,28 +461,30 @@ function Tester:test_union_imperative()
 
    
     -- add an annotation
-    DynamicUnion[xtypes.ANNOTATION] = { 
+    DynamicUnion[xtypes.QUALIFIERS] = { 
         xtypes.Extensibility{'EXTENSIBLE_EXTENSIBILITY'} 
     }
     print("\n-- added annotation: @Extensibility --\n")
     self:print(DynamicUnion)
-    assert(DynamicUnion[xtypes.ANNOTATION][1] ~= nil)
+    assert(DynamicUnion[xtypes.QUALIFIERS][1] ~= nil)
     
     -- add another annotation
-    DynamicUnion[xtypes.ANNOTATION] = { 
+    DynamicUnion[xtypes.QUALIFIERS] = { 
         xtypes.Extensibility{'EXTENSIBLE_EXTENSIBILITY'},
         xtypes.Nested{'FALSE'},
+        Test.MyAnnotation{x=2},
     }  
-    print("\n-- added: annotation: @Nested --\n")
+    print("\n-- added: annotation: @Nested and MyAnnotation --\n")
     self:print(DynamicUnion)
-    assert(DynamicUnion[xtypes.ANNOTATION][1] ~= nil)
-    assert(DynamicUnion[xtypes.ANNOTATION][2] ~= nil)
- 
+    assert(DynamicUnion[xtypes.QUALIFIERS][1] ~= nil)
+    assert(DynamicUnion[xtypes.QUALIFIERS][2] ~= nil)
+    assert(DynamicUnion[xtypes.QUALIFIERS][3] ~= nil)
+     
     -- clear annotations:
-    DynamicUnion[xtypes.ANNOTATION] = nil
+    DynamicUnion[xtypes.QUALIFIERS] = nil
     print("\n-- erased annotations --\n")
     self:print(DynamicUnion)
-    assert(DynamicUnion[xtypes.ANNOTATION] == nil)
+    assert(DynamicUnion[xtypes.QUALIFIERS] == nil)
     
     -- iterate over the union definition
     print("\n-- union definition iteration --", DynamicUnion)
@@ -627,7 +629,7 @@ function Tester:test_union3()
   assert(Test.TestUnion3.x == 'x')
   
   -- annotation
-  assert(Test.TestUnion3[xtypes.ANNOTATION][1] ~= nil)
+  assert(Test.TestUnion3[xtypes.QUALIFIERS][1] ~= nil)
 end
 
 Tester[#Tester+1] = 'test_union4'
