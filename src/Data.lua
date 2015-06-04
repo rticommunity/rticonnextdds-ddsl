@@ -343,13 +343,13 @@ function _.assert_case(discriminator, case)
 
   local err_msg = table.concat{'invalid case value: ', tostring(case)}
   
-  if Data.long == discriminator or -- integral type
-     Data.short == discriminator or 
-     Data.octet == discriminator then
+  if Data.builtin.long == discriminator or -- integral type
+     Data.builtin.short == discriminator or 
+     Data.builtin.octet == discriminator then
     assert(tonumber(case) and math.floor(case) == case, err_msg)     
-   elseif Data.char == discriminator then -- character
+   elseif Data.builtin.char == discriminator then -- character
     assert('string' == type(case) and 1 == string.len(case), err_msg) 
-   elseif Data.boolean == discriminator then -- boolean
+   elseif Data.builtin.boolean == discriminator then -- boolean
     assert(true == case or false == case, err_msg)
    elseif Data.ENUM == discriminator[MODEL][Data.KIND] then -- enum
     assert(discriminator[case], err_msg)
@@ -879,25 +879,25 @@ function Data.const(decl)
   local value = defn[2]
   assert(nil ~= value, 
          table.concat{'const value must be non-nil: ', tostring(value)})
-  assert((Data.boolean == atom and 'boolean' == type(value) or
-         ((Data.string() == atom or Data.wstring() == atom or Data.char == atom) and 
+  assert((Data.builtin.boolean == atom and 'boolean' == type(value) or
+         ((Data.string() == atom or Data.wstring() == atom or Data.builtin.char == atom) and 
           'string' == type(value)) or 
-         ((Data.short == atom or Data.unsigned_short == atom or 
-           Data.long == atom or Data.unsigned_long == atom or 
-           Data.long_long == atom or Data.unsigned_long_long == atom or
-           Data.float == atom or 
-           Data.double == atom or Data.long_double == atom) and 
+         ((Data.builtin.short == atom or Data.builtin.unsigned_short == atom or 
+           Data.builtin.long == atom or Data.builtin.unsigned_long == atom or 
+           Data.builtin.long_long == atom or Data.builtin.unsigned_long_long == atom or
+           Data.builtin.float == atom or 
+           Data.builtin.double == atom or Data.builtin.long_double == atom) and 
            'number' == type(value)) or
-         ((Data.unsigned_short == atom or 
-           Data.unsigned_long == atom or
-           Data.unsigned_long_long == atom) and 
+         ((Data.builtin.unsigned_short == atom or 
+           Data.builtin.unsigned_long == atom or
+           Data.builtin.unsigned_long_long == atom) and 
            value < 0)), 
          table.concat{'const value must be non-negative and of the type: ', 
                       atom[MODEL][Data.NAME] })
          
 
   -- char: truncate value to 1st char; warn if truncated
-  if (Data.char == atom or Data.wchar == atom) and #value > 1 then
+  if (Data.builtin.char == atom or Data.builtin.wchar == atom) and #value > 1 then
     value = string.sub(value, 1, 1)
     print(table.concat{'WARNING: truncating string value for ',
                        atom[MODEL][Data.NAME],
@@ -905,9 +905,9 @@ function Data.const(decl)
   end
  
   -- integer: truncate value to integer; warn if truncated
-  if (Data.short == atom or Data.unsigned_short == atom or 
-      Data.long == atom or Data.unsigned_long == atom or 
-      Data.long_long == atom or Data.unsigned_long_long == atom) and
+  if (Data.builtin.short == atom or Data.builtin.unsigned_short == atom or 
+      Data.builtin.long == atom or Data.builtin.unsigned_long == atom or 
+      Data.builtin.long_long == atom or Data.builtin.unsigned_long_long == atom) and
       value - math.floor(value) ~= 0 then
     value = math.floor(value)
     print(table.concat{'WARNING: truncating decimal value for integer constant ', 
@@ -1107,6 +1107,7 @@ _.API[Data.ANNOTATION] = {
 Data.builtin.Key = Data.annotation{Key=EMPTY}
 Data.builtin.Extensibility = Data.annotation{Extensibility=EMPTY}
 Data.builtin.ID = Data.annotation{ID=EMPTY}
+Data.builtin.Optional = Data.annotation{Optional=EMPTY}
 Data.builtin.MustUnderstand = Data.annotation{MustUnderstand=EMPTY}
 Data.builtin.Shared = Data.annotation{Shared=EMPTY}
 Data.builtin.BitBound = Data.annotation{BitBound=EMPTY}
@@ -1905,7 +1906,7 @@ function Data.print_idl(instance, indent_string)
     local atom = mydefn
     local value = instance()
     local atom = instance[MODEL][Data.DEFN]
-    if Data.char == atom or Data.wchar == atom then
+    if Data.builtin.char == atom or Data.builtin.wchar == atom then
       value = table.concat{"'", tostring(value), "'"}
     elseif Data.string() == atom or Data.wstring() == atom then
       value = table.concat{'"', tostring(value), '"'}
@@ -1970,7 +1971,7 @@ function Data.print_idl(instance, indent_string)
 				-- case
 				if (nil == case) then
 				  print(string.format("%sdefault :", content_indent_string))
-				elseif (Data.char == model[Data.DEFN][Data.SWITCH] and nil ~= case) then
+				elseif (Data.builtin.char == model[Data.DEFN][Data.SWITCH] and nil ~= case) then
 					print(string.format("%scase '%s' :", 
 						content_indent_string, tostring(case)))
 				else
@@ -2168,10 +2169,76 @@ function Data.index(instance, result, model)
 end
 
 --------------------------------------------------------------------------------
--- Inherit the builtin model elements
-setmetatable(Data, {
-    __index = Data.builtin
-})
+--- Public Interface (of this module):
+return {
+  -- empty initializer sentinel value
+  EMPTY              = Data.EMPTY,
+  
+  
+  -- accesors and mutators (meta-attributes for types)
+  NAME               = Data.NAME,
+  KIND               = Data.KIND,
+  ANNOTATION         = Data.ANNOTATION,
+  BASE               = Data.BASE,
+  SWITCH             = Data.SWITCH,
+  
+    
+  -- qualifiers
+  annotation         = Data.annotation,
+  array              = Data.array,
+  sequence           = Data.sequence,
 
-return Data
+
+  -- pre-defined annotations
+  Key                = Data.builtin.Key,   
+  Extensibility      = Data.builtin.Extensibility,
+  ID                 = Data.builtin.ID,
+  Optional           = Data.Optional,
+  MustUnderstand     = Data.builtin.MustUnderstand,
+  Shared             = Data.builtin.Shared,
+  BitBound           = Data.builtin.BitBound,
+  BitSet             = Data.builtin.BitSet,
+  Nested             = Data.builtin.Nested,
+  top_level          = Data.builtin.top_level,
+
+
+  -- atomic types
+  boolean            = Data.builtin.boolean,
+  
+  octet              = Data.builtin.octet,
+  char               = Data.builtin.char,
+  wchar              = Data.builtin.wchar,
+  
+  float              = Data.builtin.float,
+  double             = Data.builtin.double,
+  long_double        = Data.builtin.long_double,
+      
+  short              = Data.builtin.short,
+  long               = Data.builtin.long,
+  long_long          = Data.builtin.long_long,
+      
+  unsigned_short     = Data.builtin.unsigned_short,
+  unsigned_long      = Data.builtin.unsigned_long,
+  unsigned_long_long = Data.builtin.unsigned_long_long,
+  
+  string             = Data.string,
+  wstring            = Data.wstring,
+
+  
+  -- composite types
+  const              = Data.const,
+  enum               = Data.enum,
+  struct             = Data.struct,
+  union              = Data.union,
+  module             = Data.module,
+      
+
+  -- typedefs (aliases)
+  typedef            = Data.typedef,
+    
+  
+  -- utilities
+  print_idl          = Data.print_idl,
+  index              = Data.index,
+}
 --------------------------------------------------------------------------------

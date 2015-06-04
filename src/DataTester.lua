@@ -23,7 +23,7 @@ local Test = {}   -- table to hold the types created by the tests
 
 Tester[#Tester+1] = 'test_builtin'
 function Tester:test_builtin()
-  for k, v in pairs(idl.builtin) do
+  for k, v in pairs(idl) do
       print('*** builtin: ', k, v)
   end
 end
