@@ -2170,7 +2170,7 @@ end
 
 --------------------------------------------------------------------------------
 --- Public Interface (of this module):
-return {
+local interface = {
   -- empty initializer sentinel value
   EMPTY              = Data.EMPTY,
   
@@ -2241,4 +2241,6 @@ return {
   print_idl          = Data.print_idl,
   index              = Data.index,
 }
+
+return interface
 --------------------------------------------------------------------------------
