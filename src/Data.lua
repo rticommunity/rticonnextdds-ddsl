@@ -182,23 +182,6 @@ local _ = {
   SWITCH     = function() return 'switch' end, -- choice: e.g.: union switch
 }
 
---- X-Types model defined using the DDSL ---
-local xtypes = {
-
-  -- X-types possible KIND values
-  ANNOTATION = function() return 'annotation' end,
-  ATOM       = function() return 'atom' end,
-  CONST      = function() return 'const' end,
-  ENUM       = function() return 'enum' end,
-  STRUCT     = function() return 'struct' end,
-  UNION      = function() return 'union' end,
-  MODULE     = function() return 'module' end,
-  TYPEDEF    = function() return 'typedef' end,
-  
-  -- Meta-tables that define/control the Public API 
-  API = {},
-}
-
 --- Create a new 'empty' template
 -- @param name  [in] the name of the underlying model
 -- @param kind  [in] the kind of underlying model
@@ -229,13 +212,13 @@ end
 -- @return populated template 
 function _.populate_template(template, defn)
   -- populate the role definitions
-  local annotations
+  local qualifiers
   for i, defn_i in ipairs(defn) do 
 
     -- build the model level annotation list
-    if xtypes.ANNOTATION == _.model_kind(defn_i) then     
-      annotations = annotations or {}
-      table.insert(annotations, defn_i)  
+    if _.is_qualifier(defn_i) then        
+      qualifiers = qualifiers or {}
+      table.insert(qualifiers, defn_i)  
 
     else --  member definition
       -- insert the model definition entry: invokes meta-table __newindex()
@@ -243,9 +226,9 @@ function _.populate_template(template, defn)
     end
   end
 
-  -- insert the annotations:
-  if annotations then -- insert the annotations:
-    template[_.QUALIFIERS] = annotations -- invokes meta-table __newindex()
+  -- insert the qualifiers:
+  if qualifiers then -- insert the qualifiers:
+    template[_.QUALIFIERS] = qualifiers -- invokes meta-table __newindex()
   end
 
   return template
@@ -273,7 +256,7 @@ function _.create_role_instance(role, role_defn)
   -- annotations: also look for the 1st 'collection' annotation (if any)
   local collection = nil
   for j = 2, #role_defn do
-    _.assert_model(xtypes.ANNOTATION, role_defn[j])
+    _.assert_qualifier(role_defn[j])
 
     -- is this a collection?
     if not collection then  -- the 1st 'collection' definition is used
@@ -356,18 +339,16 @@ function _.instance(name, template)
   _.assert_template(template)
  
   local instance = nil
-  local template_kind = _.model_kind(template)
   
   ---------------------------------------------------------------------------
-  -- typedef? switch the template to the underlying alias
+  -- alias? switch the template to the underlying alias
   ---------------------------------------------------------------------------
-
-  local alias, alias_kind, alias_collection
+  local is_alias = _.is_alias(template)
+  local alias, alias_collection
   
-  if xtypes.TYPEDEF == template_kind then
+  if is_alias then
     local defn = template[MODEL][_.DEFN]
     alias = defn[1]
-    alias_kind = alias[MODEL][_.KIND]
     
     for j = 2, #defn do
       alias_collection = _.is_collection(defn[j])
@@ -382,11 +363,11 @@ function _.instance(name, template)
   if alias then template = alias end
    
   ---------------------------------------------------------------------------
-  -- typedef is a collection:
+  -- alias is a collection:
   ---------------------------------------------------------------------------
   
-  -- collection of underlying types (which is not a typedef)
-  if  alias_collection then
+  -- collection of underlying types (which is not an alias)
+  if alias_collection then
     local iterator = template
     for i = 1, #alias_collection - 1  do -- create iterator for inner dimensions
       iterator = _.collection('', iterator) -- unnamed iterator
@@ -396,20 +377,19 @@ function _.instance(name, template)
   end
   
   ---------------------------------------------------------------------------
-  -- typedef is recursive:
+  -- alias is recursive:
   ---------------------------------------------------------------------------
-  
-  if xtypes.TYPEDEF == template_kind and xtypes.TYPEDEF == alias_kind then
+
+  if is_alias and _.is_alias(alias) then
     instance = _.instance(name, template) -- recursive
     return instance
   end
-  
+
   ---------------------------------------------------------------------------
   -- leaf instances
   ---------------------------------------------------------------------------
-
-  if xtypes.ATOM == template_kind or xtypes.ENUM == template_kind or 
-     xtypes.ATOM == alias_kind or xtypes.ENUM == alias_kind then
+ 
+  if _.is_leaf(template) then
     instance = name 
     return instance
   end
@@ -417,11 +397,10 @@ function _.instance(name, template)
   ---------------------------------------------------------------------------
   -- composite instances 
   ---------------------------------------------------------------------------
-  -- xtypes.STRUCT or xtypes.UNION
   
   -- Establish the underlying model definition to create an instance
-  -- NOTE: typedef's do not hold any instances; the instances are held by the
-  --       underlying concrete (non-typdef) alias type
+  -- NOTE: aliases do not hold any instances; the instances are held by the
+  --       underlying concrete (non-alias) alias type
   local model = template[MODEL]
 
   -- create the instance:
@@ -564,82 +543,6 @@ function _.model_kind(value)
            or nil
 end
 
---- Split a decl into after ensuring that we don't have an invalid declaration
--- @param decl [in] a table containing at least one {name=defn} entry 
---                where *name* is a string model name
---                and *defn* is a table containing the definition
--- @return name, def
-function _.parse_decl(decl)
-  -- pre-condition: decl is a table
-  assert('table' == type(decl), 
-    table.concat{'parse_decl(): invalid declaration: ', tostring(decl)})
-       
-  local name, defn = next(decl)
-  
-  assert('string' == type(name),
-    table.concat{'parse_decl(): invalid model name: ', tostring(name)})
-    
-  assert('table' == type(defn),
-  table.concat{'parse_decl(): invalid model definition: ', tostring(defn)})
-
-  return name, defn
-end
-
---- Is the given model element a collection?
--- @param value [in] the model element to check
--- @return the collection model element if it is, or nil otherwise 
-function _.is_collection(value)
-  local collection = nil
-  if (xtypes.ARRAY == value[MODEL] or
-      xtypes.SEQUENCE == value[MODEL]) then
-      collection = value
-  end
-  return collection
-end
-
---- Ensure a collection (array or sequence) of the kind specified by the
--- underlying annotation, and retrieve an instance of it with the 
--- specified dimension attributes.
--- 
--- Ensures that a valid set of dimension values is passed in. Returns the 
--- annotation instance, initialized with the specified dimensions.
--- 
--- NOTE: a new annotation instance is created for each dimension. There may be
--- room for optimization by caching the annotation instances.
---  
--- @param annotation [in] the underlying annotation ARRAY or SEQUENCE
--- @param n [in] the first dimension
--- @param ... the remaining dimensions
--- @return the annotation instance describing the collection
-function _.make_collection(annotation, n, ...)
-
-  -- ensure that we have an array of positive numbers
-  local dimensions = {...}
-  table.insert(dimensions, 1, n) -- insert n at the beginning
-  for i, v in ipairs(dimensions) do
-    local dim = v
-         
-    -- if the dim is a CONST, use its value for validation
-    if  xtypes.CONST == _.model_kind(v) then
-       dim = v()
-    end
-   
-    -- check if the 'dim' is valid
-    assert(type(dim)=='number',  
-      table.concat{'invalid collection bound: ', tostring(dim)})
-    assert(dim > 0 and dim - math.floor(dim) == 0, -- positive integer  
-      table.concat{'collection bound must be an integer > 0: ', dim})
-  end
-  
-  -- return the predefined annotation instance, whose attributes are 
-  -- the collection dimension bounds
-  return annotation(dimensions)
-end
-
---------------------------------------------------------------------------------
--- Error Checking and Validation
---------------------------------------------------------------------------------
-
 --- Ensure that the value is a model element
 -- @param kind   [in] expected model element kind
 -- @param value  [in] table to check if it is a model element of "kind"
@@ -662,6 +565,74 @@ function _.assert_role(role)
   return role
 end
 
+--------------------------------------------------------------------------------
+--- X-Types model defined using the DDSL ---
+--------------------------------------------------------------------------------
+
+local xtypes = {
+
+  -- X-types possible KIND values
+  ANNOTATION = function() return 'annotation' end,
+  ATOM       = function() return 'atom' end,
+  CONST      = function() return 'const' end,
+  ENUM       = function() return 'enum' end,
+  STRUCT     = function() return 'struct' end,
+  UNION      = function() return 'union' end,
+  MODULE     = function() return 'module' end,
+  TYPEDEF    = function() return 'typedef' end,
+  
+  -- Meta-tables that define/control the Public API 
+  API = {},
+}
+
+--- Is the given model element a qualifier?
+-- NOTE: collections are qualifiers
+-- @param value [in] the model element to check
+-- @return the value (qualifier), or nil if it is not a qualifier 
+function _.is_qualifier(value)
+  local qualifier = nil
+  if xtypes.ANNOTATION == _.model_kind(value) then
+      qualifier = value
+  end
+  return qualifier
+end
+
+--- Is the given model element a collection?
+-- @param value [in] the model element to check
+-- @return the value (collection), or nil if it is not a collection
+function _.is_collection(value)
+  local collection = nil
+  if (value and 
+      xtypes.ARRAY == value[MODEL] or
+      xtypes.SEQUENCE == value[MODEL]) then
+      collection = value
+  end
+  return collection
+end
+
+
+--- Is the given model element an alias (for another type)?
+-- @param value [in] the model element to check
+-- @return the value (alias), or nil if it is not an alias
+function _.is_alias(value)
+  return xtypes.TYPEDEF == _.model_kind(value) and value or nil
+end
+
+--- Is the given model element a leaf (ie primitive) type?
+-- @param value [in] the model element to check
+-- @return the value (leaf), or nil if it is not a leaf type
+function _.is_leaf(value)
+  local kind = _.model_kind(value)
+  return (xtypes.ATOM == kind or 
+          xtypes.ENUM == kind)
+         and value
+         or nil
+end
+
+--------------------------------------------------------------------------------
+-- Error Checking and Validation
+--------------------------------------------------------------------------------
+
 --- Ensure that the role template is valid
 -- @param template    [in] template for role
 -- @return template if valid; nil otherwise
@@ -678,6 +649,13 @@ function _.assert_template(template)
   return template
 end
 
+--- Ensure that value is a qualifier
+-- @return the qualifier or nil
+function _.assert_qualifier(value)
+    -- ensure a valid qualifier
+    return _.assert_model(xtypes.ANNOTATION, value)
+end
+
 --- Ensure that value is a collection
 -- @return the collection or nil
 function _.assert_collection(collection)
@@ -689,18 +667,54 @@ function _.assert_collection(collection)
     return collection
 end
 
---- Ensure all elements in the 'value' array are annotations
+--- Ensure all elements in the 'value' array are qualifiers
 -- @return the annotation array
-function _.assert_qualifiers(value)
-    -- establish valid annotations, if any
-    local annotations
-    if nil ~= value then
-        for i, v in ipairs(value) do
-            _.assert_model(xtypes.ANNOTATION, v)
-        end
-        annotations = value
+function _.assert_qualifier_array(value)
+    -- establish valid qualifiers, if any
+    if nil == value then return nil end
+    
+    local count = 0    
+    for k, v in pairs(value) do
+        assert('number' == type(k), 
+                table.concat{'invalid qualifier array "', 
+                              tostring(value), '"'})
+        _.assert_qualifier(v)
+        count = count + 1
     end
-    return annotations
+
+    --all keys are numerical. now let's see if they are sequential and start with 1
+    for i = 1, count do
+      if nil == value[i] then 
+          assert(table.concat{'invalid qualifier array "', tostring(value), '"'})
+      end
+    end
+  
+    return value
+end
+
+--------------------------------------------------------------------------------
+-- X-Types Helpers
+--------------------------------------------------------------------------------
+
+--- Split a decl into after ensuring that we don't have an invalid declaration
+-- @param decl [in] a table containing at least one {name=defn} entry 
+--                where *name* is a string model name
+--                and *defn* is a table containing the definition
+-- @return name, def
+function xtypes.parse_decl(decl)
+  -- pre-condition: decl is a table
+  assert('table' == type(decl), 
+    table.concat{'parse_decl(): invalid declaration: ', tostring(decl)})
+       
+  local name, defn = next(decl)
+  
+  assert('string' == type(name),
+    table.concat{'parse_decl(): invalid model name: ', tostring(name)})
+    
+  assert('table' == type(defn),
+  table.concat{'parse_decl(): invalid model definition: ', tostring(defn)})
+
+  return name, defn
 end
 
 --------------------------------------------------------------------------------
@@ -730,7 +744,7 @@ end
 --    MyAnnotation{value1 = 942, value2 = 999.0}
 --        
 function xtypes.annotation(decl)   
-  local name, defn = _.parse_decl(decl)
+  local name, defn = xtypes.parse_decl(decl)
   
   -- create the template
   local template = _.new_template(name, xtypes.ANNOTATION, xtypes.API[xtypes.ANNOTATION])
@@ -821,7 +835,7 @@ xtypes.ARRAY = array[MODEL]
 -- @param ... the remaining dimensions
 -- @return the array data model
 function xtypes.array(n, ...)
-  return _.make_collection(array, n, ...)
+  return xtypes.make_collection(array, n, ...)
 end
 
 --------------------------------------------------------------------------------
@@ -842,9 +856,50 @@ xtypes.SEQUENCE = sequence[MODEL]
 -- @param ... the remaining dimensions
 -- @return the sequence data model
 function xtypes.sequence(n, ...)
-  return _.make_collection(sequence, n, ...)
+  return xtypes.make_collection(sequence, n, ...)
 end
+
+--------------------------------------------------------------------------------
+--- make_collection
+-- Ensure a collection (array or sequence) of the kind specified by the
+-- underlying annotation, and retrieve an instance of it with the 
+-- specified dimension attributes.
+-- 
+-- Ensures that a valid set of dimension values is passed in. Returns the 
+-- annotation instance, initialized with the specified dimensions.
+-- 
+-- NOTE: a new annotation instance is created for each dimension. There may be
+-- room for optimization by caching the annotation instances.
+--  
+-- @param annotation [in] the underlying annotation ARRAY or SEQUENCE
+-- @param n [in] the first dimension
+-- @param ... the remaining dimensions
+-- @return the annotation instance describing the collection
+function xtypes.make_collection(annotation, n, ...)
+
+  -- ensure that we have an array of positive numbers
+  local dimensions = {...}
+  table.insert(dimensions, 1, n) -- insert n at the beginning
+  for i, v in ipairs(dimensions) do
+    local dim = v
+         
+    -- if the dim is a CONST, use its value for validation
+    if  xtypes.CONST == _.model_kind(v) then
+       dim = v()
+    end
+   
+    -- check if the 'dim' is valid
+    assert(type(dim)=='number',  
+      table.concat{'invalid collection bound: ', tostring(dim)})
+    assert(dim > 0 and dim - math.floor(dim) == 0, -- positive integer  
+      table.concat{'collection bound must be an integer > 0: ', dim})
+  end
   
+  -- return the predefined annotation instance, whose attributes are 
+  -- the collection dimension bounds
+  return annotation(dimensions)
+end
+
 --------------------------------------------------------------------------------
 
 xtypes.builtin = xtypes.builtin or {}
@@ -888,7 +943,7 @@ xtypes.builtin.top_level = xtypes.annotation{['top-level']=EMPTY} -- legacy
 --     local string10 = xtypes.atom{string={10}}    -- bounded length string
 --     local wstring10 = xtypes.atom{wstring={10}}  -- bounded length wstring
 function xtypes.atom(decl)
-  local name, defn = _.parse_decl(decl)
+  local name, defn = xtypes.parse_decl(decl)
   local dim, dim_kind = defn[1], _.model_kind(defn[1])
  
   -- pre-condition: validate the dimension
@@ -1006,7 +1061,7 @@ xtypes.builtin.unsigned_long_long = xtypes.atom{['unsigned long long']=EMPTY}
 --             MyStringSeq = { xtypes.string, xtypes.sequence(MY_CONST) } 
 --       }
 function xtypes.const(decl) 
-  local name, defn = _.parse_decl(decl)
+  local name, defn = xtypes.parse_decl(decl)
        
   -- pre-condition: ensure that the 1st defn declaration is a valid type
   local atom = _.assert_model(xtypes.ATOM, defn[1])
@@ -1135,7 +1190,7 @@ xtypes.API[xtypes.CONST] = {
 --    for k, v in pairs(MyEnum) do print(k, v) end
 --
 function xtypes.enum(decl) 
-  local name, defn = _.parse_decl(decl)
+  local name, defn = xtypes.parse_decl(decl)
     
   -- create the template
   local template = _.new_template(name, xtypes.ENUM, xtypes.API[xtypes.ENUM])
@@ -1181,8 +1236,8 @@ xtypes.API[xtypes.ENUM] = {
       rawset(model, _.NAME, value)
 
     elseif _.QUALIFIERS == key then -- annotation definition
-      -- set the new annotations in the model definition (may be nil)
-      model_defn[_.QUALIFIERS] = _.assert_qualifiers(value)
+      -- set the new qualifiers in the model definition (may be nil)
+      model_defn[_.QUALIFIERS] = _.assert_qualifier_array(value)
 
     elseif 'number' == type(key) then -- member definition
       -- clear the old member definition and instance fields
@@ -1288,7 +1343,7 @@ xtypes.API[xtypes.ENUM] = {
 --    for k, v in pairs(MyStruct) do print(k, v) end
 --
 function xtypes.struct(decl) 
-  local name, defn = _.parse_decl(decl)
+  local name, defn = xtypes.parse_decl(decl)
        
   -- create the template
   local template = _.new_template(name, xtypes.STRUCT, xtypes.API[xtypes.STRUCT])
@@ -1344,8 +1399,8 @@ xtypes.API[xtypes.STRUCT] = {
       rawset(model, _.NAME, value)
 
     elseif _.QUALIFIERS == key then -- annotation definition
-      -- set the new annotations in the model definition (may be nil)
-      model_defn[_.QUALIFIERS] = _.assert_qualifiers(value)
+      -- set the new qualifiers in the model definition (may be nil)
+      model_defn[_.QUALIFIERS] = _.assert_qualifier_array(value)
 
     elseif 'number' == type(key) then -- member definition
       --  Format:
@@ -1513,7 +1568,7 @@ xtypes.API[xtypes.STRUCT] = {
 --    for k, v in pairs(MyUnion) do print(k, v) end
 --
 function xtypes.union(decl) 
-  local name, defn = _.parse_decl(decl)
+  local name, defn = xtypes.parse_decl(decl)
        
   -- create the template 
   local template = _.new_template(name, xtypes.UNION, xtypes.API[xtypes.UNION])
@@ -1564,8 +1619,8 @@ xtypes.API[xtypes.UNION] = {
       model[_.NAME] = value
 
     elseif _.QUALIFIERS == key then -- annotation definition
-      -- set the new annotations in the model definition (may be nil)
-      model_defn[_.QUALIFIERS] = _.assert_qualifiers(value)
+      -- set the new qualifiers in the model definition (may be nil)
+      model_defn[_.QUALIFIERS] = _.assert_qualifier_array(value)
 
     elseif _.SWITCH == key then -- switch definition
 
@@ -1694,7 +1749,7 @@ xtypes.API[xtypes.UNION] = {
 --   for k, v in pairs(MyModule) do print(k, v) end
 --   
 function xtypes.module(decl) 
-  local name, defn = _.parse_decl(decl)
+  local name, defn = xtypes.parse_decl(decl)
        
   --create the template
   local template = _.new_template(name, xtypes.MODULE, xtypes.API[xtypes.MODULE])
@@ -1740,8 +1795,8 @@ xtypes.API[xtypes.MODULE] = {
       rawset(model, _.NAME, value)
 
     elseif _.QUALIFIERS == key then -- annotation definition
-      -- set the new annotations in the model definition (may be nil)
-      model_defn[_.QUALIFIERS] = _.assert_qualifiers(value)
+      -- set the new qualifiers in the model definition (may be nil)
+      model_defn[_.QUALIFIERS] = _.assert_qualifier_array(value)
 
     elseif 'number' == type(key) then -- member definition
       -- clear the old member definition and instance fields
@@ -1805,7 +1860,7 @@ xtypes.API[xtypes.MODULE] = {
 --          MyStructArray = { xtypes.MyStruct, xtypes.array(10, 20) }
 --       }
 function xtypes.typedef(decl) 
-  local name, defn = _.parse_decl(decl)
+  local name, defn = xtypes.parse_decl(decl)
 
   -- pre-condition: ensure that the 1st defn element is a valid type
   local alias = defn[1]
@@ -1864,9 +1919,9 @@ function xtypes.assert_case(discriminator, case)
 end
 
 --------------------------------------------------------------------------------
--- Utilities
+-- X-Types Utilities
 --------------------------------------------------------------------------------
-local Utils = {}
+local xutils = {}
 
 --- IDL string representation of a role
 -- @function tostring_role
@@ -1875,7 +1930,7 @@ local Utils = {}
 --           { template, [collection,] [annotation1, annotation2, ...] } 
 -- @param module the module to which the owner data model element belongs
 -- @return #string IDL string representation of the idl member
-function Utils.tostring_role(role, role_defn, module)
+function xutils.tostring_role(role, role_defn, module)
 
   local template, seq 
   if role_defn then
@@ -1934,7 +1989,7 @@ function Utils.tostring_role(role, role_defn, module)
 end
 
 
--- Utils.print_idl() - prints OMG IDL representation of a data model
+-- xutils.print_idl() - prints OMG IDL representation of a data model
 --
 -- Purpose:
 -- 		Generate equivalent OMG IDL representation from a data model
@@ -1943,10 +1998,10 @@ end
 --    <<in>> indent_string - the indentation string to apply
 --    <<return>> model, indent_string for chaining
 -- Usage:
---         Utils.print_idl(model) 
+--         xutils.print_idl(model) 
 --           or
---         Utils.print_idl(model, '   ')
-function Utils.print_idl(instance, indent_string)
+--         xutils.print_idl(model, '   ')
+function xutils.print_idl(instance, indent_string)
 	-- pre-condition: ensure valid instance
 	assert(_.model_kind(instance), 'invalid instance')
 
@@ -1984,7 +2039,7 @@ function Utils.print_idl(instance, indent_string)
 	if xtypes.TYPEDEF == mytype then
 		local defn = mydefn	
     print(string.format('%s%s %s', indent_string,  mytype(),
-                                    Utils.tostring_role(myname, defn, mymodule)))
+                                    xutils.tostring_role(myname, defn, mymodule)))
 		return instance, indent_string 
 	end
 	
@@ -2014,7 +2069,7 @@ function Utils.print_idl(instance, indent_string)
 		
 	if xtypes.MODULE == mytype then 
 		for i, role_template in ipairs(mydefn) do -- walk through the module definition
-			Utils.print_idl(role_template, content_indent_string)
+			xutils.print_idl(role_template, content_indent_string)
 		end
 		
 	elseif xtypes.STRUCT == mytype then
@@ -2023,7 +2078,7 @@ function Utils.print_idl(instance, indent_string)
 			if not defn_i[MODEL] then -- skip struct level annotations
 			  local role, role_defn = next(defn_i)
         print(string.format('%s%s', content_indent_string,
-                            Utils.tostring_role(role, role_defn, mymodule)))
+                            xutils.tostring_role(role, role_defn, mymodule)))
 			end
 		end
 
@@ -2046,7 +2101,7 @@ function Utils.print_idl(instance, indent_string)
 				-- member element
 				local role, role_defn = next(defn_i, #defn_i > 0 and #defn_i or nil)
 				print(string.format('%s%s', content_indent_string .. '   ',
-				                             Utils.tostring_role(role, role_defn, mymodule)))
+				                             xutils.tostring_role(role, role_defn, mymodule)))
 			end
 		end
 		
@@ -2070,17 +2125,17 @@ function Utils.print_idl(instance, indent_string)
 	return instance, indent_string
 end
 				
--- @function Utils.index Visit the fields in the instance that are specified 
+-- @function xutils.index Visit the fields in the instance that are specified 
 --           in the model
 -- @param instance the instance to index
 -- @param result OPTIONAL the index table to which the results are appended
 -- @param model OPTIONAL nil means use the instance's model;
 --              needed to support inheritance and typedefs
 -- @result the cumulative index, that can be passed to another call to this method
-function Utils.index(instance, result, model) 
+function xutils.index(instance, result, model) 
 	-- ensure valid instance
 	local type_instance = type(instance)
-	-- print('DEBUG Utils.index 1: ', instance) 
+	-- print('DEBUG xutils.index 1: ', instance) 
 	assert('table' == type_instance and instance[MODEL] or 
 	       'function' == type_instance, -- sequence iterator
 		   table.concat{'invalid instance: ', tostring(instance)})
@@ -2091,9 +2146,9 @@ function Utils.index(instance, result, model)
 		
 		-- index 1st element for illustration
 		if 'table' == type(instance(1)) then -- composite sequence
-			Utils.index(instance(1), result) -- index the 1st element 
+			xutils.index(instance(1), result) -- index the 1st element 
 		elseif 'function' == type(instance(1)) then -- sequence of sequence
-			Utils.index(instance(1), result)
+			xutils.index(instance(1), result)
 		else -- primitive sequence
 			table.insert(result, instance(1))
 		end
@@ -2121,7 +2176,7 @@ function Utils.index(instance, result, model)
 	-- struct base type, if any
 	local base = model[_.DEFN][_.BASE]
 	if nil ~= base then
-		result = Utils.index(instance, result, base[MODEL])	
+		result = xutils.index(instance, result, base[MODEL])	
 	end
 	
 	-- walk through the body of the model definition
@@ -2143,16 +2198,16 @@ function Utils.index(instance, result, model)
 			-- print('DEBUG index 3: ', role, role_instance)
 
 			if 'table' == role_instance_type then -- composite (nested)
-					result = Utils.index(role_instance, result)
+					result = xutils.index(role_instance, result)
 			elseif 'function' == role_instance_type then -- sequence
 				-- length operator
 				table.insert(result, role_instance())
 	
 				-- index 1st element for illustration
 				if 'table' == type(role_instance(1)) then -- composite sequence
-					Utils.index(role_instance(1), result) -- index the 1st element 
+					xutils.index(role_instance(1), result) -- index the 1st element 
 				elseif 'function' == type(role_instance(1)) then -- sequence of sequence
-					Utils.index(role_instance(1), result)
+					xutils.index(role_instance(1), result)
 				else -- primitive sequence
 					table.insert(result, role_instance(1))
 				end
@@ -2235,8 +2290,8 @@ local interface = {
     
   
   -- utilities
-  print_idl          = Utils.print_idl,
-  index              = Utils.index,
+  print_idl          = xutils.print_idl,
+  index              = xutils.index,
 }
 
 return interface
