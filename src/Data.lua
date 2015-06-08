@@ -249,6 +249,8 @@ end
 -- @return the role (member) instance and the role_defn
 function _.create_role_instance(role, role_defn)
   
+  _.assert_role(role)
+  
   local template = role_defn[1]
   _.assert_template(template) 
   
@@ -609,6 +611,15 @@ function _.assert_role(role)
   return role
 end
 
+--- Ensure that value is a template
+-- @param templat [in] the potential template to check
+-- @return the qualifier or nil
+function _.assert_template(template)
+    assert(_.is_template(template), 
+           table.concat{'expected template \"', tostring(template), '"'})
+    return template
+end
+
 --------------------------------------------------------------------------------
 --- X-Types model defined using the DDSL ---
 --------------------------------------------------------------------------------
@@ -659,7 +670,9 @@ end
 -- @param value [in] the model element to check
 -- @return the value (alias), or nil if it is not an alias
 function _.is_alias(value)
-  return xtypes.TYPEDEF == _.model_kind(value) and value or nil
+  return (xtypes.TYPEDEF == _.model_kind(value)) 
+         and value 
+         or nil
 end
 
 --- Is the given model element a leaf (ie primitive) type?
@@ -673,24 +686,18 @@ function _.is_leaf(value)
          or nil
 end
 
---------------------------------------------------------------------------------
--- Error Checking and Validation
---------------------------------------------------------------------------------
-
---- Ensure that the role template is valid
--- @param template    [in] template for role
--- @return template if valid; nil otherwise
-function _.assert_template(template)
-
-  local template_kind = _.model_kind(template)
-  assert(xtypes.ATOM == template_kind or
-       xtypes.ENUM == template_kind or
-       xtypes.STRUCT == template_kind or 
-       xtypes.UNION == template_kind or
-       xtypes.TYPEDEF == template_kind,
-       table.concat{'expected an atom|enum|struct|union|typedef'})
-                             
-  return template
+--- --- Is the given model element a template type?
+-- @param value [in] the model element to check
+-- @return the value (template), or nil if it is not a template type
+function _.is_template(value)
+  local kind = _.model_kind(value)
+  return (xtypes.ATOM == kind or
+          xtypes.ENUM == kind or
+          xtypes.STRUCT == kind or 
+          xtypes.UNION == kind or
+          xtypes.TYPEDEF == kind)
+        and value
+        or nil
 end
 
 --------------------------------------------------------------------------------
@@ -1425,9 +1432,7 @@ xtypes.API[xtypes.STRUCT] = {
     else
       -- get the new role and role_defn
       local role, role_defn = next(value)
-
-      _.assert_role(role)
-
+ 
       -- is the role already defined?
       assert(nil == rawget(template, role),-- check template
         table.concat{'member name already defined: "', role, '"'})
@@ -1675,7 +1680,6 @@ xtypes.API[xtypes.UNION] = {
  
           -- add the role
         if role then
-          _.assert_role(role)
           
           -- is the role already defined?
           assert(nil == rawget(template, role),-- check template
