@@ -301,7 +301,7 @@ function _.update_instances(model, role, role_template)
       if instance == template then -- template
           -- do nothing (already updated the template)
       elseif instance == name then -- child struct (model is a base struct)
-          rawset(instance, role, role_template) -- no prefix    
+          rawset(instance, role, role_template) -- no prefix -- TODO: make copy?   
       else -- instance: may be user defined or occurring in another type model
           -- prefix the 'name' to the role_template
           rawset(instance, role, _.prefix(name, role_template))
@@ -620,6 +620,27 @@ function _.assert_template(template)
     return template
 end
 
+--- Split a decl into after ensuring that we don't have an invalid declaration
+-- @param decl [in] a table containing at least one {name=defn} entry 
+--                where *name* is a string model name
+--                and *defn* is a table containing the definition
+-- @return name, def
+function _.parse_decl(decl)
+  -- pre-condition: decl is a table
+  assert('table' == type(decl), 
+    table.concat{'parse_decl(): invalid declaration: ', tostring(decl)})
+       
+  local name, defn = next(decl)
+  
+  assert('string' == type(name),
+    table.concat{'parse_decl(): invalid model name: ', tostring(name)})
+    
+  assert('table' == type(defn),
+  table.concat{'parse_decl(): invalid model definition: ', tostring(defn)})
+
+  return name, defn
+end
+
 --------------------------------------------------------------------------------
 --- X-Types model defined using the DDSL ---
 --------------------------------------------------------------------------------
@@ -645,32 +666,29 @@ local xtypes = {
 -- @param value [in] the model element to check
 -- @return the value (qualifier), or nil if it is not a qualifier 
 function _.is_qualifier(value)
-  local qualifier = nil
-  if xtypes.ANNOTATION == _.model_kind(value) then
-      qualifier = value
-  end
-  return qualifier
+  local kind = _.model_kind(value)
+  return (xtypes.ANNOTATION == kind) 
+         and value
+         or nil
 end
 
 --- Is the given model element a collection?
 -- @param value [in] the model element to check
 -- @return the value (collection), or nil if it is not a collection
 function _.is_collection(value)
-  local collection = nil
-  if (value and 
-      xtypes.ARRAY == value[MODEL] or
-      xtypes.SEQUENCE == value[MODEL]) then
-      collection = value
-  end
-  return collection
+  kind = value and value[MODEL]
+  return (xtypes.ARRAY == kind or
+          xtypes.SEQUENCE == kind) 
+         and value
+         or nil
 end
-
 
 --- Is the given model element an alias (for another type)?
 -- @param value [in] the model element to check
 -- @return the value (alias), or nil if it is not an alias
 function _.is_alias(value)
-  return (xtypes.TYPEDEF == _.model_kind(value)) 
+  local kind = _.model_kind(value)
+  return (xtypes.TYPEDEF == kind) 
          and value 
          or nil
 end
@@ -701,31 +719,6 @@ function _.is_template(value)
 end
 
 --------------------------------------------------------------------------------
--- X-Types Helpers
---------------------------------------------------------------------------------
-
---- Split a decl into after ensuring that we don't have an invalid declaration
--- @param decl [in] a table containing at least one {name=defn} entry 
---                where *name* is a string model name
---                and *defn* is a table containing the definition
--- @return name, def
-function xtypes.parse_decl(decl)
-  -- pre-condition: decl is a table
-  assert('table' == type(decl), 
-    table.concat{'parse_decl(): invalid declaration: ', tostring(decl)})
-       
-  local name, defn = next(decl)
-  
-  assert('string' == type(name),
-    table.concat{'parse_decl(): invalid model name: ', tostring(name)})
-    
-  assert('table' == type(defn),
-  table.concat{'parse_decl(): invalid model definition: ', tostring(defn)})
-
-  return name, defn
-end
-
---------------------------------------------------------------------------------
 -- X-Types Model Definitions -- 
 --------------------------------------------------------------------------------
 
@@ -752,7 +745,7 @@ end
 --    MyAnnotation{value1 = 942, value2 = 999.0}
 --        
 function xtypes.annotation(decl)   
-  local name, defn = xtypes.parse_decl(decl)
+  local name, defn = _.parse_decl(decl)
   
   -- create the template
   local template = _.new_template(name, xtypes.ANNOTATION, xtypes.API[xtypes.ANNOTATION])
@@ -951,7 +944,7 @@ xtypes.builtin.top_level = xtypes.annotation{['top-level']=EMPTY} -- legacy
 --     local string10 = xtypes.atom{string={10}}    -- bounded length string
 --     local wstring10 = xtypes.atom{wstring={10}}  -- bounded length wstring
 function xtypes.atom(decl)
-  local name, defn = xtypes.parse_decl(decl)
+  local name, defn = _.parse_decl(decl)
   local dim, dim_kind = defn[1], _.model_kind(defn[1])
  
   -- pre-condition: validate the dimension
@@ -1069,7 +1062,7 @@ xtypes.builtin.unsigned_long_long = xtypes.atom{['unsigned long long']=EMPTY}
 --             MyStringSeq = { xtypes.string, xtypes.sequence(MY_CONST) } 
 --       }
 function xtypes.const(decl) 
-  local name, defn = xtypes.parse_decl(decl)
+  local name, defn = _.parse_decl(decl)
        
   -- pre-condition: ensure that the 1st defn declaration is a valid type
   local atom = _.assert_model(xtypes.ATOM, defn[1])
@@ -1198,7 +1191,7 @@ xtypes.API[xtypes.CONST] = {
 --    for k, v in pairs(MyEnum) do print(k, v) end
 --
 function xtypes.enum(decl) 
-  local name, defn = xtypes.parse_decl(decl)
+  local name, defn = _.parse_decl(decl)
     
   -- create the template
   local template = _.new_template(name, xtypes.ENUM, xtypes.API[xtypes.ENUM])
@@ -1351,7 +1344,7 @@ xtypes.API[xtypes.ENUM] = {
 --    for k, v in pairs(MyStruct) do print(k, v) end
 --
 function xtypes.struct(decl) 
-  local name, defn = xtypes.parse_decl(decl)
+  local name, defn = _.parse_decl(decl)
        
   -- create the template
   local template = _.new_template(name, xtypes.STRUCT, xtypes.API[xtypes.STRUCT])
@@ -1506,8 +1499,8 @@ xtypes.API[xtypes.STRUCT] = {
       base = new_base
       while base do
         -- NOTE: Since we don't have a well-defined "name", we make an
-        -- exception, and use the template (instance) itself to
-        -- index into the INSTANCES table. This is utilized by the
+        -- exception, and use the template (instance) itself as
+        -- the "name" in the INSTANCES table. This is utilized by the
         -- ._update_instances() to correctly update the template
         base[MODEL][_.INSTANCES][template] = template
 
@@ -1574,7 +1567,7 @@ xtypes.API[xtypes.STRUCT] = {
 --    for k, v in pairs(MyUnion) do print(k, v) end
 --
 function xtypes.union(decl) 
-  local name, defn = xtypes.parse_decl(decl)
+  local name, defn = _.parse_decl(decl)
        
   -- create the template 
   local template = _.new_template(name, xtypes.UNION, xtypes.API[xtypes.UNION])
@@ -1754,7 +1747,7 @@ xtypes.API[xtypes.UNION] = {
 --   for k, v in pairs(MyModule) do print(k, v) end
 --   
 function xtypes.module(decl) 
-  local name, defn = xtypes.parse_decl(decl)
+  local name, defn = _.parse_decl(decl)
        
   --create the template
   local template = _.new_template(name, xtypes.MODULE, xtypes.API[xtypes.MODULE])
@@ -1865,7 +1858,7 @@ xtypes.API[xtypes.MODULE] = {
 --          MyStructArray = { xtypes.MyStruct, xtypes.array(10, 20) }
 --       }
 function xtypes.typedef(decl) 
-  local name, defn = xtypes.parse_decl(decl)
+  local name, defn = _.parse_decl(decl)
 
   -- pre-condition: ensure that the 1st defn element is a valid type
   local alias = defn[1]
