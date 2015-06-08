@@ -556,13 +556,13 @@ function _.assert_model(kind, value)
     return value
 end
 
---- Ensure that the role name is valid
--- @param role        [in] the role name
--- @return role if valid; nil otherwise
-function _.assert_role(role)
-  assert('string' == type(role), 
-      table.concat{'invalid role name: ', tostring(role)})
-  return role
+--- Ensure that value is a collection
+-- @param collection [in] the potential collection to check
+-- @return the collection or nil
+function _.assert_collection(collection)
+    assert(_.is_collection(collection), 
+           table.concat{'expected collection \"', tostring(collection), '"'})
+    return collection
 end
 
 --- Ensure that value is a qualifier
@@ -572,6 +572,41 @@ function _.assert_qualifier(qualifier)
     assert(_.is_qualifier(qualifier), 
            table.concat{'expected qualifier \"', tostring(qualifier), '"'})
     return qualifier
+end
+
+--- Ensure all elements in the 'value' array are qualifiers
+-- @param value [in] the potential qualifier array to check
+-- @return the qualifier array or nil
+function _.assert_qualifier_array(value)
+    -- establish valid qualifiers, if any
+    if nil == value then return nil end
+    
+    local count = 0    
+    for k, v in pairs(value) do
+        assert('number' == type(k), 
+                table.concat{'invalid qualifier array "', 
+                              tostring(value), '"'})
+        _.assert_qualifier(v)
+        count = count + 1
+    end
+
+    --all keys are numerical: check if they are sequential and start with 1
+    for i = 1, count do
+      if nil == value[i] then 
+         assert(table.concat{'invalid qualifier array "', tostring(value), '"'})
+      end
+    end
+  
+    return value
+end
+
+--- Ensure that the role name is valid
+-- @param role        [in] the role name
+-- @return role if valid; nil otherwise
+function _.assert_role(role)
+  assert('string' == type(role), 
+      table.concat{'invalid role name: ', tostring(role)})
+  return role
 end
 
 --------------------------------------------------------------------------------
@@ -656,42 +691,6 @@ function _.assert_template(template)
        table.concat{'expected an atom|enum|struct|union|typedef'})
                              
   return template
-end
-
---- Ensure that value is a collection
--- @return the collection or nil
-function _.assert_collection(collection)
-    -- ensure a valid collection
-    assert(xtypes.ARRAY == collection[MODEL] or
-           xtypes.SEQUENCE == collection[MODEL],
-           table.concat{'invalid collection "', tostring(collection), '"'})
-
-    return collection
-end
-
---- Ensure all elements in the 'value' array are qualifiers
--- @return the annotation array
-function _.assert_qualifier_array(value)
-    -- establish valid qualifiers, if any
-    if nil == value then return nil end
-    
-    local count = 0    
-    for k, v in pairs(value) do
-        assert('number' == type(k), 
-                table.concat{'invalid qualifier array "', 
-                              tostring(value), '"'})
-        _.assert_qualifier(v)
-        count = count + 1
-    end
-
-    --all keys are numerical. now let's see if they are sequential and start with 1
-    for i = 1, count do
-      if nil == value[i] then 
-          assert(table.concat{'invalid qualifier array "', tostring(value), '"'})
-      end
-    end
-  
-    return value
 end
 
 --------------------------------------------------------------------------------
