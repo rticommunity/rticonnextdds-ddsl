@@ -85,9 +85,9 @@
 --                 
 --          -- instance fields --
 --          user_role1 = 'user_role1'  -- name used to index this 'leaf' field
---          user_role2 = _.instance('user_role2', UserModule.UserType2)
---          user_role3 = _.instance('user_role3', UserModule.UserType3)
---          user_role_seq = _.collection('user_role_seq', UserModule.UserTypeSeq)
+--          user_role2 = _.create_instance('user_role2', UserModule.UserType2)
+--          user_role3 = _.create_instance('user_role3', UserModule.UserType3)
+--          user_role_seq = _.create_collection('user_role_seq', UserModule.UserTypeSeq)
 --          :
 --       }
 --    and also returns the above table.
@@ -101,7 +101,7 @@
 --    Note that if a definition already exists, it is cleared and re-defined.
 --
 --    To create an instance named 'i1' from a structure named 'Model'
---          i1 = _.instance('i1', Model)
+--          i1 = _.create_instance('i1', Model)
 --    Now, one can instance all the fields of the resulting table
 --          i1.role1 = 'i1.role1'
 --    or 
@@ -145,9 +145,9 @@
 --          Either a primitive field
 --              model.role = 'role'
 --          Or a composite field 
---              model.role = _.instance('role', RoleModel)
+--              model.role = _.create_instance('role', RoleModel)
 --          or a sequence
---              model.role = _.collection('role', RoleModel)
+--              model.role = _.create_collection('role', RoleModel)
 --
 --    Note that all the meta-data attributes are functions, so it is 
 --    straightforward to skip them, when traversing a model table.
@@ -178,8 +178,6 @@ local _ = {
 
   -- model definition attributes
   QUALIFIERS = function() return '' end,        -- table key for qualifiers
-  BASE       = function() return ' : ' end,    -- inheritance, e.g. struct base
-  SWITCH     = function() return 'switch' end, -- choice: e.g.: union switch
 }
 
 --- Create a new 'empty' template
@@ -273,11 +271,11 @@ function _.create_role_instance(role, role_defn)
     if collection then
       local iterator = template
       for i = 1, #collection - 1  do -- create iterator for inner dimensions
-        iterator = _.collection('', iterator) -- unnamed iterator
+        iterator = _.create_collection('', iterator) -- unnamed iterator
       end
-      role_instance = _.collection(role, iterator)
+      role_instance = _.create_collection(role, iterator)
     else
-      role_instance = _.instance(role, template)
+      role_instance = _.create_instance(role, template)
     end
   end
   
@@ -316,14 +314,14 @@ end
 -- @return the newly created instance (seq) that supports indexing by 'name'
 -- @usage
 --    -- As an index into sample[]
---    local myInstance = _.instance("my", template)
+--    local myInstance = _.create_instance("my", template)
 --    local member = sample[myInstance.member] 
 --    for i = 1, sample[myInstance.memberSeq()] do -- length of the sequence
 --       local element_i = sample[memberSeq(i)] -- access the i-th element
 --    end  
 --
 --    -- As a sample itself
---    local myInstance = _.instance("my", template)
+--    local myInstance = _.create_instance("my", template)
 --    myInstance.member = "value"
 --
 --    -- NOTE: Assignment not yet supported for sequences:
@@ -332,7 +330,7 @@ end
 --       memberSeq(i) = "element_i"
 --    end  
 --
-function _.instance(name, template) 
+function _.create_instance(name, template) 
   -- print('DEBUG xtypes.instance 1: ', name, template[MODEL][_.NAME])
 
   _.assert_role(name)
@@ -370,9 +368,9 @@ function _.instance(name, template)
   if alias_collection then
     local iterator = template
     for i = 1, #alias_collection - 1  do -- create iterator for inner dimensions
-      iterator = _.collection('', iterator) -- unnamed iterator
+      iterator = _.create_collection('', iterator) -- unnamed iterator
     end
-    instance = _.collection(name, iterator)
+    instance = _.create_collection(name, iterator)
     return instance
   end
   
@@ -381,7 +379,7 @@ function _.instance(name, template)
   ---------------------------------------------------------------------------
 
   if is_alias and _.is_alias(alias) then
-    instance = _.instance(name, template) -- recursive
+    instance = _.create_instance(name, template) -- recursive
     return instance
   end
 
@@ -421,7 +419,7 @@ function _.instance(name, template)
 end
 
 -- Name: 
---    _.collection() - creates a sequence, of elements specified by the template
+--    _.create_collection() - creates a sequence, of elements specified by the template
 -- Purpose:
 --    Define a sequence iterator (closure) for indexing
 -- Parameters:
@@ -432,11 +430,11 @@ end
 --    <<returns>> the newly created closure for indexing a sequence of 
 --          of template elements
 -- Usage:
---    local mySeq = _.collection("my", template)
+--    local mySeq = _.create_collection("my", template)
 --    for i = 1, sample[mySeq()] do -- length of the sequence
 --       local element_i = sample[mySeq(i)] -- access the i-th element
 --    end    
-function _.collection(name, template) 
+function _.create_collection(name, template) 
   -- print('DEBUG xtypes.seq', name, template)
 
   -- pre-condition: ensure valid template
@@ -462,7 +460,7 @@ function _.collection(name, template)
     return i -- index 
          and (('table' == type_template) -- composite
             and 
-              _.instance(string.format('%s%s[%d]', prefix_i, name, i), 
+              _.create_instance(string.format('%s%s[%d]', prefix_i, name, i), 
                       template)
             or (('function' == type_template -- collection
                  and 
@@ -497,7 +495,7 @@ function _.prefix(name, v)
         end
 
     elseif 'table' == type_v then -- struct or union
-      result = _.instance(name, v) -- use member as template
+      result = _.create_instance(name, v) -- use member as template
 
     elseif 'string' == type_v then -- atom/leaf
 
@@ -658,6 +656,10 @@ local xtypes = {
   MODULE     = function() return 'module' end,
   TYPEDEF    = function() return 'typedef' end,
   
+  -- x-types attributes
+  BASE       = function() return ' : ' end,    -- inheritance, e.g. struct base
+  SWITCH     = function() return 'switch' end, -- choice: e.g.: union switch
+  
   -- Meta-tables that define/control the Public API 
   API = {},
 }
@@ -677,7 +679,7 @@ end
 -- @param value [in] the model element to check
 -- @return the value (collection), or nil if it is not a collection
 function _.is_collection(value)
-  kind = value and value[MODEL]
+  local kind = value and value[MODEL]
   return (xtypes.ARRAY == kind or
           xtypes.SEQUENCE == kind) 
          and value
@@ -1329,8 +1331,8 @@ xtypes.API[xtypes.ENUM] = {
 --   MyStruct[i] = { role = { type, multiplicity?, annotation? } },
 --   
 --  -- Get | Set base class:
---   print(MyStruct[_.BASE])
---   MyStruct[_.BASE] = BaseStruct, -- optional
+--   print(MyStruct[xtypes.BASE])
+--   MyStruct[xtypes.BASE] = BaseStruct, -- optional
 -- 
 -- 
 --  -- After either of the above definition, the following post-condition holds:
@@ -1357,7 +1359,7 @@ function xtypes.struct(decl)
     base = defn[1]   table.remove(defn, 1)
 
     -- insert the base class:
-    template[_.BASE] = base -- invokes the meta-table __newindex()
+    template[xtypes.BASE] = base -- invokes the meta-table __newindex()
   end
 
   -- populate the template
@@ -1445,10 +1447,10 @@ xtypes.API[xtypes.STRUCT] = {
       }
     end
 
-    elseif _.BASE == key then -- inherits from 'base' struct
+    elseif xtypes.BASE == key then -- inherits from 'base' struct
 
       -- clear the instance fields from the old base struct (if any)
-      local old_base = model_defn[_.BASE]
+      local old_base = model_defn[xtypes.BASE]
       while old_base do
         for k, v in pairs(old_base) do
           if 'string' == type(k) then -- copy only the base instance fields
@@ -1461,7 +1463,7 @@ xtypes.API[xtypes.STRUCT] = {
         old_base[MODEL][_.INSTANCES][template] = nil
 
         -- visit up the base model inheritance hierarchy
-        old_base = old_base[_.BASE] -- parent base
+        old_base = old_base[xtypes.BASE] -- parent base
       end
 
       -- get the base model, if any:
@@ -1490,11 +1492,11 @@ xtypes.API[xtypes.STRUCT] = {
         end
 
         -- visit up the base model inheritance hierarchy
-        base = base[MODEL][_.DEFN][_.BASE] -- parent base
+        base = base[MODEL][_.DEFN][xtypes.BASE] -- parent base
       end
 
       -- set the new base in the model definition (may be nil)
-      model_defn[_.BASE] = new_base
+      model_defn[xtypes.BASE] = new_base
 
       -- template is an instance of the base structs (inheritance hierarchy)
       base = new_base
@@ -1503,7 +1505,7 @@ xtypes.API[xtypes.STRUCT] = {
         base[MODEL][_.INSTANCES][template] = '' -- empty instance name
 
         -- visit up the base model inheritance hierarchy
-        base = base[MODEL][_.DEFN][_.BASE] -- parent base
+        base = base[MODEL][_.DEFN][xtypes.BASE] -- parent base
       end
     end
   end
@@ -1548,8 +1550,8 @@ xtypes.API[xtypes.STRUCT] = {
 --   MyUnion[i] = { case, [ { role = { type, multiplicity?, annotation? } } ] },
 --   
 --  -- Get | Set discriminator:
---   print(MyUnion[_.SWITCH])
---   MyUnion[_.SWITCH] = discriminator
+--   print(MyUnion[xtypes.SWITCH])
+--   MyUnion[xtypes.SWITCH] = discriminator
 -- 
 -- 
 --  -- After either of the above definition, the following post-condition holds:
@@ -1572,7 +1574,7 @@ function xtypes.union(decl)
   template[MODEL][_.INSTANCES] = {}
  
  	-- pop the discriminator
-	template[_.SWITCH] = defn[1] -- invokes meta-table __newindex()
+	template[xtypes.SWITCH] = defn[1] -- invokes meta-table __newindex()
   table.remove(defn, 1)
 
   -- populate the template
@@ -1619,7 +1621,7 @@ xtypes.API[xtypes.UNION] = {
       -- set the new qualifiers in the model definition (may be nil)
       model_defn[_.QUALIFIERS] = _.assert_qualifier_array(value)
 
-    elseif _.SWITCH == key then -- switch definition
+    elseif xtypes.SWITCH == key then -- switch definition
 
       local discriminator, discriminator_type = value, _.model_kind(value)
       
@@ -1634,7 +1636,7 @@ xtypes.API[xtypes.UNION] = {
       end
      
       -- update the discriminator
-      model[_.DEFN][_.SWITCH] = discriminator
+      model[_.DEFN][xtypes.SWITCH] = discriminator
       rawset(template, '_d', '#')
            
     elseif 'number' == type(key) then -- member definition
@@ -1658,7 +1660,7 @@ xtypes.API[xtypes.UNION] = {
         table.remove(model_defn, key) -- do not want holes in array
       else
         -- set the new role_defn
-        local case = xtypes.assert_case(model_defn[_.SWITCH], value[1])
+        local case = xtypes.assert_case(model_defn[xtypes.SWITCH], value[1])
 
         -- is the case already defined?
         for i, defn_i in ipairs(model_defn) do
@@ -2051,11 +2053,11 @@ function xutils.print_idl(instance, indent_string)
 		
 		if xtypes.UNION == mytype then
 			print(string.format('%s%s %s switch (%s) {', indent_string, 
-						mytype(), myname, model[_.DEFN][_.SWITCH][MODEL][_.NAME]))
+						mytype(), myname, model[_.DEFN][xtypes.SWITCH][MODEL][_.NAME]))
 						
-		elseif xtypes.STRUCT == mytype and model[_.DEFN][_.BASE] then -- base struct
+		elseif xtypes.STRUCT == mytype and model[_.DEFN][xtypes.BASE] then -- base struct
 			print(string.format('%s%s %s : %s {', indent_string, mytype(), 
-					myname, model[_.DEFN][_.BASE][MODEL][_.NAME]))
+					myname, model[_.DEFN][xtypes.BASE][MODEL][_.NAME]))
 		
 		else
 			print(string.format('%s%s %s {', indent_string, mytype(), myname))
@@ -2086,7 +2088,7 @@ function xutils.print_idl(instance, indent_string)
 				-- case
 				if (nil == case) then
 				  print(string.format("%sdefault :", content_indent_string))
-				elseif (xtypes.builtin.char == model[_.DEFN][_.SWITCH] and nil ~= case) then
+				elseif (xtypes.builtin.char == model[_.DEFN][xtypes.SWITCH] and nil ~= case) then
 					print(string.format("%scase '%s' :", 
 						content_indent_string, tostring(case)))
 				else
@@ -2170,7 +2172,7 @@ function xutils.index(instance, result, model)
 	end
 		
 	-- struct base type, if any
-	local base = model[_.DEFN][_.BASE]
+	local base = model[_.DEFN][xtypes.BASE]
 	if nil ~= base then
 		result = xutils.index(instance, result, base[MODEL])	
 	end
@@ -2227,8 +2229,8 @@ local interface = {
   NAME               = _.NAME,
   KIND               = _.KIND,
   QUALIFIERS         = _.QUALIFIERS,
-  BASE               = _.BASE,
-  SWITCH             = _.SWITCH,
+  BASE               = xtypes.BASE,
+  SWITCH             = xtypes.SWITCH,
   
     
   -- qualifiers
