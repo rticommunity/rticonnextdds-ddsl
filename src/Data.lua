@@ -299,9 +299,7 @@ function _.update_instances(model, role, role_template)
    -- update the remaining member instances:
    for instance, name in pairs(model[_.INSTANCES]) do
       if instance == template then -- template
-          -- do nothing (already updated the template)
-      elseif instance == name then -- child struct (model is a base struct)
-          rawset(instance, role, role_template) -- no prefix -- TODO: make copy?   
+          -- do nothing (already updated the template) 
       else -- instance: may be user defined or occurring in another type model
           -- prefix the 'name' to the role_template
           rawset(instance, role, _.prefix(name, role_template))
@@ -480,7 +478,7 @@ function _.collection(name, template)
 end
 
 --- Prefix an index value with the given name
--- @param name name to prefix with
+-- @param name name to prefix with (may be an empty string '')
 -- @param v index value
 -- @return index value with the 'name' prefix
 function _.prefix(name, v)
@@ -488,11 +486,14 @@ function _.prefix(name, v)
     local type_v = type(v)
     local result 
     
+    --  the separator to use (empty, if name is an empty string)
+    local sep = ('' == name) and '' or '.'
+    
     -- prefix the member names
     if 'function' == type_v then -- seq
       result = -- use member as a closure template
         function(j, prefix_j) -- allow further prefixing
-          return v(j, table.concat{prefix_j or '', name, '.'}) 
+          return v(j, table.concat{prefix_j or '', name, sep}) 
         end
 
     elseif 'table' == type_v then -- struct or union
@@ -501,9 +502,9 @@ function _.prefix(name, v)
     elseif 'string' == type_v then -- atom/leaf
 
       if '#' == v then -- _d: leaf level union discriminator
-        result = table.concat{name, '', v} -- no dot separator
+        result = table.concat{name, v} -- no separator
       else
-        result = table.concat{name, '.', v}
+        result = table.concat{name, sep, v}
       end
 
     end
@@ -1498,11 +1499,8 @@ xtypes.API[xtypes.STRUCT] = {
       -- template is an instance of the base structs (inheritance hierarchy)
       base = new_base
       while base do
-        -- NOTE: Since we don't have a well-defined "name", we make an
-        -- exception, and use the template (instance) itself as
-        -- the "name" in the INSTANCES table. This is utilized by the
-        -- ._update_instances() to correctly update the template
-        base[MODEL][_.INSTANCES][template] = template
+        -- NOTE: Use empty string as the 'instance' name of the base struct
+        base[MODEL][_.INSTANCES][template] = '' -- empty instance name
 
         -- visit up the base model inheritance hierarchy
         base = base[MODEL][_.DEFN][_.BASE] -- parent base
