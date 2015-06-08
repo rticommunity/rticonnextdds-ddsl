@@ -565,6 +565,15 @@ function _.assert_role(role)
   return role
 end
 
+--- Ensure that value is a qualifier
+-- @param qualifier [in] the potential qualifier to check
+-- @return the qualifier or nil
+function _.assert_qualifier(qualifier)
+    assert(_.is_qualifier(qualifier), 
+           table.concat{'expected qualifier \"', tostring(qualifier), '"'})
+    return qualifier
+end
+
 --------------------------------------------------------------------------------
 --- X-Types model defined using the DDSL ---
 --------------------------------------------------------------------------------
@@ -647,13 +656,6 @@ function _.assert_template(template)
        table.concat{'expected an atom|enum|struct|union|typedef'})
                              
   return template
-end
-
---- Ensure that value is a qualifier
--- @return the qualifier or nil
-function _.assert_qualifier(value)
-    -- ensure a valid qualifier
-    return _.assert_model(xtypes.ANNOTATION, value)
 end
 
 --- Ensure that value is a collection
