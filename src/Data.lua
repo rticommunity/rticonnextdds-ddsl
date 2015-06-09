@@ -283,10 +283,10 @@ function _.create_role_instance(role, role_defn)
   if role then -- skip member instance if role is not specified 
     if collection then
       local iterator = template
-      for i = 1, #collection - 1  do -- create iterator for inner dimensions
-        iterator = _.new_collection('', iterator) -- unnamed iterator
+      for i = #collection, 2, -1  do -- create iterator for inner dimensions
+        iterator = _.new_collection('', iterator, collection[i]) -- unnamed iterator
       end
-      role_instance = _.new_collection(role, iterator)
+      role_instance = _.new_collection(role, iterator, collection[1])
     else
       role_instance = _.new_instance(role, template)
     end
@@ -384,10 +384,10 @@ function _.new_instance(name, template)
   -- collection of underlying types (which is not an alias)
   if alias_collection then
     local iterator = template
-    for i = 1, #alias_collection - 1  do -- create iterator for inner dimensions
-      iterator = _.new_collection('', iterator) -- unnamed iterator
+    for i = #alias_collection, 2, - 1  do -- create for inner dimensions
+      iterator = _.new_collection('', iterator, alias_collection[i]) -- unnamed
     end
-    instance = _.new_collection(name, iterator)
+    instance = _.new_collection(name, iterator, alias_collection[1])
     return instance
   end
   
@@ -437,21 +437,23 @@ end
 
 -- Name: 
 --    _.new_collection() - creates a collection of instances specified by 
---                            the template
+--                         the template or collection of instances
 -- Purpose:
---    Define a collection iterator for indexing the instance
+--    Define new named collection of instances
 -- Parameters:
---    <<in>> name  - the role or instance name
+--    <<in>> name  - the collection instance name
 --    <<in>> template_or_collection - the template or collection to use
 --               may be an instance table when it is an non-collection type OR
 --               may be a collection table for a collection of collection
---    <<returns>> the newly created collection of elements
+--    <<in>> capacity - the capacity, ie the maximum number of instances
+--                      maybe nil (=> unbounded)
+--    <<returns>> the newly created collection of instances
 -- Usage:
 --    local mySeq = _.new_collection("my", template)
 --    for i = 1, sample[#mySeq] do -- length of the sequence
 --       local element_i = sample[mySeq[i]] -- access the i-th element
 --    end    
-function _.new_collection(name, template_or_collection) 
+function _.new_collection(name, template_or_collection, capacity) 
   -- print('DEBUG create_collection', name, template_or_collection)
 
   _.assert_role(name)
@@ -459,8 +461,17 @@ function _.new_collection(name, template_or_collection)
          _.info.is_template_kind(template_or_collection),
          table.concat{'create_collection(): needs a template or collection'})
   
+  -- convert capacity model element into its value
+  if _.model_kind(capacity) then capacity = capacity() end
+  assert(nil == capacity or 'number' == type(capacity),
+         table.concat{'create_collection(): invalid capacity'})
+    
   -- create collection instance
-  local collection = { [_.NAME] = name, [_.TEMPLATE] = template_or_collection }
+  local collection = { 
+     [_.NAME]      = name, 
+     [_.TEMPLATE]  = template_or_collection,
+     [_.INSTANCES] = capacity,
+   }
   
   -- set the template meta-table:
   setmetatable(collection, _.collection_metatable)
@@ -484,7 +495,12 @@ _.collection_metatable = {
         return nil 
       end 
 
-      -- TODO: enforce capacity?
+      -- enforce capacity
+      if collection[_.INSTANCES] and i > collection[_.INSTANCES] then
+        error(string.format('#%s: index %d exceeds collection capacity', 
+                              collection, i),
+              2)
+      end
           
       -- NOTE: we got called because collection[i] does not exist
       local name_i = string.format('%s[%d]', collection[_.NAME], i)
@@ -495,13 +511,14 @@ _.collection_metatable = {
   end,
   
   __newindex = function (collection, i, v)
-      assert("Not Implemented!")
+      assert("Not Implemented!") -- TODO
       -- collection[i] = v
   end,
 
   __tostring = function (collection)
-      return string.format('%s{%s}', 
-                           collection[_.NAME], collection[_.TEMPLATE])
+      return string.format('%s{%s}<%d', 
+                           collection[_.NAME], collection[_.TEMPLATE], 
+                           collection[_.INSTANCES])
   end,
 }
 
@@ -532,7 +549,7 @@ function _.clone(prefix, v)
             
             -- create collection instance for 'prefix'
             result = _.new_collection(table.concat{prefix, sep, v[_.NAME]}, 
-                                         v[_.TEMPLATE])  
+                                      v[_.TEMPLATE], v[_.INSTANCES])  
         else -- not collection: struct or union
             -- create instance for 'prefix'
             result = _.new_instance(prefix, v) -- use member as template   

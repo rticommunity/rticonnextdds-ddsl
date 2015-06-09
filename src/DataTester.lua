@@ -1482,6 +1482,53 @@ function Tester:test_const_bounds()
     assert(Test.MyCapacityStruct.myStr == 'myStr')
 end
 
+Tester[#Tester+1] = 'test_collection_bounds'
+function Tester:test_collection_bounds()
+
+  local CAPACITY = xtypes.const{
+    CAPACITY = { xtypes.short, 5 } 
+  }
+  local BoundsTest = xtypes.struct{
+    BoundsTest = {
+        { long1SeqX  = { xtypes.long, xtypes.sequence(3) } },
+        { long2SeqX  = { xtypes.long, xtypes.sequence(CAPACITY) } },
+        { long1ArrX  = { xtypes.long, xtypes.array(CAPACITY) } },
+        { long2ArrXX = { xtypes.long, xtypes.array(3, CAPACITY) } },
+    }
+  }
+  
+  self:print(BoundsTest)  
+  
+  -- 1D Seq
+  assert(#BoundsTest.long1SeqX == 'long1SeqX#')
+  assert(BoundsTest.long1SeqX[1] == 'long1SeqX[1]')
+  assert(BoundsTest.long1SeqX[3] == 'long1SeqX[3]')
+  assert(not print(pcall(function() return BoundsTest.long1SeqX[4] end)))
+  
+ -- 1D Seq with X-Types defined constant
+  assert(#BoundsTest.long2SeqX == 'long2SeqX#')
+  assert(BoundsTest.long2SeqX[1] == 'long2SeqX[1]')
+  assert(BoundsTest.long2SeqX[5] == 'long2SeqX[5]')
+  assert(not print(pcall(function() return BoundsTest.long2SeqX[6] end)))
+
+ -- 1D Array with X-Types defined constant
+  assert(#BoundsTest.long1ArrX == 'long1ArrX#')
+  assert(BoundsTest.long1ArrX[1] == 'long1ArrX[1]')
+  assert(BoundsTest.long1ArrX[5] == 'long1ArrX[5]')
+  assert(not print(pcall(function() return BoundsTest.long1ArrX[6] end)))
+  
+ -- 2D Array with X-Types defined constant for one bound
+  assert(#BoundsTest.long2ArrXX == 'long2ArrXX#')
+  assert(#BoundsTest.long2ArrXX[1] == 'long2ArrXX[1]#')
+  assert(#BoundsTest.long2ArrXX[3] == 'long2ArrXX[3]#')
+  assert(not print(pcall(function() return #BoundsTest.long2ArrXX[4] end)))
+  
+  assert(BoundsTest.long2ArrXX[3][5] == 'long2ArrXX[3][5]')
+  assert(not print(pcall(function() return BoundsTest.long2ArrXX[1][6] end)))
+  assert(not print(pcall(function() return BoundsTest.long2ArrXX[4][1] end)))
+  assert(not print(pcall(function() return BoundsTest.long2ArrXX[4][6] end)))
+end
+
 Tester[#Tester+1] = 'test_module_manipulation'
 function Tester:test_module_manipulation()
 
