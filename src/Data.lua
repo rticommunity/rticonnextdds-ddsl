@@ -344,7 +344,7 @@ end
 --    end  
 --
 function _.create_instance(name, template) 
-  -- print('DEBUG xtypes.instance 1: ', name, template[MODEL][_.NAME])
+  -- print('DEBUG xtypes.create_instance 1: ', name, template[MODEL][_.NAME])
 
   _.assert_role(name)
   _.assert_template(template)
@@ -449,7 +449,7 @@ end
 --       local element_i = sample[mySeq(i)] -- access the i-th element
 --    end    
 function _.create_collection(name, template) 
-  -- print('DEBUG xtypes.seq', name, template)
+  -- print('DEBUG xtypes.create_collection', name, template)
 
   -- pre-condition: ensure valid template
   local type_template = type(template)
@@ -500,6 +500,9 @@ function _.prefix(name, v)
     
     --  the separator to use (empty, if name is an empty string)
     local sep = ('' == name) and '' or '.'
+    if '#' == v then -- _d: leaf level union discriminator
+      sep = ''      
+    end
     
     -- prefix the member names
     if 'function' == type_v then -- seq
@@ -512,13 +515,7 @@ function _.prefix(name, v)
       result = _.create_instance(name, v) -- use member as template
 
     elseif 'string' == type_v then -- atom/leaf
-
-      if '#' == v then -- _d: leaf level union discriminator
-        result = table.concat{name, v} -- no separator
-      else
         result = table.concat{name, sep, v}
-      end
-
     end
     
     return result
