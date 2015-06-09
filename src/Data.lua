@@ -503,19 +503,6 @@ _.collection_metatable = {
       return string.format('%s{%s}', 
                            collection[_.NAME], collection[_.TEMPLATE])
   end,
-    
-  __call = function(collection, ...) -- TODO: remove this function
-    local i = ...
-    
-    -- support () to retrieve length
-    if not i then 
-        return #collection
-        
-    -- support to retreive the i-th element
-    else
-        return collection[i] 
-    end   
-  end
 }
 
 --- Clone a new instance from another instance using the given 'name' prefix
