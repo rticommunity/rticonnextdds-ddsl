@@ -181,6 +181,16 @@ local _ = {
 
   -- model definition attributes
   QUALIFIERS = function() return '' end,        -- table key for qualifiers
+  
+  -- model info interface
+  -- abstract interface that define the categories of model interface
+  info = {
+    is_qualifier = function (v) end,
+    is_collection = function (v) end,
+    is_alias = function (v) end,
+    is_leaf = function (v) end,
+    is_template = function (v) end,
+  }
 }
 
 --- Create a new 'empty' template
@@ -217,7 +227,7 @@ function _.populate_template(template, defn)
   for i, defn_i in ipairs(defn) do 
 
     -- build the model level annotation list
-    if _.is_qualifier(defn_i) then        
+    if _.info.is_qualifier(defn_i) then        
       qualifiers = qualifiers or {}
       table.insert(qualifiers, defn_i)  
 
@@ -263,7 +273,7 @@ function _.create_role_instance(role, role_defn)
 
     -- is this a collection?
     if not collection then  -- the 1st 'collection' definition is used
-      collection = _.is_collection(role_defn[j])
+      collection = _.info.is_collection(role_defn[j])
     end
   end
 
@@ -344,7 +354,7 @@ function _.create_instance(name, template)
   ---------------------------------------------------------------------------
   -- alias? switch the template to the underlying alias
   ---------------------------------------------------------------------------
-  local is_alias = _.is_alias(template)
+  local is_alias = _.info.is_alias(template)
   local alias, alias_collection
   
   if is_alias then
@@ -352,7 +362,7 @@ function _.create_instance(name, template)
     alias = defn[1]
     
     for j = 2, #defn do
-      alias_collection = _.is_collection(defn[j])
+      alias_collection = _.info.is_collection(defn[j])
       if alias_collection then
         -- print('DEBUG xtypes.instance 2: ', name, alias_collection)
         break -- 1st 'collection' is used
@@ -381,7 +391,7 @@ function _.create_instance(name, template)
   -- alias is recursive:
   ---------------------------------------------------------------------------
 
-  if is_alias and _.is_alias(alias) then
+  if is_alias and _.info.is_alias(alias) then
     instance = _.create_instance(name, template) -- recursive
     return instance
   end
@@ -390,7 +400,7 @@ function _.create_instance(name, template)
   -- leaf instances
   ---------------------------------------------------------------------------
  
-  if _.is_leaf(template) then
+  if _.info.is_leaf(template) then
     instance = name 
     return instance
   end
@@ -565,7 +575,7 @@ end
 -- @param collection [in] the potential collection to check
 -- @return the collection or nil
 function _.assert_collection(collection)
-    assert(_.is_collection(collection), 
+    assert(_.info.is_collection(collection), 
            table.concat{'expected collection \"', tostring(collection), '"'})
     return collection
 end
@@ -574,7 +584,7 @@ end
 -- @param qualifier [in] the potential qualifier to check
 -- @return the qualifier or nil
 function _.assert_qualifier(qualifier)
-    assert(_.is_qualifier(qualifier), 
+    assert(_.info.is_qualifier(qualifier), 
            table.concat{'expected qualifier \"', tostring(qualifier), '"'})
     return qualifier
 end
@@ -618,7 +628,7 @@ end
 -- @param templat [in] the potential template to check
 -- @return the qualifier or nil
 function _.assert_template(template)
-    assert(_.is_template(template), 
+    assert(_.info.is_template(template), 
            table.concat{'expected template \"', tostring(template), '"'})
     return template
 end
@@ -664,15 +674,20 @@ local xtypes = {
   BASE       = function() return ' : ' end,    -- inheritance, e.g. struct base
   SWITCH     = function() return 'switch' end, -- choice: e.g.: union switch
   
+  -- concrete model info interface
+  info = {},
+  
   -- Meta-tables that define/control the Public API 
   API = {},
 }
+
+_.info = xtypes.info
 
 --- Is the given model element a qualifier?
 -- NOTE: collections are qualifiers
 -- @param value [in] the model element to check
 -- @return the value (qualifier), or nil if it is not a qualifier 
-function _.is_qualifier(value)
+function xtypes.info.is_qualifier(value)
   local kind = _.model_kind(value)
   return (xtypes.ANNOTATION == kind) 
          and value
@@ -682,7 +697,7 @@ end
 --- Is the given model element a collection?
 -- @param value [in] the model element to check
 -- @return the value (collection), or nil if it is not a collection
-function _.is_collection(value)
+function xtypes.info.is_collection(value)
   local kind = value and value[MODEL]
   return (xtypes.ARRAY == kind or
           xtypes.SEQUENCE == kind) 
@@ -693,7 +708,7 @@ end
 --- Is the given model element an alias (for another type)?
 -- @param value [in] the model element to check
 -- @return the value (alias), or nil if it is not an alias
-function _.is_alias(value)
+function xtypes.info.is_alias(value)
   local kind = _.model_kind(value)
   return (xtypes.TYPEDEF == kind) 
          and value 
@@ -703,7 +718,7 @@ end
 --- Is the given model element a leaf (ie primitive) type?
 -- @param value [in] the model element to check
 -- @return the value (leaf), or nil if it is not a leaf type
-function _.is_leaf(value)
+function xtypes.info.is_leaf(value)
   local kind = _.model_kind(value)
   return (xtypes.ATOM == kind or 
           xtypes.ENUM == kind)
@@ -714,7 +729,7 @@ end
 --- --- Is the given model element a template type?
 -- @param value [in] the model element to check
 -- @return the value (template), or nil if it is not a template type
-function _.is_template(value)
+function xtypes.info.is_template(value)
   local kind = _.model_kind(value)
   return (xtypes.ATOM == kind or
           xtypes.ENUM == kind or
