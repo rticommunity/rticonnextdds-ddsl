@@ -85,9 +85,9 @@
 --                 
 --          -- instance fields --
 --          user_role1 = 'user_role1'  -- name used to index this 'leaf' field
---          user_role2 = _.create_instance('user_role2', UserModule.UserType2)
---          user_role3 = _.create_instance('user_role3', UserModule.UserType3)
---          user_role_seq = _.create_collection('user_role_seq', 
+--          user_role2 = _.new_instance('user_role2', UserModule.UserType2)
+--          user_role3 = _.new_instance('user_role3', UserModule.UserType3)
+--          user_role_seq = _.new_collection('user_role_seq', 
 --                                              UserModule.UserTypeSeq)
 --          :
 --       }
@@ -102,7 +102,7 @@
 --    Note that if a definition already exists, it is cleared and re-defined.
 --
 --    To create an instance named 'i1' from a structure named 'Model'
---          i1 = _.create_instance('i1', Model)
+--          i1 = _.new_instance('i1', Model)
 --    Now, one can instance all the fields of the resulting table
 --          i1.role1 = 'i1.role1'
 --    or 
@@ -147,9 +147,9 @@
 --          Either a primitive field
 --              model.role = 'role'
 --          Or a composite field 
---              model.role = _.create_instance('role', RoleModel)
+--              model.role = _.new_instance('role', RoleModel)
 --          or a sequence
---              model.role = _.create_collection('role', RoleModel)
+--              model.role = _.new_collection('role', RoleModel)
 --
 --    Note that all the meta-data attributes are functions, so it is 
 --    straightforward to skip them, when traversing a model table.
@@ -185,11 +185,11 @@ local _ = {
   -- model info interface
   -- abstract interface that define the categories of model interface
   info = {
-    is_qualifier = function (v) end,
-    is_collection = function (v) end,
-    is_alias = function (v) end,
-    is_leaf = function (v) end,
-    is_template = function (v) end,
+    is_qualifier_kind = function (v) end,
+    is_collection_kind = function (v) end,
+    is_alias_kind = function (v) end,
+    is_leaf_kind = function (v) end,
+    is_template_kind = function (v) end,
   }
 }
 
@@ -217,6 +217,10 @@ function _.new_template(name, kind, api)
   return template
 end
 
+--------------------------------------------------------------------------------
+-- Models  ---
+--------------------------------------------------------------------------------
+  
 --- Populate a template
 -- @param template  <<in>> a template, generally empty
 -- @param defn      <<in>> template model definition
@@ -227,7 +231,7 @@ function _.populate_template(template, defn)
   for i, defn_i in ipairs(defn) do 
 
     -- build the model level annotation list
-    if _.info.is_qualifier(defn_i) then        
+    if _.info.is_qualifier_kind(defn_i) then        
       qualifiers = qualifiers or {}
       table.insert(qualifiers, defn_i)  
 
@@ -244,10 +248,6 @@ function _.populate_template(template, defn)
 
   return template
 end
-
---------------------------------------------------------------------------------
--- Model Instances  ---
---------------------------------------------------------------------------------
 
 --- Define a role (member) instance
 -- @param #string role - the member name to instantiate (may be 'nil')
@@ -273,7 +273,7 @@ function _.create_role_instance(role, role_defn)
 
     -- is this a collection?
     if not collection then  -- the 1st 'collection' definition is used
-      collection = _.info.is_collection(role_defn[j])
+      collection = _.info.is_collection_kind(role_defn[j])
     end
   end
 
@@ -284,11 +284,11 @@ function _.create_role_instance(role, role_defn)
     if collection then
       local iterator = template
       for i = 1, #collection - 1  do -- create iterator for inner dimensions
-        iterator = _.create_collection('', iterator) -- unnamed iterator
+        iterator = _.new_collection('', iterator) -- unnamed iterator
       end
-      role_instance = _.create_collection(role, iterator)
+      role_instance = _.new_collection(role, iterator)
     else
-      role_instance = _.create_instance(role, template)
+      role_instance = _.new_instance(role, template)
     end
   end
   
@@ -313,10 +313,14 @@ function _.update_instances(model, role, role_template)
           -- do nothing (already updated the template) 
       else -- instance: may be user defined or occurring in another type model
           -- prefix the 'name' to the role_template
-          rawset(instance, role, _.prefix(name, role_template))
+          rawset(instance, role, _.clone(name, role_template))
       end
    end
 end
+
+--------------------------------------------------------------------------------
+-- Model Instances  ---
+--------------------------------------------------------------------------------
        
 --- Create an instance, using another instance as a template
 --  Defines a table that can be used to index into an instance of a model
@@ -327,14 +331,14 @@ end
 -- @return the newly created instance (seq) that supports indexing by 'name'
 -- @usage
 --    -- As an index into sample[]
---    local myInstance = _.create_instance("my", template)
+--    local myInstance = _.new_instance("my", template)
 --    local member = sample[myInstance.member] 
 --    for i = 1, sample[myInstance.memberSeq()] do -- length of the sequence
 --       local element_i = sample[memberSeq(i)] -- access the i-th element
 --    end  
 --
 --    -- As a sample itself
---    local myInstance = _.create_instance("my", template)
+--    local myInstance = _.new_instance("my", template)
 --    myInstance.member = "value"
 --
 --    -- NOTE: Assignment not yet supported for sequences:
@@ -343,7 +347,7 @@ end
 --       memberSeq(i) = "element_i"
 --    end  
 --
-function _.create_instance(name, template) 
+function _.new_instance(name, template) 
   -- print('DEBUG xtypes.create_instance 1: ', name, template[MODEL][_.NAME])
 
   _.assert_role(name)
@@ -354,15 +358,15 @@ function _.create_instance(name, template)
   ---------------------------------------------------------------------------
   -- alias? switch the template to the underlying alias
   ---------------------------------------------------------------------------
-  local is_alias = _.info.is_alias(template)
+  local is_alias_kind = _.info.is_alias_kind(template)
   local alias, alias_collection
   
-  if is_alias then
+  if is_alias_kind then
     local defn = template[MODEL][_.DEFN]
     alias = defn[1]
     
     for j = 2, #defn do
-      alias_collection = _.info.is_collection(defn[j])
+      alias_collection = _.info.is_collection_kind(defn[j])
       if alias_collection then
         -- print('DEBUG xtypes.instance 2: ', name, alias_collection)
         break -- 1st 'collection' is used
@@ -381,9 +385,9 @@ function _.create_instance(name, template)
   if alias_collection then
     local iterator = template
     for i = 1, #alias_collection - 1  do -- create iterator for inner dimensions
-      iterator = _.create_collection('', iterator) -- unnamed iterator
+      iterator = _.new_collection('', iterator) -- unnamed iterator
     end
-    instance = _.create_collection(name, iterator)
+    instance = _.new_collection(name, iterator)
     return instance
   end
   
@@ -391,8 +395,8 @@ function _.create_instance(name, template)
   -- alias is recursive:
   ---------------------------------------------------------------------------
 
-  if is_alias and _.info.is_alias(alias) then
-    instance = _.create_instance(name, template) -- recursive
+  if is_alias_kind and _.info.is_alias_kind(alias) then
+    instance = _.new_instance(name, template) -- recursive
     return instance
   end
 
@@ -400,7 +404,7 @@ function _.create_instance(name, template)
   -- leaf instances
   ---------------------------------------------------------------------------
  
-  if _.info.is_leaf(template) then
+  if _.info.is_leaf_kind(template) then
     instance = name 
     return instance
   end
@@ -421,7 +425,7 @@ function _.create_instance(name, template)
   for k, v in pairs(template) do
     -- skip meta-data attributes
     if 'string' == type(k) then
-      instance[k] = _.prefix(name, v)
+      instance[k] = _.clone(name, v)
     end
   end
 
@@ -432,90 +436,124 @@ function _.create_instance(name, template)
 end
 
 -- Name: 
---    _.create_collection() - creates a sequence, of elements specified by 
---    the template
+--    _.new_collection() - creates a collection of instances specified by 
+--                            the template
 -- Purpose:
---    Define a sequence iterator (closure) for indexing
+--    Define a collection iterator for indexing the instance
 -- Parameters:
 --    <<in>> name  - the role or instance name
---    <<in>> template - the template to use for creating an instance
---                          may be a table when it is an non-collection type OR
---                          may be a closure for collections (sequences/arrays)
---    <<returns>> the newly created closure for indexing a sequence of 
---          of template elements
+--    <<in>> template_or_collection - the template or collection to use
+--               may be an instance table when it is an non-collection type OR
+--               may be a collection table for a collection of collection
+--    <<returns>> the newly created collection of elements
 -- Usage:
---    local mySeq = _.create_collection("my", template)
---    for i = 1, sample[mySeq()] do -- length of the sequence
---       local element_i = sample[mySeq(i)] -- access the i-th element
+--    local mySeq = _.new_collection("my", template)
+--    for i = 1, sample[#mySeq] do -- length of the sequence
+--       local element_i = sample[mySeq[i]] -- access the i-th element
 --    end    
-function _.create_collection(name, template) 
-  -- print('DEBUG xtypes.create_collection', name, template)
+function _.new_collection(name, template_or_collection) 
+  -- print('DEBUG create_collection', name, template_or_collection)
 
-  -- pre-condition: ensure valid template
-  local type_template = type(template)
-  assert('table' == type_template and template[MODEL] or 
-         'function' == type_template, -- collection iterator
-          table.concat{'sequence template ',
-                   'must be an instance table or function: "',
-                 tostring(name), '"'})
-  if 'table' == type_template then
-    _.assert_template(template)
-  end
-
-  ---------------------------------------------------------------------------
-  -- return a closure that will generate the correct index string for 'name'
-  ---------------------------------------------------------------------------
-  -- closure behavior:
-  --    if no argument is provided then generate the length operator string
-  --    else generate the element i access string
-  return function (i, prefix_i)
+  _.assert_role(name)
+  assert(_.is_collection_instance(template_or_collection) or
+         _.info.is_template_kind(template_or_collection),
+         table.concat{'create_collection(): needs a template or collection'})
   
-    local prefix_i = prefix_i or ''
-    return i -- index 
-         and (('table' == type_template) -- composite
-            and 
-              _.create_instance(string.format('%s%s[%d]', prefix_i, name, i), 
-                      template)
-            or (('function' == type_template -- collection
-                 and 
-                   function(j, prefix_j) -- allow further prefixing
-                   return template(j, 
-                           string.format('%s%s[%d]', prefix_i, name, i))
-                 end
-                 or -- primitive
-                     string.format('%s%s[%d]', prefix_i, name, i))))
-         -- length
-           or string.format('%s%s#', prefix_i, name)
-  end
+  -- create collection instance
+  local collection = { [_.NAME] = name, [_.TEMPLATE] = template_or_collection }
+  
+  -- set the template meta-table:
+  setmetatable(collection, _.collection_metatable)
+
+  return collection
 end
 
---- Prefix an index value with the given name
--- @param name name to prefix with (may be an empty string '')
--- @param v index value
--- @return index value with the 'name' prefix
-function _.prefix(name, v)
+-- Is the given value a collection of instances:
+function _.is_collection_instance(v) 
+  return getmetatable(v) == _.collection_metatable
+end
+
+_.collection_metatable = {    
+  __len = function (collection)
+      return string.format('%s#', collection[_.NAME])
+  end,
+  
+  __index = function (collection, i)
+      if 'number' ~= type(i) then
+        -- print('DEBUG collection __index 1', collection, i)
+        return nil 
+      end 
+
+      -- TODO: enforce capacity?
+          
+      -- NOTE: we got called because collection[i] does not exist
+      local name_i = string.format('%s[%d]', collection[_.NAME], i)
+      local element_i = _.clone(name_i, collection[_.TEMPLATE])
+      rawset(collection, i, element_i)
+      
+      return element_i
+  end,
+  
+  __newindex = function (collection, i, v)
+      assert("Not Implemented!")
+      -- collection[i] = v
+  end,
+
+  __tostring = function (collection)
+      return string.format('%s{%s}', 
+                           collection[_.NAME], collection[_.TEMPLATE])
+  end,
+    
+  __call = function(collection, ...) -- TODO: remove this function
+    local i = ...
+    
+    -- support () to retrieve length
+    if not i then 
+        return #collection
+        
+    -- support to retreive the i-th element
+    else
+        return collection[i] 
+    end   
+  end
+}
+
+--- Clone a new instance from another instance using the given 'name' prefix
+-- @param name [in] name (maybe empty, '') to prefix the instance fields with 
+-- @param v [in] an instance (maybe collection) with properly initialized fields  
+-- @return new instance with fields properly initialized for 'prefix'
+function _.clone(prefix, v) 
 
     local type_v = type(v)
     local result 
     
-    --  the separator to use (empty, if name is an empty string)
-    local sep = ('' == name) and '' or '.'
-    if '#' == v then -- _d: leaf level union discriminator
+    --  decide on the separator
+    local sep = '.' -- default separator
+    if 
+      '' == prefix or                          -- empty prefix (unnamed clone)
+      '#' == v                                 -- union discriminator: _d      
+    then
       sep = ''      
     end
     
-    -- prefix the member names
-    if 'function' == type_v then -- seq
-      result = -- use member as a closure template
-        function(j, prefix_j) -- allow further prefixing
-          return v(j, table.concat{prefix_j or '', name, sep}) 
+    -- clone the instance  
+    if 'table' == type_v then -- collection or struct or union
+
+        if _.is_collection_instance(v) then -- collection
+            -- multi-dimensional collection
+            if '' == v[_.NAME] then sep = '' end 
+            
+            -- create collection instance for 'prefix'
+            result = _.new_collection(table.concat{prefix, sep, v[_.NAME]}, 
+                                         v[_.TEMPLATE])  
+        else -- not collection: struct or union
+            -- create instance for 'prefix'
+            result = _.new_instance(prefix, v) -- use member as template   
         end
-
-    elseif 'table' == type_v then -- struct or union
-      result = _.create_instance(name, v) -- use member as template
-
-    elseif 'string' == type_v then -- atom/leaf
-        result = table.concat{name, sep, v}
+        
+    elseif 'string' == type_v then -- leaf
+        -- create instance for 'prefix'
+        result = table.concat{prefix, sep, v}
     end
     
     return result
@@ -572,7 +610,7 @@ end
 -- @param collection [in] the potential collection to check
 -- @return the collection or nil
 function _.assert_collection(collection)
-    assert(_.info.is_collection(collection), 
+    assert(_.info.is_collection_kind(collection), 
            table.concat{'expected collection \"', tostring(collection), '"'})
     return collection
 end
@@ -581,7 +619,7 @@ end
 -- @param qualifier [in] the potential qualifier to check
 -- @return the qualifier or nil
 function _.assert_qualifier(qualifier)
-    assert(_.info.is_qualifier(qualifier), 
+    assert(_.info.is_qualifier_kind(qualifier), 
            table.concat{'expected qualifier \"', tostring(qualifier), '"'})
     return qualifier
 end
@@ -625,7 +663,7 @@ end
 -- @param templat [in] the potential template to check
 -- @return the qualifier or nil
 function _.assert_template(template)
-    assert(_.info.is_template(template), 
+    assert(_.info.is_template_kind(template), 
            table.concat{'expected template \"', tostring(template), '"'})
     return template
 end
@@ -684,7 +722,7 @@ _.info = xtypes.info
 -- NOTE: collections are qualifiers
 -- @param value [in] the model element to check
 -- @return the value (qualifier), or nil if it is not a qualifier 
-function xtypes.info.is_qualifier(value)
+function xtypes.info.is_qualifier_kind(value)
   local kind = _.model_kind(value)
   return (xtypes.ANNOTATION == kind) 
          and value
@@ -694,7 +732,7 @@ end
 --- Is the given model element a collection?
 -- @param value [in] the model element to check
 -- @return the value (collection), or nil if it is not a collection
-function xtypes.info.is_collection(value)
+function xtypes.info.is_collection_kind(value)
   local kind = value and value[MODEL]
   return (xtypes.ARRAY == kind or
           xtypes.SEQUENCE == kind) 
@@ -705,7 +743,7 @@ end
 --- Is the given model element an alias (for another type)?
 -- @param value [in] the model element to check
 -- @return the value (alias), or nil if it is not an alias
-function xtypes.info.is_alias(value)
+function xtypes.info.is_alias_kind(value)
   local kind = _.model_kind(value)
   return (xtypes.TYPEDEF == kind) 
          and value 
@@ -715,7 +753,7 @@ end
 --- Is the given model element a leaf (ie primitive) type?
 -- @param value [in] the model element to check
 -- @return the value (leaf), or nil if it is not a leaf type
-function xtypes.info.is_leaf(value)
+function xtypes.info.is_leaf_kind(value)
   local kind = _.model_kind(value)
   return (xtypes.ATOM == kind or 
           xtypes.ENUM == kind)
@@ -726,7 +764,7 @@ end
 --- --- Is the given model element a template type?
 -- @param value [in] the model element to check
 -- @return the value (template), or nil if it is not a template type
-function xtypes.info.is_template(value)
+function xtypes.info.is_template_kind(value)
   local kind = _.model_kind(value)
   return (xtypes.ATOM == kind or
           xtypes.ENUM == kind or
@@ -2164,30 +2202,29 @@ end
 -- @result the cumulative index, that can be passed to another 
 --         call to this method
 function xutils.index(instance, result, model) 
-	-- ensure valid instance
+  -- print('DEBUG xutils.index 1: ', instance) 
+  
+  -- ensure valid instance
 	local type_instance = type(instance)
-	-- print('DEBUG xutils.index 1: ', instance) 
-	assert('table' == type_instance and instance[MODEL] or 
-	       'function' == type_instance, -- sequence iterator
-		   table.concat{'invalid instance: ', tostring(instance)})
-	
-	-- sequence iterator
-	if 'function' == type_instance then
-		table.insert(result, instance())
-		
-		-- index 1st element for illustration
-		if 'table' == type(instance(1)) then -- composite sequence
-			xutils.index(instance(1), result) -- index the 1st element 
-		elseif 'function' == type(instance(1)) then -- sequence of sequence
-			xutils.index(instance(1), result)
-		else -- primitive sequence
-			table.insert(result, instance(1))
-		end
-		return result
+
+	-- collection instance
+	if _.is_collection_instance(instance) then
+	    -- length operator
+  		table.insert(result, #instance)
+  				
+  		-- index 1st element for illustration
+  		local instance_i = instance[1]
+  		if 'table' == type(instance_i) then -- composite collection
+  		    xutils.index(instance_i, result) -- index the current element 
+  		else -- leaf collection
+  			  table.insert(result, instance_i)
+  		end
+  		
+  		return result
 	end
 	
 	-- struct or union
-	local mytype = instance[MODEL][_.KIND]
+	local mytype = _.model_kind(instance)
 	local model = model or instance[MODEL]
 	local mydefn = model[_.DEFN]
 
@@ -2229,20 +2266,24 @@ function xutils.index(instance, result, model)
 			-- print('DEBUG index 3: ', role, role_instance)
 
 			if 'table' == role_instance_type then -- composite (nested)
-					result = xutils.index(role_instance, result)
-			elseif 'function' == role_instance_type then -- sequence
-				-- length operator
-				table.insert(result, role_instance())
-	
-				-- index 1st element for illustration
-				if 'table' == type(role_instance(1)) then -- composite sequence
-					xutils.index(role_instance(1), result) -- index the 1st element 
-				elseif 'function' == type(role_instance(1)) then -- sequence of sequence
-					xutils.index(role_instance(1), result)
-				else -- primitive sequence
-					table.insert(result, role_instance(1))
-				end
-			else -- atom or enum (leaf)
+			   -- collection
+  		   if _.is_collection_instance(role_instance) then 
+    				-- length operator
+    				table.insert(result, #role_instance)
+    	
+    				-- index 1st element for illustration
+    				local role_instance_i = role_instance[1]
+    				if 'table' == type(role_instance_i) then -- composite sequence
+    		  			xutils.index(role_instance_i, result) -- index the 1st element 
+    				else -- leaf collection
+    			   		table.insert(result, role_instance_i)
+    				end
+    				
+    		 -- non-collection
+  		   else
+  		     result = xutils.index(role_instance, result)
+         end
+			else -- leaf
 				table.insert(result, role_instance) 
 			end
 		end
