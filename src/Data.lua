@@ -39,7 +39,7 @@
 -- Usage:
 -- Definition:
 --  Unions:
---   { { case, role = { template, [collection,] [annotation1, annotation2, ...] } } }
+--   { { case, role = { template, [collection,] [annotation1, ...] } } }
 --  Structs:
 --   { { role = { template, [collection,] [annotation1, annotation2, ...] } } }
 --  Typedefs:
@@ -87,7 +87,8 @@
 --          user_role1 = 'user_role1'  -- name used to index this 'leaf' field
 --          user_role2 = _.create_instance('user_role2', UserModule.UserType2)
 --          user_role3 = _.create_instance('user_role3', UserModule.UserType3)
---          user_role_seq = _.create_collection('user_role_seq', UserModule.UserTypeSeq)
+--          user_role_seq = _.create_collection('user_role_seq', 
+--                                              UserModule.UserTypeSeq)
 --          :
 --       }
 --    and also returns the above table.
@@ -133,7 +134,8 @@
 --              model[_.DEFN][role] = role model element 
 --
 --       _.INSTANCES
---          For storing instances of this model element, indexed by instance name
+--          For storing instances of this model element, indexed by instance 
+--          name
 --              model[_.DEFN].name = one of the instances of this model
 --          where 'name' is the name of instance (in a container model element)
 --
@@ -159,7 +161,8 @@
 -- NOTES
 --    Self-recursive definitions require a forward declaration, and generate a
 --    warning. To create a forward declaration, install the same name twice,
---    first as an empty definition, and then as a full definition. Ignore the warning!
+--    first as an empty definition, and then as a full definition. Ignore the 
+--    warning!
 --
 
 local EMPTY = {}  -- initializer/sentinel value to indicate an empty definition
@@ -171,10 +174,10 @@ local _ = {
   -- every 'model' meta-data table has these keys defined 
   NS        = function() return '' end,      -- namespace
   NAME      = function() return 'NAME' end,  -- table key for 'model name'  
-  KIND      = function() return 'KIND' end,  -- table key for the 'model type name' 
+  KIND      = function() return 'KIND' end,  -- table key for 'model kind name' 
   DEFN      = function() return 'DEFN' end,  -- table key for element meta-data
-  INSTANCES = function() return 'INSTANCES' end,-- table key for instances of this model
-  TEMPLATE  = function() return 'TEMPLATE' end,-- table key for the template instance
+  INSTANCES = function() return 'INSTANCES' end,-- table key for instances
+  TEMPLATE  = function() return 'TEMPLATE' end,--table key for template instance
 
   -- model definition attributes
   QUALIFIERS = function() return '' end,        -- table key for qualifiers
@@ -419,7 +422,8 @@ function _.create_instance(name, template)
 end
 
 -- Name: 
---    _.create_collection() - creates a sequence, of elements specified by the template
+--    _.create_collection() - creates a sequence, of elements specified by 
+--    the template
 -- Purpose:
 --    Define a sequence iterator (closure) for indexing
 -- Parameters:
@@ -751,7 +755,8 @@ function xtypes.annotation(decl)
   local name, defn = _.parse_decl(decl)
   
   -- create the template
-  local template = _.new_template(name, xtypes.ANNOTATION, xtypes.API[xtypes.ANNOTATION])
+  local template = _.new_template(name, xtypes.ANNOTATION, 
+                                  xtypes.API[xtypes.ANNOTATION])
   local model = template[MODEL]
   
   -- annotation definition function (closure)
@@ -768,7 +773,7 @@ function xtypes.annotation(decl)
     end
     local instance = attributes ~= EMPTY and attributes or template
     instance[MODEL] = model
-    setmetatable(instance, xtypes.API[xtypes.ANNOTATION]) -- needed for __tostring()
+    setmetatable(instance, xtypes.API[xtypes.ANNOTATION])
     return instance   
   end
   
@@ -1075,13 +1080,19 @@ function xtypes.const(decl)
   assert(nil ~= value, 
          table.concat{'const value must be non-nil: ', tostring(value)})
   assert((xtypes.builtin.boolean == atom and 'boolean' == type(value) or
-         ((xtypes.string() == atom or xtypes.wstring() == atom or xtypes.builtin.char == atom) and 
+         ((xtypes.string() == atom or 
+           xtypes.wstring() == atom or 
+           xtypes.builtin.char == atom) and 
           'string' == type(value)) or 
-         ((xtypes.builtin.short == atom or xtypes.builtin.unsigned_short == atom or 
-           xtypes.builtin.long == atom or xtypes.builtin.unsigned_long == atom or 
-           xtypes.builtin.long_long == atom or xtypes.builtin.unsigned_long_long == atom or
+         ((xtypes.builtin.short == atom or 
+           xtypes.builtin.unsigned_short == atom or 
+           xtypes.builtin.long == atom or 
+           xtypes.builtin.unsigned_long == atom or 
+           xtypes.builtin.long_long == atom or 
+           xtypes.builtin.unsigned_long_long == atom or
            xtypes.builtin.float == atom or 
-           xtypes.builtin.double == atom or xtypes.builtin.long_double == atom) and 
+           xtypes.builtin.double == atom or 
+           xtypes.builtin.long_double == atom) and 
            'number' == type(value)) or
          ((xtypes.builtin.unsigned_short == atom or 
            xtypes.builtin.unsigned_long == atom or
@@ -1092,7 +1103,8 @@ function xtypes.const(decl)
          
 
   -- char: truncate value to 1st char; warn if truncated
-  if (xtypes.builtin.char == atom or xtypes.builtin.wchar == atom) and #value > 1 then
+  if (xtypes.builtin.char == atom or xtypes.builtin.wchar == atom) and 
+      #value > 1 then
     value = string.sub(value, 1, 1)
     print(table.concat{'WARNING: truncating string value for ',
                        atom[MODEL][_.NAME],
@@ -1102,11 +1114,12 @@ function xtypes.const(decl)
   -- integer: truncate value to integer; warn if truncated
   if (xtypes.builtin.short == atom or xtypes.builtin.unsigned_short == atom or 
       xtypes.builtin.long == atom or xtypes.builtin.unsigned_long == atom or 
-      xtypes.builtin.long_long == atom or xtypes.builtin.unsigned_long_long == atom) and
+      xtypes.builtin.long_long == atom or 
+      xtypes.builtin.unsigned_long_long == atom) and
       value - math.floor(value) ~= 0 then
     value = math.floor(value)
-    print(table.concat{'WARNING: truncating decimal value for integer constant ', 
-                       'to: ', value})
+    print(table.concat{'WARNING: truncating decimal value for integer constant', 
+                       ' to: ', value})
   end
 
   -- create the template
@@ -1350,7 +1363,8 @@ function xtypes.struct(decl)
   local name, defn = _.parse_decl(decl)
        
   -- create the template
-  local template = _.new_template(name, xtypes.STRUCT, xtypes.API[xtypes.STRUCT])
+  local template = _.new_template(name, xtypes.STRUCT, 
+                                  xtypes.API[xtypes.STRUCT])
   template[MODEL][_.INSTANCES] = {}
   
   -- OPTIONAL base: pop the next element if it is a base model element
@@ -1750,7 +1764,8 @@ function xtypes.module(decl)
   local name, defn = _.parse_decl(decl)
        
   --create the template
-  local template = _.new_template(name, xtypes.MODULE, xtypes.API[xtypes.MODULE])
+  local template = _.new_template(name, xtypes.MODULE, 
+                                  xtypes.API[xtypes.MODULE])
 
   -- populate the template
   return _.populate_template(template, defn)
@@ -1869,7 +1884,8 @@ function xtypes.typedef(decl)
   local collection = defn[2] and _.assert_collection(defn[2])
 
   -- create the template
-  local template = _.new_template(name, xtypes.TYPEDEF, xtypes.API[xtypes.TYPEDEF]) 
+  local template = _.new_template(name, xtypes.TYPEDEF, 
+                                  xtypes.API[xtypes.TYPEDEF]) 
   template[MODEL][_.DEFN] = { alias, collection }
   return template
 end
@@ -1947,15 +1963,18 @@ function xutils.tostring_role(role, role_defn, module)
   if seq == nil then -- not a sequence
     output_member = string.format('%s %s', _.nsname(template, module), role)
   elseif #seq == 0 then -- unbounded sequence
-    output_member = string.format('sequence<%s> %s', _.nsname(template, module), role)
+    output_member = string.format('sequence<%s> %s', 
+                                  _.nsname(template, module), role)
   else -- bounded sequence
     for i = 1, #seq do
       output_member = string.format('%ssequence<', output_member) 
     end
-    output_member = string.format('%s%s', output_member, _.nsname(template, module))
+    output_member = string.format('%s%s', output_member, 
+                                  _.nsname(template, module))
     for i = 1, #seq do
       output_member = string.format('%s,%s>', output_member, 
-                _.model_kind(seq[i]) and _.nsname(seq[i], module) or tostring(seq[i])) 
+                _.model_kind(seq[i]) and _.nsname(seq[i], module) or 
+                tostring(seq[i])) 
     end
     output_member = string.format('%s %s', output_member, role)
   end
@@ -2037,7 +2056,7 @@ function xutils.print_idl(instance, indent_string)
 	if xtypes.TYPEDEF == mytype then
 		local defn = mydefn	
     print(string.format('%s%s %s', indent_string,  mytype(),
-                                    xutils.tostring_role(myname, defn, mymodule)))
+                                xutils.tostring_role(myname, defn, mymodule)))
 		return instance, indent_string 
 	end
 	
@@ -2055,7 +2074,7 @@ function xutils.print_idl(instance, indent_string)
 			print(string.format('%s%s %s switch (%s) {', indent_string, 
 						mytype(), myname, model[_.DEFN][xtypes.SWITCH][MODEL][_.NAME]))
 						
-		elseif xtypes.STRUCT == mytype and model[_.DEFN][xtypes.BASE] then -- base struct
+		elseif xtypes.STRUCT == mytype and model[_.DEFN][xtypes.BASE] then -- base
 			print(string.format('%s%s %s : %s {', indent_string, mytype(), 
 					myname, model[_.DEFN][xtypes.BASE][MODEL][_.NAME]))
 		
@@ -2066,7 +2085,7 @@ function xutils.print_idl(instance, indent_string)
 	end
 		
 	if xtypes.MODULE == mytype then 
-		for i, role_template in ipairs(mydefn) do -- walk through the module definition
+		for i, role_template in ipairs(mydefn) do -- walk through module definition
 			xutils.print_idl(role_template, content_indent_string)
 		end
 		
@@ -2088,7 +2107,8 @@ function xutils.print_idl(instance, indent_string)
 				-- case
 				if (nil == case) then
 				  print(string.format("%sdefault :", content_indent_string))
-				elseif (xtypes.builtin.char == model[_.DEFN][xtypes.SWITCH] and nil ~= case) then
+				elseif (xtypes.builtin.char == model[_.DEFN][xtypes.SWITCH] 
+				        and nil ~= case) then
 					print(string.format("%scase '%s' :", 
 						content_indent_string, tostring(case)))
 				else
@@ -2099,7 +2119,7 @@ function xutils.print_idl(instance, indent_string)
 				-- member element
 				local role, role_defn = next(defn_i, #defn_i > 0 and #defn_i or nil)
 				print(string.format('%s%s', content_indent_string .. '   ',
-				                             xutils.tostring_role(role, role_defn, mymodule)))
+				                      xutils.tostring_role(role, role_defn, mymodule)))
 			end
 		end
 		
@@ -2129,7 +2149,8 @@ end
 -- @param result OPTIONAL the index table to which the results are appended
 -- @param model OPTIONAL nil means use the instance's model;
 --              needed to support inheritance and typedefs
--- @result the cumulative index, that can be passed to another call to this method
+-- @result the cumulative index, that can be passed to another 
+--         call to this method
 function xutils.index(instance, result, model) 
 	-- ensure valid instance
 	local type_instance = type(instance)
