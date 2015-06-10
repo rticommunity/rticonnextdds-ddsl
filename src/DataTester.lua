@@ -1716,7 +1716,8 @@ function Tester:test_module_manipulation()
   assert(3 == #MyModule)  
 
 
-  print("\n-- change MyEnum ---") -- TODO: fix: meta-table not invoked
+  print("\n-- change MyEnum ---")
+  MyModule[3] = nil
   MyModule[3] = xtypes.enum{
     MyEnum = {'JAN', 'FEB', 'MAR'}
   }
