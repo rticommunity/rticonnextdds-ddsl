@@ -350,12 +350,12 @@ function Tester:test_struct_basic()
 
     assert(Test.Name.first == 'first')
     assert(Test.Name.last == 'last')
-    assert(#Test.Name.nicknames == 'nicknames#')
+    assert(Test.Name.nicknames() == 'nicknames#')
     assert(Test.Name.nicknames[1] == 'nicknames[1]')
-    assert(#Test.Name.aliases == 'aliases#')
+    assert(Test.Name.aliases() == 'aliases#')
     assert(Test.Name.aliases[1] == 'aliases[1]')
     assert(Test.Name.birthday == 'birthday')
-    assert(#Test.Name.favorite == 'favorite#')
+    assert(Test.Name.favorite() == 'favorite#')
     assert(Test.Name.favorite[1] == 'favorite[1]')
 end
 
@@ -400,7 +400,7 @@ function Tester:test_struct_nested()
     self:print(Test.Address)
     
     assert(Test.Address.name.first == 'name.first')
-    assert(#Test.Address.name.nicknames == 'name.nicknames#')
+    assert(Test.Address.name.nicknames() == 'name.nicknames#')
     assert(Test.Address.name.nicknames[1] == 'name.nicknames[1]')
     assert(Test.Address.street == 'street')
     assert(Test.Address.city == 'city')
@@ -584,12 +584,12 @@ function Tester:test_union2()
   
   -- name
   assert(Test.TestUnion2.name.first == 'name.first')
-  assert(#Test.TestUnion2.name.nicknames == 'name.nicknames#')  
+  assert(Test.TestUnion2.name.nicknames() == 'name.nicknames#')  
   assert(Test.TestUnion2.name.nicknames[1] == 'name.nicknames[1]')
 
   -- address
   assert(Test.TestUnion2.address.name.first == 'address.name.first')
-  assert(#Test.TestUnion2.address.name.nicknames == 'address.name.nicknames#')  
+  assert(Test.TestUnion2.address.name.nicknames() == 'address.name.nicknames#')  
   assert(Test.TestUnion2.address.name.nicknames[1] == 'address.name.nicknames[1]')
 
   -- x
@@ -617,12 +617,12 @@ function Tester:test_union3()
   
   -- name
   assert(Test.TestUnion3.name.first == 'name.first')
-  assert(#Test.TestUnion3.name.nicknames == 'name.nicknames#')  
+  assert(Test.TestUnion3.name.nicknames() == 'name.nicknames#')  
   assert(Test.TestUnion3.name.nicknames[1] == 'name.nicknames[1]')
 
   -- address
   assert(Test.TestUnion3.address.name.first == 'address.name.first')
-  assert(#Test.TestUnion3.address.name.nicknames == 'address.name.nicknames#')  
+  assert(Test.TestUnion3.address.name.nicknames() == 'address.name.nicknames#')  
   assert(Test.TestUnion3.address.name.nicknames[1] == 'address.name.nicknames[1]')
 
   -- x
@@ -650,12 +650,12 @@ function Tester:test_union4()
   
   -- name
   assert(Test.NameOrAddress.name.first == 'name.first')
-  assert(#Test.NameOrAddress.name.nicknames == 'name.nicknames#')  
+  assert(Test.NameOrAddress.name.nicknames() == 'name.nicknames#')  
   assert(Test.NameOrAddress.name.nicknames[1] == 'name.nicknames[1]')
 
   -- address
   assert(Test.NameOrAddress.address.name.first == 'address.name.first')
-  assert(#Test.NameOrAddress.address.name.nicknames == 'address.name.nicknames#')  
+  assert(Test.NameOrAddress.address.name.nicknames() == 'address.name.nicknames#')  
   assert(Test.NameOrAddress.address.name.nicknames[1] == 'address.name.nicknames[1]')
 end
 
@@ -677,26 +677,26 @@ function Tester:test_struct_complex1()
   print(Test.Company.entity, Test.Company.entity.name, Test.Company.entity.name.first)
   print(Test.Company.entity.address, Test.Company.entity.address.name, Test.Company.entity.address.name.first)
   assert(Test.Company.entity.name.first == 'entity.name.first')
-  assert(#Test.Company.entity.name.nicknames == 'entity.name.nicknames#')  
+  assert(Test.Company.entity.name.nicknames() == 'entity.name.nicknames#')  
   assert(Test.Company.entity.name.nicknames[1] == 'entity.name.nicknames[1]')
   assert(Test.Company.entity.address.name.first == 'entity.address.name.first')
-  assert(#Test.Company.entity.address.name.nicknames == 'entity.address.name.nicknames#')  
+  assert(Test.Company.entity.address.name.nicknames() == 'entity.address.name.nicknames#')  
   assert(Test.Company.entity.address.name.nicknames[1] == 'entity.address.name.nicknames[1]')
   
   -- hq
-  assert(#Test.Company.hq == 'hq#')
+  assert(Test.Company.hq() == 'hq#')
   assert(Test.Company.hq[1] == 'hq[1]')
   
   -- offices
-  assert(#Test.Company.offices == 'offices#')
+  assert(Test.Company.offices() == 'offices#')
   assert(Test.Company.offices[1].name.first == 'offices[1].name.first')
-  assert(#Test.Company.offices[1].name.nicknames == 'offices[1].name.nicknames#')  
+  assert(Test.Company.offices[1].name.nicknames() == 'offices[1].name.nicknames#')  
   assert(Test.Company.offices[1].name.nicknames[1] == 'offices[1].name.nicknames[1]')
 
   -- employees
-  assert(#Test.Company.employees == 'employees#')
+  assert(Test.Company.employees() == 'employees#')
   assert(Test.Company.employees[1].first == 'employees[1].first')
-  assert(#Test.Company.employees[1].nicknames == 'employees[1].nicknames#')  
+  assert(Test.Company.employees[1].nicknames() == 'employees[1].nicknames#')  
   assert(Test.Company.employees[1].nicknames[1] == 'employees[1].nicknames[1]')
 end
 
@@ -714,53 +714,53 @@ function Tester:test_struct_complex2()
   -- parent.entity
   assert(Test.BigCompany.parent.entity._d == 'parent.entity#')
   assert(Test.BigCompany.parent.entity.name.first == 'parent.entity.name.first')
-  assert(#Test.BigCompany.parent.entity.name.nicknames == 'parent.entity.name.nicknames#')  
+  assert(Test.BigCompany.parent.entity.name.nicknames() == 'parent.entity.name.nicknames#')  
   assert(Test.BigCompany.parent.entity.name.nicknames[1] == 'parent.entity.name.nicknames[1]')
   assert(Test.BigCompany.parent.entity.address.name.first == 'parent.entity.address.name.first')
-  assert(#Test.BigCompany.parent.entity.address.name.nicknames == 'parent.entity.address.name.nicknames#')  
+  assert(Test.BigCompany.parent.entity.address.name.nicknames() == 'parent.entity.address.name.nicknames#')  
   assert(Test.BigCompany.parent.entity.address.name.nicknames[1] == 'parent.entity.address.name.nicknames[1]')
   
   -- parent.hq
-  assert(#Test.BigCompany.parent.hq == 'parent.hq#')
+  assert(Test.BigCompany.parent.hq() == 'parent.hq#')
   assert(Test.BigCompany.parent.hq[1] == 'parent.hq[1]')
   
   -- parent.offices
-  assert(#Test.BigCompany.parent.offices == 'parent.offices#')
+  assert(Test.BigCompany.parent.offices() == 'parent.offices#')
   assert(Test.BigCompany.parent.offices[1].name.first == 'parent.offices[1].name.first')
-  assert(#Test.BigCompany.parent.offices[1].name.nicknames == 'parent.offices[1].name.nicknames#')  
+  assert(Test.BigCompany.parent.offices[1].name.nicknames() == 'parent.offices[1].name.nicknames#')  
   assert(Test.BigCompany.parent.offices[1].name.nicknames[1] == 'parent.offices[1].name.nicknames[1]')
 
   -- parent.employees
-  assert(#Test.BigCompany.parent.employees == 'parent.employees#')
+  assert(Test.BigCompany.parent.employees() == 'parent.employees#')
   assert(Test.BigCompany.parent.employees[1].first == 'parent.employees[1].first')
-  assert(#Test.BigCompany.parent.employees[1].nicknames == 'parent.employees[1].nicknames#')  
+  assert(Test.BigCompany.parent.employees[1].nicknames() == 'parent.employees[1].nicknames#')  
   assert(Test.BigCompany.parent.employees[1].nicknames[1] == 'parent.employees[1].nicknames[1]')
 
 
   -- divisions
-  assert(#Test.BigCompany.divisions == 'divisions#')
+  assert(Test.BigCompany.divisions() == 'divisions#')
   assert(Test.BigCompany.divisions[1].entity._d == 'divisions[1].entity#')
   assert(Test.BigCompany.divisions[1].entity.name.first == 'divisions[1].entity.name.first')
-  assert(#Test.BigCompany.divisions[1].entity.name.nicknames == 'divisions[1].entity.name.nicknames#')  
+  assert(Test.BigCompany.divisions[1].entity.name.nicknames() == 'divisions[1].entity.name.nicknames#')  
   assert(Test.BigCompany.divisions[1].entity.name.nicknames[1] == 'divisions[1].entity.name.nicknames[1]')
   assert(Test.BigCompany.divisions[1].entity.address.name.first == 'divisions[1].entity.address.name.first')
-  assert(#Test.BigCompany.divisions[1].entity.address.name.nicknames == 'divisions[1].entity.address.name.nicknames#')  
+  assert(Test.BigCompany.divisions[1].entity.address.name.nicknames() == 'divisions[1].entity.address.name.nicknames#')  
   assert(Test.BigCompany.divisions[1].entity.address.name.nicknames[1] == 'divisions[1].entity.address.name.nicknames[1]')
   
   -- divisions[1].hq
-  assert(#Test.BigCompany.divisions[1].hq == 'divisions[1].hq#')
+  assert(Test.BigCompany.divisions[1].hq() == 'divisions[1].hq#')
   assert(Test.BigCompany.divisions[1].hq[1] == 'divisions[1].hq[1]')
   
   -- divisions[1].offices
-  assert(#Test.BigCompany.divisions[1].offices == 'divisions[1].offices#')
+  assert(Test.BigCompany.divisions[1].offices() == 'divisions[1].offices#')
   assert(Test.BigCompany.divisions[1].offices[1].name.first == 'divisions[1].offices[1].name.first')
-  assert(#Test.BigCompany.divisions[1].offices[1].name.nicknames == 'divisions[1].offices[1].name.nicknames#')  
+  assert(Test.BigCompany.divisions[1].offices[1].name.nicknames() == 'divisions[1].offices[1].name.nicknames#')  
   assert(Test.BigCompany.divisions[1].offices[1].name.nicknames[1] == 'divisions[1].offices[1].name.nicknames[1]')
 
   -- divisions[1].employees
-  assert(#Test.BigCompany.divisions[1].employees == 'divisions[1].employees#')
+  assert(Test.BigCompany.divisions[1].employees() == 'divisions[1].employees#')
   assert(Test.BigCompany.divisions[1].employees[1].first == 'divisions[1].employees[1].first')
-  assert(#Test.BigCompany.divisions[1].employees[1].nicknames == 'divisions[1].employees[1].nicknames#')  
+  assert(Test.BigCompany.divisions[1].employees[1].nicknames() == 'divisions[1].employees[1].nicknames#')  
   assert(Test.BigCompany.divisions[1].employees[1].nicknames[1] == 'divisions[1].employees[1].nicknames[1]')
 
 end
@@ -779,12 +779,12 @@ function Tester:test_struct_inheritance1()
   -- base: Name
   assert(Test.FullName.first == 'first')
   assert(Test.FullName.last == 'last')
-  assert(#Test.FullName.nicknames == 'nicknames#')
+  assert(Test.FullName.nicknames() == 'nicknames#')
   assert(Test.FullName.nicknames[1] == 'nicknames[1]')
-  assert(#Test.FullName.aliases == 'aliases#')
+  assert(Test.FullName.aliases() == 'aliases#')
   assert(Test.FullName.aliases[1] == 'aliases[1]')
   assert(Test.FullName.birthday == 'birthday')
-  assert(#Test.FullName.favorite == 'favorite#')
+  assert(Test.FullName.favorite() == 'favorite#')
   assert(Test.FullName.favorite[1] == 'favorite[1]')
   
   -- FullName
@@ -805,19 +805,19 @@ function Tester:test_struct_inheritance2()
   -- base: FullName
   assert(Test.Contact.first == 'first')
   assert(Test.Contact.last == 'last')
-  assert(#Test.Contact.nicknames == 'nicknames#')
+  assert(Test.Contact.nicknames() == 'nicknames#')
   assert(Test.Contact.nicknames[1] == 'nicknames[1]')
-  assert(#Test.Contact.aliases == 'aliases#')
+  assert(Test.Contact.aliases() == 'aliases#')
   assert(Test.Contact.aliases[1] == 'aliases[1]')
   assert(Test.Contact.birthday == 'birthday')
-  assert(#Test.Contact.favorite == 'favorite#')
+  assert(Test.Contact.favorite() == 'favorite#')
   assert(Test.Contact.favorite[1] == 'favorite[1]')
   assert(Test.Contact.middle == 'middle')
   
   -- Contact
   assert(Test.Contact.address.name.first == 'address.name.first')
   assert(Test.Contact.address.name.first == 'address.name.first')
-  assert(#Test.Contact.address.name.nicknames == 'address.name.nicknames#')
+  assert(Test.Contact.address.name.nicknames() == 'address.name.nicknames#')
   assert(Test.Contact.address.name.nicknames[1] == 'address.name.nicknames[1]')
   assert(Test.Contact.address.street == 'address.street')
   assert(Test.Contact.address.city == 'address.city')
@@ -839,19 +839,19 @@ function Tester:test_struct_inheritance3()
   -- Tasks.contact
   assert(Test.Tasks.contact.first == 'contact.first')
   assert(Test.Tasks.contact.last == 'contact.last')
-  assert(#Test.Tasks.contact.nicknames == 'contact.nicknames#')
+  assert(Test.Tasks.contact.nicknames() == 'contact.nicknames#')
   assert(Test.Tasks.contact.nicknames[1] == 'contact.nicknames[1]')
-  assert(#Test.Tasks.contact.aliases == 'contact.aliases#')
+  assert(Test.Tasks.contact.aliases() == 'contact.aliases#')
   assert(Test.Tasks.contact.aliases[1] == 'contact.aliases[1]')
   assert(Test.Tasks.contact.birthday == 'contact.birthday')
-  assert(#Test.Tasks.contact.favorite == 'contact.favorite#')
+  assert(Test.Tasks.contact.favorite() == 'contact.favorite#')
   assert(Test.Tasks.contact.favorite[1] == 'contact.favorite[1]')
   assert(Test.Tasks.contact.middle == 'contact.middle')
   
   -- Tasks.contact.address
   assert(Test.Tasks.contact.address.name.first == 'contact.address.name.first')
   assert(Test.Tasks.contact.address.name.first == 'contact.address.name.first')
-  assert(#Test.Tasks.contact.address.name.nicknames == 'contact.address.name.nicknames#')
+  assert(Test.Tasks.contact.address.name.nicknames() == 'contact.address.name.nicknames#')
   assert(Test.Tasks.contact.address.name.nicknames[1] == 'contact.address.name.nicknames[1]')
   assert(Test.Tasks.contact.address.street == 'contact.address.street')
   assert(Test.Tasks.contact.address.city == 'contact.address.city')
@@ -871,24 +871,24 @@ function Tester:test_struct_inheritance4()
   }
   self:print(Test.Calendar)
   
-  assert(#Test.Calendar.tasks == 'tasks#')
+  assert(Test.Calendar.tasks() == 'tasks#')
    
   -- tasks[1].contact
   assert(Test.Calendar.tasks[1].contact.first == 'tasks[1].contact.first')
   assert(Test.Calendar.tasks[1].contact.last == 'tasks[1].contact.last')
-  assert(#Test.Calendar.tasks[1].contact.nicknames == 'tasks[1].contact.nicknames#')
+  assert(Test.Calendar.tasks[1].contact.nicknames() == 'tasks[1].contact.nicknames#')
   assert(Test.Calendar.tasks[1].contact.nicknames[1] == 'tasks[1].contact.nicknames[1]')
-  assert(#Test.Calendar.tasks[1].contact.aliases == 'tasks[1].contact.aliases#')
+  assert(Test.Calendar.tasks[1].contact.aliases() == 'tasks[1].contact.aliases#')
   assert(Test.Calendar.tasks[1].contact.aliases[1] == 'tasks[1].contact.aliases[1]')
   assert(Test.Calendar.tasks[1].contact.birthday == 'tasks[1].contact.birthday')
-  assert(#Test.Calendar.tasks[1].contact.favorite == 'tasks[1].contact.favorite#')
+  assert(Test.Calendar.tasks[1].contact.favorite() == 'tasks[1].contact.favorite#')
   assert(Test.Calendar.tasks[1].contact.favorite[1] == 'tasks[1].contact.favorite[1]')
   assert(Test.Calendar.tasks[1].contact.middle == 'tasks[1].contact.middle')
   
   -- tasks[1].contact.address
   assert(Test.Calendar.tasks[1].contact.address.name.first == 'tasks[1].contact.address.name.first')
   assert(Test.Calendar.tasks[1].contact.address.name.first == 'tasks[1].contact.address.name.first')
-  assert(#Test.Calendar.tasks[1].contact.address.name.nicknames == 'tasks[1].contact.address.name.nicknames#')
+  assert(Test.Calendar.tasks[1].contact.address.name.nicknames() == 'tasks[1].contact.address.name.nicknames#')
   assert(Test.Calendar.tasks[1].contact.address.name.nicknames[1] == 'tasks[1].contact.address.name.nicknames[1]')
   assert(Test.Calendar.tasks[1].contact.address.street == 'tasks[1].contact.address.street')
   assert(Test.Calendar.tasks[1].contact.address.city == 'tasks[1].contact.address.city')
@@ -998,15 +998,15 @@ function Tester:test_typedef()
   assert(Test.MyTypedef.myDouble2 == 'myDouble2')
   -- name
   assert(Test.MyTypedef.name.first == 'name.first')
-  assert(#Test.MyTypedef.name.nicknames == 'name.nicknames#')  
+  assert(Test.MyTypedef.name.nicknames() == 'name.nicknames#')  
   assert(Test.MyTypedef.name.nicknames[1] == 'name.nicknames[1]')
   -- myName
   assert(Test.MyTypedef.myName.first == 'myName.first')
-  assert(#Test.MyTypedef.myName.nicknames == 'myName.nicknames#')  
+  assert(Test.MyTypedef.myName.nicknames() == 'myName.nicknames#')  
   assert(Test.MyTypedef.myName.nicknames[1] == 'myName.nicknames[1]')
   -- myAddress2
   assert(Test.MyTypedef.myAddress2.name.first == 'myAddress2.name.first')
-  assert(#Test.MyTypedef.myAddress2.name.nicknames == 'myAddress2.name.nicknames#')  
+  assert(Test.MyTypedef.myAddress2.name.nicknames() == 'myAddress2.name.nicknames#')  
   assert(Test.MyTypedef.myAddress2.name.nicknames[1] == 'myAddress2.name.nicknames[1]')
 end
 
@@ -1059,71 +1059,71 @@ function Tester:test_typedef_seq()
   self:print(Test.MyTypedefSeq)
   
   -- nameSeq
-  assert(#Test.MyTypedefSeq.nameSeq == 'nameSeq#')
+  assert(Test.MyTypedefSeq.nameSeq() == 'nameSeq#')
   assert(Test.MyTypedefSeq.nameSeq[1].first == 'nameSeq[1].first')  
-  assert(#Test.MyTypedefSeq.nameSeq[1].nicknames == 'nameSeq[1].nicknames#') 
+  assert(Test.MyTypedefSeq.nameSeq[1].nicknames() == 'nameSeq[1].nicknames#') 
   assert(Test.MyTypedefSeq.nameSeq[1].nicknames[1] == 'nameSeq[1].nicknames[1]')  
 
   -- nameSeqA
-  assert(#Test.MyTypedefSeq.nameSeqA == 'nameSeqA#')
+  assert(Test.MyTypedefSeq.nameSeqA() == 'nameSeqA#')
   assert(Test.MyTypedefSeq.nameSeqA[1].first == 'nameSeqA[1].first')  
-  assert(#Test.MyTypedefSeq.nameSeqA[1].nicknames == 'nameSeqA[1].nicknames#') 
+  assert(Test.MyTypedefSeq.nameSeqA[1].nicknames() == 'nameSeqA[1].nicknames#') 
   assert(Test.MyTypedefSeq.nameSeqA[1].nicknames[1] == 'nameSeqA[1].nicknames[1]')  
 
   -- nameSeqSeq
-  assert(#Test.MyTypedefSeq.nameSeqSeq == 'nameSeqSeq#') 
-  assert(#Test.MyTypedefSeq.nameSeqSeq[1] == 'nameSeqSeq[1]#')
+  assert(Test.MyTypedefSeq.nameSeqSeq() == 'nameSeqSeq#') 
+  assert(Test.MyTypedefSeq.nameSeqSeq[1]() == 'nameSeqSeq[1]#')
   assert(Test.MyTypedefSeq.nameSeqSeq[1][1].first == 'nameSeqSeq[1][1].first')
-  assert(#Test.MyTypedefSeq.nameSeqSeq[1][1].nicknames == 'nameSeqSeq[1][1].nicknames#')
+  assert(Test.MyTypedefSeq.nameSeqSeq[1][1].nicknames() == 'nameSeqSeq[1][1].nicknames#')
   assert(Test.MyTypedefSeq.nameSeqSeq[1][1].nicknames[1] == 'nameSeqSeq[1][1].nicknames[1]')
   
   -- nameSeqSeqA
-  assert(#Test.MyTypedefSeq.nameSeqSeqA == 'nameSeqSeqA#') 
-  assert(#Test.MyTypedefSeq.nameSeqSeqA[1] == 'nameSeqSeqA[1]#')
+  assert(Test.MyTypedefSeq.nameSeqSeqA() == 'nameSeqSeqA#') 
+  assert(Test.MyTypedefSeq.nameSeqSeqA[1]() == 'nameSeqSeqA[1]#')
   assert(Test.MyTypedefSeq.nameSeqSeqA[1][1].first == 'nameSeqSeqA[1][1].first')
-  assert(#Test.MyTypedefSeq.nameSeqSeqA[1][1].nicknames == 'nameSeqSeqA[1][1].nicknames#')
+  assert(Test.MyTypedefSeq.nameSeqSeqA[1][1].nicknames() == 'nameSeqSeqA[1][1].nicknames#')
   assert(Test.MyTypedefSeq.nameSeqSeqA[1][1].nicknames[1] == 'nameSeqSeqA[1][1].nicknames[1]')
 
   -- nameSeqSeqASeq
-  assert(#Test.MyTypedefSeq.nameSeqSeqASeq == 'nameSeqSeqASeq#') 
-  assert(#Test.MyTypedefSeq.nameSeqSeqASeq[1] == 'nameSeqSeqASeq[1]#')
-  assert(#Test.MyTypedefSeq.nameSeqSeqASeq[1][1] == 'nameSeqSeqASeq[1][1]#')
+  assert(Test.MyTypedefSeq.nameSeqSeqASeq() == 'nameSeqSeqASeq#') 
+  assert(Test.MyTypedefSeq.nameSeqSeqASeq[1]() == 'nameSeqSeqASeq[1]#')
+  assert(Test.MyTypedefSeq.nameSeqSeqASeq[1][1]() == 'nameSeqSeqASeq[1][1]#')
   assert(Test.MyTypedefSeq.nameSeqSeqASeq[1][1][1].first == 'nameSeqSeqASeq[1][1][1].first')
-  assert(#Test.MyTypedefSeq.nameSeqSeqASeq[1][1][1].nicknames == 'nameSeqSeqASeq[1][1][1].nicknames#')
+  assert(Test.MyTypedefSeq.nameSeqSeqASeq[1][1][1].nicknames() == 'nameSeqSeqASeq[1][1][1].nicknames#')
   assert(Test.MyTypedefSeq.nameSeqSeqASeq[1][1][1].nicknames[1] == 'nameSeqSeqASeq[1][1][1].nicknames[1]')
 
   -- myNameSeq
-  assert(#Test.MyTypedefSeq.myNameSeq == 'myNameSeq#')
+  assert(Test.MyTypedefSeq.myNameSeq() == 'myNameSeq#')
   assert(Test.MyTypedefSeq.myNameSeq[1].first == 'myNameSeq[1].first')  
-  assert(#Test.MyTypedefSeq.myNameSeq[1].nicknames == 'myNameSeq[1].nicknames#') 
+  assert(Test.MyTypedefSeq.myNameSeq[1].nicknames() == 'myNameSeq[1].nicknames#') 
   assert(Test.MyTypedefSeq.myNameSeq[1].nicknames[1] == 'myNameSeq[1].nicknames[1]')  
 
   -- myNameSeqA
-  assert(#Test.MyTypedefSeq.myNameSeqA == 'myNameSeqA#')
+  assert(Test.MyTypedefSeq.myNameSeqA() == 'myNameSeqA#')
   assert(Test.MyTypedefSeq.myNameSeqA[1].first == 'myNameSeqA[1].first')  
-  assert(#Test.MyTypedefSeq.myNameSeqA[1].nicknames == 'myNameSeqA[1].nicknames#') 
+  assert(Test.MyTypedefSeq.myNameSeqA[1].nicknames() == 'myNameSeqA[1].nicknames#') 
   assert(Test.MyTypedefSeq.myNameSeqA[1].nicknames[1] == 'myNameSeqA[1].nicknames[1]')  
 
   -- myNameSeqSeq
-  assert(#Test.MyTypedefSeq.myNameSeqSeq == 'myNameSeqSeq#') 
-  assert(#Test.MyTypedefSeq.myNameSeqSeq[1] == 'myNameSeqSeq[1]#')
+  assert(Test.MyTypedefSeq.myNameSeqSeq() == 'myNameSeqSeq#') 
+  assert(Test.MyTypedefSeq.myNameSeqSeq[1]() == 'myNameSeqSeq[1]#')
   assert(Test.MyTypedefSeq.myNameSeqSeq[1][1].first == 'myNameSeqSeq[1][1].first')
-  assert(#Test.MyTypedefSeq.myNameSeqSeq[1][1].nicknames == 'myNameSeqSeq[1][1].nicknames#')
+  assert(Test.MyTypedefSeq.myNameSeqSeq[1][1].nicknames() == 'myNameSeqSeq[1][1].nicknames#')
   assert(Test.MyTypedefSeq.myNameSeqSeq[1][1].nicknames[1] == 'myNameSeqSeq[1][1].nicknames[1]')
   
   -- myNameSeqSeqA
-  assert(#Test.MyTypedefSeq.myNameSeqSeqA == 'myNameSeqSeqA#') 
-  assert(#Test.MyTypedefSeq.myNameSeqSeqA[1] == 'myNameSeqSeqA[1]#')
+  assert(Test.MyTypedefSeq.myNameSeqSeqA() == 'myNameSeqSeqA#') 
+  assert(Test.MyTypedefSeq.myNameSeqSeqA[1]() == 'myNameSeqSeqA[1]#')
   assert(Test.MyTypedefSeq.myNameSeqSeqA[1][1].first == 'myNameSeqSeqA[1][1].first')
-  assert(#Test.MyTypedefSeq.myNameSeqSeqA[1][1].nicknames == 'myNameSeqSeqA[1][1].nicknames#')
+  assert(Test.MyTypedefSeq.myNameSeqSeqA[1][1].nicknames() == 'myNameSeqSeqA[1][1].nicknames#')
   assert(Test.MyTypedefSeq.myNameSeqSeqA[1][1].nicknames[1] == 'myNameSeqSeqA[1][1].nicknames[1]')
 
   -- myNameSeqSeqASeq
-  assert(#Test.MyTypedefSeq.myNameSeqSeqASeq == 'myNameSeqSeqASeq#') 
-  assert(#Test.MyTypedefSeq.myNameSeqSeqASeq[1] == 'myNameSeqSeqASeq[1]#')
-  assert(#Test.MyTypedefSeq.myNameSeqSeqASeq[1][1] == 'myNameSeqSeqASeq[1][1]#')
+  assert(Test.MyTypedefSeq.myNameSeqSeqASeq() == 'myNameSeqSeqASeq#') 
+  assert(Test.MyTypedefSeq.myNameSeqSeqASeq[1]() == 'myNameSeqSeqASeq[1]#')
+  assert(Test.MyTypedefSeq.myNameSeqSeqASeq[1][1]() == 'myNameSeqSeqASeq[1][1]#')
   assert(Test.MyTypedefSeq.myNameSeqSeqASeq[1][1][1].first == 'myNameSeqSeqASeq[1][1][1].first')
-  assert(#Test.MyTypedefSeq.myNameSeqSeqASeq[1][1][1].nicknames == 'myNameSeqSeqASeq[1][1][1].nicknames#')
+  assert(Test.MyTypedefSeq.myNameSeqSeqASeq[1][1][1].nicknames() == 'myNameSeqSeqASeq[1][1][1].nicknames#')
   assert(Test.MyTypedefSeq.myNameSeqSeqASeq[1][1][1].nicknames[1] == 'myNameSeqSeqASeq[1][1][1].nicknames[1]')
 end
 
@@ -1147,20 +1147,20 @@ function Tester:test_arrays1()
 	self:print(Test.MyArrays1)
 	
 	-- ints
-	assert(#Test.MyArrays1.ints == 'ints#')
+	assert(Test.MyArrays1.ints() == 'ints#')
 	assert(Test.MyArrays1.ints[1] == 'ints[1]')
 	
 	-- days
-	assert(#Test.MyArrays1.days == 'days#')
-	assert(#Test.MyArrays1.days[1] == 'days[1]#')
+	assert(Test.MyArrays1.days() == 'days#')
+	assert(Test.MyArrays1.days[1]() == 'days[1]#')
 	assert(Test.MyArrays1.days[1][1] == 'days[1][1]')
 	
 	-- names
-	assert(#Test.MyArrays1.names == 'names#')
-	assert(#Test.MyArrays1.names[1] == 'names[1]#')
-	assert(#Test.MyArrays1.names[1][1] == 'names[1][1]#')
+	assert(Test.MyArrays1.names() == 'names#')
+	assert(Test.MyArrays1.names[1]() == 'names[1]#')
+	assert(Test.MyArrays1.names[1][1]() == 'names[1][1]#')
 	assert(Test.MyArrays1.names[1][1][1].first == 'names[1][1][1].first')
-	assert(#Test.MyArrays1.names[1][1][1].nicknames == 'names[1][1][1].nicknames#')
+	assert(Test.MyArrays1.names[1][1][1].nicknames() == 'names[1][1][1].nicknames#')
 	assert(Test.MyArrays1.names[1][1][1].nicknames[1] == 'names[1][1][1].nicknames[1]')
 end
 
@@ -1186,20 +1186,20 @@ function Tester:test_arrays2()
 	self:print(Test.MyArrays2)
 	
 	-- ints
-	assert(#Test.MyArrays2.ints == 'ints#')
+	assert(Test.MyArrays2.ints() == 'ints#')
 	assert(Test.MyArrays2.ints[1] == 'ints[1]')
 	
 	-- days
-	assert(#Test.MyArrays2.days == 'days#')
-	assert(#Test.MyArrays2.days[1] == 'days[1]#')
+	assert(Test.MyArrays2.days() == 'days#')
+	assert(Test.MyArrays2.days[1]() == 'days[1]#')
 	assert(Test.MyArrays2.days[1][1] == 'days[1][1]')
 	
 	-- names
-	assert(#Test.MyArrays2.names == 'names#')
-	assert(#Test.MyArrays2.names[1] == 'names[1]#')
-	assert(#Test.MyArrays2.names[1][1] == 'names[1][1]#')
+	assert(Test.MyArrays2.names() == 'names#')
+	assert(Test.MyArrays2.names[1]() == 'names[1]#')
+	assert(Test.MyArrays2.names[1][1]() == 'names[1][1]#')
 	assert(Test.MyArrays2.names[1][1][1].first == 'names[1][1][1].first')
-	assert(#Test.MyArrays2.names[1][1][1].nicknames == 'names[1][1][1].nicknames#')
+	assert(Test.MyArrays2.names[1][1][1].nicknames() == 'names[1][1][1].nicknames#')
 	assert(Test.MyArrays2.names[1][1][1].nicknames[1] == 'names[1][1][1].nicknames[1]')
 end
 
@@ -1245,56 +1245,56 @@ function Tester:test_arrays3()
 	self:print(Test.MyArrays3)
 
 	-- myNames
-	assert(#Test.MyArrays3.myNames == 'myNames#')
+	assert(Test.MyArrays3.myNames() == 'myNames#')
 	assert(Test.MyArrays3.myNames[1].first == 'myNames[1].first')
-	assert(#Test.MyArrays3.myNames[1].nicknames == 'myNames[1].nicknames#')
+	assert(Test.MyArrays3.myNames[1].nicknames() == 'myNames[1].nicknames#')
 	assert(Test.MyArrays3.myNames[1].nicknames[1] == 'myNames[1].nicknames[1]')
 	
 	-- myNamesArray
-	assert(#Test.MyArrays3.myNamesArray == 'myNamesArray#')
-	assert(#Test.MyArrays3.myNamesArray[1] == 'myNamesArray[1]#')
+	assert(Test.MyArrays3.myNamesArray() == 'myNamesArray#')
+	assert(Test.MyArrays3.myNamesArray[1]() == 'myNamesArray[1]#')
 	assert(Test.MyArrays3.myNamesArray[1][1].first == 'myNamesArray[1][1].first')
-	assert(#Test.MyArrays3.myNamesArray[1][1].nicknames == 'myNamesArray[1][1].nicknames#')
+	assert(Test.MyArrays3.myNamesArray[1][1].nicknames() == 'myNamesArray[1][1].nicknames#')
 	assert(Test.MyArrays3.myNamesArray[1][1].nicknames[1] == 'myNamesArray[1][1].nicknames[1]')
 	
 	-- myNames2
-	assert(#Test.MyArrays3.myNames2 == 'myNames2#')
-	assert(#Test.MyArrays3.myNames2[1] == 'myNames2[1]#')
+	assert(Test.MyArrays3.myNames2() == 'myNames2#')
+	assert(Test.MyArrays3.myNames2[1]() == 'myNames2[1]#')
 	assert(Test.MyArrays3.myNames2[1][1].first == 'myNames2[1][1].first')
-	assert(#Test.MyArrays3.myNames2[1][1].nicknames == 'myNames2[1][1].nicknames#')
+	assert(Test.MyArrays3.myNames2[1][1].nicknames() == 'myNames2[1][1].nicknames#')
 	assert(Test.MyArrays3.myNames2[1][1].nicknames[1] == 'myNames2[1][1].nicknames[1]')
 
 	-- myNames2Array
-	assert(#Test.MyArrays3.myNames2Array == 'myNames2Array#')
-	assert(#Test.MyArrays3.myNames2Array[1] == 'myNames2Array[1]#')
-	assert(#Test.MyArrays3.myNames2Array[1][1] == 'myNames2Array[1][1]#')
+	assert(Test.MyArrays3.myNames2Array() == 'myNames2Array#')
+	assert(Test.MyArrays3.myNames2Array[1]() == 'myNames2Array[1]#')
+	assert(Test.MyArrays3.myNames2Array[1][1]() == 'myNames2Array[1][1]#')
 	assert(Test.MyArrays3.myNames2Array[1][1][1].first == 'myNames2Array[1][1][1].first')
-	assert(#Test.MyArrays3.myNames2Array[1][1][1].nicknames == 'myNames2Array[1][1][1].nicknames#')
+	assert(Test.MyArrays3.myNames2Array[1][1][1].nicknames() == 'myNames2Array[1][1][1].nicknames#')
 	assert(Test.MyArrays3.myNames2Array[1][1][1].nicknames[1] == 'myNames2Array[1][1][1].nicknames[1]')
 
 	-- myNames2Array2
-	assert(#Test.MyArrays3.myNames2Array2 == 'myNames2Array2#')
-	assert(#Test.MyArrays3.myNames2Array2[1] == 'myNames2Array2[1]#')
-	assert(#Test.MyArrays3.myNames2Array2[1][1] == 'myNames2Array2[1][1]#')
-	assert(#Test.MyArrays3.myNames2Array2[1][1][1] == 'myNames2Array2[1][1][1]#')
+	assert(Test.MyArrays3.myNames2Array2() == 'myNames2Array2#')
+	assert(Test.MyArrays3.myNames2Array2[1]() == 'myNames2Array2[1]#')
+	assert(Test.MyArrays3.myNames2Array2[1][1]() == 'myNames2Array2[1][1]#')
+	assert(Test.MyArrays3.myNames2Array2[1][1][1]() == 'myNames2Array2[1][1][1]#')
 	assert(Test.MyArrays3.myNames2Array2[1][1][1][1].first == 'myNames2Array2[1][1][1][1].first')
-	assert(#Test.MyArrays3.myNames2Array2[1][1][1][1].nicknames == 'myNames2Array2[1][1][1][1].nicknames#')
+	assert(Test.MyArrays3.myNames2Array2[1][1][1][1].nicknames() == 'myNames2Array2[1][1][1][1].nicknames#')
 	assert(Test.MyArrays3.myNames2Array2[1][1][1][1].nicknames[1] == 'myNames2Array2[1][1][1][1].nicknames[1]')
 
 	-- myName2x2
-	assert(#Test.MyArrays3.myName2x2 == 'myName2x2#')
-	assert(#Test.MyArrays3.myName2x2[1] == 'myName2x2[1]#')
+	assert(Test.MyArrays3.myName2x2() == 'myName2x2#')
+	assert(Test.MyArrays3.myName2x2[1]() == 'myName2x2[1]#')
 	assert(Test.MyArrays3.myName2x2[1][1].first == 'myName2x2[1][1].first')
-	assert(#Test.MyArrays3.myName2x2[1][1].nicknames == 'myName2x2[1][1].nicknames#')
+	assert(Test.MyArrays3.myName2x2[1][1].nicknames() == 'myName2x2[1][1].nicknames#')
 	assert(Test.MyArrays3.myName2x2[1][1].nicknames[1] == 'myName2x2[1][1].nicknames[1]')
 
 	-- myName2x2x2x2
-	assert(#Test.MyArrays3.myName2x2x2x2 == 'myName2x2x2x2#')
-	assert(#Test.MyArrays3.myName2x2x2x2[1] == 'myName2x2x2x2[1]#')
-	assert(#Test.MyArrays3.myName2x2x2x2[1][1] == 'myName2x2x2x2[1][1]#')
-	assert(#Test.MyArrays3.myName2x2x2x2[1][1][1] == 'myName2x2x2x2[1][1][1]#')
+	assert(Test.MyArrays3.myName2x2x2x2() == 'myName2x2x2x2#')
+	assert(Test.MyArrays3.myName2x2x2x2[1]() == 'myName2x2x2x2[1]#')
+	assert(Test.MyArrays3.myName2x2x2x2[1][1]() == 'myName2x2x2x2[1][1]#')
+	assert(Test.MyArrays3.myName2x2x2x2[1][1][1]() == 'myName2x2x2x2[1][1][1]#')
 	assert(Test.MyArrays3.myName2x2x2x2[1][1][1][1].first == 'myName2x2x2x2[1][1][1][1].first')
-	assert(#Test.MyArrays3.myName2x2x2x2[1][1][1][1].nicknames == 'myName2x2x2x2[1][1][1][1].nicknames#')
+	assert(Test.MyArrays3.myName2x2x2x2[1][1][1][1].nicknames() == 'myName2x2x2x2[1][1][1][1].nicknames#')
 	assert(Test.MyArrays3.myName2x2x2x2[1][1][1][1].nicknames[1] == 'myName2x2x2x2[1][1][1][1].nicknames[1]')
 end
 
@@ -1340,56 +1340,56 @@ function Tester:test_sequences_multi_dim()
 	self:print(Test.MyNameSeq2x2)
 
 	-- myNames
-	assert(#Test.MySeqs3.myNames == 'myNames#')
+	assert(Test.MySeqs3.myNames() == 'myNames#')
 	assert(Test.MySeqs3.myNames[1].first == 'myNames[1].first')
-	assert(#Test.MySeqs3.myNames[1].nicknames == 'myNames[1].nicknames#')
+	assert(Test.MySeqs3.myNames[1].nicknames() == 'myNames[1].nicknames#')
 	assert(Test.MySeqs3.myNames[1].nicknames[1] == 'myNames[1].nicknames[1]')
 	
 	-- myNamesSeq
-	assert(#Test.MySeqs3.myNamesSeq == 'myNamesSeq#')
-	assert(#Test.MySeqs3.myNamesSeq[1] == 'myNamesSeq[1]#')
+	assert(Test.MySeqs3.myNamesSeq() == 'myNamesSeq#')
+	assert(Test.MySeqs3.myNamesSeq[1]() == 'myNamesSeq[1]#')
 	assert(Test.MySeqs3.myNamesSeq[1][1].first == 'myNamesSeq[1][1].first')
-	assert(#Test.MySeqs3.myNamesSeq[1][1].nicknames == 'myNamesSeq[1][1].nicknames#')
+	assert(Test.MySeqs3.myNamesSeq[1][1].nicknames() == 'myNamesSeq[1][1].nicknames#')
 	assert(Test.MySeqs3.myNamesSeq[1][1].nicknames[1] == 'myNamesSeq[1][1].nicknames[1]')
 	
 	-- myNames2
-	assert(#Test.MySeqs3.myNames2 == 'myNames2#')
-	assert(#Test.MySeqs3.myNames2[1] == 'myNames2[1]#')
+	assert(Test.MySeqs3.myNames2() == 'myNames2#')
+	assert(Test.MySeqs3.myNames2[1]() == 'myNames2[1]#')
 	assert(Test.MySeqs3.myNames2[1][1].first == 'myNames2[1][1].first')
-	assert(#Test.MySeqs3.myNames2[1][1].nicknames == 'myNames2[1][1].nicknames#')
+	assert(Test.MySeqs3.myNames2[1][1].nicknames() == 'myNames2[1][1].nicknames#')
 	assert(Test.MySeqs3.myNames2[1][1].nicknames[1] == 'myNames2[1][1].nicknames[1]')
 
 	-- myNames2Seq
-	assert(#Test.MySeqs3.myNames2Seq == 'myNames2Seq#')
-	assert(#Test.MySeqs3.myNames2Seq[1] == 'myNames2Seq[1]#')
-	assert(#Test.MySeqs3.myNames2Seq[1][1] == 'myNames2Seq[1][1]#')
+	assert(Test.MySeqs3.myNames2Seq() == 'myNames2Seq#')
+	assert(Test.MySeqs3.myNames2Seq[1]() == 'myNames2Seq[1]#')
+	assert(Test.MySeqs3.myNames2Seq[1][1]() == 'myNames2Seq[1][1]#')
 	assert(Test.MySeqs3.myNames2Seq[1][1][1].first == 'myNames2Seq[1][1][1].first')
-	assert(#Test.MySeqs3.myNames2Seq[1][1][1].nicknames == 'myNames2Seq[1][1][1].nicknames#')
+	assert(Test.MySeqs3.myNames2Seq[1][1][1].nicknames() == 'myNames2Seq[1][1][1].nicknames#')
 	assert(Test.MySeqs3.myNames2Seq[1][1][1].nicknames[1] == 'myNames2Seq[1][1][1].nicknames[1]')
 
 	-- myNames2Seq2
-	assert(#Test.MySeqs3.myNames2Seq2 == 'myNames2Seq2#')
-	assert(#Test.MySeqs3.myNames2Seq2[1] == 'myNames2Seq2[1]#')
-	assert(#Test.MySeqs3.myNames2Seq2[1][1] == 'myNames2Seq2[1][1]#')
-	assert(#Test.MySeqs3.myNames2Seq2[1][1][1] == 'myNames2Seq2[1][1][1]#')
+	assert(Test.MySeqs3.myNames2Seq2() == 'myNames2Seq2#')
+	assert(Test.MySeqs3.myNames2Seq2[1]() == 'myNames2Seq2[1]#')
+	assert(Test.MySeqs3.myNames2Seq2[1][1]() == 'myNames2Seq2[1][1]#')
+	assert(Test.MySeqs3.myNames2Seq2[1][1][1]() == 'myNames2Seq2[1][1][1]#')
 	assert(Test.MySeqs3.myNames2Seq2[1][1][1][1].first == 'myNames2Seq2[1][1][1][1].first')
-	assert(#Test.MySeqs3.myNames2Seq2[1][1][1][1].nicknames == 'myNames2Seq2[1][1][1][1].nicknames#')
+	assert(Test.MySeqs3.myNames2Seq2[1][1][1][1].nicknames() == 'myNames2Seq2[1][1][1][1].nicknames#')
 	assert(Test.MySeqs3.myNames2Seq2[1][1][1][1].nicknames[1] == 'myNames2Seq2[1][1][1][1].nicknames[1]')
 
 	-- myName2x2
-	assert(#Test.MySeqs3.myName2x2 == 'myName2x2#')
-	assert(#Test.MySeqs3.myName2x2[1] == 'myName2x2[1]#')
+	assert(Test.MySeqs3.myName2x2() == 'myName2x2#')
+	assert(Test.MySeqs3.myName2x2[1]() == 'myName2x2[1]#')
 	assert(Test.MySeqs3.myName2x2[1][1].first == 'myName2x2[1][1].first')
-	assert(#Test.MySeqs3.myName2x2[1][1].nicknames == 'myName2x2[1][1].nicknames#')
+	assert(Test.MySeqs3.myName2x2[1][1].nicknames() == 'myName2x2[1][1].nicknames#')
 	assert(Test.MySeqs3.myName2x2[1][1].nicknames[1] == 'myName2x2[1][1].nicknames[1]')
 
 	-- myName2x2x2x2
-	assert(#Test.MySeqs3.myName2x2x2x2 == 'myName2x2x2x2#')
-	assert(#Test.MySeqs3.myName2x2x2x2[1] == 'myName2x2x2x2[1]#')
-	assert(#Test.MySeqs3.myName2x2x2x2[1][1] == 'myName2x2x2x2[1][1]#')
-	assert(#Test.MySeqs3.myName2x2x2x2[1][1][1] == 'myName2x2x2x2[1][1][1]#')
+	assert(Test.MySeqs3.myName2x2x2x2() == 'myName2x2x2x2#')
+	assert(Test.MySeqs3.myName2x2x2x2[1]() == 'myName2x2x2x2[1]#')
+	assert(Test.MySeqs3.myName2x2x2x2[1][1]() == 'myName2x2x2x2[1][1]#')
+	assert(Test.MySeqs3.myName2x2x2x2[1][1][1]() == 'myName2x2x2x2[1][1][1]#')
 	assert(Test.MySeqs3.myName2x2x2x2[1][1][1][1].first == 'myName2x2x2x2[1][1][1][1].first')
-	assert(#Test.MySeqs3.myName2x2x2x2[1][1][1][1].nicknames == 'myName2x2x2x2[1][1][1][1].nicknames#')
+	assert(Test.MySeqs3.myName2x2x2x2[1][1][1][1].nicknames() == 'myName2x2x2x2[1][1][1][1].nicknames#')
 	assert(Test.MySeqs3.myName2x2x2x2[1][1][1][1].nicknames[1] == 'myName2x2x2x2[1][1][1][1].nicknames[1]')
 end
 
@@ -1460,22 +1460,22 @@ function Tester:test_const_bounds()
     assert(CAPACITY() == 5)
     
     -- myNames
-    assert(#Test.MyCapacityStruct.myNames == 'myNames#')
-    assert(#Test.MyCapacityStruct.myNames[1] == 'myNames[1]#')
+    assert(Test.MyCapacityStruct.myNames() == 'myNames#')
+    assert(Test.MyCapacityStruct.myNames[1]() == 'myNames[1]#')
     assert(Test.MyCapacityStruct.myNames[1][1].first == 'myNames[1][1].first')
-    assert(#Test.MyCapacityStruct.myNames[1][1].nicknames == 'myNames[1][1].nicknames#')
+    assert(Test.MyCapacityStruct.myNames[1][1].nicknames() == 'myNames[1][1].nicknames#')
     assert(Test.MyCapacityStruct.myNames[1][1].nicknames[1] == 'myNames[1][1].nicknames[1]')
   
     -- myNames2
-    assert(#Test.MyCapacityStruct.myNames2 == 'myNames2#')
-    assert(#Test.MyCapacityStruct.myNames2[1] == 'myNames2[1]#')
+    assert(Test.MyCapacityStruct.myNames2() == 'myNames2#')
+    assert(Test.MyCapacityStruct.myNames2[1]() == 'myNames2[1]#')
     assert(Test.MyCapacityStruct.myNames2[1][1].first == 'myNames2[1][1].first')
-    assert(#Test.MyCapacityStruct.myNames2[1][1].nicknames == 'myNames2[1][1].nicknames#')
+    assert(Test.MyCapacityStruct.myNames2[1][1].nicknames() == 'myNames2[1][1].nicknames#')
     assert(Test.MyCapacityStruct.myNames2[1][1].nicknames[1] == 'myNames2[1][1].nicknames[1]')
    
     -- myStrings
-    assert(#Test.MyCapacityStruct.myStrings == 'myStrings#')
-    assert(#Test.MyCapacityStruct.myStrings[1] == 'myStrings[1]#')
+    assert(Test.MyCapacityStruct.myStrings() == 'myStrings#')
+    assert(Test.MyCapacityStruct.myStrings[1]() == 'myStrings[1]#')
     assert(Test.MyCapacityStruct.myStrings[1][1] == 'myStrings[1][1]')
     
     -- myStr
@@ -1494,39 +1494,133 @@ function Tester:test_collection_bounds()
         { long2SeqX  = { xtypes.long, xtypes.sequence(CAPACITY) } },
         { long1ArrX  = { xtypes.long, xtypes.array(CAPACITY) } },
         { long2ArrXX = { xtypes.long, xtypes.array(3, CAPACITY) } },
+        { longUSeqX  = { xtypes.long, xtypes.sequence() } }, -- unbounded
     }
   }
   
   self:print(BoundsTest)  
   
   -- 1D Seq
-  assert(#BoundsTest.long1SeqX == 'long1SeqX#')
+  assert(BoundsTest.long1SeqX() == 'long1SeqX#')
   assert(BoundsTest.long1SeqX[1] == 'long1SeqX[1]')
   assert(BoundsTest.long1SeqX[3] == 'long1SeqX[3]')
   assert(not print(pcall(function() return BoundsTest.long1SeqX[4] end)))
   
  -- 1D Seq with X-Types defined constant
-  assert(#BoundsTest.long2SeqX == 'long2SeqX#')
+  assert(BoundsTest.long2SeqX() == 'long2SeqX#')
   assert(BoundsTest.long2SeqX[1] == 'long2SeqX[1]')
   assert(BoundsTest.long2SeqX[5] == 'long2SeqX[5]')
   assert(not print(pcall(function() return BoundsTest.long2SeqX[6] end)))
 
  -- 1D Array with X-Types defined constant
-  assert(#BoundsTest.long1ArrX == 'long1ArrX#')
+  assert(BoundsTest.long1ArrX() == 'long1ArrX#')
   assert(BoundsTest.long1ArrX[1] == 'long1ArrX[1]')
   assert(BoundsTest.long1ArrX[5] == 'long1ArrX[5]')
   assert(not print(pcall(function() return BoundsTest.long1ArrX[6] end)))
   
  -- 2D Array with X-Types defined constant for one bound
-  assert(#BoundsTest.long2ArrXX == 'long2ArrXX#')
-  assert(#BoundsTest.long2ArrXX[1] == 'long2ArrXX[1]#')
-  assert(#BoundsTest.long2ArrXX[3] == 'long2ArrXX[3]#')
+  assert(BoundsTest.long2ArrXX() == 'long2ArrXX#')
+  assert(BoundsTest.long2ArrXX[1]() == 'long2ArrXX[1]#')
+  assert(BoundsTest.long2ArrXX[3]() == 'long2ArrXX[3]#')
   assert(not print(pcall(function() return #BoundsTest.long2ArrXX[4] end)))
   
   assert(BoundsTest.long2ArrXX[3][5] == 'long2ArrXX[3][5]')
   assert(not print(pcall(function() return BoundsTest.long2ArrXX[1][6] end)))
   assert(not print(pcall(function() return BoundsTest.long2ArrXX[4][1] end)))
   assert(not print(pcall(function() return BoundsTest.long2ArrXX[4][6] end)))
+  
+ -- Unbounded sequence
+  assert(BoundsTest.longUSeqX() == 'longUSeqX#')
+  assert(BoundsTest.longUSeqX[1] == 'longUSeqX[1]')
+  assert(BoundsTest.longUSeqX[999] == 'longUSeqX[999]')
+end
+
+Tester[#Tester+1] = 'test_collection_assignment'
+function Tester:test_collection_assignment()
+
+  local Assign = xtypes.struct{
+    Assign = {
+        { long0      = { xtypes.long }, },
+        { long1SeqX  = { xtypes.long, xtypes.sequence(3) } },
+        { long2ArrXX = { xtypes.long, xtypes.array(3, 5) } },
+        { longUSeqX  = { xtypes.long, xtypes.sequence() } }, -- unbounded
+    }
+  }
+  
+  self:print(Assign)  
+  print()
+  
+  -- atomic member
+  Assign.long0 = 100   
+  print('Assign.long0', Assign.long0)
+  assert(Assign.long0 == 100)
+  
+  
+  -- 1D Seq
+  Assign.long1SeqX[1] = 100  -- NOTE: already instantiated by print()
+  print('Assign.long1SeqX[1]', Assign.long1SeqX[1]) 
+  assert(Assign.long1SeqX[1] == 100)
+    
+  Assign.long1SeqX[2] = 200  
+  print('Assign.long1SeqX[2]', Assign.long1SeqX[2]) 
+  assert(Assign.long1SeqX[2] == 200)
+
+  assert(not print(pcall(function() Assign.long1SeqX[4] = 400 end)))
+
+  -- Length: 1D Seq
+  print('Assign.long1SeqX()', Assign.long1SeqX()) 
+  assert(Assign.long1SeqX() == 'long1SeqX#')
+  print('#Assign.long1SeqX', #Assign.long1SeqX) 
+  assert(#Assign.long1SeqX == 2)
+  
+  
+
+  -- 2D Array
+  Assign.long2ArrXX[1][1] = 100*100  -- NOTE: already instantiated by print()
+  print('Assign.long2ArrXX[1][1]', Assign.long2ArrXX[1][1]) 
+  assert(Assign.long2ArrXX[1][1] == 100*100)
+
+  Assign.long2ArrXX[1][2] = 100*200  
+  print('Assign.long2ArrXX[1][2]', Assign.long2ArrXX[1][2]) 
+  assert(Assign.long2ArrXX[1][2] == 100*200)
+  
+  Assign.long2ArrXX[2][2] = 200*200  
+  print('Assign.long2ArrXX[2][2]', Assign.long2ArrXX[2][2]) 
+  assert(Assign.long2ArrXX[2][2] == 200*200)  
+  
+  assert(not print(pcall(function() Assign.long2ArrXX[3] = 'XXXrandomXXX' end)))
+  
+  assert(not print(pcall(function() Assign.long2ArrXX[4][1] = 400*100 end)))
+  assert(not print(pcall(function() Assign.long2ArrXX[1][6] = 100*600 end)))
+
+  
+  -- Length: 2D Array
+  print('Assign.long2ArrXX()', Assign.long2ArrXX()) 
+  assert(Assign.long2ArrXX() == 'long2ArrXX#')
+  print('#Assign.long2ArrXX', #Assign.long2ArrXX) 
+  assert(#Assign.long2ArrXX == 3)
+
+  print('Assign.long2ArrXX[1]()', Assign.long2ArrXX[1]()) 
+  assert(Assign.long2ArrXX[1]() == 'long2ArrXX[1]#')
+  print('#Assign.long2ArrXX[1]', #Assign.long2ArrXX[1]) 
+  assert(#Assign.long2ArrXX[1] == 2)
+  
+    
+  -- Unbounded Seq
+  for i = 1, 17 do
+    Assign.longUSeqX[i] = 100 * i 
+    print(string.format('Assign.longUSeqX[%d]', i), Assign.longUSeqX[i]) 
+    assert(Assign.longUSeqX[i] == 100 * i)
+  end
+  Assign.longUSeqX[999] = 100 * 999 -- add hole
+  print(string.format('Assign.longUSeqX[%d]', 999), Assign.longUSeqX[999]) 
+  assert(Assign.longUSeqX[999] == 100 * 999)
+    
+  -- Length: Unbounded Seq
+  print('Assign.longUSeqX()', Assign.longUSeqX()) 
+  assert(Assign.longUSeqX() == 'longUSeqX#')
+  print('#Assign.longUSeqX', #Assign.longUSeqX) 
+  assert(#Assign.longUSeqX == 17) -- NOTE: hole is is not counted (Lua array)
 end
 
 Tester[#Tester+1] = 'test_module_manipulation'

@@ -450,7 +450,7 @@ end
 --    <<returns>> the newly created collection of instances
 -- Usage:
 --    local mySeq = _.new_collection("my", template)
---    for i = 1, sample[#mySeq] do -- length of the sequence
+--    for i = 1, sample[mySeq()] do -- length accessor for the collection
 --       local element_i = sample[mySeq[i]] -- access the i-th element
 --    end    
 function _.new_collection(name, template_or_collection, capacity) 
@@ -485,18 +485,22 @@ function _.is_collection_instance(v)
 end
 
 _.collection_metatable = {    
-  __len = function (collection)
+  __call = function (collection)
+      -- the accessor for collection length
+      -- NOTE: the length operator returns the actual number of elements
       return string.format('%s#', collection[_.NAME])
   end,
   
   __index = function (collection, i)
+      -- print('DEBUG collection __index', collection, i)
       if 'number' ~= type(i) then
-        -- print('DEBUG collection __index 1', collection, i)
+        -- print('DEBUG collection __index.1', collection, i)
         return nil 
       end 
 
       -- enforce capacity
-      if collection[_.INSTANCES] and i > collection[_.INSTANCES] then
+      local capacity = rawget(collection, _.INSTANCES) or nil
+      if capacity and i > collection[_.INSTANCES] then
         error(string.format('#%s: index %d exceeds collection capacity', 
                               collection, i),
               2)
@@ -505,20 +509,36 @@ _.collection_metatable = {
       -- NOTE: we got called because collection[i] does not exist
       local name_i = string.format('%s[%d]', collection[_.NAME], i)
       local element_i = _.clone(name_i, collection[_.TEMPLATE])
-      rawset(collection, i, element_i)
       
+      rawset(collection, i, element_i)
       return element_i
   end,
   
   __newindex = function (collection, i, v)
-      assert("Not Implemented!") -- TODO
-      -- collection[i] = v
+      -- print('DEBUG collection __newindex', collection, i, v)
+      local element_i = collection[i]
+      if 'table' ~= type(element_i) then -- replace with the new value
+        element_i = v
+        rawset(collection, i, element_i)
+      else 
+        -- NOTE: In order to preserve the integrity of the user defined data 
+        -- types, we only allow assignment of leaf elements. Thus, wholesale
+        -- assignment of a composite or collection element is not allowed. 
+        -- 
+        -- Generally, this is not an issue, as the composite or collection
+        -- tables will be further dereferenced by a . or [] operator 
+        error(string.format('#%s: assignment not permitted for ' ..
+                            'non-leaf member %s', 
+                            collection, element_i[_.NAME]),
+              2)
+      end
+      return element_i
   end,
 
   __tostring = function (collection)
-      return string.format('%s{%s}<%d', 
-                           collection[_.NAME], collection[_.TEMPLATE], 
-                           collection[_.INSTANCES])
+      local capacity = rawget(collection, _.INSTANCES) or ''
+      return string.format('%s{%s}<%s', 
+                          collection[_.NAME], collection[_.TEMPLATE], capacity)
   end,
 }
 
@@ -2214,7 +2234,7 @@ function xutils.index(instance, result, model)
 	-- collection instance
 	if _.is_collection_instance(instance) then
 	    -- length operator
-  		table.insert(result, #instance)
+  		table.insert(result, instance())
   				
   		-- index 1st element for illustration
   		local instance_i = instance[1]
@@ -2273,7 +2293,7 @@ function xutils.index(instance, result, model)
 			   -- collection
   		   if _.is_collection_instance(role_instance) then 
     				-- length operator
-    				table.insert(result, #role_instance)
+    				table.insert(result, role_instance())
     	
     				-- index 1st element for illustration
     				local role_instance_i = role_instance[1]
