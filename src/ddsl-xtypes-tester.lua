@@ -1790,15 +1790,12 @@ end
 -- print - helper method to print the IDL and the index for data definition
 function Tester:print(instance)
     -- print IDL
-    xtypes.utils.print_idl(instance)
-  
+    local idl = xtypes.utils.visit_model(instance, {'idl:'})
+    print(table.concat(idl, '\n\t'))
+    
     -- print the result of visiting each field
-    local instance = xtypes.utils.visit_instance(instance)
-    if instance == nil then return end
-    print('index:')
-    for i, v in ipairs(instance) do
-        print('',v) 
-    end
+    local fields = xtypes.utils.visit_instance(instance, {'index:'})
+    print(table.concat(fields, '\n\t'))
 end
 
 ---

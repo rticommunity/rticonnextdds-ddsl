@@ -1321,9 +1321,9 @@ local xutils = {}
 --         passed to another call to this method (to build it cumulatively).
 function xutils.visit_instance(instance, result, model) 
   -- print('DEBUG xutils.visit_instance 1: ', instance) 
-  
-  -- ensure valid instance
-  local type_instance = type(instance)
+
+  -- initialize the result (or accumulate in the provided result)
+  result = result or {} 
 
   -- collection instance
   if _.is_instance_collection(instance) then
@@ -1349,10 +1349,7 @@ function xutils.visit_instance(instance, result, model)
   -- print('DEBUG index 1: ', mytype(), instance[_.MODEL][_.NAME])
       
   -- skip if not an indexable type:
-  if xtypes.STRUCT ~= mytype and xtypes.UNION ~= mytype then return nil end
-
-  -- preserve the order of model definition
-  local result = result or {} -- must be a top-level type 
+  if xtypes.STRUCT ~= mytype and xtypes.UNION ~= mytype then return result end
           
   -- union discriminator, if any
   if xtypes.UNION == mytype then
@@ -1365,6 +1362,7 @@ function xutils.visit_instance(instance, result, model)
     result = xutils.visit_instance(instance, result, base[_.MODEL]) 
   end
   
+  -- preserve the order of model definition
   -- walk through the body of the model definition
   -- NOTE: typedefs don't have an array of members  
   for i, defn_i in ipairs(mydefn) do    
@@ -1410,7 +1408,7 @@ function xutils.visit_instance(instance, result, model)
   return result
 end
 
--- xutils.print_idl() - prints OMG IDL representation of a data model
+-- xutils.visit_model() - prints OMG IDL representation of a data model
 --
 -- Purpose:
 -- 		Generate equivalent OMG IDL representation from a data model
@@ -1419,12 +1417,15 @@ end
 --    <<in>> indent_string - the indentation string to apply
 --    <<return>> model, indent_string for chaining
 -- Usage:
---         xutils.print_idl(model) 
+--         xutils.visit_model(model) 
 --           or
---         xutils.print_idl(model, '   ')
-function xutils.print_idl(instance, indent_string)
+--         xutils.visit_model(model, '   ')
+function xutils.visit_model(instance, result, indent_string)
 	-- pre-condition: ensure valid instance
 	assert(_.model_kind(instance), 'invalid instance')
+	
+	-- initialize the result (or accumulate in the provided result)
+  result = result or {} 
 
 	local indent_string = indent_string or ''
 	local content_indent_string = indent_string
@@ -1434,12 +1435,12 @@ function xutils.print_idl(instance, indent_string)
 	local mydefn = model[_.DEFN]
   local mymodule = model[_.NS]
   		
-	-- print('DEBUG print_idl: ', Data, model, mytype(), myname)
+	-- print('DEBUG visit_model: ', Data, model, mytype(), myname)
 	
 	-- skip: atomic types, annotations
 	if xtypes.ATOM == mytype or
 	   xtypes.ANNOTATION == mytype then 
-	   return instance, indent_string 
+	   return result
 	end
     
   if xtypes.CONST == mytype then
@@ -1451,17 +1452,18 @@ function xutils.print_idl(instance, indent_string)
     elseif xtypes.string() == atom or xtypes.wstring() == atom then
       value = table.concat{'"', tostring(value), '"'}
     end
-     print(string.format('%sconst %s %s = %s;', content_indent_string, 
+     table.insert(result, 
+                  string.format('%sconst %s %s = %s;', content_indent_string, 
                         atom, 
                         myname, value))
-     return instance, indent_string                              
+     return result
   end
     
 	if xtypes.TYPEDEF == mytype then
 		local defn = mydefn	
-    print(string.format('%s%s %s', indent_string,  mytype(),
+    table.insert(result, string.format('%s%s %s', indent_string,  mytype(),
                                 xutils.tostring_role(myname, defn, mymodule)))
-		return instance, indent_string 
+		return result 
 	end
 	
 	-- open --
@@ -1470,27 +1472,30 @@ function xutils.print_idl(instance, indent_string)
 		-- print the annotations
 		if nil ~=mydefn and nil ~= mydefn[_.QUALIFIERS] then
 			for i, annotation in ipairs(mydefn[_.QUALIFIERS]) do
-		      print(string.format('%s%s', indent_string, tostring(annotation)))
+		      table.insert(result,
+		            string.format('%s%s', indent_string, tostring(annotation)))
 			end
 		end
 		
 		if xtypes.UNION == mytype then
-			print(string.format('%s%s %s switch (%s) {', indent_string, 
+			table.insert(result, string.format('%s%s %s switch (%s) {', indent_string, 
 						mytype(), myname, model[_.DEFN][xtypes.SWITCH][_.MODEL][_.NAME]))
 						
 		elseif xtypes.STRUCT == mytype and model[_.DEFN][xtypes.BASE] then -- base
-			print(string.format('%s%s %s : %s {', indent_string, mytype(), 
+			table.insert(result,
+			    string.format('%s%s %s : %s {', indent_string, mytype(), 
 					myname, model[_.DEFN][xtypes.BASE][_.MODEL][_.NAME]))
 		
 		else
-			print(string.format('%s%s %s {', indent_string, mytype(), myname))
+			table.insert(result, 
+			             string.format('%s%s %s {', indent_string, mytype(), myname))
 		end
 		content_indent_string = indent_string .. '   '
 	end
 		
 	if xtypes.MODULE == mytype then 
 		for i, role_template in ipairs(mydefn) do -- walk through module definition
-			xutils.print_idl(role_template, content_indent_string)
+			result = xutils.visit_model(role_template, result, content_indent_string)
 		end
 		
 	elseif xtypes.STRUCT == mytype then
@@ -1498,7 +1503,7 @@ function xutils.print_idl(instance, indent_string)
 		for i, defn_i in ipairs(mydefn) do -- walk through the model definition
 			if not defn_i[_.MODEL] then -- skip struct level annotations
 			  local role, role_defn = next(defn_i)
-        print(string.format('%s%s', content_indent_string,
+        table.insert(result, string.format('%s%s', content_indent_string,
                             xutils.tostring_role(role, role_defn, mymodule)))
 			end
 		end
@@ -1510,19 +1515,20 @@ function xutils.print_idl(instance, indent_string)
 				
 				-- case
 				if (nil == case) then
-				  print(string.format("%sdefault :", content_indent_string))
+				  table.insert(result,
+				               string.format("%sdefault :", content_indent_string))
 				elseif (xtypes.builtin.char == model[_.DEFN][xtypes.SWITCH] 
 				        and nil ~= case) then
-					print(string.format("%scase '%s' :", 
+					table.insert(result, string.format("%scase '%s' :", 
 						content_indent_string, tostring(case)))
 				else
-					print(string.format("%scase %s :", 
+					table.insert(result, string.format("%scase %s :", 
 						content_indent_string, tostring(case)))
 				end
 				
 				-- member element
 				local role, role_defn = next(defn_i, #defn_i > 0 and #defn_i or nil)
-				print(string.format('%s%s', content_indent_string .. '   ',
+				table.insert(result, string.format('%s%s', content_indent_string .. '   ',
 				                      xutils.tostring_role(role, role_defn, mymodule)))
 			end
 		end
@@ -1531,20 +1537,20 @@ function xutils.print_idl(instance, indent_string)
 		for i, defn_i in ipairs(mydefn) do -- walk through the model definition	
 			local role, ordinal = next(defn_i)
 			if ordinal then
-				print(string.format('%s%s = %s,', content_indent_string, role, 
+				table.insert(result, string.format('%s%s = %s,', content_indent_string, role, 
 								    ordinal))
 			else
-				print(string.format('%s%s,', content_indent_string, role))
+				table.insert(result, string.format('%s%s,', content_indent_string, role))
 			end
 		end
 	end
 	
 	-- close --
 	if (nil ~= myname) then -- not top-level / builtin module
-		print(string.format('%s};\n', indent_string))
+		table.insert(result, string.format('%s};\n', indent_string))
 	end
 	
-	return instance, indent_string
+	return result
 end
 
 
@@ -1692,7 +1698,7 @@ local interface = {
     new_instance_collection = _.new_instance_collection,
     is_instance_collection  = _.is_instance_collection,
     visit_instance          = xutils.visit_instance,
-    print_idl               = xutils.print_idl,
+    visit_model             = xutils.visit_model,
   }
 }
 
