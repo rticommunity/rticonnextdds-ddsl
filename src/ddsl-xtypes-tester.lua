@@ -11,7 +11,7 @@
 -- Created: Rajive Joshi, 2014 Feb 14
 -------------------------------------------------------------------------------
 
-local xtypes = require "Data"
+local xtypes = require('xtypes')
 
 --------------------------------------------------------------------------------
 -- Tester - the unit tests
