@@ -87,7 +87,7 @@
 --          user_role1 = 'user_role1'  -- name used to index this 'leaf' field
 --          user_role2 = _.new_instance('user_role2', UserModule.UserType2)
 --          user_role3 = _.new_instance('user_role3', UserModule.UserType3)
---          user_role_seq = _.new_collection('user_role_seq', 
+--          user_role_seq = _.new_instance_collection('user_role_seq', 
 --                                              UserModule.UserTypeSeq)
 --          :
 --       }
@@ -149,7 +149,7 @@
 --          Or a composite field 
 --              model.role = _.new_instance('role', RoleModel)
 --          or a sequence
---              model.role = _.new_collection('role', RoleModel)
+--              model.role = _.new_instance_collection('role', RoleModel)
 --
 --    Note that all the meta-data attributes are functions, so it is 
 --    straightforward to skip them, when traversing a model table.
@@ -284,9 +284,9 @@ function _.create_role_instance(role, role_defn)
     if collection then
       local iterator = template
       for i = #collection, 2, -1  do -- create iterator for inner dimensions
-        iterator = _.new_collection('', iterator, collection[i]) -- unnamed iterator
+        iterator = _.new_instance_collection('', iterator, collection[i]) -- unnamed iterator
       end
-      role_instance = _.new_collection(role, iterator, collection[1])
+      role_instance = _.new_instance_collection(role, iterator, collection[1])
     else
       role_instance = _.new_instance(role, template)
     end
@@ -385,9 +385,9 @@ function _.new_instance(name, template)
   if alias_collection then
     local iterator = template
     for i = #alias_collection, 2, - 1  do -- create for inner dimensions
-      iterator = _.new_collection('', iterator, alias_collection[i]) -- unnamed
+      iterator = _.new_instance_collection('', iterator, alias_collection[i]) -- unnamed
     end
-    instance = _.new_collection(name, iterator, alias_collection[1])
+    instance = _.new_instance_collection(name, iterator, alias_collection[1])
     return instance
   end
   
@@ -436,8 +436,8 @@ function _.new_instance(name, template)
 end
 
 -- Name: 
---    _.new_collection() - creates a collection of instances specified by 
---                         the template or collection of instances
+--    _.new_instance_collection() - creates a collection of instances specified
+--                                  by the template or instance collection
 -- Purpose:
 --    Define new named collection of instances
 -- Parameters:
@@ -449,15 +449,15 @@ end
 --                      maybe nil (=> unbounded)
 --    <<returns>> the newly created collection of instances
 -- Usage:
---    local mySeq = _.new_collection("my", template)
+--    local mySeq = _.new_instance_collection("my", template)
 --    for i = 1, sample[mySeq()] do -- length accessor for the collection
 --       local element_i = sample[mySeq[i]] -- access the i-th element
 --    end    
-function _.new_collection(name, template_or_collection, capacity) 
+function _.new_instance_collection(name, template_or_collection, capacity) 
   -- print('DEBUG create_collection', name, template_or_collection)
 
   _.assert_role(name)
-  assert(_.is_collection_instance(template_or_collection) or
+  assert(_.is_instance_collection(template_or_collection) or
          _.info.is_template_kind(template_or_collection),
          table.concat{'create_collection(): needs a template or collection'})
   
@@ -480,7 +480,7 @@ function _.new_collection(name, template_or_collection, capacity)
 end
 
 -- Is the given value a collection of instances:
-function _.is_collection_instance(v) 
+function _.is_instance_collection(v) 
   return getmetatable(v) == _.collection_metatable
 end
 
@@ -563,12 +563,12 @@ function _.clone(prefix, v)
     -- clone the instance  
     if 'table' == type_v then -- collection or struct or union
 
-        if _.is_collection_instance(v) then -- collection
+        if _.is_instance_collection(v) then -- collection
             -- multi-dimensional collection
             if '' == v[_.NAME] then sep = '' end 
             
             -- create collection instance for 'prefix'
-            result = _.new_collection(table.concat{prefix, sep, v[_.NAME]}, 
+            result = _.new_instance_collection(table.concat{prefix, sep, v[_.NAME]}, 
                                       v[_.TEMPLATE], v[_.INSTANCES])  
         else -- not collection: struct or union
             -- create instance for 'prefix'
@@ -718,35 +718,36 @@ end
 -- 
 local interface = {
   -- empty initializer sentinel value
-  EMPTY                  = EMPTY,
-  MODEL                  = MODEL,
+  EMPTY                   = EMPTY,
+  MODEL                   = MODEL,
    
   -- accesors and mutators (meta-attributes for types)
-  NS                     = _.NS,
-  NAME                   = _.NAME,
-  KIND                   = _.KIND,
-  DEFN                   = _.DEFN,
-  INSTANCES              = _.INSTANCES,
-  QUALIFIERS             = _.QUALIFIERS,
+  NS                      = _.NS,
+  NAME                    = _.NAME,
+  KIND                    = _.KIND,
+  DEFN                    = _.DEFN,
+  INSTANCES               = _.INSTANCES,
+  QUALIFIERS              = _.QUALIFIERS,
   
-  -- operations
-  parse_decl             = _.parse_decl,
-  new_template           = _.new_template,
-  populate_template      = _.populate_template,
-  create_role_instance   = _.create_role_instance,
-  update_instances       = _.update_instances,
+  -- ddsl operations
+  parse_decl              = _.parse_decl,
+  new_template            = _.new_template,
+  populate_template       = _.populate_template,
+  create_role_instance    = _.create_role_instance,
+  update_instances        = _.update_instances,
   
-  model_kind             = _.model_kind,
-  assert_model           = _.assert_model,
-  assert_collection      = _.assert_collection,
-  assert_template        = _.assert_template,
-  assert_qualifier_array = _.assert_qualifier_array,
+  model_kind              = _.model_kind,
+  assert_model            = _.assert_model,
+  assert_collection       = _.assert_collection,
+  assert_template         = _.assert_template,
+  assert_qualifier_array  = _.assert_qualifier_array,
+   
   
-  -- new_instance        = _.new_instance,
-  -- new_collection      = _.new_collection,
-  is_collection_instance = _.is_collection_instance,  -- for index (generalize?)
-  
-  nsname                 = _.nsname,
+  -- for users of templates created with ddsl
+  nsname                  = _.nsname,
+  new_instance            = _.new_instance,
+  new_instance_collection = _.new_instance_collection,
+  is_instance_collection  = _.is_instance_collection,
 }
 
 -- enforce that the user provides a function to binds the 

@@ -1309,74 +1309,106 @@ end
 --------------------------------------------------------------------------------
 local xutils = {}
 
---- IDL string representation of a role
--- @function tostring_role
--- @param #string role role name
--- @param #list role_defn the definition of the role in the following format:
---           { template, [collection,] [annotation1, annotation2, ...] } 
--- @param module the module to which the owner data model element belongs
--- @return #string IDL string representation of the idl member
-function xutils.tostring_role(role, role_defn, module)
+-- @function xutils.visit_instance() - Visit all fields (depth-first) in 
+--       the given instance and return their values as a linear (flattened) 
+--       list. For instance collections, the 1st element is visited.
+-- @param instance [in] the instance to visit
+-- @param result [in] OPTIONAL the index table to which the results are appended
+-- @param model [in] OPTIONAL nil means use the instance's model;
+--              needed to support inheritance and typedefs
+-- @return the cumulative result of visiting all the fields. Each field that is
+--         visited is inserted into this table. This return value table can be 
+--         passed to another call to this method (to build it cumulatively).
+function xutils.visit_instance(instance, result, model) 
+  -- print('DEBUG xutils.visit_instance 1: ', instance) 
+  
+  -- ensure valid instance
+  local type_instance = type(instance)
 
-  local template, seq 
-  if role_defn then
-    template = role_defn[1]
-    for i = 2, #role_defn do
-      if xtypes.SEQUENCE == role_defn[i][_.MODEL] then
-        seq = role_defn[i]
-        break -- 1st 'collection' is used
+  -- collection instance
+  if _.is_instance_collection(instance) then
+      -- length operator
+      table.insert(result, instance())
+          
+      -- index 1st element for illustration
+      local instance_i = instance[1]
+      if 'table' == type(instance_i) then -- composite collection
+          xutils.visit_instance(instance_i, result) -- index the current element 
+      else -- leaf collection
+          table.insert(result, instance_i)
+      end
+      
+      return result
+  end
+  
+  -- struct or union
+  local mytype = _.model_kind(instance)
+  local model = model or instance[_.MODEL]
+  local mydefn = model[_.DEFN]
+
+  -- print('DEBUG index 1: ', mytype(), instance[_.MODEL][_.NAME])
+      
+  -- skip if not an indexable type:
+  if xtypes.STRUCT ~= mytype and xtypes.UNION ~= mytype then return nil end
+
+  -- preserve the order of model definition
+  local result = result or {} -- must be a top-level type 
+          
+  -- union discriminator, if any
+  if xtypes.UNION == mytype then
+    table.insert(result, instance._d)
+  end
+    
+  -- struct base type, if any
+  local base = model[_.DEFN][xtypes.BASE]
+  if nil ~= base then
+    result = xutils.visit_instance(instance, result, base[_.MODEL]) 
+  end
+  
+  -- walk through the body of the model definition
+  -- NOTE: typedefs don't have an array of members  
+  for i, defn_i in ipairs(mydefn) do    
+    -- skip annotations
+    if not defn_i[_.MODEL] then
+      -- walk through the elements in the order of definition:
+      
+      local role
+      if xtypes.STRUCT == mytype then     
+        role = next(defn_i)
+      elseif xtypes.UNION == mytype then
+        role = next(defn_i, #defn_i > 0 and #defn_i or nil)
+      end
+      
+      local role_instance = instance[role]
+      local role_instance_type = type(role_instance)
+      -- print('DEBUG index 3: ', role, role_instance)
+
+      if 'table' == role_instance_type then -- composite (nested)
+         -- collection
+         if _.is_instance_collection(role_instance) then 
+            -- length operator
+            table.insert(result, role_instance())
+      
+            -- index 1st element for illustration
+            local role_instance_i = role_instance[1]
+            if 'table' == type(role_instance_i) then -- composite sequence
+                xutils.visit_instance(role_instance_i, result) -- index the 1st element 
+            else -- leaf collection
+                table.insert(result, role_instance_i)
+            end
+            
+         -- non-collection
+         else
+           result = xutils.visit_instance(role_instance, result)
+         end
+      else -- leaf
+        table.insert(result, role_instance) 
       end
     end
   end
 
-  local output_member = ''    
-  if nil == template then return output_member end
-
-  if seq == nil then -- not a sequence
-    output_member = string.format('%s %s', _.nsname(template, module), role)
-  elseif #seq == 0 then -- unbounded sequence
-    output_member = string.format('sequence<%s> %s', 
-                                  _.nsname(template, module), role)
-  else -- bounded sequence
-    for i = 1, #seq do
-      output_member = string.format('%ssequence<', output_member) 
-    end
-    output_member = string.format('%s%s', output_member, 
-                                  _.nsname(template, module))
-    for i = 1, #seq do
-      output_member = string.format('%s,%s>', output_member, 
-                _.model_kind(seq[i]) and _.nsname(seq[i], module) or 
-                tostring(seq[i])) 
-    end
-    output_member = string.format('%s %s', output_member, role)
-  end
-
-  -- member annotations:  
-  local output_annotations = nil
-  for j = 2, #role_defn do
-    
-    local name = role_defn[j][_.MODEL][_.NAME]
-    
-    if xtypes.ARRAY == role_defn[j][_.MODEL] then
-      for i = 1, #role_defn[j] do
-        output_member = string.format('%s[%s]', output_member, 
-           _.model_kind(role_defn[j][i]) and 
-               _.nsname(role_defn[j][i], module) or tostring(role_defn[j][i]) ) 
-      end
-    elseif xtypes.SEQUENCE ~= role_defn[j][_.MODEL] then
-      output_annotations = string.format('%s%s ', 
-                                          output_annotations or '', 
-                                          tostring(role_defn[j])) 
-    end
-  end
-
-  if output_annotations then
-    return string.format('%s; //%s', output_member, output_annotations)
-  else
-    return string.format('%s;', output_member)
-  end
+  return result
 end
-
 
 -- xutils.print_idl() - prints OMG IDL representation of a data model
 --
@@ -1514,104 +1546,74 @@ function xutils.print_idl(instance, indent_string)
 	
 	return instance, indent_string
 end
-				
--- @function xutils.index Visit the fields in the instance that are specified 
---           in the model
--- @param instance the instance to index
--- @param result OPTIONAL the index table to which the results are appended
--- @param model OPTIONAL nil means use the instance's model;
---              needed to support inheritance and typedefs
--- @result the cumulative index, that can be passed to another 
---         call to this method
-function xutils.index(instance, result, model) 
-  -- print('DEBUG xutils.index 1: ', instance) 
-  
-  -- ensure valid instance
-	local type_instance = type(instance)
 
-	-- collection instance
-	if _.is_collection_instance(instance) then
-	    -- length operator
-  		table.insert(result, instance())
-  				
-  		-- index 1st element for illustration
-  		local instance_i = instance[1]
-  		if 'table' == type(instance_i) then -- composite collection
-  		    xutils.index(instance_i, result) -- index the current element 
-  		else -- leaf collection
-  			  table.insert(result, instance_i)
-  		end
-  		
-  		return result
-	end
-	
-	-- struct or union
-	local mytype = _.model_kind(instance)
-	local model = model or instance[_.MODEL]
-	local mydefn = model[_.DEFN]
 
-	-- print('DEBUG index 1: ', mytype(), instance[_.MODEL][_.NAME])
-			
-	-- skip if not an indexable type:
-	if xtypes.STRUCT ~= mytype and xtypes.UNION ~= mytype then return nil end
+--- IDL string representation of a role
+-- @function tostring_role
+-- @param #string role role name
+-- @param #list role_defn the definition of the role in the following format:
+--           { template, [collection,] [annotation1, annotation2, ...] } 
+-- @param module the module to which the owner data model element belongs
+-- @return #string IDL string representation of the idl member
+function xutils.tostring_role(role, role_defn, module)
 
-	-- preserve the order of model definition
-	local result = result or {}	-- must be a top-level type	
-					
-	-- union discriminator, if any
-	if xtypes.UNION == mytype then
-		table.insert(result, instance._d)
-	end
-		
-	-- struct base type, if any
-	local base = model[_.DEFN][xtypes.BASE]
-	if nil ~= base then
-		result = xutils.index(instance, result, base[_.MODEL])	
-	end
-	
-	-- walk through the body of the model definition
-	-- NOTE: typedefs don't have an array of members	
-	for i, defn_i in ipairs(mydefn) do 		
-		-- skip annotations
-		if not defn_i[_.MODEL] then
-			-- walk through the elements in the order of definition:
-			
-			local role
-		  if xtypes.STRUCT == mytype then     
-        role = next(defn_i)
-      elseif xtypes.UNION == mytype then
-        role = next(defn_i, #defn_i > 0 and #defn_i or nil)
+  local template, seq 
+  if role_defn then
+    template = role_defn[1]
+    for i = 2, #role_defn do
+      if xtypes.SEQUENCE == role_defn[i][_.MODEL] then
+        seq = role_defn[i]
+        break -- 1st 'collection' is used
       end
-			
-			local role_instance = instance[role]
-			local role_instance_type = type(role_instance)
-			-- print('DEBUG index 3: ', role, role_instance)
+    end
+  end
 
-			if 'table' == role_instance_type then -- composite (nested)
-			   -- collection
-  		   if _.is_collection_instance(role_instance) then 
-    				-- length operator
-    				table.insert(result, role_instance())
-    	
-    				-- index 1st element for illustration
-    				local role_instance_i = role_instance[1]
-    				if 'table' == type(role_instance_i) then -- composite sequence
-    		  			xutils.index(role_instance_i, result) -- index the 1st element 
-    				else -- leaf collection
-    			   		table.insert(result, role_instance_i)
-    				end
-    				
-    		 -- non-collection
-  		   else
-  		     result = xutils.index(role_instance, result)
-         end
-			else -- leaf
-				table.insert(result, role_instance) 
-			end
-		end
-	end
+  local output_member = ''    
+  if nil == template then return output_member end
 
-	return result
+  if seq == nil then -- not a sequence
+    output_member = string.format('%s %s', _.nsname(template, module), role)
+  elseif #seq == 0 then -- unbounded sequence
+    output_member = string.format('sequence<%s> %s', 
+                                  _.nsname(template, module), role)
+  else -- bounded sequence
+    for i = 1, #seq do
+      output_member = string.format('%ssequence<', output_member) 
+    end
+    output_member = string.format('%s%s', output_member, 
+                                  _.nsname(template, module))
+    for i = 1, #seq do
+      output_member = string.format('%s,%s>', output_member, 
+                _.model_kind(seq[i]) and _.nsname(seq[i], module) or 
+                tostring(seq[i])) 
+    end
+    output_member = string.format('%s %s', output_member, role)
+  end
+
+  -- member annotations:  
+  local output_annotations = nil
+  for j = 2, #role_defn do
+    
+    local name = role_defn[j][_.MODEL][_.NAME]
+    
+    if xtypes.ARRAY == role_defn[j][_.MODEL] then
+      for i = 1, #role_defn[j] do
+        output_member = string.format('%s[%s]', output_member, 
+           _.model_kind(role_defn[j][i]) and 
+               _.nsname(role_defn[j][i], module) or tostring(role_defn[j][i]) ) 
+      end
+    elseif xtypes.SEQUENCE ~= role_defn[j][_.MODEL] then
+      output_annotations = string.format('%s%s ', 
+                                          output_annotations or '', 
+                                          tostring(role_defn[j])) 
+    end
+  end
+
+  if output_annotations then
+    return string.format('%s; //%s', output_member, output_annotations)
+  else
+    return string.format('%s;', output_member)
+  end
 end
 
 --------------------------------------------------------------------------------
@@ -1684,8 +1686,14 @@ local interface = {
     
   
   -- utilities
-  print_idl          = xutils.print_idl,
-  index              = xutils.index,
+  utils              = {
+    nsname                  = _.nsname,
+    new_instance            = _.new_instance,
+    new_instance_collection = _.new_instance_collection,
+    is_instance_collection  = _.is_instance_collection,
+    visit_instance          = xutils.visit_instance,
+    print_idl               = xutils.print_idl,
+  }
 }
 
 return interface
