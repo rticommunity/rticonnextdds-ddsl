@@ -1,17 +1,48 @@
--------------------------------------------------------------------------------
---  (c) 2005-2014 Copyright, Real-Time Innovations, All rights reserved.     --
---                                                                           --
--- Permission to modify and use for internal purposes granted.               --
--- This software is provided "as is", without warranty, express or implied.  --
---                                                                           --
--------------------------------------------------------------------------------
--- File: xtypes.lua 
--- Purpose: DDSL: Data type definition Domain Specific Language (DSL) in Lua
--- Created: Rajive Joshi, 2014 Feb 14
--------------------------------------------------------------------------------
+--[[
+  (c) 2005-2014 Copyright, Real-Time Innovations, All rights reserved.     
+                                                                           
+ Permission to modify and use for internal purposes granted.               
+ This software is provided "as is", without warranty, express or implied.
+--]]
+--[[
+-----------------------------------------------------------------------------
+ Purpose: Define X-Types in Lua using the DDSL (Data type definition Domain 
+           Specific Language)
+ Created: Rajive Joshi, 2014 Feb 14
+-----------------------------------------------------------------------------
+@module xtypes
+
+SUMMARY
+
+  OMG X-Types in Lua (using DDSL)
+
+USAGE
+  See the examples in ddsl-xtypes-tester.lua for user defined X-Types in Lua.
+   
+IMPLEMENTATION
+
+  Note that DDSL does not impose any specific syntax on how the types are 
+  expressed in Lua. This module defines the syntax. The general pattern is:
+  
+     { <name> = { <definition> } } 
+  
+  Each X-Type constructor is documented in detail, with examples.
+  
+  To illustrate, here are some role definitions:  
+    Unions:
+     { { case, role = { template, [collection,] [annotation1, ...] } } }
+  
+    Structs:
+     { { role = { template, [collection,] [annotation1, annotation2, ...] } } }
+  
+    Typedefs:
+     { template, [collection,] [annotation1, annotation2, ...] }
+ 
+-----------------------------------------------------------------------------
+--]]
 
 --------------------------------------------------------------------------------
---- X-Types model defined using the DDSL ---
+--- X-Types data model defined using the DDSL ---
 --------------------------------------------------------------------------------
 
 local xtypes = {
@@ -26,18 +57,18 @@ local xtypes = {
   MODULE     = function() return 'module' end,
   TYPEDEF    = function() return 'typedef' end,
   
-  -- x-types attributes
+  -- X-types attributes
   BASE       = function() return ' : ' end,    -- inheritance, e.g. struct base
   SWITCH     = function() return 'switch' end, -- choice: e.g.: union switch
   
-  -- concrete model info interface
+  -- Concrete X-Types model info interface
   info = {},
   
-  -- Meta-tables that define/control the Public API 
+  -- Meta-tables that define/control the Public API for the X-Type templates
   API = {},
 }
 
--- instantiate the DDSL core engine, using the 'info' interface defined here:
+-- Instantiate the DDSL core, using the 'info' interface defined here:
 local _ = require('ddsl')(xtypes.info)
 
 --- Is the given model element a qualifier?
@@ -97,6 +128,32 @@ function xtypes.info.is_template_kind(value)
         or nil
 end
 
+-------------------------------------------------------------------------------
+-- Helpers
+-------------------------------------------------------------------------------
+
+--- Split a decl into a name and defin after ensuring that we don't have an 
+-- invalid declaration
+-- @param decl [in] a table containing at least one {name=defn} entry 
+--                where *name* is a string model name
+--                and *defn* is a table containing the definition
+-- @return name, def
+function xtypes.parse_decl(decl)
+  -- pre-condition: decl is a table
+  assert('table' == type(decl), 
+    table.concat{'parse_decl(): invalid declaration: ', tostring(decl)})
+       
+  local name, defn = next(decl)
+  
+  assert('string' == type(name),
+    table.concat{'parse_decl(): invalid model name: ', tostring(name)})
+    
+  assert('table' == type(defn),
+  table.concat{'parse_decl(): invalid model definition: ', tostring(defn)})
+
+  return name, defn
+end
+
 --------------------------------------------------------------------------------
 -- X-Types Model Definitions -- 
 --------------------------------------------------------------------------------
@@ -124,7 +181,7 @@ end
 --    MyAnnotation{value1 = 942, value2 = 999.0}
 --        
 function xtypes.annotation(decl)   
-  local name, defn = _.parse_decl(decl)
+  local name, defn = xtypes.parse_decl(decl)
   
   -- create the template
   local template = _.new_template(name, xtypes.ANNOTATION, 
@@ -324,7 +381,7 @@ xtypes.builtin.top_level = xtypes.annotation{['top-level']=_.EMPTY} -- legacy
 --     local string10 = xtypes.atom{string={10}}    -- bounded length string
 --     local wstring10 = xtypes.atom{wstring={10}}  -- bounded length wstring
 function xtypes.atom(decl)
-  local name, defn = _.parse_decl(decl)
+  local name, defn = xtypes.parse_decl(decl)
   local dim, dim_kind = defn[1], _.model_kind(defn[1])
  
   -- pre-condition: validate the dimension
@@ -442,7 +499,7 @@ xtypes.builtin.unsigned_long_long = xtypes.atom{['unsigned long long']=_.EMPTY}
 --             MyStringSeq = { xtypes.string, xtypes.sequence(MY_CONST) } 
 --       }
 function xtypes.const(decl) 
-  local name, defn = _.parse_decl(decl)
+  local name, defn = xtypes.parse_decl(decl)
        
   -- pre-condition: ensure that the 1st defn declaration is a valid type
   local atom = _.assert_model(xtypes.ATOM, defn[1])
@@ -579,7 +636,7 @@ xtypes.API[xtypes.CONST] = {
 --    for k, v in pairs(MyEnum) do print(k, v) end
 --
 function xtypes.enum(decl) 
-  local name, defn = _.parse_decl(decl)
+  local name, defn = xtypes.parse_decl(decl)
     
   -- create the template
   local template = _.new_template(name, xtypes.ENUM, xtypes.API[xtypes.ENUM])
@@ -732,7 +789,7 @@ xtypes.API[xtypes.ENUM] = {
 --    for k, v in pairs(MyStruct) do print(k, v) end
 --
 function xtypes.struct(decl) 
-  local name, defn = _.parse_decl(decl)
+  local name, defn = xtypes.parse_decl(decl)
        
   -- create the template
   local template = _.new_template(name, xtypes.STRUCT, 
@@ -953,7 +1010,7 @@ xtypes.API[xtypes.STRUCT] = {
 --    for k, v in pairs(MyUnion) do print(k, v) end
 --
 function xtypes.union(decl) 
-  local name, defn = _.parse_decl(decl)
+  local name, defn = xtypes.parse_decl(decl)
        
   -- create the template 
   local template = _.new_template(name, xtypes.UNION, xtypes.API[xtypes.UNION])
@@ -1133,7 +1190,7 @@ xtypes.API[xtypes.UNION] = {
 --   for k, v in pairs(MyModule) do print(k, v) end
 --   
 function xtypes.module(decl) 
-  local name, defn = _.parse_decl(decl)
+  local name, defn = xtypes.parse_decl(decl)
        
   --create the template
   local template = _.new_template(name, xtypes.MODULE, 
@@ -1245,7 +1302,7 @@ xtypes.API[xtypes.MODULE] = {
 --          MyStructArray = { xtypes.MyStruct, xtypes.array(10, 20) }
 --       }
 function xtypes.typedef(decl) 
-  local name, defn = _.parse_decl(decl)
+  local name, defn = xtypes.parse_decl(decl)
 
   -- pre-condition: ensure that the 1st defn element is a valid type
   local alias = defn[1]
@@ -1277,7 +1334,7 @@ xtypes.API[xtypes.TYPEDEF] = {
 }
 
 --------------------------------------------------------------------------------
--- X-Types Error Checking and Validation
+-- Error Checking and Validation
 --------------------------------------------------------------------------------
 
 --- Ensure that case is a valid discriminator value
@@ -1317,7 +1374,7 @@ local xutils = {}
 -- @param model [in] OPTIONAL nil means use the instance's model;
 --              needed to support inheritance and typedefs
 -- @return the cumulative result of visiting all the fields. Each field that is
---         visited is inserted into this table. This return value table can be 
+--         visited is inserted into this table. This returned value table can be 
 --         passed to another call to this method (to build it cumulatively).
 function xutils.visit_instance(instance, result, model) 
   -- print('DEBUG xutils.visit_instance 1: ', instance) 
@@ -1408,18 +1465,19 @@ function xutils.visit_instance(instance, result, model)
   return result
 end
 
--- xutils.visit_model() - prints OMG IDL representation of a data model
+-- xutils.visit_model() - Visit all elements (depth-first) of 
+--       the given model definition and return their values as a linear 
+--       (flattened) list. 
+--       
+--        The default implementation returns the stringified
+--        OMG IDL X-Types representation of each model definition element
 --
--- Purpose:
--- 		Generate equivalent OMG IDL representation from a data model
--- Parameters:
---    <<in>> model - the data model element
---    <<in>> indent_string - the indentation string to apply
---    <<return>> model, indent_string for chaining
--- Usage:
---         xutils.visit_model(model) 
---           or
---         xutils.visit_model(model, '   ')
+-- @param model [in] the model element
+-- @param result [in] OPTIONAL the index table to which the results are appended
+-- @param indent_string [in] the indentation for the string representation
+-- @return the cumulative result of visiting all the definition. Each definition
+--        that is visited is inserted into this table. This returned table 
+--        can be passed to another call to this method (to build cumulatively).
 function xutils.visit_model(instance, result, indent_string)
 	-- pre-condition: ensure valid instance
 	assert(_.model_kind(instance), 'invalid instance')

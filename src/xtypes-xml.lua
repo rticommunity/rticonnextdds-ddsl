@@ -1,14 +1,17 @@
 #!/usr/local/bin/lua
+--[[
+  (c) 2005-2014 Copyright, Real-Time Innovations, All rights reserved.     
+                                                                           
+ Permission to modify and use for internal purposes granted.               
+ This software is provided "as is", without warranty, express or implied.
+--]]
+--[[
 -------------------------------------------------------------------------------
---  (c) 2005-2014 Copyright, Real-Time Innovations, All rights reserved.     --
---                                                                           --
--- Permission to modify and use for internal purposes granted.               --
--- This software is provided "as is", without warranty, express or implied.  --
---                                                                           --
+Purpose: Define Lua X-Types templates by loading an XML file containing
+         type definitions
+Created: Rajive Joshi, 2014 Apr 1
 -------------------------------------------------------------------------------
--- File: xml2lua.lua 
--- Purpose: DDSL: Data type definition Domain Specific Language (DSL) in Lua
--- Created: Rajive Joshi, 2014 Apr 1
+--]]
 
 -------------------------------------------------------------------------------
 -- {{{ XML Parser Begin

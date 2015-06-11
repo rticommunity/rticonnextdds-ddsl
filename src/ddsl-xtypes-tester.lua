@@ -1,15 +1,16 @@
 #!/usr/local/bin/lua
--------------------------------------------------------------------------------
---  (c) 2005-2014 Copyright, Real-Time Innovations, All rights reserved.     --
---                                                                           --
--- Permission to modify and use for internal purposes granted.               --
--- This software is provided "as is", without warranty, express or implied.  --
---                                                                           --
--------------------------------------------------------------------------------
--- File: DataTester.lua 
--- Purpose: Tester for DDSL: Test type definition Domain Specific Language (DSL)
--- Created: Rajive Joshi, 2014 Feb 14
--------------------------------------------------------------------------------
+--[[
+  (c) 2005-2014 Copyright, Real-Time Innovations, All rights reserved.     
+                                                                           
+ Permission to modify and use for internal purposes granted.               
+ This software is provided "as is", without warranty, express or implied.
+--]]
+--[[
+ -----------------------------------------------------------------------------
+ Purpose: Test Lua X-Types and Domain Specific Language (DDSL)
+ Created: Rajive Joshi, 2014 Feb 14
+-----------------------------------------------------------------------------
+--]]
 
 local xtypes = require('xtypes')
 
@@ -88,11 +89,9 @@ end
 Tester[#Tester+1] = 'test_enum1'
 function Tester:test_enum1()
 
-  Test.Days = xtypes.enum{
-    Days = {  
+  Test.Days = xtypes.enum{Days = {  
       'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN',
-    }
-  }
+  }}
   
   self:print(Test.Days)
   
@@ -120,14 +119,12 @@ end
 Tester[#Tester+1] = 'test_enum_submodule'
 function Tester:test_enum_submodule()
 
-  Test.Submodule[#Test.Submodule+1] = xtypes.enum{
-    Colors = {
+  Test.Submodule[#Test.Submodule+1] = xtypes.enum{Colors = {
       { RED =  -5 },
       { YELLOW =  7 },
       { GREEN = -9 },
       'PINK',
-    }
-  }
+  }}
   self:print(Test.Submodule.Colors)
   
   assert(Test.Submodule.Colors.YELLOW == 7)
@@ -247,12 +244,10 @@ end
 
 Tester[#Tester+1] = 'test_struct_basechange'
 function Tester:test_struct_basechange()
-  Test.BaseStruct = xtypes.struct{
-    BaseStruct = {
+  Test.BaseStruct = xtypes.struct{BaseStruct = {
       { x = { xtypes.long } },
       { y = { xtypes.long } },
-    }
-  }
+  }}
   
   Test.DerivedStruct = xtypes.struct{
     DerivedStruct = {Test.BaseStruct,

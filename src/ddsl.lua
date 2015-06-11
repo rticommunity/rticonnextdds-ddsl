@@ -1,174 +1,138 @@
--------------------------------------------------------------------------------
---  (c) 2005-2014 Copyright, Real-Time Innovations, All rights reserved.     --
---                                                                           --
--- Permission to modify and use for internal purposes granted.               --
--- This software is provided "as is", without warranty, express or implied.  --
---                                                                           --
--------------------------------------------------------------------------------
--- File: xtypes.lua 
--- Purpose: DDSL: Data type definition Domain Specific Language (DSL) in Lua
--- Created: Rajive Joshi, 2014 Feb 14
--------------------------------------------------------------------------------
+--[[
+  (c) 2005-2014 Copyright, Real-Time Innovations, All rights reserved.     
+                                                                           
+ Permission to modify and use for internal purposes granted.               
+ This software is provided "as is", without warranty, express or implied.
+--]]
+--[[
+-----------------------------------------------------------------------------
+ Purpose: DDSL: Data type definition Domain Specific Language (DSL) in Lua
+ Created: Rajive Joshi, 2014 Feb 14
+-----------------------------------------------------------------------------
+@module ddsl
 
--------------------------------------------------------------------------------
--- Data - meta-data (meta-table) class implementing a semantic data definition 
---        model equivalent to OMG X-Types, and easily mappable to various 
---        representations (eg OMG IDL, XML etc)
---
--- @module interface
--- Purpose: 
--- 	   Serves several purposes
---     1. Provides a way of defining IDL equivalent data types (aka models). Does
---        error checking to ensure well-formed type definitions.  
---     2. Provides helper methods to generate equivalent IDL  
---     3. Provides a natural way of indexing into a dynamic data sample 
---     4. Provides a way of creating instances of a data type, for example 
---        to stimulate an interface.
---     5. Provides the foundation for automated type (model) reasoning & mapping 
---     6. Can be used to automatically serialize and de-serialize a sample
---     7. Multiple styles to specify a type
---     8. Can easily add new (meta-data) types and annotations in the meta-model
---     9. Can be used for custom code generation
---    10. Can be used to generate TypeObject/TypeCode on the wire
---    11. Extensible: new annotations and atomic types can be easily added
--- 
---  In IDL, referenced data types need to be defined first
---    Forward declarations not allowed
---    Forward references not allowed
---  
--- Usage:
--- Definition:
---  Unions:
---   { { case, role = { template, [collection,] [annotation1, ...] } } }
---  Structs:
---   { { role = { template, [collection,] [annotation1, annotation2, ...] } } }
---  Typedefs:
---   { template, [collection,] [annotation1, annotation2, ...] }
---   
---    Nomenclature
---        The nomenclature is used to refer to parts of a data type is 
---        illustrated using the example below:
---           struct Model {
---              Element1 role1;       // field1
---              Element2 role2;       // field2
---              seq<Element3> role3;  // field3
---           }   
---        where Element may be recursively defined as a Model with other parts.
---
---    Every user defined (model) is a table with the following meta-data keys
---        _.NAME
---        _.KIND
---        _.DEFN
---        _.INSTANCES
---    The leaf elements of the table give a fully qualified string to address a
---    field in a dynamic data sample in Lua. 
---
---    Thus, an element definition in Lua:
--- 		 UserModule:Struct('UserType',
---          xtypes.has(user_role1, xtypes.String()),
---          xtypes.contains(user_role2, UserModule.UserType2),
---          xtypes.contains(user_role3, UserModule.UserType3),
---          xtypes.has_list(user_role_seq, UserModule.UserTypeSeq),
---          :
---       )
---    results in the following table ('model') being defined:
---       UserModule.UserType = {
---          [_.NAME] = 'UserType'     -- name of this model 
---          [_.KIND] = xtypes.STRUCT    -- one of xtypes.* type definitions
---          [_.DEFN] = {              -- meta-data for the contained elements
---              user_role1    = xtypes.String(),
---              user_role2    = UserModule.UserType2,
---				user_role3    = UserModule.UserType3,
---				user_role_seq = UserModule.UserTypeSeq,
---          }             
---          [_.INSTANCES] = {}       -- table of instances of this model 
---                 
---          -- instance fields --
---          user_role1 = 'user_role1'  -- name used to index this 'leaf' field
---          user_role2 = _.new_instance('user_role2', UserModule.UserType2)
---          user_role3 = _.new_instance('user_role3', UserModule.UserType3)
---          user_role_seq = _.new_instance_collection('user_role_seq', 
---                                              UserModule.UserTypeSeq)
---          :
---       }
---    and also returns the above table.
---
---    The default UserModule is 'Data' (this class/table). A user defined
---    module is instantiated as follows
---       Data:Module('UserModule')
---    Submodules can be defined in a similar manner.
---       UserModule:Module('UserSubmodule')
---   
---    Note that if a definition already exists, it is cleared and re-defined.
---
---    To create an instance named 'i1' from a structure named 'Model'
---          i1 = _.new_instance('i1', Model)
---    Now, one can instance all the fields of the resulting table
---          i1.role1 = 'i1.role1'
---    or 
---          Model[_.INSTANCES].i1.role1
--- 
---   Extend builtin atoms and annotations by adding to the xtypes.builtin module:
---       xtypes.builtin.my_atom = xtypes.atom{}
---       xtypes.builtin.my_annotation = xtypes.annotation{val1=1, val2=y, ...}
---     
--- Implementation:
---    The meta-model pre-defines the following meta-data 
---    attributes for a model element:
---
---       _.KIND
---          Every model element 'model' is represented as a table with a 
---          non-nil key
---             model[_.KIND] = one of the xtypes.* type definitions
---
---       _.NAME
---          For named i.e. composite model elements
---             model[_.NAME] = name of the model element
---          For primitive/atomic model elements 
---             model[_.NAME] = nil
---          This property can be used to determine if a model element is 
---			primitive.
---   
---       _.DEFN
---          For storing the child element info
---              model[_.DEFN][role] = role model element 
---
---       _.INSTANCES
---          For storing instances of this model element, indexed by instance 
---          name
---              model[_.DEFN].name = one of the instances of this model
---          where 'name' is the name of instance (in a container model element)
---
---    Note that instances do not have these the last two meta-data attributes.
---
---    The rest of the attributes are user defined fields of the model, as if 
---    it were a top-level instance:
---       <role i.e user_field>
---          Either a primitive field
---              model.role = 'role'
---          Or a composite field 
---              model.role = _.new_instance('role', RoleModel)
---          or a sequence
---              model.role = _.new_instance_collection('role', RoleModel)
---
---    Note that all the meta-data attributes are functions, so it is 
---    straightforward to skip them, when traversing a model table.
---
---
---    Note that this class (table) is really just the meta-table for the user
---    defined model elements.
---
--- NOTES
---    Self-recursive definitions require a forward declaration, and generate a
---    warning. To create a forward declaration, install the same name twice,
---    first as an empty definition, and then as a full definition. Ignore the 
---    warning!
---
+SUMMARY
+
+  DDSL is meta-model class implementing the semantic data definition 
+  model underlying OMG X-Types. Thus, it can be used to implement 
+  OMG X-Types.
+
+USE CASES
+ 	DDSL serves multiple use-cases:
+     - Provides a way of defining OMG IDL equivalent data types (aka models). 
+     - Provides for error checking to ensure well-formed type definitions.   
+     - Provides a natural way of indexing into a dynamic data sample 
+     - Provides a way of creating instances of a data type, for example 
+       to stimulate an interface
+     - Provides the foundation for automated type (model) reasoning & mapping 
+     - Supports multiple styles to specify a type: imperative and declarative
+     - Can easily add new (meta-data) types and annotations in the meta-model
+     - Extensible: new annotations and atomic types can be easily added, thus
+       providing a playground for experimenting with new X-Types features
+     - Could be used to automatically serialize and de-serialize a sample
+     - Could be used for custom code generation
+     - Could be used to generate TypeObject/TypeCode on the wire
+
+ 
+  Note that in OMG X-Types, referenced data types need to be defined first
+    - Forward declarations not allowed
+    - Forward references not allowed
+  
+USAGE
+ 
+    The nomenclature is used to refer to parts of a data type is 
+    illustrated using the example below:
+    
+       // @AnnotationX (qualifier) 
+       struct Model {            
+          Element1 role1;       // field1  @AnnotationY (qualifier)
+          Element2 role2;       // field2
+          seq<Element3> role3;  // field3, a collection
+          Element4 role4[7][9]  // field4, a multi-dimensional collection
+       }   
+    where ElementX may be recursively defined as a Model with other parts.
+
+    To create an instance named 'i1' from a model element, Model:
+          local i1 = new_instance('i1', Model)
+    Now, one can use all the fields of the resulting table, i1. Furthermore, 
+    the fields are properly initialized for indexing into DDS dynamic data. 
+          i1.role1 = 'i1.role1'
+
+    The leaf elements of the table give a fully qualified string to address a
+    field in a dynamic data sample in Lua. 
+    
+    The [diagram](https://docs.google.com/presentation/d/1UYCS0KznOBapPTgaMkYoG4rC7DERpLhXtl0odkaGOSI/edit#slide=id.g4653da537_05)
+    show the DDSL meta-model pictorially.
+  
+    See xtypes.lua for how to use the DDSL abstraction to define the syntax for
+    X-Types in Lua.
+    
+    See the examples in ddsl-xtypes-tester.lua for user defined X-Types in Lua.
+
+IMPLEMENTATION
+
+    The meta-model pre-defines the following meta-data 
+    attributes for a model element (MODEL):
+
+       _.KIND
+          Every model represented as a table with a non-nil key
+             model[_.KIND] = one of the type definitions
+          DDSL meta-model recognizes the following element categories: 
+            qualifiers, collections, aliases, leaf, template
+          The 'info' interface is used to classify the model elements into one 
+          of these categories.
+          
+       _.NAME
+          The name of the model element
+   
+       _.DEFN
+          For storing the child element info
+              model[_.DEFN][role] = role model element 
+
+       _.INSTANCES
+          For storing instances of this model element, keyed by the instance 
+          table. The value is the instance name. The instance name may be ''.
+       
+       _.TEMPLATE
+          The user's 'handle' to the model element.
+                 
+          It is a special instance used to manipulate the model definition, and 
+          create additional instances. Its fields should not be modified. It 
+          should be used for accessing a dynamic data sample. New instances 
+          should be created from it for storing/caching data samples in Lua.
+          
+       _.NS
+          The namespace model element, to which this model element belongs.
+          
+   
+    An newly created instance (and, therefore also the template instance) will 
+    have the following structure:
+    <role i.e user_field>
+      Either a primitive field
+          model.role = 'role'
+      Or a composite field 
+          model.role = _.new_instance('role', RoleModel)
+      or a sequence
+          model.role = _.new_instance_collection('role', RoleModel, [capacity])
+   
+CAVEATS
+
+    Note that if a role definition already exists, it should be cleared before 
+    replacing it with a new one.
+    
+    Note that all the meta-data attributes are functions, so it is 
+    straightforward to skip them, when traversing a model table.
+
+-----------------------------------------------------------------------------
+--]]
+
+--------------------------------------------------------------------------------
+--- Core Attributes and Abstractions ---
+--------------------------------------------------------------------------------
 
 local EMPTY = {}  -- initializer/sentinel value to indicate an empty definition
 local MODEL = function() return 'MODEL' end -- key for 'model' meta-data 
 
---- DDSL Core Engine ---
 local _ = {
   -- model attributes
   -- every 'model' meta-data table has these keys defined 
@@ -183,7 +147,7 @@ local _ = {
   QUALIFIERS = function() return '' end,        -- table key for qualifiers
   
   -- model info interface
-  -- abstract interface that define the categories of model interface
+  -- abstract interface that defines the categories of model element (kinds):
   info = {
     is_qualifier_kind = function (v) error('define abstract function!') end,
     is_collection_kind = function (v) error('define abstract function!') end,
@@ -193,6 +157,10 @@ local _ = {
   }
 }
 
+--------------------------------------------------------------------------------
+-- Models  ---
+--------------------------------------------------------------------------------
+ 
 --- Create a new 'empty' template
 -- @param name  [in] the name of the underlying model
 -- @param kind  [in] the kind of underlying model
@@ -216,11 +184,7 @@ function _.new_template(name, kind, api)
   
   return template
 end
-
---------------------------------------------------------------------------------
--- Models  ---
---------------------------------------------------------------------------------
-  
+ 
 --- Populate a template
 -- @param template  <<in>> a template, generally empty
 -- @param defn      <<in>> template model definition
@@ -250,11 +214,12 @@ function _.populate_template(template, defn)
 end
 
 --- Define a role (member) instance
--- @param #string role - the member name to instantiate (may be 'nil')
+-- @param #string role - the member name to instantiate (may be '')
 -- @param #list<#table> role_defn - array consists of entries in the 
 --           { template, [collection,] [annotation1, annotation2, ...] }
 --      following order:
 --           template - the kind of member to instantiate (previously defined)
+--           collection - collection annotation (if any)
 --           ...      - optional list of annotations including whether the 
 --                      member is an array or sequence    
 -- @return the role (member) instance and the role_defn
@@ -326,29 +291,26 @@ end
 --  Defines a table that can be used to index into an instance of a model
 -- 
 -- @param name      <<in>> the role|instance name
--- @param template  <<in>> the template to use for creating an instance; 
---                         must be a model table 
--- @return the newly created instance (seq) that supports indexing by 'name'
+-- @param template  <<in>> the template to use for creating an instance
+-- @return the newly created instance that supports indexing by 'name'
 -- @usage
---    -- As an index into sample[]
+--    -- As an index into DDS dynamic data: sample[]
 --    local myInstance = _.new_instance("my", template)
 --    local member = sample[myInstance.member] 
 --    for i = 1, sample[myInstance.memberSeq()] do -- length of the sequence
---       local element_i = sample[memberSeq(i)] -- access the i-th element
+--       local element_i = sample[memberSeq[i]] -- access the i-th element
 --    end  
 --
 --    -- As a sample itself
 --    local myInstance = _.new_instance("my", template)
 --    myInstance.member = "value"
---
---    -- NOTE: Assignment not yet supported for sequences:
---    myInstance.memberSeq() = 10 -- length
---    for i = 1, myInstance.memberSeq() do -- length of the sequence
---       memberSeq(i) = "element_i"
+--    for i = 1, 10 do -- length of the sequence
+--       myInstance.memberSeq[i] = element_i -- NOTE: capacity is enforced
 --    end  
+--    print(#myInstance.memberSeq)
 --
 function _.new_instance(name, template) 
-  -- print('DEBUG xtypes.create_instance 1: ', name, template[MODEL][_.NAME])
+  -- print('DEBUG new_instance 1: ', name, template[MODEL][_.NAME])
 
   _.assert_role(name)
   _.assert_template(template)
@@ -368,7 +330,7 @@ function _.new_instance(name, template)
     for j = 2, #defn do
       alias_collection = _.info.is_collection_kind(defn[j])
       if alias_collection then
-        -- print('DEBUG xtypes.instance 2: ', name, alias_collection)
+        -- print('DEBUG new_instance 2: ', name, alias_collection)
         break -- 1st 'collection' is used
       end
     end
@@ -435,9 +397,9 @@ function _.new_instance(name, template)
   return instance
 end
 
--- Name: 
---    _.new_instance_collection() - creates a collection of instances specified
---                                  by the template or instance collection
+-- Creates a collection of instances specified by the template or the instance 
+-- collection previously created via this call
+-- 
 -- Purpose:
 --    Define new named collection of instances
 -- Parameters:
@@ -449,12 +411,20 @@ end
 --                      maybe nil (=> unbounded)
 --    <<returns>> the newly created collection of instances
 -- Usage:
+--    -- As an index into DDS dynamic data: sample[]
 --    local mySeq = _.new_instance_collection("my", template)
 --    for i = 1, sample[mySeq()] do -- length accessor for the collection
 --       local element_i = sample[mySeq[i]] -- access the i-th element
 --    end    
+--
+--    -- As a sample itself
+--    local mySeq = _.new_instance_collection("my", template)
+--    for i = 1, 10 do
+--        mySeq[i]] = element_i -- access the i-th element
+--    end  
+--    print(#mySeq) -- the actual number of elements
 function _.new_instance_collection(name, template_or_collection, capacity) 
-  -- print('DEBUG create_collection', name, template_or_collection)
+  -- print('DEBUG new_instance_collection', name, template_or_collection)
 
   _.assert_role(name)
   assert(_.is_instance_collection(template_or_collection) or
@@ -590,8 +560,8 @@ end
 --- Name of a model element relative to a namespace
 -- @param template [in] the data model element whose name is desired in 
 --        the context of the namespace
--- @param namespace [in] the namespace; if nil, finds the full absolute 
---                    fully qualified name of the model element
+-- @param namespace [in] the namespace model element; if nil, finds the full 
+--                absolute fully qualified name of the model element
 -- @return the name of the template relative to the namespace
 function _.nsname(template, namespace)
   -- pre-conditions:
@@ -675,7 +645,7 @@ function _.assert_qualifier_array(value)
 end
 
 --- Ensure that the role name is valid
--- @param role        [in] the role name
+-- @param role [in] the role name
 -- @return role if valid; nil otherwise
 function _.assert_role(role)
   assert('string' == type(role), 
@@ -690,27 +660,6 @@ function _.assert_template(template)
     assert(_.info.is_template_kind(template), 
            table.concat{'unexpected template kind \"', tostring(template), '"'})
     return template
-end
-
---- Split a decl into after ensuring that we don't have an invalid declaration
--- @param decl [in] a table containing at least one {name=defn} entry 
---                where *name* is a string model name
---                and *defn* is a table containing the definition
--- @return name, def
-function _.parse_decl(decl)
-  -- pre-condition: decl is a table
-  assert('table' == type(decl), 
-    table.concat{'parse_decl(): invalid declaration: ', tostring(decl)})
-       
-  local name, defn = next(decl)
-  
-  assert('string' == type(name),
-    table.concat{'parse_decl(): invalid model name: ', tostring(name)})
-    
-  assert('table' == type(defn),
-  table.concat{'parse_decl(): invalid model definition: ', tostring(defn)})
-
-  return name, defn
 end
 
 --------------------------------------------------------------------------------
@@ -730,7 +679,6 @@ local interface = {
   QUALIFIERS              = _.QUALIFIERS,
   
   -- ddsl operations
-  parse_decl              = _.parse_decl,
   new_template            = _.new_template,
   populate_template       = _.populate_template,
   create_role_instance    = _.create_role_instance,
