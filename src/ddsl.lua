@@ -747,11 +747,9 @@ local interface = {
   is_collection_instance = _.is_collection_instance,  -- for index (generalize?)
   
   nsname                 = _.nsname,
-  
-  
-  -- abstract interface --> implementation to be provided by the user
-  info                  = function (info_impl) _.info = info_impl end,
 }
 
-return interface
+-- enforce that the user provides a function to binds the 
+-- abstract info interface to an implementation
+return function (info_impl) _.info = info_impl return interface end
 --------------------------------------------------------------------------------

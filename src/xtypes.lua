@@ -10,8 +10,6 @@
 -- Created: Rajive Joshi, 2014 Feb 14
 -------------------------------------------------------------------------------
 
-local _ = require('ddsl')
-
 --------------------------------------------------------------------------------
 --- X-Types model defined using the DDSL ---
 --------------------------------------------------------------------------------
@@ -39,8 +37,8 @@ local xtypes = {
   API = {},
 }
 
--- set the info interface
-_.info(xtypes.info)
+-- instantiate the DDSL core engine, using the 'info' interface defined here:
+local _ = require('ddsl')(xtypes.info)
 
 --- Is the given model element a qualifier?
 -- NOTE: collections are qualifiers
