@@ -19,7 +19,7 @@ function ShapeTypeGen(shapetype)
     local role, def = next(val)
     print(role)
     for k, v in ipairs(def) do
-      io.write(string.format(v))
+      print(v)
     end
     print()
   end
