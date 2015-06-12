@@ -105,6 +105,31 @@ end
 -- }}} XML Parser End
 -------------------------------------------------------------------------------
 
+--[[
+
+XML:
+    <tag attr1=value1 attr2=value2>
+      <child1> ... </child1>
+      <child2> ... </child2>
+      <!--comment -->
+    </tag>
+
+tag = {
+  -- array: children: tag[i] --
+  { -- child1: recursive },
+  { -- child2: recursive },  
+  "<!--comment ",
+
+  -- map: tag name and attributes: tag.label, tag.xarg --
+  xarg  = { -- may be empty
+    attr1 = value1
+    attr2 = value2
+  }
+  label = "tag",
+  [empty=1,] -- iff there are no child tags
+}
+--]]
+
 --------------------------------------------------------------------------------
 -- XML -> Lua X-Types
 --------------------------------------------------------------------------------
@@ -119,24 +144,6 @@ local xmlTable = collect(xmlString)
 print('xml = ', table.tostring(xmlTable));
 
 
---[[
-
-<tag attr1=value1 attr2=value2>
-
-</tag>
-
-tag = {
-  label = "tag",
-  xarg  = {
-    attr1 = value1
-    attr2 = value2
-  }
-  
-  { -- children
-  
-  }
-}
---]]
 
 print('-- xml -> lua --')
 
