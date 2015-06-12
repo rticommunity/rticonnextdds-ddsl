@@ -1530,8 +1530,8 @@ function Tester:test_collection_bounds()
   assert(BoundsTest.longUSeqX[999] == 'longUSeqX[999]')
 end
 
-Tester[#Tester+1] = 'test_collection_assignment'
-function Tester:test_collection_assignment()
+Tester[#Tester+1] = 'test_assignment'
+function Tester:test_assignment()
 
   local AssignTemplate = xtypes.struct{
     AssignTemplate = {
@@ -1542,12 +1542,11 @@ function Tester:test_collection_assignment()
     }
   }
   
-  -- create an instance to assogn/store values
+  -- create an instance to store values
   -- NOTE: we don't want to clobber the template
   local Assign = xtypes.utils.new_instance(AssignTemplate)
   
-  self:print(AssignTemplate)
-  self:print(Assign)    
+  self:print(Assign)
   print()
   
   -- atomic member
@@ -1583,6 +1582,10 @@ function Tester:test_collection_assignment()
   Assign.long2ArrXX[1][2] = 100*200  
   print('Assign.long2ArrXX[1][2]', Assign.long2ArrXX[1][2]) 
   assert(Assign.long2ArrXX[1][2] == 100*200)
+
+  Assign.long2ArrXX[2][1] = 200*100  
+  print('Assign.long2ArrXX[2][1]', Assign.long2ArrXX[2][1]) 
+  assert(Assign.long2ArrXX[2][1] == 200*100)  
   
   Assign.long2ArrXX[2][2] = 200*200  
   print('Assign.long2ArrXX[2][2]', Assign.long2ArrXX[2][2]) 
@@ -1791,11 +1794,11 @@ end
 -- print - helper method to print the IDL and the index for data definition
 function Tester:print(instance)
     -- print IDL
-    local idl = xtypes.utils.visit_model(instance, {'idl:'})
+    local idl = xtypes.utils.visit_model(instance, {'model (IDL):'})
     print(table.concat(idl, '\n\t'))
     
     -- print the result of visiting each field
-    local fields = xtypes.utils.visit_instance(instance, {'index:'})
+    local fields = xtypes.utils.visit_instance(instance, {'instance:'})
     print(table.concat(fields, '\n\t'))
 end
 
