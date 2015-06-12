@@ -1844,10 +1844,9 @@ function Tester:test_api()
             role_definition[j],
             'NAME = ', role_definition[j][xtypes.NAME],   -- member type name
             'KIND = ', role_definition[j][xtypes.KIND]()) -- member type kind
-      if 'annotation' == role_definition[j][xtypes.KIND]() then
-         print('\t\t\t',                              -- OR construct ourselves               
-               role_definition[j][xtypes.NAME],       --    name
-               table.concat(role_definition[j], ' ')) --    attributes
+      if 'annotation' == role_definition[j][xtypes.KIND]() and
+         #role_definition[j] > 0 then 
+            print('\t\t\t\t', table.concat(role_definition[j], ' '))--attributes
       end
     end
   end
