@@ -1621,6 +1621,7 @@ function Tester:test_collection_assignment()
   assert(Assign.longUSeqX() == 'longUSeqX#')
   print('#Assign.longUSeqX', #Assign.longUSeqX) 
   assert(#Assign.longUSeqX == 17) -- NOTE: hole is is not counted (Lua array)
+  self:print(Assign)    
 end
 
 Tester[#Tester+1] = 'test_module_manipulation'
