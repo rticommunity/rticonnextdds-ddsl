@@ -1530,8 +1530,8 @@ function Tester:test_collection_bounds()
   assert(BoundsTest.longUSeqX[999] == 'longUSeqX[999]')
 end
 
-Tester[#Tester+1] = 'test_collection_assignment'
-function Tester:test_collection_assignment()
+Tester[#Tester+1] = 'test_assignment'
+function Tester:test_assignment()
 
   local AssignTemplate = xtypes.struct{
     AssignTemplate = {
@@ -1542,12 +1542,11 @@ function Tester:test_collection_assignment()
     }
   }
   
-  -- create an instance to assogn/store values
+  -- create an instance to store values
   -- NOTE: we don't want to clobber the template
   local Assign = xtypes.utils.new_instance(AssignTemplate)
   
-  self:print(AssignTemplate)
-  self:print(Assign)    
+  self:print(Assign)
   print()
   
   -- atomic member
@@ -1583,6 +1582,10 @@ function Tester:test_collection_assignment()
   Assign.long2ArrXX[1][2] = 100*200  
   print('Assign.long2ArrXX[1][2]', Assign.long2ArrXX[1][2]) 
   assert(Assign.long2ArrXX[1][2] == 100*200)
+
+  Assign.long2ArrXX[2][1] = 200*100  
+  print('Assign.long2ArrXX[2][1]', Assign.long2ArrXX[2][1]) 
+  assert(Assign.long2ArrXX[2][1] == 200*100)  
   
   Assign.long2ArrXX[2][2] = 200*200  
   print('Assign.long2ArrXX[2][2]', Assign.long2ArrXX[2][2]) 
@@ -1621,6 +1624,7 @@ function Tester:test_collection_assignment()
   assert(Assign.longUSeqX() == 'longUSeqX#')
   print('#Assign.longUSeqX', #Assign.longUSeqX) 
   assert(#Assign.longUSeqX == 17) -- NOTE: hole is is not counted (Lua array)
+  self:print(Assign)    
 end
 
 Tester[#Tester+1] = 'test_module_manipulation'
@@ -1786,15 +1790,93 @@ function Tester:test_ns()
   self:print(m)
 end
 
+Tester[#Tester+1] = 'test_api'
+function Tester:test_api()
+  -- NOTE: This test also serves as an illustration of the xtypes user API
+  
+  print('-- template --') 
+  
+  local ShapeType = xtypes.struct{ShapeType = {
+    { x = { xtypes.long } },
+    { y = { xtypes.long } },
+    { shapesize = { xtypes.long } },
+    { color = { xtypes.string(128), xtypes.Key, xtypes.ID{10} } },
+    xtypes.Extensibility{'EXTENSIBLE_EXTENSIBILITY'},
+    xtypes.top_level{},
+  }}
+
+  self:print(ShapeType)
+
+  print('-- instance --') 
+  local shape = xtypes.utils.new_instance(ShapeType)
+  shape.x = 50
+  shape.y = 150
+  shape.shapesize = 20
+  shape.color = 'GREEN'
+  
+  self:print(shape)
+  
+  
+  
+  print('--- Model API ---') 
+  
+  -- type:
+  print('NAME = ', ShapeType[xtypes.NAME], 
+        'KIND = ', ShapeType[xtypes.KIND](),
+        'BASE = ', ShapeType[xtypes.BASE])
+  for i, qualifier in ipairs(ShapeType[xtypes.QUALIFIERS]) do
+     print(table.concat{'qualifier[', i, '] = '}, qualifier)  -- use tostring
+     print('\t',                          -- OR construct ourselves     
+            qualifier[xtypes.NAME],       --    annotation/collection name
+            table.concat(qualifier, ' ')) --    annotation/collection attributes
+  end
+  
+  -- members:
+  for i = 1, #ShapeType do
+    local role, role_definition = next(ShapeType[i])
+    print(table.concat{'role[', i, '] = '}, 
+                  role,               -- member name
+                  role_definition[1]) -- member type
+                  
+    -- member qualifiers (annotations/collection)
+    for j = 1, #role_definition do
+      print('\t\t',
+            role_definition[j],
+            'NAME = ', role_definition[j][xtypes.NAME],   -- member type name
+            'KIND = ', role_definition[j][xtypes.KIND]()) -- member type kind
+      if 'annotation' == role_definition[j][xtypes.KIND]() then
+         print('\t\t\t',                              -- OR construct ourselves               
+               role_definition[j][xtypes.NAME],       --    name
+               table.concat(role_definition[j], ' ')) --    attributes
+      end
+    end
+  end
+
+  print('--- Instance API ---') 
+
+  print('-- ordered ---')
+  for i = 1, #ShapeType do
+    local role = next(ShapeType[i])
+    print('ShapeType', role, '=', ShapeType[role]) -- default members values
+    print('    shape', role, '=', shape[role])     -- shape instance members
+  end
+    
+  print('-- unordered ---')
+  for role, value in pairs(shape) do
+    print(role, value)
+  end
+  
+end
+
 ---
 -- print - helper method to print the IDL and the index for data definition
 function Tester:print(instance)
     -- print IDL
-    local idl = xtypes.utils.visit_model(instance, {'idl:'})
+    local idl = xtypes.utils.visit_model(instance, {'model (IDL):'})
     print(table.concat(idl, '\n\t'))
     
     -- print the result of visiting each field
-    local fields = xtypes.utils.visit_instance(instance, {'index:'})
+    local fields = xtypes.utils.visit_instance(instance, {'instance:'})
     print(table.concat(fields, '\n\t'))
 end
 

@@ -246,6 +246,15 @@ xtypes.API[xtypes.ANNOTATION] = {
     return output
   end,
 
+  __index = function (template, key)
+    local model = template[_.MODEL]
+    if _.NAME == key then
+      return model[_.NAME]
+    elseif _.KIND == key then
+      return model[_.KIND]
+    end
+  end,
+  
   __newindex = function (template, key, value)
   -- immutable: do-nothing
   end,
@@ -422,6 +431,15 @@ xtypes.API[xtypes.ATOM] = {
       template[_.MODEL][_.KIND]() -- evaluate the function
   end,
 
+  __index = function (template, key)
+    local model = template[_.MODEL]
+    if _.NAME == key then
+      return model[_.NAME]
+    elseif _.KIND == key then
+      return model[_.KIND]
+    end
+  end,
+  
   __newindex = function (template, key, value)
     -- immutable: do-nothing
   end
@@ -567,6 +585,15 @@ xtypes.API[xtypes.CONST] = {
       template[_.MODEL][_.KIND]() -- evaluate the function  
   end,
 
+  __index = function (template, key)
+    local model = template[_.MODEL]
+    if _.NAME == key then
+      return model[_.NAME]
+    elseif _.KIND == key then
+      return model[_.KIND]
+    end
+  end,
+  
   __newindex = function (template, key, value)
     -- immutable: do-nothing
   end,
@@ -1328,9 +1355,25 @@ xtypes.API[xtypes.TYPEDEF] = {
       template[_.MODEL][_.KIND]() -- evaluate the function
   end,
 
+  __index = function (template, key)
+    local model = template[_.MODEL]
+    if _.NAME == key then
+      return model[_.NAME]
+    elseif _.KIND == key then
+      return model[_.KIND]
+    end
+  end,
+  
   __newindex = function (template, key, value)
     -- immutable: do-nothing
-  end
+  end,
+  
+  -- alias information is obtained by evaluating the table:
+  -- @return { alias, collection }
+  -- eg: my_typedef()
+  __call = function(template)
+    return template[_.MODEL][_.DEFN]
+  end,
 }
 
 --------------------------------------------------------------------------------
@@ -1384,15 +1427,19 @@ function xutils.visit_instance(instance, result, model)
 
   -- collection instance
   if _.is_instance_collection(instance) then
-      -- length operator
-      table.insert(result, instance())
+        -- ensure 1st element exists for illustration
+      local _ = instance[1]
+      
+      -- length operator and actual length
+      table.insert(result, instance() .. ' = ' .. tostring(#instance))
           
-      -- index 1st element for illustration
-      local instance_i = instance[1]
-      if 'table' == type(instance_i) then -- composite collection
-          xutils.visit_instance(instance_i, result) -- index the current element 
-      else -- leaf collection
-          table.insert(result, instance_i)
+      -- visit all the elements
+      for i = 1, #instance do 
+        if 'table' == type(instance[i]) then -- composite collection
+            xutils.visit_instance(instance[i], result) -- visit i-th element 
+        else -- leaf collection
+            table.insert(result, instance[i])
+        end
       end
       
       return result
@@ -1438,24 +1485,8 @@ function xutils.visit_instance(instance, result, model)
       local role_instance_type = type(role_instance)
       -- print('DEBUG index 3: ', role, role_instance)
 
-      if 'table' == role_instance_type then -- composite (nested)
-         -- collection
-         if _.is_instance_collection(role_instance) then 
-            -- length operator
-            table.insert(result, role_instance())
-      
-            -- index 1st element for illustration
-            local role_instance_i = role_instance[1]
-            if 'table' == type(role_instance_i) then -- composite sequence
-                xutils.visit_instance(role_instance_i, result) -- index the 1st element 
-            else -- leaf collection
-                table.insert(result, role_instance_i)
-            end
-            
-         -- non-collection
-         else
-           result = xutils.visit_instance(role_instance, result)
-         end
+      if 'table' == role_instance_type then -- composite or collection
+        result = xutils.visit_instance(role_instance, result)
       else -- leaf
         table.insert(result, role_instance) 
       end
@@ -1749,7 +1780,7 @@ local interface = {
   typedef            = xtypes.typedef,
     
   
-  -- utilities
+  -- utilities --> model
   utils              = {
     nsname                  = _.nsname,
     new_instance            = _.new_instance,
