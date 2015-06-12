@@ -1790,6 +1790,84 @@ function Tester:test_ns()
   self:print(m)
 end
 
+Tester[#Tester+1] = 'test_api'
+function Tester:test_api()
+  -- NOTE: This test also serves as an illustration of the xtypes user API
+  
+  print('-- template --') 
+  
+  local ShapeType = xtypes.struct{ShapeType = {
+    { x = { xtypes.long } },
+    { y = { xtypes.long } },
+    { shapesize = { xtypes.long } },
+    { color = { xtypes.string(128), xtypes.Key, xtypes.ID{10} } },
+    xtypes.Extensibility{'EXTENSIBLE_EXTENSIBILITY'},
+    xtypes.top_level{},
+  }}
+
+  self:print(ShapeType)
+
+  print('-- instance --') 
+  local shape = xtypes.utils.new_instance(ShapeType)
+  shape.x = 50
+  shape.y = 150
+  shape.shapesize = 20
+  shape.color = 'GREEN'
+  
+  self:print(shape)
+  
+  
+  
+  print('--- Model API ---') 
+  
+  -- type:
+  print('NAME = ', ShapeType[xtypes.NAME], 
+        'KIND = ', ShapeType[xtypes.KIND](),
+        'BASE = ', ShapeType[xtypes.BASE])
+  for i, qualifier in ipairs(ShapeType[xtypes.QUALIFIERS]) do
+     print(table.concat{'qualifier[', i, '] = '}, qualifier)  -- use tostring
+     print('\t',                          -- OR construct ourselves     
+            qualifier[xtypes.NAME],       --    annotation/collection name
+            table.concat(qualifier, ' ')) --    annotation/collection attributes
+  end
+  
+  -- members:
+  for i = 1, #ShapeType do
+    local role, role_definition = next(ShapeType[i])
+    print(table.concat{'role[', i, '] = '}, 
+                  role,               -- member name
+                  role_definition[1]) -- member type
+                  
+    -- member qualifiers (annotations/collection)
+    for j = 1, #role_definition do
+      print('\t\t',
+            role_definition[j],
+            'NAME = ', role_definition[j][xtypes.NAME],   -- member type name
+            'KIND = ', role_definition[j][xtypes.KIND]()) -- member type kind
+      if 'annotation' == role_definition[j][xtypes.KIND]() then
+         print('\t\t\t',                              -- OR construct ourselves               
+               role_definition[j][xtypes.NAME],       --    name
+               table.concat(role_definition[j], ' ')) --    attributes
+      end
+    end
+  end
+
+  print('--- Instance API ---') 
+
+  print('-- ordered ---')
+  for i = 1, #ShapeType do
+    local role = next(ShapeType[i])
+    print('ShapeType', role, '=', ShapeType[role]) -- default members values
+    print('    shape', role, '=', shape[role])     -- shape instance members
+  end
+    
+  print('-- unordered ---')
+  for role, value in pairs(shape) do
+    print(role, value)
+  end
+  
+end
+
 ---
 -- print - helper method to print the IDL and the index for data definition
 function Tester:print(instance)

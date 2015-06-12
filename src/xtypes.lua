@@ -246,6 +246,15 @@ xtypes.API[xtypes.ANNOTATION] = {
     return output
   end,
 
+  __index = function (template, key)
+    local model = template[_.MODEL]
+    if _.NAME == key then
+      return model[_.NAME]
+    elseif _.KIND == key then
+      return model[_.KIND]
+    end
+  end,
+  
   __newindex = function (template, key, value)
   -- immutable: do-nothing
   end,
@@ -422,6 +431,15 @@ xtypes.API[xtypes.ATOM] = {
       template[_.MODEL][_.KIND]() -- evaluate the function
   end,
 
+  __index = function (template, key)
+    local model = template[_.MODEL]
+    if _.NAME == key then
+      return model[_.NAME]
+    elseif _.KIND == key then
+      return model[_.KIND]
+    end
+  end,
+  
   __newindex = function (template, key, value)
     -- immutable: do-nothing
   end
@@ -567,6 +585,15 @@ xtypes.API[xtypes.CONST] = {
       template[_.MODEL][_.KIND]() -- evaluate the function  
   end,
 
+  __index = function (template, key)
+    local model = template[_.MODEL]
+    if _.NAME == key then
+      return model[_.NAME]
+    elseif _.KIND == key then
+      return model[_.KIND]
+    end
+  end,
+  
   __newindex = function (template, key, value)
     -- immutable: do-nothing
   end,
@@ -1328,9 +1355,25 @@ xtypes.API[xtypes.TYPEDEF] = {
       template[_.MODEL][_.KIND]() -- evaluate the function
   end,
 
+  __index = function (template, key)
+    local model = template[_.MODEL]
+    if _.NAME == key then
+      return model[_.NAME]
+    elseif _.KIND == key then
+      return model[_.KIND]
+    end
+  end,
+  
   __newindex = function (template, key, value)
     -- immutable: do-nothing
-  end
+  end,
+  
+  -- alias information is obtained by evaluating the table:
+  -- @return { alias, collection }
+  -- eg: my_typedef()
+  __call = function(template)
+    return template[_.MODEL][_.DEFN]
+  end,
 }
 
 --------------------------------------------------------------------------------
@@ -1737,7 +1780,7 @@ local interface = {
   typedef            = xtypes.typedef,
     
   
-  -- utilities
+  -- utilities --> model
   utils              = {
     nsname                  = _.nsname,
     new_instance            = _.new_instance,
