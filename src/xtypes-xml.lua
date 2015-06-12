@@ -51,6 +51,7 @@ function table.tostring( tbl )
   end
   return "\n{\n" .. table.concat( result, ",\n" ) .. "\n}"
 end
+
 function parseargs(s)
   local arg = {}
   string.gsub(s, "([%w:]+)=([\"'])(.-)%2", function (w, _, a)
@@ -104,39 +105,60 @@ end
 -- }}} XML Parser End
 -------------------------------------------------------------------------------
 
-----------------------------------------------------------------------------
--- Output Lua
+--------------------------------------------------------------------------------
+-- XML -> Lua X-Types
+--------------------------------------------------------------------------------
 
-Data = require('Data')
+xtypes = require('xtypes')
 
-local xmlfile = arg[1]
-print('xmlfile = ', xmlfile)
+local xmlfile = arg[1] or 'xtypes-xml-test.xml'  print('-- xmlfile = ', xmlfile)   
+
 io.input(xmlfile)
-xmlString = io.read("*all")
-xmlTable = collect(xmlString)
--- print(table.tostring(xmlTable));
+local xmlString = io.read("*all")
+local xmlTable = collect(xmlString)
+print('xml = ', table.tostring(xmlTable));
 
 
-print('*** xml -> lua ***')
+--[[
 
--- @result the cumulative result, that can be passed to another call to this method
+<tag attr1=value1 attr2=value2>
+
+</tag>
+
+tag = {
+  label = "tag",
+  xarg  = {
+    attr1 = value1
+    attr2 = value2
+  }
+  
+  { -- children
+  
+  }
+}
+--]]
+
+print('-- xml -> lua --')
+
+-- @result the cumulative result, that can be passed to another call to 
+--         this method
 function xml_visitor(xml, data) 
-	data = data or Data -- global unnamed name-space called 'Data'
+	data = data or xtypes -- global unnamed name-space called 'xtypes'
 	indent_string = indent_string or ''
 	
 	for i, v in ipairs(xml) do
 		if 'table' == type(v) then
 			local result = nil
 
-			if Data.MODULE() == v.label then
+			if xtypes.MODULE() == v.label then
 				result = emit_module(data, v.xarg)
 				-- recurse into the module
 				xml_visitor(v, result, indent_string .. '   ')
-			elseif Data.TYPEDEF() == v.label then
+			elseif xtypes.TYPEDEF() == v.label then
 				result = emit_typedef(data, v.xarg)
-			elseif Data.ENUM() == v.label then
+			elseif xtypes.ENUM() == v.label then
 				result = emit_enum(data, v.xarg, v)
-			elseif Data.STRUCT() == v.label then
+			elseif xtypes.STRUCT() == v.label then
 				result = emit_struct(data, v.xarg, v)
 			else 
 				-- recurse into the XML until on of the above is found
@@ -144,7 +166,7 @@ function xml_visitor(xml, data)
 			end
 			
 			if result then 
-				Data.print_idl(result) 
+				xtypes.print_idl(result) 
 				-- Test:print(result) 
 			end
 		end
@@ -187,27 +209,27 @@ function emit_member(data, xarg)
 	-- kind / type 
 	local kind = xarg.type
 	if 'string' == xarg.type then
-		kind = Data.String(tonumber(xarg.stringMaxLength))
+		kind = xtypes.String(tonumber(xarg.stringMaxLength))
 	elseif 'boolean' == xarg.type then
-		kind = Data.boolean
+		kind = xtypes.boolean
 	elseif 'char' == xarg.type then
-		kind = Data.char
+		kind = xtypes.char
 	elseif 'octet' == xarg.type then
-		kind = Data.octet
+		kind = xtypes.octet
 	elseif 'short' == xarg.type then
-		kind = Data.short
+		kind = xtypes.short
 	elseif 'long' == xarg.type then
-		kind = Data.long
+		kind = xtypes.long
 	elseif 'float' == xarg.type then
-		kind = Data.float
+		kind = xtypes.float
 	elseif 'double' == xarg.type then
-		kind = Data.double
+		kind = xtypes.double
 	elseif 'unsignedShort' == xarg.type then
-		kind = Data.unsigned_short
+		kind = xtypes.unsigned_short
 	elseif 'unsignedLong' == xarg.type then
-		kind = Data.unsigned_long
+		kind = xtypes.unsigned_long
 	elseif 'longLong' == xarg.type then
-		kind = Data.long_long
+		kind = xtypes.long_long
 	elseif 'nonBasic' == xarg.type then
 		kind = data[xarg.nonBasicTypeName]
 	end
@@ -216,7 +238,7 @@ function emit_member(data, xarg)
 
 	-- multiplicity: Sequence()
 	if xarg.sequenceMaxLength then
-		table.insert(decl_i, Data.Sequence(tonumber(xarg.sequenceMaxLength)))
+		table.insert(decl_i, xtypes.Sequence(tonumber(xarg.sequenceMaxLength)))
 	end
 
 	-- annotations
@@ -229,9 +251,9 @@ function append_annotations(decl, xarg)
 	assert(nil ~= decl, 'decl must be non-nil')
 	for attribute, value in pairs(xarg) do
 		if 'key' == attribute then 
-			table.insert(decl, Data._.Key{})
+			table.insert(decl, xtypes._.Key{})
 		elseif 'topLevel' == attribute then
-			table.insert(decl, Data._.top_level{value})
+			table.insert(decl, xtypes._.top_level{value})
 		end
 	end
 	
@@ -256,4 +278,3 @@ end
 
 xml_visitor(xmlTable)
 
--- Data.print_idl(Data)

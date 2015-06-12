@@ -1533,8 +1533,8 @@ end
 Tester[#Tester+1] = 'test_collection_assignment'
 function Tester:test_collection_assignment()
 
-  local Assign = xtypes.struct{
-    Assign = {
+  local AssignTemplate = xtypes.struct{
+    AssignTemplate = {
         { long0      = { xtypes.long }, },
         { long1SeqX  = { xtypes.long, xtypes.sequence(3) } },
         { long2ArrXX = { xtypes.long, xtypes.array(3, 5) } },
@@ -1542,7 +1542,12 @@ function Tester:test_collection_assignment()
     }
   }
   
-  self:print(Assign)  
+  -- create an instance to assogn/store values
+  -- NOTE: we don't want to clobber the template
+  local Assign = xtypes.utils.new_instance(AssignTemplate)
+  
+  self:print(AssignTemplate)
+  self:print(Assign)    
   print()
   
   -- atomic member

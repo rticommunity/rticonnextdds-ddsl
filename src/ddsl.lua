@@ -53,7 +53,7 @@ USAGE
     where ElementX may be recursively defined as a Model with other parts.
 
     To create an instance named 'i1' from a model element, Model:
-          local i1 = new_instance('i1', Model)
+          local i1 = new_instance(Model, 'i1')
     Now, one can use all the fields of the resulting table, i1. Furthermore, 
     the fields are properly initialized for indexing into DDS dynamic data. 
           i1.role1 = 'i1.role1'
@@ -111,9 +111,9 @@ IMPLEMENTATION
       Either a primitive field
           model.role = 'role'
       Or a composite field 
-          model.role = _.new_instance('role', RoleModel)
+          model.role = _.new_instance(RoleModel, 'role')
       or a sequence
-          model.role = _.new_instance_collection('role', RoleModel, [capacity])
+          model.role = _.new_instance_collection(RoleModel, [capacity], 'role')
    
 CAVEATS
 
@@ -249,11 +249,11 @@ function _.create_role_instance(role, role_defn)
     if collection then
       local iterator = template
       for i = #collection, 2, -1  do -- create iterator for inner dimensions
-        iterator = _.new_instance_collection('', iterator, collection[i]) -- unnamed iterator
+        iterator = _.new_instance_collection(iterator, collection[i]) -- unnamed 
       end
-      role_instance = _.new_instance_collection(role, iterator, collection[1])
+      role_instance = _.new_instance_collection(iterator, collection[1], role)
     else
-      role_instance = _.new_instance(role, template)
+      role_instance = _.new_instance(template, role)
     end
   end
   
@@ -278,7 +278,7 @@ function _.update_instances(model, role, role_template)
           -- do nothing (already updated the template) 
       else -- instance: may be user defined or occurring in another type model
           -- prefix the 'name' to the role_template
-          rawset(instance, role, _.clone(name, role_template))
+          rawset(instance, role, _.clone(role_template, name))
       end
    end
 end
@@ -290,29 +290,29 @@ end
 --- Create an instance, using another instance as a template
 --  Defines a table that can be used to index into an instance of a model
 -- 
--- @param name      <<in>> the role|instance name
 -- @param template  <<in>> the template to use for creating an instance
+-- @param name      <<in>> the role|instance name; maybe nil (=> '')
 -- @return the newly created instance that supports indexing by 'name'
 -- @usage
 --    -- As an index into DDS dynamic data: sample[]
---    local myInstance = _.new_instance("my", template)
+--    local myInstance = _.new_instance(template, "my")
 --    local member = sample[myInstance.member] 
 --    for i = 1, sample[myInstance.memberSeq()] do -- length of the sequence
 --       local element_i = sample[memberSeq[i]] -- access the i-th element
 --    end  
 --
 --    -- As a sample itself
---    local myInstance = _.new_instance("my", template)
+--    local myInstance = _.new_instance(template, "my")
 --    myInstance.member = "value"
 --    for i = 1, 10 do -- length of the sequence
 --       myInstance.memberSeq[i] = element_i -- NOTE: capacity is enforced
 --    end  
 --    print(#myInstance.memberSeq)
 --
-function _.new_instance(name, template) 
-  -- print('DEBUG new_instance 1: ', name, template[MODEL][_.NAME])
+function _.new_instance(template, name) 
+  -- print('DEBUG new_instance 1: ', template[MODEL][_.NAME], name)
 
-  _.assert_role(name)
+  if nil ~= name then _.assert_role(name) else name = '' end
   _.assert_template(template)
  
   local instance = nil
@@ -330,7 +330,7 @@ function _.new_instance(name, template)
     for j = 2, #defn do
       alias_collection = _.info.is_collection_kind(defn[j])
       if alias_collection then
-        -- print('DEBUG new_instance 2: ', name, alias_collection)
+        -- print('DEBUG new_instance 2: ', alias_collection, name)
         break -- 1st 'collection' is used
       end
     end
@@ -346,10 +346,10 @@ function _.new_instance(name, template)
   -- collection of underlying types (which is not an alias)
   if alias_collection then
     local iterator = template
-    for i = #alias_collection, 2, - 1  do -- create for inner dimensions
-      iterator = _.new_instance_collection('', iterator, alias_collection[i]) -- unnamed
+    for i = #alias_collection, 2, - 1  do -- create for inner dimensions:unnamed
+      iterator = _.new_instance_collection(iterator, alias_collection[i])
     end
-    instance = _.new_instance_collection(name, iterator, alias_collection[1])
+    instance = _.new_instance_collection(iterator, alias_collection[1], name)
     return instance
   end
   
@@ -358,7 +358,7 @@ function _.new_instance(name, template)
   ---------------------------------------------------------------------------
 
   if is_alias_kind and _.info.is_alias_kind(alias) then
-    instance = _.new_instance(name, template) -- recursive
+    instance = _.new_instance(template, name) -- recursive
     return instance
   end
 
@@ -387,7 +387,7 @@ function _.new_instance(name, template)
   for k, v in pairs(template) do
     -- skip meta-data attributes
     if 'string' == type(k) then
-      instance[k] = _.clone(name, v)
+      instance[k] = _.clone(v, name)
     end
   end
 
@@ -403,30 +403,30 @@ end
 -- Purpose:
 --    Define new named collection of instances
 -- Parameters:
---    <<in>> name  - the collection instance name
 --    <<in>> template_or_collection - the template or collection to use
 --               may be an instance table when it is an non-collection type OR
 --               may be a collection table for a collection of collection
 --    <<in>> capacity - the capacity, ie the maximum number of instances
 --                      maybe nil (=> unbounded)
+--    <<in>> name  - the collection instance name; maybe nil (=> '')
 --    <<returns>> the newly created collection of instances
 -- Usage:
 --    -- As an index into DDS dynamic data: sample[]
---    local mySeq = _.new_instance_collection("my", template)
+--    local mySeq = _.new_instance_collection(template, "my")
 --    for i = 1, sample[mySeq()] do -- length accessor for the collection
 --       local element_i = sample[mySeq[i]] -- access the i-th element
 --    end    
 --
 --    -- As a sample itself
---    local mySeq = _.new_instance_collection("my", template)
+--    local mySeq = _.new_instance_collection(template, "my")
 --    for i = 1, 10 do
 --        mySeq[i]] = element_i -- access the i-th element
 --    end  
 --    print(#mySeq) -- the actual number of elements
-function _.new_instance_collection(name, template_or_collection, capacity) 
-  -- print('DEBUG new_instance_collection', name, template_or_collection)
+function _.new_instance_collection(template_or_collection, capacity, name) 
+  -- print('DEBUG new_instance_collection',template_or_collection,capacity,name)
 
-  _.assert_role(name)
+  if nil ~= name then _.assert_role(name) else name = '' end
   assert(_.is_instance_collection(template_or_collection) or
          _.info.is_template_kind(template_or_collection),
          table.concat{'create_collection(): needs a template or collection'})
@@ -478,7 +478,7 @@ _.collection_metatable = {
           
       -- NOTE: we got called because collection[i] does not exist
       local name_i = string.format('%s[%d]', collection[_.NAME], i)
-      local element_i = _.clone(name_i, collection[_.TEMPLATE])
+      local element_i = _.clone(collection[_.TEMPLATE], name_i)
       
       rawset(collection, i, element_i)
       return element_i
@@ -513,10 +513,10 @@ _.collection_metatable = {
 }
 
 --- Clone a new instance from another instance using the given 'name' prefix
--- @param name [in] name (maybe empty, '') to prefix the instance fields with 
--- @param v [in] an instance (maybe collection) with properly initialized fields  
+-- @param v [in] an instance (maybe collection) with properly initialized fields
+-- @param name [in] name (maybe empty, '') to prefix the instance fields with   
 -- @return new instance with fields properly initialized for 'prefix'
-function _.clone(prefix, v) 
+function _.clone(v, prefix) 
 
     local type_v = type(v)
     local result 
@@ -538,11 +538,11 @@ function _.clone(prefix, v)
             if '' == v[_.NAME] then sep = '' end 
             
             -- create collection instance for 'prefix'
-            result = _.new_instance_collection(table.concat{prefix, sep, v[_.NAME]}, 
-                                      v[_.TEMPLATE], v[_.INSTANCES])  
+            result = _.new_instance_collection(v[_.TEMPLATE], v[_.INSTANCES],
+                                           table.concat{prefix, sep, v[_.NAME]})  
         else -- not collection: struct or union
             -- create instance for 'prefix'
-            result = _.new_instance(prefix, v) -- use member as template   
+            result = _.new_instance(v, prefix) -- use member as template   
         end
         
     elseif 'string' == type_v then -- leaf
@@ -670,7 +670,7 @@ local interface = {
   EMPTY                   = EMPTY,
   MODEL                   = MODEL,
    
-  -- accesors and mutators (meta-attributes for types)
+  -- accessors and mutators (meta-attributes for types)
   NS                      = _.NS,
   NAME                    = _.NAME,
   KIND                    = _.KIND,
