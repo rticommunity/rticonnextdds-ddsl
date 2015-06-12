@@ -4,16 +4,6 @@ local Gen = require("generator")
 local Tester = {}
 local Test = {}
 
-Tester[#Tester+1] = 'test_module'
-function Tester:test_module()
-
-    Test.MyModule = xtypes.module{MyModule=xtypes.EMPTY} -- define a module
-
-    self:print(Test.MyModule)
-    
-    assert(Test.MyModule ~= nil)
-end
-
 Tester[#Tester+1] = 'test_struct_generation'
 function Tester:test_struct_generation()
   local ShapeType = xtypes.struct{
@@ -31,10 +21,19 @@ function Tester:test_struct_generation()
   assert('shapesize' == ShapeType.shapesize)
   assert('color' == ShapeType.color)   
 
-  local shape = Gen:aggregateGen(ShapeType):generate()
-  for k, v in pairs(shape) do
-    print(k, v)
-  end 
+  local shapeGenLib = {}
+  shapeGenLib.x         = Gen:rangeGen(0, 200)
+  shapeGenLib.y         = Gen:rangeGen(0, 200)
+  shapeGenLib.color     = Gen:oneOf({ "RED", "GREEN", "BLUE" })
+  shapeGenLib.shapesize = Gen:rangeGen(20, 30)
+
+  local shape = 
+    Gen:aggregateGen(ShapeType, {}):generate()
+
+  print("shape.x = " .. shape.x)
+  print("shape.y = " .. shape.y)
+  print("shape.color = " .. shape.color)
+  print("shape.shapesize = " .. shape.shapesize)
 end
 
 Tester[#Tester+1] = 'test_generators'
