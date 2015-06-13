@@ -336,10 +336,12 @@ function xtypes.make_collection(annotation, n, ...)
     end
    
     -- check if the 'dim' is valid
-    assert(type(dim)=='number',  
-      table.concat{'invalid collection bound: ', tostring(dim)})
-    assert(dim > 0 and dim - math.floor(dim) == 0, -- positive integer  
-      table.concat{'collection bound must be an integer > 0: ', dim})
+    if not(type(dim)=='number') then
+      error(table.concat{'invalid collection bound: ', tostring(dim)}, 2)
+    end
+    if not(dim > 0 and dim - math.floor(dim) == 0) then -- positive integer  
+      error(table.concat{'collection bound must be an integer > 0: ', dim}, 2)
+    end
   end
   
   -- return the predefined annotation instance, whose attributes are 
@@ -396,10 +398,13 @@ function xtypes.atom(decl)
   -- pre-condition: validate the dimension
   local dim_value = xtypes.CONST == dim_kind and dim() or dim
   if nil ~= dim then
-    assert(type(dim_value)=='number',
-      table.concat{'invalid dimension: ', tostring(dim)})
-    assert(dim_value > 0 and dim_value - math.floor(dim_value) == 0, 
-      table.concat{'dimension must be an integer > 0: ', tostring(dim)})
+    if type(dim_value) ~='number' then
+      error(table.concat{'invalid dimension: ', tostring(dim)}, 2)
+    end
+    if not(dim_value > 0 and dim_value - math.floor(dim_value) == 0) then 
+      error(table.concat{'dimension must be an integer > 0: ', tostring(dim)}, 
+            2)
+    end
   end
   
   -- build up the atom template name:
@@ -541,7 +546,7 @@ function xtypes.const(decl)
              print(table.concat{'INFO: converting to boolean: "', value,
                                 '" -> "', tostring(coercedvalue), '"'}) 
           else 
-             print(table.concat{'ERROR: converting to boolean: "', value,
+             print(table.concat{'WARNING: converting to boolean: "', value,
                                 '" -> "nil"'}) 
           end
       end
@@ -554,7 +559,7 @@ function xtypes.const(decl)
              print(table.concat{'INFO: converting to string: "', value,
                                 '" -> "', coercedvalue, '"'}) 
           else 
-             print(table.concat{'ERROR: converting to string: "', value,
+             print(table.concat{'WARNING: converting to string: "', value,
                                 '" -> "nil"'}) 
           end
       end
@@ -573,7 +578,7 @@ function xtypes.const(decl)
              print(table.concat{'INFO: converting to number: "', value,
                                 '" -> "', coercedvalue, '"'}) 
           else
-             print(table.concat{'ERROR: converting to number: "', value,
+             print(table.concat{'WARNING: converting to number: "', value,
                                 '" -> "nil"'}) 
           end
       end

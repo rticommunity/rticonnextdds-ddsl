@@ -21,28 +21,13 @@ Templates created from XML. This list is built as the XML is processed.
 local templates = {}
 
 --[[
-Look up the given type name first in the user-defined templates, and 
-then in the pre-defined xtype library.
+Look up the template from a name. Searches in several places:
+ - in  the pre-defined xtypes, 
+ - in the user-defined templates
 @param name [in] name of the type to lookup
-@return the template referenced, or nil.
+@return the template referenced by name, or nil.
 --]]
 local function lookup_type(name)
-  -- first lookup in the templates that we have defined so far
-  for i, template in ipairs(templates) do
-    if name == template[xtypes.NAME] then
-      return template
-    end
-  end
-  
-  -- then lookup in the xtypes pre-defined templates
-  for i, template in pairs(xtypes) do
-    if 'table' == type(template) and
-       template[xtypes.KIND] and -- this is a valid X-Type
-       name == template[xtypes.NAME] then
-      return template
-    end
-  end
-
   -- deviations specific to XML representation  
   local xmlName2Model = {
     unsignedShort    = xtypes.unsigned_short,
@@ -50,12 +35,29 @@ local function lookup_type(name)
     longLong         = xtypes.long_long,
     unsignedLongLong = xtypes.unsigned_long_long,
     longDouble       = xtypes.long_double,
+    key              = xtypes.Key,
   }
   -- lookup in the deviations table
   if xmlName2Model[name] then return xmlName2Model[name] end
+
+  -- lookup in the xtypes pre-defined templates
+  for i, template in pairs(xtypes) do
+    if 'table' == type(template) and
+       template[xtypes.KIND] and -- this is a valid X-Type
+       name == template[xtypes.NAME] then
+      return template
+    end
+  end
   
-  error(table.concat{'ERROR: lookup failed for type name: ', name}, 2)
+  -- lookup in the templates that we have defined so far
+  for i, template in ipairs(templates) do
+    if name == template[xtypes.NAME] then
+      return template
+    end
+  end
   
+  print(table.concat{'WARNING: Skipping unresolved name: ', name})
+                              
   return nil
 end
 
@@ -63,8 +65,8 @@ end
 -- containing the dimensions: {1, 2}
 local function dim_string2array(comma_separated_dimension_string)
     local dim = {}
-    for i in string.gmatch(comma_separated_dimension_string, "%d+") do
-      table.insert(dim, i)
+    for w in string.gmatch(comma_separated_dimension_string, "[%w_]+") do
+      table.insert(dim, lookup_type(w) or tonumber(w))--TODO
     end
     return dim
 end
@@ -87,9 +89,11 @@ local function xml_xarg2role_definition(xarg)
          
         local role_template
         if 'string' == v then
-          role_template = xtypes.string(tonumber(xarg.stringMaxLength))
+          role_template = xtypes.string(lookup_type(xarg.stringMaxLength) or 
+                                        tonumber(xarg.stringMaxLength))--TODO
         elseif 'wstring' == v then
-          role_template = xtypes.wstring(tonumber(xarg.stringMaxLength))
+          role_template = xtypes.wstring(lookup_type(xarg.stringMaxLength) or 
+                                         tonumber(xarg.stringMaxLength))--TODO
         else
           role_template = xarg.nonBasicTypeName -- NOTE: use nonBasic if defined
                             and lookup_type(xarg.nonBasicTypeName)
@@ -100,7 +104,7 @@ local function xml_xarg2role_definition(xarg)
         
       -- collection: sequence
       elseif 'sequenceMaxLength' == k then
-          local sequence = xtypes.sequence(tonumber(v))
+          local sequence = xtypes.sequence(lookup_type(v) or tonumber(v))--TODO
           table.insert(role_definition, 2, sequence) -- at the 2nd position
               
       -- collection: array
@@ -108,13 +112,19 @@ local function xml_xarg2role_definition(xarg)
           local array = xtypes.array(dim_string2array(v))
           table.insert(role_definition, 2, array) -- at the 2nd position
           
-      -- constant: valye              
+      -- constant: value              
       elseif 'value' == k then
          table.insert(role_definition, v) -- at the end
         
-      -- annotation: key              
-      elseif 'key' == k then
-        table.insert(role_definition, xtypes.Key) -- at the end
+      -- annotations         
+      else
+        local annotation = lookup_type(k) 
+        if annotation then
+          table.insert(role_definition, annotation) -- at the end
+        else
+          print(table.concat{'WARNING: Skipping unrecognized XML attribute: ',
+                              k, ' = ', v})
+        end
       end
   end
   return role_definition
@@ -140,7 +150,7 @@ local tag2template = {
     }
     return template
   end,
-  
+
   struct = function (tag)
     local template = xtypes.struct{[tag.xarg.name]=xtypes.EMPTY}
 
