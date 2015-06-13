@@ -1895,15 +1895,23 @@ function Tester:test_api()
   print('--- Instance API ---') 
 
   print('-- ordered ---')
+  
+  print('ShapeType:')
   for i = 1, #ShapeType do
     local role = next(ShapeType[i])
-    print('ShapeType', role, '=', ShapeType[role]) -- default members values
-    print('    shape', role, '=', shape[role])     -- shape instance members
+    print('', role, '=', ShapeType[role]) -- default members values
+  end
+
+  print('shape:')
+  for i = 1, #ShapeType do
+    local role = next(ShapeType[i])
+    print('', role, '=', shape[role])     -- shape instance members
   end
     
   print('-- unordered ---')
+  print('shape:')
   for role, value in pairs(shape) do
-    print(role, value)
+    print('', role, value)
   end
   
 end
