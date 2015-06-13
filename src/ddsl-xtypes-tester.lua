@@ -1894,6 +1894,9 @@ function Tester:test_api()
 
   print('--- Instance API ---') 
 
+  -- given an instance, retrieve the template from the instance
+  assert(xtypes.utils.template(shape) == ShapeType)
+
   print('-- ordered ---')
   
   print('ShapeType:')

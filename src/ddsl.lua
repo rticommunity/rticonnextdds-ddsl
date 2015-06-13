@@ -592,13 +592,32 @@ function _.resolve(template)
   end
 end
 
+--- Retrieve the template instance for the given instance
+-- The instance would have been created previously using 
+--      _.new_instance() or 
+--      _.new_instance_collection() or 
+--      _._new_template() for a "template" instance
+-- @param instance [in] the instance whose template we want to retrieve
+-- @return the underlying non-alias data model template
+function _.template(instance)
+  local template
+  if _.is_instance_collection(instance) then
+     return instance[_.TEMPLATE]
+    -- return _.template(instance[_.TEMPLATE]) -- get to the underlying template
+  else
+    template = 
+        'table' == type(instance) and 
+        instance[MODEL] and
+        instance[MODEL][_.TEMPLATE]
+  end
+  return template
+end
+
 --- Get the model type of any arbitrary value
 -- @param value  [in] the value for which to retrieve the model type
 -- @return the model type or nil (if 'value' does not have a MODEL)
 function _.model_kind(value)
-    return ('table' == type(value) and value[MODEL]) 
-           and value[MODEL][_.KIND]
-           or nil
+    return ('table' == type(value) and value[MODEL]) and value[MODEL][_.KIND]
 end
 
 --- Ensure that the value is a model element
@@ -707,6 +726,7 @@ local interface = {
   
   -- for users of templates created with ddsl
   nsname                  = _.nsname,
+  template                = _.template,
   resolve                 = _.resolve,
   new_instance            = _.new_instance,
   new_instance_collection = _.new_instance_collection,

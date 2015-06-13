@@ -1468,8 +1468,10 @@ local xutils = {}
 --         visited is inserted into this table. This returned value table can be 
 --         passed to another call to this method (to build it cumulatively).
 function xutils.visit_instance(instance, result, model) 
-  -- print('DEBUG xutils.visit_instance 1: ', instance) 
-
+  local template = instance -- _.template(instance) -- TODO
+  
+  -- print('DEBUG xutils.visit_instance 1: ', instance, template) 
+ 
   -- initialize the result (or accumulate in the provided result)
   result = result or {} 
 
@@ -1479,14 +1481,14 @@ function xutils.visit_instance(instance, result, model)
       local _ = instance[1]
       
       -- length operator and actual length
-      table.insert(result, instance() .. ' = ' .. tostring(#instance))
+      table.insert(result, template() .. ' = ' ..  #instance)
           
       -- visit all the elements
       for i = 1, #instance do 
         if 'table' == type(instance[i]) then -- composite collection
             xutils.visit_instance(instance[i], result) -- visit i-th element 
         else -- leaf collection
-            table.insert(result, instance[i])
+            table.insert(result, template[i] .. ' = ' .. instance[i])
         end
       end
       
@@ -1497,7 +1499,7 @@ function xutils.visit_instance(instance, result, model)
   local mytype = _.model_kind(instance)
   local model = model or instance[_.MODEL]
   local mydefn = model[_.DEFN]
-
+  
   -- print('DEBUG index 1: ', mytype(), instance[_.MODEL][_.NAME])
       
   -- skip if not an indexable type:
@@ -1505,7 +1507,7 @@ function xutils.visit_instance(instance, result, model)
           
   -- union discriminator, if any
   if xtypes.UNION == mytype then
-    table.insert(result, instance._d)
+    table.insert(result, template._d .. ' = ' .. instance._d)
   end
     
   -- struct base type, if any
@@ -1536,7 +1538,9 @@ function xutils.visit_instance(instance, result, model)
       if 'table' == role_instance_type then -- composite or collection
         result = xutils.visit_instance(role_instance, result)
       else -- leaf
-        table.insert(result, role_instance) 
+        table.insert(result, template[role] 
+                                and template[role] .. ' = ' .. role_instance
+                                or nil) 
       end
     end
   end
@@ -1832,6 +1836,7 @@ local interface = {
   utils              = {
     nsname                  = _.nsname,
     resolve                 = _.resolve,
+    template                = _.template,
     new_instance            = _.new_instance,
     new_instance_collection = _.new_instance_collection,
     is_instance_collection  = _.is_instance_collection,
