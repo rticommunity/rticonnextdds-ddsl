@@ -1005,6 +1005,25 @@ function Tester:test_typedef()
   assert(Test.MyTypedef.myAddress2.name.nicknames[1] == 'myAddress2.name.nicknames[1]')
 end
 
+Tester[#Tester+1] = 'test_resolve'
+function Tester:test_resolve()  
+ 
+  local MyBooleanTypedef = xtypes.typedef{
+    MyBooleanTypedef = { xtypes.boolean }
+  }
+  local MyBooleanTypedef2 = xtypes.typedef{
+    MyBooleanTypedef2 = { MyBooleanTypedef }
+  }
+  local MyBooleanSeq = xtypes.typedef{
+    MyBooleanSeq = { MyBooleanTypedef2, xtypes.sequence(3) }
+  }
+  
+  assert(xtypes.utils.resolve(nil) == nil)
+  assert(xtypes.utils.resolve(xtypes.boolean) == xtypes.boolean)
+  assert(xtypes.utils.resolve(MyBooleanSeq) == xtypes.boolean)
+  print('resolve(MyBooleanSeq) = ', xtypes.utils.resolve(MyBooleanSeq))
+end
+
 Tester[#Tester+1] = 'test_typedef_seq'
 function Tester:test_typedef_seq()  
 

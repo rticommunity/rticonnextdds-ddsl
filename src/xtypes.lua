@@ -522,7 +522,7 @@ function xtypes.const(decl)
   local name, defn = xtypes.parse_decl(decl)
        
   -- pre-condition: ensure that the 1st defn declaration is a valid type
-  local atom = _.assert_model(xtypes.ATOM, defn[1])
+  local atom = _.assert_model(xtypes.ATOM, _.resolve(defn[1]))
          
   -- pre-condition: ensure that the 2nd defn declaration is a valid value
   local value = defn[2]
@@ -533,10 +533,10 @@ function xtypes.const(decl)
   local coercedvalue = nil
   if xtypes.builtin.boolean == atom then 
       if 'boolean' ~= type(value) then 
-          coercedvalue = toboolean(value) 
+          coercedvalue = not not value -- toboolean
           if nil ~= coercedvalue then
              print(table.concat{'INFO: converting to boolean: "', value,
-                                '" -> "', coercedvalue, '"'}) 
+                                '" -> "', tostring(coercedvalue), '"'}) 
           else 
              print(table.concat{'ERROR: converting to boolean: "', value,
                                 '" -> "nil"'}) 
@@ -1823,6 +1823,7 @@ local interface = {
   -- utilities --> model
   utils              = {
     nsname                  = _.nsname,
+    resolve                 = _.resolve,
     new_instance            = _.new_instance,
     new_instance_collection = _.new_instance_collection,
     is_instance_collection  = _.is_instance_collection,

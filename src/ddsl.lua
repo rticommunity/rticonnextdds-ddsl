@@ -578,6 +578,20 @@ function _.nsname(template, namespace)
   end
 end
 
+--- Resolve the alias template to the underlying non-alias template
+-- @param template [in] the data model element to resolve to the underlying
+--                      non alias data model
+-- @return the underlying non-alias data model template
+function _.resolve(template)
+  local is_alias_kind = template and _.info.is_alias_kind(template)
+  local alias = template and template[MODEL][_.DEFN][1]
+  if is_alias_kind then
+    return _.resolve(alias)
+  else 
+    return template
+  end
+end
+
 --- Get the model type of any arbitrary value
 -- @param value  [in] the value for which to retrieve the model type
 -- @return the model type or nil (if 'value' does not have a MODEL)
@@ -693,6 +707,7 @@ local interface = {
   
   -- for users of templates created with ddsl
   nsname                  = _.nsname,
+  resolve                 = _.resolve,
   new_instance            = _.new_instance,
   new_instance_collection = _.new_instance_collection,
   is_instance_collection  = _.is_instance_collection,
