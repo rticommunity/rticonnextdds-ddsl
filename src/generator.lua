@@ -1,3 +1,5 @@
+xtypes = require ("xtypes")
+
 local Generator   = {}
 
 local MAX_BYTE    = 0xFF
@@ -257,22 +259,27 @@ function Generator:aggregateGen(structtype, genLib)
          end)
 end
 
-function Generator:getGenerator(kind)
-  local gen = Generator:getPrimitiveGen(kind)
-  local strkind = tostring(kind)
+function Generator:getGenerator(mtype)
+  local gen = Generator:getPrimitiveGen(mtype)
 
   if gen then return gen end
 
-  if strkind=="enum" then
-    return Generator:enumGen(kind)
+  if mtype[xtypes.KIND]()=="enum" then  -- It's a function. Very surprising
+    return Generator:enumGen(mtype)
+  elseif mtype[xtypes.KIND]()=="struct" then  -- It's a function. Very surprising
+    return Generator:aggregateGen(mtype)
   else
-    return Generator:single(strkind)
+    return Generator:single(tostring(mtype))
   end
 end
 
 function Generator:enumGen(enumtype)
-  print("here")
-  return Generator:single("ENUM")
+  local ordinals = {}
+  for idx, enumdef in ipairs(enumtype) do
+    local elem, value = next(enumdef)
+    ordinals[idx] = value
+  end
+  return Generator:oneOf(ordinals)
 end
 
 function Generator:getPrimitiveGen(kind)

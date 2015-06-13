@@ -61,25 +61,64 @@ function Tester:test_aggregate_gen()
   end
 end
 
-Tester[#Tester+1] = 'test_enum_gen'
-function Tester:test_enum_gen()
-  local Test = 
-  xtypes.struct {
-    Test = {
-      { s   = { xtypes.short  } },
-      { d   = { xtypes.double } },
-      { day = xtypes.enum { Days = {  
-        'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN',
-        } }
-      }
+Tester[#Tester+1] = 'test_nested_struct_gen'
+function Tester:test_nested_struct_gen()
+    
+  local Geometry = xtypes.module{
+    Geometry = {
+      xtypes.struct{
+        Point = {
+          { x = { xtypes.double } },
+          { y = { xtypes.double } }
+        }
+      },
     }
   }
+
+  Geometry[#Geometry+1] = 
+    xtypes.struct {
+      Test = {
+        { point  = { Geometry[1]  } },
+        { x      = { xtypes.float } },
+      }
+    }
   
-  self:print(Test)
+  self:print(Geometry)
+ 
+  assert(Geometry.Test.x == 'x')
+ 
+  local testGen = Gen:aggregateGen(Geometry.Test)
+  local testObj = testGen:generate()
+  print(testObj.point.x, testObj.point.y, testObj.x)
+
+end
+
+Tester[#Tester+1] = 'test_enum_gen'
+function Tester:test_enum_gen()
+  local Geometry = xtypes.module { Geometry = xtypes.EMPTY }
   
-  --assert(Test.Days.MON == 0)
-  --assert(Test.Days.SUN == 6)
+  Geometry[#Geometry+1] = xtypes.enum{ Days = {  
+     'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN',
+  }}
+
+  Geometry[#Geometry+1] = 
+    xtypes.struct {
+      Test = {
+        { s   = { xtypes.short  } },
+        { d   = { xtypes.double } },
+        { day = { Geometry[1]   } }
+      }
+    }
   
+  self:print(Geometry)
+ 
+  assert(Geometry.Test.s == 's')
+  assert(Geometry.Days.MON == 0)
+  assert(Geometry.Days.SUN == 6)
+ 
+  local testGen = Gen:aggregateGen(Geometry.Test)
+  local testObject = testGen:generate()
+  print(testObject.s, testObject.d, testObject.day)
 
 end
 
