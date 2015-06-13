@@ -1867,6 +1867,17 @@ function Tester:test_api()
   
 end
 
+Tester[#Tester+1] = 'test_xml'
+function Tester:test_xml()
+  local xmlfile2xtypes = require('xtypes-xml').xmlfile2xtypes
+  
+  local schemas = xmlfile2xtypes('xtypes-xml-tester.xml')
+  
+  for i = 1, #schemas do
+    self:print(schemas[i])
+  end
+end
+
 ---
 -- print - helper method to print the IDL and the index for data definition
 function Tester:print(instance)
@@ -1897,7 +1908,7 @@ function Tester:main()
     			if self[v] then self[v](self) end 
     		end
     		
-    		print('\n All tests completed successfully!')
+    		print('\nAll tests completed successfully!')
   	end
 end
 

@@ -1,4 +1,3 @@
-#!/usr/local/bin/lua
 --[[
   (c) 2005-2014 Copyright, Real-Time Innovations, All rights reserved.     
                                                                            
@@ -7,281 +6,135 @@
 --]]
 --[[
 -------------------------------------------------------------------------------
-Purpose: Define Lua X-Types templates by loading an XML file containing
-         type definitions
+Purpose: Load X-Types in Lua from an XML file
 Created: Rajive Joshi, 2014 Apr 1
 -------------------------------------------------------------------------------
 --]]
 
--------------------------------------------------------------------------------
--- {{{ XML Parser Begin
--------------------------------------------------------------------------------
-function table.val_to_str ( v )
-  if "string" == type( v ) then
-    v = string.gsub( v, "\n", "\\n" )
-    if string.match( string.gsub(v,"[^'\"]",""), '^"+$' ) then
-      return "'" .. v .. "'"
-    end
-    return '"' .. string.gsub(v,'"', '\\"' ) .. '"'
-  else
-    return "table" == type( v ) and table.tostring( v ) or
-      tostring( v )
-  end
-end
+local xtypes = require('xtypes')
+local xmlstring2table = require('xml-parser').xmlstring2table
 
-function table.key_to_str ( k )
-  if "string" == type( k ) and string.match( k, "^[_%a][_%a%d]*$" ) then
-    return k
-  else
-    return "[" .. table.val_to_str( k ) .. "]"
-  end
-end
-
-function table.tostring( tbl )
-  local result, done = {}, {}
-  for k, v in ipairs( tbl ) do
-    table.insert( result, table.val_to_str( v ) )
-    done[ k ] = true
-  end
-  for k, v in pairs( tbl ) do
-    if not done[ k ] then
-      table.insert( result,
-        table.key_to_str( k ) .. "=" .. table.val_to_str( v ) )
-    end
-  end
-  return "\n{\n" .. table.concat( result, ",\n" ) .. "\n}"
-end
-
-function parseargs(s)
-  local arg = {}
-  string.gsub(s, "([%w:]+)=([\"'])(.-)%2", function (w, _, a)
-    arg[w] = a
-  end)
-  return arg
-end
-    
-function collect(s)
-  local stack = {}
-  local top = {}
-  table.insert(stack, top)
-  local ni,c,label,xarg, empty
-  local i, j = 1, 1
-  while true do
-    ni,j,c,label,xarg, empty = string.find(s, "<(%/?)([%w:]+)(.-)(%/?)>", i)
-    if not ni then break end
-    local text = string.sub(s, i, ni-1)
-    if not string.find(text, "^%s*$") then
-      table.insert(top, text)
-    end
-    if empty == "/" then  -- empty element tag
-      table.insert(top, {label=label, xarg=parseargs(xarg), empty=1})
-    elseif c == "" then   -- start tag
-      top = {label=label, xarg=parseargs(xarg)}
-      table.insert(stack, top)   -- new level
-    else  -- end tag
-      local toclose = table.remove(stack)  -- remove top
-      top = stack[#stack]
-      if #stack < 1 then
-        error("nothing to close with "..label)
-      end
-      if toclose.label ~= label then
-        error("trying to close "..toclose.label.." with "..label)
-      end
-      table.insert(top, toclose)
-    end
-    i = j+1
-  end
-  local text = string.sub(s, i)
-  if not string.find(text, "^%s*$") then
-    table.insert(stack[#stack], text)
-  end
-  if #stack > 1 then
-    error("unclosed "..stack[#stack].label)
-  end
-  return stack[1]
-end
-
--------------------------------------------------------------------------------
--- }}} XML Parser End
--------------------------------------------------------------------------------
 
 --[[
-
-XML:
-    <tag attr1=value1 attr2=value2>
-      <child1> ... </child1>
-      <child2> ... </child2>
-      <!--comment -->
-    </tag>
-
-tag = {
-  -- array: children: tag[i] --
-  { -- child1: recursive },
-  { -- child2: recursive },  
-  "<!--comment ",
-
-  -- map: tag name and attributes: tag.label, tag.xarg --
-  xarg  = { -- may be empty
-    attr1 = value1
-    attr2 = value2
-  }
-  label = "tag",
-  [empty=1,] -- iff there are no child tags
-}
+Templates created from XML. This list is built as the XML is processed.
 --]]
+local templates = {}
 
---------------------------------------------------------------------------------
--- XML -> Lua X-Types
---------------------------------------------------------------------------------
-
-xtypes = require('xtypes')
-
-local xmlfile = arg[1] or 'xtypes-xml-test.xml'  print('-- xmlfile = ', xmlfile)   
-
-io.input(xmlfile)
-local xmlString = io.read("*all")
-local xmlTable = collect(xmlString)
-print('xml = ', table.tostring(xmlTable));
-
-
-
-print('-- xml -> lua --')
-
--- @result the cumulative result, that can be passed to another call to 
---         this method
-function xml_visitor(xml, data) 
-	data = data or xtypes -- global unnamed name-space called 'xtypes'
-	indent_string = indent_string or ''
-	
-	for i, v in ipairs(xml) do
-		if 'table' == type(v) then
-			local result = nil
-
-			if xtypes.MODULE() == v.label then
-				result = emit_module(data, v.xarg)
-				-- recurse into the module
-				xml_visitor(v, result, indent_string .. '   ')
-			elseif xtypes.TYPEDEF() == v.label then
-				result = emit_typedef(data, v.xarg)
-			elseif xtypes.ENUM() == v.label then
-				result = emit_enum(data, v.xarg, v)
-			elseif xtypes.STRUCT() == v.label then
-				result = emit_struct(data, v.xarg, v)
-			else 
-				-- recurse into the XML until on of the above is found
-				xml_visitor(v, data)
-			end
-			
-			if result then 
-				xtypes.print_idl(result) 
-				-- Test:print(result) 
-			end
-		end
-	end
+--[[
+Look up the given type name first in the user-defined templates, and 
+then in the pre-defined xtype library. 
+@param name [in] name of the type to lookup
+@return the template referenced, or nil.
+--]]
+local function lookup_type(name)
+  -- first lookup in the templates that we have defined so far
+  for i, template in ipairs(templates) do
+    if name == template[xtypes.NAME] then
+      return template
+    end
+  end
+  
+  -- then lookup in the xtypes pre-defined templates
+  for i, template in pairs(xtypes) do
+    if 'table' == type(template) and
+       template[xtypes.KIND] and -- this is a valid X-Type
+       name == template[xtypes.NAME] then
+      return template
+    end
+  end
+  
+  return nil
 end
 
-function emit_module(data, xarg)
-	return data:Module{xarg.name}
+--[[
+Map an xml tag to an appropriate X-Types 
+   xml tag --> create the corresponding xtype (if appropriate)
+Each creation function returns the newly created X-Type template
+--]]
+local tag2xtype = {
+
+  const = function(tag)
+    local template = xtypes.const{[tag.xarg.name] = {
+      lookup_type(tag.xarg.type),
+      tonumber(tag.xarg.value), -- TODO: based on lookup convert to correct type
+    }}
+    return template
+  end,
+  
+  struct = function (tag)
+    local template = xtypes.struct{[tag.xarg.name]=xtypes.EMPTY}
+
+    -- child tags
+    for i, child in ipairs(tag) do
+      if 'table' == type(child) then -- skip comments
+        template[i] = { [child.xarg.name] = { 
+          -- type
+          child.xarg.stringMaxLength 
+              and 
+                (('string' == child.xarg.type)
+                    and xtypes.string(lookup_type(child.xarg.stringMaxLength))
+                    or  xtypes.wstring(lookup_type(child.xarg.stringMaxLength)))
+              or lookup_type(child.xarg.type),
+             
+          -- key?
+          child.xarg.key and xtypes.Key           
+        }}
+      end
+    end
+    return template
+  end,
+}
+
+--[[
+Visit all the nodes in the xml table, and a return a table containing the 
+xtype definitions
+@param xml [in] a table generated from XML
+@return an array of xtypes, equivalent to those defined in the xml table
+--]]
+local function xml2xtypes(xml)
+
+  local xtype = tag2xtype[xml.label]
+  if xtype then -- process this node (and its child nodes)
+    table.insert(templates, xtype(xml)) 
+  else -- don't recognize the label as an xtype, visit the child nodes
+    -- process the child nodes
+    for i, child in ipairs(xml) do
+      if 'table' == type(child) then -- skip comments
+        xml2xtypes(child)
+      end
+    end
+  end
+  
+  return templates
 end
 
-function emit_typedef(data, xarg)
-	return data:Typedef(emit_member(data, xarg))
+--[[
+Given an XML string, loads the xtype definitions, and return them
+@param xmlstring [in] xml string containing XML type definitions
+@return an array of xtypes, equivalent to those defined in the xml table
+--]]
+local function xmlstring2xtypes(xmlstring)
+  local xml = xmlstring2table(xmlstring)
+  return xml2xtypes(xml)
 end
 
-function emit_struct(data, xarg, children)
-	-- forward declaration:
-	-- install empty definition, just in case one of the member references it
-	data:Struct{xarg.name}
-	
-	-- name
-	local decl = {xarg.name}
-		
-	-- members
-	for i, member in ipairs(children) do	    
-		table.insert(decl, emit_member(data, member.xarg))
-	end
-	
-	-- annotations
-	decl = append_annotations(decl, xarg)
+--[[
+Given an XML file, loads the xtype definitions, and return them
+@param filename [in] xml file containing XML type definitions
+@return an array of xtypes, equivalent to those defined in the xml table
+--]]
+local function xmlfile2xtypes(filename)
 
-	return data:Struct(decl) -- ignore the warning of the replacement definition
+  io.input(filename)
+  local xmlstring = io.read("*all")
+  return xmlstring2xtypes(xmlstring)
 end
 
-function emit_member(data, xarg)
-	-- print('DEBUG emit_member', data, xarg.name, xarg.type)
+-------------------------------------------------------------------------------
+local interface = {
+    xmlstring2xtypes = xmlstring2xtypes,
+    xmlfile2xtypes   = xmlfile2xtypes,
+}
 
-	-- name
-	local decl_i = {xarg.name}
-
-	-- kind / type 
-	local kind = xarg.type
-	if 'string' == xarg.type then
-		kind = xtypes.String(tonumber(xarg.stringMaxLength))
-	elseif 'boolean' == xarg.type then
-		kind = xtypes.boolean
-	elseif 'char' == xarg.type then
-		kind = xtypes.char
-	elseif 'octet' == xarg.type then
-		kind = xtypes.octet
-	elseif 'short' == xarg.type then
-		kind = xtypes.short
-	elseif 'long' == xarg.type then
-		kind = xtypes.long
-	elseif 'float' == xarg.type then
-		kind = xtypes.float
-	elseif 'double' == xarg.type then
-		kind = xtypes.double
-	elseif 'unsignedShort' == xarg.type then
-		kind = xtypes.unsigned_short
-	elseif 'unsignedLong' == xarg.type then
-		kind = xtypes.unsigned_long
-	elseif 'longLong' == xarg.type then
-		kind = xtypes.long_long
-	elseif 'nonBasic' == xarg.type then
-		kind = data[xarg.nonBasicTypeName]
-	end
-
-	table.insert(decl_i, kind)
-
-	-- multiplicity: Sequence()
-	if xarg.sequenceMaxLength then
-		table.insert(decl_i, xtypes.Sequence(tonumber(xarg.sequenceMaxLength)))
-	end
-
-	-- annotations
-	decl_i = append_annotations(decl_i, xarg)
-	
-	return decl_i
-end
-
-function append_annotations(decl, xarg)
-	assert(nil ~= decl, 'decl must be non-nil')
-	for attribute, value in pairs(xarg) do
-		if 'key' == attribute then 
-			table.insert(decl, xtypes._.Key{})
-		elseif 'topLevel' == attribute then
-			table.insert(decl, xtypes._.top_level{value})
-		end
-	end
-	
-	return decl
-end
-
-function emit_enum(data, xarg, children)
-
-	-- name
-	local decl = {xarg.name}
-
-	-- members
-	for i, member in ipairs(children) do	    
-		table.insert(decl, {member.xarg.name})
-	end
-	
-	-- annotations
-	decl = append_annotations(decl, xarg)
-
-	return data:Enum(decl)
-end
-
-xml_visitor(xmlTable)
+return interface
 
