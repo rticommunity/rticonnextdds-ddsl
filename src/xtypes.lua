@@ -569,7 +569,7 @@ function xtypes.const(decl)
           if nil ~= coercedvalue then
              print(table.concat{'INFO: converting to number: "', value,
                                 '" -> "', coercedvalue, '"'}) 
-          else 
+          else
              print(table.concat{'ERROR: converting to number: "', value,
                                 '" -> "nil"'}) 
           end
@@ -580,10 +580,12 @@ function xtypes.const(decl)
   if xtypes.builtin.unsigned_short == atom or 
      xtypes.builtin.unsigned_long == atom or
      xtypes.builtin.unsigned_long_long == atom then
-     assert(value < 0, 
-            table.concat{'const value of "', value, ' of type "', type(value),
+     if value < 0 then 
+       print(table.concat{'INFO: const value of "', value, ' of type "', 
+                        type(value),
                         '" must be non-negative and of the type: ', 
                         atom[_.MODEL][_.NAME] })
+     end                   
   end
                       
   -- char: truncate value to 1st char; warn if truncated
@@ -600,6 +602,7 @@ function xtypes.const(decl)
       xtypes.builtin.long == atom or xtypes.builtin.unsigned_long == atom or 
       xtypes.builtin.long_long == atom or 
       xtypes.builtin.unsigned_long_long == atom) and
+      'number' == type(value) and
       value - math.floor(value) ~= 0 then
     value = math.floor(value)
     print(table.concat{'WARNING: truncating decimal value for integer constant', 
