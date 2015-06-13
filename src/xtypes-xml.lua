@@ -56,7 +56,7 @@ local function lookup_type(name)
     end
   end
   
-  print(table.concat{'WARNING: Skipping unresolved name: ', name})
+  -- print(table.concat{'WARNING: Skipping unresolved name: ', name})
                               
   return nil
 end
@@ -66,9 +66,10 @@ end
 local function dim_string2array(comma_separated_dimension_string)
     local dim = {}
     for w in string.gmatch(comma_separated_dimension_string, "[%w_]+") do
-      table.insert(dim, lookup_type(w) or tonumber(w))--TODO
+      table.insert(dim, lookup_type(w) or tonumber(w))
+      -- print('dim = ', w, lookup_type(w))
     end
-    return dim
+    return table.unpack(dim)
 end
 
 -- Create a role definition table from an XML tag attributes
@@ -76,6 +77,9 @@ end
 -- @return the role definition specified by the xml xarg attributes
 local function xml_xarg2role_definition(xarg)
   local role_definition = {}
+  local role_template, sequence, array, value 
+  
+  -- process the xarg and cache the attributes as they are traversed
   for k, v in pairs(xarg) do
   
       -- skip the attributes that will be processed with other attributes
@@ -86,35 +90,41 @@ local function xml_xarg2role_definition(xarg)
         
       -- role_template
       elseif 'type'         == k then
-         
-        local role_template
+        
+        -- determine the stringMaxLength 
+        local stringMaxLength -- NOTE: "-1" means unbounded
+        if '-1' ~= xarg.stringMaxLength then -- bounded
+          stringMaxLength = lookup_type(xarg.stringMaxLength) or 
+                            tonumber(xarg.stringMaxLength)
+        end
+        
         if 'string' == v then
-          role_template = xtypes.string(lookup_type(xarg.stringMaxLength) or 
-                                        tonumber(xarg.stringMaxLength))--TODO
+          role_template = xtypes.string(stringMaxLength)
         elseif 'wstring' == v then
-          role_template = xtypes.wstring(lookup_type(xarg.stringMaxLength) or 
-                                         tonumber(xarg.stringMaxLength))--TODO
+          role_template = xtypes.wstring(stringMaxLength)
         else
           role_template = xarg.nonBasicTypeName -- NOTE: use nonBasic if defined
                             and lookup_type(xarg.nonBasicTypeName)
                             or  lookup_type(xarg.type)
         end
         
-        table.insert(role_definition, 1, role_template) -- at the beginning
-        
       -- collection: sequence
       elseif 'sequenceMaxLength' == k then
-          local sequence = xtypes.sequence(lookup_type(v) or tonumber(v))--TODO
-          table.insert(role_definition, 2, sequence) -- at the 2nd position
-              
+        -- determine the stringMaxLength 
+        local sequenceMaxLength -- NOTE: "-1" means unbounded
+        if '-1' ~= xarg.sequenceMaxLength then -- bounded
+          sequenceMaxLength = lookup_type(xarg.sequenceMaxLength) or 
+                              tonumber(xarg.sequenceMaxLength)
+        end
+        sequence = xtypes.sequence(sequenceMaxLength)
+         
       -- collection: array
       elseif 'arrayDimensions' == k then
-          local array = xtypes.array(dim_string2array(v))
-          table.insert(role_definition, 2, array) -- at the 2nd position
-          
+        array = xtypes.array(dim_string2array(v))
+    
       -- constant: value              
       elseif 'value' == k then
-         table.insert(role_definition, v) -- at the end
+        value = lookup_type(v) or v -- use the string literal if not found
         
       -- annotations         
       else
@@ -127,6 +137,25 @@ local function xml_xarg2role_definition(xarg)
         end
       end
   end
+  
+  -- insert the cached attributes in the correct order to for a role definition
+  
+  -- value
+  if value then -- const
+    table.insert(role_definition, 1, value) 
+  end 
+  
+  -- collection:
+  if array then
+    table.insert(role_definition, 1, array) 
+  end
+  if sequence then 
+    table.insert(role_definition, 1, sequence) 
+  end
+  
+  -- role template will always be present, and must be the first item
+  table.insert(role_definition, 1, role_template)
+
   return role_definition
 end
 
