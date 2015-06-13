@@ -144,7 +144,7 @@ function Tester:test_nested_struct_gen()
   Geometry[#Geometry+1] = 
     xtypes.struct {
       Test = {
-        { point  = { Geometry[1]  } },
+        { point  = { Geometry[1]  } }, -- = Geometry.Point
         { x      = { xtypes.float } },
       }
     }
@@ -172,7 +172,7 @@ function Tester:test_enum_gen()
       Test = {
         { s   = { xtypes.short  } },
         { d   = { xtypes.double } },
-        { day = { Geometry[1]   } }
+        { day = { Geometry[1]   } } -- = Geometry.Days
       }
     }
   

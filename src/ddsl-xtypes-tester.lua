@@ -1005,6 +1005,25 @@ function Tester:test_typedef()
   assert(Test.MyTypedef.myAddress2.name.nicknames[1] == 'myAddress2.name.nicknames[1]')
 end
 
+Tester[#Tester+1] = 'test_resolve'
+function Tester:test_resolve()  
+ 
+  local MyBooleanTypedef = xtypes.typedef{
+    MyBooleanTypedef = { xtypes.boolean }
+  }
+  local MyBooleanTypedef2 = xtypes.typedef{
+    MyBooleanTypedef2 = { MyBooleanTypedef }
+  }
+  local MyBooleanSeq = xtypes.typedef{
+    MyBooleanSeq = { MyBooleanTypedef2, xtypes.sequence(3) }
+  }
+  
+  assert(xtypes.utils.resolve(nil) == nil)
+  assert(xtypes.utils.resolve(xtypes.boolean) == xtypes.boolean)
+  assert(xtypes.utils.resolve(MyBooleanSeq) == xtypes.boolean)
+  print('resolve(MyBooleanSeq) = ', xtypes.utils.resolve(MyBooleanSeq))
+end
+
 Tester[#Tester+1] = 'test_typedef_seq'
 function Tester:test_typedef_seq()  
 
@@ -1790,6 +1809,28 @@ function Tester:test_ns()
   self:print(m)
 end
 
+Tester[#Tester+1] = 'test_xml'
+function Tester:test_xml()
+  local xmlfile2xtypes = require('xtypes-xml').xmlfile2xtypes
+  
+  local schemas = xmlfile2xtypes('xtypes-xml-tester.xml')
+  
+  for i = 1, #schemas do
+    self:print(schemas[i])
+  end
+end
+
+Tester[#Tester+1] = 'test_xml_advanced'
+function Tester:test_xml_advancedX()
+  local xmlfile2xtypes = require('xtypes-xml').xmlfile2xtypes
+  
+  local schemas = xmlfile2xtypes('types1.xml')
+  
+  for i = 1, #schemas do
+    self:print(schemas[i])
+  end
+end
+
 Tester[#Tester+1] = 'test_api'
 function Tester:test_api()
   -- NOTE: This test also serves as an illustration of the xtypes user API
@@ -1844,10 +1885,9 @@ function Tester:test_api()
             role_definition[j],
             'NAME = ', role_definition[j][xtypes.NAME],   -- member type name
             'KIND = ', role_definition[j][xtypes.KIND]()) -- member type kind
-      if 'annotation' == role_definition[j][xtypes.KIND]() then
-         print('\t\t\t',                              -- OR construct ourselves               
-               role_definition[j][xtypes.NAME],       --    name
-               table.concat(role_definition[j], ' ')) --    attributes
+      if 'annotation' == role_definition[j][xtypes.KIND]() and
+         #role_definition[j] > 0 then 
+            print('\t\t\t\t', table.concat(role_definition[j], ' '))--attributes
       end
     end
   end
@@ -1898,7 +1938,7 @@ function Tester:main()
     			if self[v] then self[v](self) end 
     		end
     		
-    		print('\n All tests completed successfully!')
+    		print('\nAll tests completed successfully!')
   	end
 end
 

@@ -336,10 +336,12 @@ function xtypes.make_collection(annotation, n, ...)
     end
    
     -- check if the 'dim' is valid
-    assert(type(dim)=='number',  
-      table.concat{'invalid collection bound: ', tostring(dim)})
-    assert(dim > 0 and dim - math.floor(dim) == 0, -- positive integer  
-      table.concat{'collection bound must be an integer > 0: ', dim})
+    if not(type(dim)=='number') then
+      error(table.concat{'invalid collection bound: ', tostring(dim)}, 2)
+    end
+    if not(dim > 0 and dim - math.floor(dim) == 0) then -- positive integer  
+      error(table.concat{'collection bound must be an integer > 0: ', dim}, 2)
+    end
   end
   
   -- return the predefined annotation instance, whose attributes are 
@@ -396,10 +398,13 @@ function xtypes.atom(decl)
   -- pre-condition: validate the dimension
   local dim_value = xtypes.CONST == dim_kind and dim() or dim
   if nil ~= dim then
-    assert(type(dim_value)=='number',
-      table.concat{'invalid dimension: ', tostring(dim)})
-    assert(dim_value > 0 and dim_value - math.floor(dim_value) == 0, 
-      table.concat{'dimension must be an integer > 0: ', tostring(dim)})
+    if type(dim_value) ~='number' then
+      error(table.concat{'invalid dimension: ', tostring(dim)}, 2)
+    end
+    if not(dim_value > 0 and dim_value - math.floor(dim_value) == 0) then 
+      error(table.concat{'dimension must be an integer > 0: ', tostring(dim)}, 
+            2)
+    end
   end
   
   -- build up the atom template name:
@@ -493,6 +498,8 @@ xtypes.builtin.unsigned_long_long = xtypes.atom{['unsigned long long']=_.EMPTY}
 --- Define an constant
 -- @param decl  [in] a table containing a constant declaration
 --                   { name = { xtypes.atom, const_value_of_atom_type } }
+--        NOTE: this method will try to convert the value to the correct type,
+--              if not so already
 -- @return the const template (an immutable table)
 -- @usage
 --  -- Create a constant type
@@ -520,35 +527,75 @@ function xtypes.const(decl)
   local name, defn = xtypes.parse_decl(decl)
        
   -- pre-condition: ensure that the 1st defn declaration is a valid type
-  local atom = _.assert_model(xtypes.ATOM, defn[1])
+  local atom = _.assert_model(xtypes.ATOM, _.resolve(defn[1]))
          
   -- pre-condition: ensure that the 2nd defn declaration is a valid value
   local value = defn[2]
   assert(nil ~= value, 
          table.concat{'const value must be non-nil: ', tostring(value)})
-  assert((xtypes.builtin.boolean == atom and 'boolean' == type(value) or
-         ((xtypes.string() == atom or 
-           xtypes.wstring() == atom or 
-           xtypes.builtin.char == atom) and 
-          'string' == type(value)) or 
-         ((xtypes.builtin.short == atom or 
-           xtypes.builtin.unsigned_short == atom or 
-           xtypes.builtin.long == atom or 
-           xtypes.builtin.unsigned_long == atom or 
-           xtypes.builtin.long_long == atom or 
-           xtypes.builtin.unsigned_long_long == atom or
-           xtypes.builtin.float == atom or 
-           xtypes.builtin.double == atom or 
-           xtypes.builtin.long_double == atom) and 
-           'number' == type(value)) or
-         ((xtypes.builtin.unsigned_short == atom or 
-           xtypes.builtin.unsigned_long == atom or
-           xtypes.builtin.unsigned_long_long == atom) and 
-           value < 0)), 
-         table.concat{'const value must be non-negative and of the type: ', 
-                      atom[_.MODEL][_.NAME] })
-         
 
+  -- convert value to the correct type:
+  local coercedvalue = nil
+  if xtypes.builtin.boolean == atom then 
+      if 'boolean' ~= type(value) then
+          if 'false' == value then coercedvalue = false 
+          elseif 'true' == value then coercedvalue = true 
+          else coercedvalue = not not value -- toboolean
+          end
+          if nil ~= coercedvalue then
+             print(table.concat{'INFO: converting to boolean: "', value,
+                                '" -> "', tostring(coercedvalue), '"'}) 
+          else 
+             print(table.concat{'WARNING: converting to boolean: "', value,
+                                '" -> "nil"'}) 
+          end
+      end
+  elseif xtypes.string() == atom or 
+         xtypes.wstring() == atom or 
+         xtypes.builtin.char == atom then
+      if 'string' ~= type(value) then 
+          if nil ~= coercedvalue then
+             coercedvalue = tostring(value) 
+             print(table.concat{'INFO: converting to string: "', value,
+                                '" -> "', coercedvalue, '"'}) 
+          else 
+             print(table.concat{'WARNING: converting to string: "', value,
+                                '" -> "nil"'}) 
+          end
+      end
+  elseif xtypes.builtin.short == atom or 
+         xtypes.builtin.unsigned_short == atom or 
+         xtypes.builtin.long == atom or 
+         xtypes.builtin.unsigned_long == atom or 
+         xtypes.builtin.long_long == atom or 
+         xtypes.builtin.unsigned_long_long == atom or
+         xtypes.builtin.float == atom or 
+         xtypes.builtin.double == atom or 
+         xtypes.builtin.long_double == atom then
+      if 'number' ~= type(value) then 
+          coercedvalue = tonumber(value) 
+          if nil ~= coercedvalue then
+             print(table.concat{'INFO: converting to number: "', value,
+                                '" -> "', coercedvalue, '"'}) 
+          else
+             print(table.concat{'WARNING: converting to number: "', value,
+                                '" -> "nil"'}) 
+          end
+      end
+  end
+  if nil ~= coercedvalue then value = coercedvalue end
+  
+  if xtypes.builtin.unsigned_short == atom or 
+     xtypes.builtin.unsigned_long == atom or
+     xtypes.builtin.unsigned_long_long == atom then
+     if value < 0 then 
+       print(table.concat{'INFO: const value of "', value, ' of type "', 
+                        type(value),
+                        '" must be non-negative and of the type: ', 
+                        atom[_.MODEL][_.NAME] })
+     end                   
+  end
+                      
   -- char: truncate value to 1st char; warn if truncated
   if (xtypes.builtin.char == atom or xtypes.builtin.wchar == atom) and 
       #value > 1 then
@@ -563,6 +610,7 @@ function xtypes.const(decl)
       xtypes.builtin.long == atom or xtypes.builtin.unsigned_long == atom or 
       xtypes.builtin.long_long == atom or 
       xtypes.builtin.unsigned_long_long == atom) and
+      'number' == type(value) and
       value - math.floor(value) ~= 0 then
     value = math.floor(value)
     print(table.concat{'WARNING: truncating decimal value for integer constant', 
@@ -1783,6 +1831,7 @@ local interface = {
   -- utilities --> model
   utils              = {
     nsname                  = _.nsname,
+    resolve                 = _.resolve,
     new_instance            = _.new_instance,
     new_instance_collection = _.new_instance_collection,
     is_instance_collection  = _.is_instance_collection,
