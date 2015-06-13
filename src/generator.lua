@@ -129,27 +129,27 @@ end
 
 function Generator:posFloatGen()
   return Generator:new(function()
-           return math.random() * MAX_FLOAT
+           return math.random() * math.random(0, MAX_INT16)
          end)
 end
 
 function Generator:posDoubleGen()
   return Generator:new(function()
-           return math.random() * MAX_DOUBLE
+           return math.random() * math.random(0, MAX_INT32)
          end)
 end
 
 function Generator:floatGen()
-  return Generator:boolGen()(function(b)
-           return b and math.random() * MAX_FLOAT
-                    or  math.random() * MIN_FLOAT
+  return Generator:boolGen():map(function(b)
+           local num = math.random() * math.random(0, MAX_INT16)
+           return b and -num or num
          end)
 end
 
 function Generator:doubleGen()
-  return Generator:boolGen()(function(b)
-           return b and math.random() * MAX_DOUBLE
-                    or  math.random() * MIN_DOUBLE
+  return Generator:boolGen():map(function(b)
+           local num = math.random() * math.random(0, MAX_INT32)         
+           return b and -num or num
          end)
 end
 
@@ -189,9 +189,24 @@ function Generator:printableGen()
   return Generator:rangeGen(space, tilde)
 end
 
+function Generator:seqGen(elemGen, maxLength)
+  elemGen = elemGen or Generator:single("unknown ")
+  maxLength = maxLength or MAX_BYTE+1
+ 
+  return 
+    Generator:rangeGen(0, maxLength)
+             :map(function (length) 
+                    local arr = {}
+                    for i=1,length do
+                      arr[i] = elemGen:generate()
+                    end
+                    return arr
+                  end)
+end
+
 function Generator:nonEmptyStringGen(maxLength, charGen)
   charGen = charGen or Generator:printableGen()
-  maxLength = maxLength or MAX_BYTE
+  maxLength = maxLength or MAX_BYTE+1
 
   return 
     Generator:rangeGen(1, maxLength)
@@ -219,18 +234,18 @@ function Generator:aggregateGen(structtype, genLib)
 
   for key, val in ipairs(structtype) do
     local member, def = next(val)
-    io.write(member .. ": ")
-    for k, v in ipairs(def) do
-      io.write(tostring(v) .. " ")
+    --io.write(member .. ": ")
+    for k, kind in ipairs(def) do
+      --io.write(tostring(v) .. " ")
       if(genLib[member]) then
         memberGenTab[member] = genLib[member]
       else
-        memberGenTab[member] = Generator:getGenForKind(tostring(v))
+        memberGenTab[member] = Generator:getGenerator(kind)
         genLib[member] = memberGenTab[member]
       end
       break
     end
-    print()
+    --print()
   end
 
   return Generator:new(function () 
@@ -242,43 +257,79 @@ function Generator:aggregateGen(structtype, genLib)
          end)
 end
 
-function Generator:getGenForKind(mtype)
-  if mtype=="boolean" then
-    return Generator:boolGen()
-  elseif mtype=="octet" then
-    return Generator:octetGen()
-  elseif mtype=="char" then
-    return Generator:charGen()
-  elseif mtype=="wchar" then
-    return Generator:wcharGen()
-  elseif mtype=="float" then
-    return Generator:floatGen()
-  elseif mtype=="double" then
-    return Generator:doubleGen()
-  elseif mtype=="long_double" then
-    return Generator:doubleGen()
-  elseif mtype=="short" then
-    return Generator:int16Gen()
-  elseif mtype=="long" then
-    return Generator:int32Gen()
-  elseif mtype=="long_long" then
-    return Generator:int64Gen()
-  elseif mtype=="unsigned_short" then
-    return Generator:uint16Gen()
-  elseif mtype=="unsigned_long" then
-    return Generator:uint32Gen()
-  elseif mtype=="unsigned_long_long" then
-    return Generator:uint64Gen()
-  elseif mtype=="string" then
-    return Generator:nonEmptyStringGen()
-  elseif mtype=="wstring" then
-    return Generator:nonEmptyStringGen()
-  elseif mtype=="string<128>" then
-    return Generator:nonEmptyStringGen(128)
+function Generator:getGenerator(kind)
+  local gen = Generator:getPrimitiveGen(kind)
+  local strkind = tostring(kind)
+
+  if gen then return gen end
+
+  if strkind=="enum" then
+    return Generator:enumGen(kind)
   else
-    return Generator:single(mtype)
+    return Generator:single(strkind)
   end
 end
+
+function Generator:enumGen(enumtype)
+  print("here")
+  return Generator:single("ENUM")
+end
+
+function Generator:getPrimitiveGen(kind)
+  local ptype = tostring(kind)
+
+  if ptype=="boolean" then
+    return Generator.Bool
+  elseif ptype=="octet" then
+    return Generator.Octet
+  elseif ptype=="char" then
+    return Generator.Char
+  elseif ptype=="wchar" then
+    return Generator.WChar
+  elseif ptype=="float" then
+    return Generator.Float
+  elseif ptype=="double" then
+    return Generator.Double
+  elseif ptype=="long_double" then
+    return Generator.LongDouble
+  elseif ptype=="short" then
+    return Generator.Short
+  elseif ptype=="long" then
+    return Generator.Long
+  elseif ptype=="long_long" then
+    return Generator.LongLong
+  elseif ptype=="unsigned_short" then
+    return Generator.UShort
+  elseif ptype=="unsigned_long" then
+    return Generator.ULong
+  elseif ptype=="unsigned_long_long" then
+    return Generator.ULongLong
+  elseif ptype=="string" then
+    return Generator.String
+  elseif ptype=="wstring" then
+    return Generator.WString
+  elseif ptype=="string<128>" then
+    return Generator:nonEmptyStringGen(128)
+  else
+    return nil
+  end
+end
+
+Generator.Bool       = Generator:boolGen()
+Generator.Octet      = Generator:octetGen()
+Generator.Char       = Generator:charGen()
+Generator.WChar      = Generator:wcharGen()
+Generator.Float      = Generator:floatGen()
+Generator.Double     = Generator:doubleGen()
+Generator.LongDouble = Generator:doubleGen()
+Generator.Short      = Generator:int16Gen()
+Generator.Long       = Generator:int32Gen()
+Generator.LongLong   = Generator:int64Gen()
+Generator.UShort     = Generator:uint16Gen()
+Generator.ULong      = Generator:uint32Gen()
+Generator.ULongLong  = Generator:uint64Gen()
+Generator.String     = Generator:nonEmptyStringGen()
+Generator.WString    = Generator:nonEmptyStringGen()
 
 return Generator 
 
