@@ -439,8 +439,7 @@ function _.new_instance_collection(template_or_collection, capacity, name)
   -- create collection instance
   local collection = { 
      [_.NAME]      = name, 
-     [_.TEMPLATE]  = template_or_collection,
-     [_.INSTANCES] = capacity,
+     [_.DEFN]      = { template_or_collection, capacity },
    }
   
   -- set the template meta-table:
@@ -469,8 +468,8 @@ _.collection_metatable = {
       end 
 
       -- enforce capacity
-      local capacity = rawget(collection, _.INSTANCES) or nil
-      if capacity and i > collection[_.INSTANCES] then
+      local capacity = rawget(collection, _.DEFN)[2] or nil
+      if capacity and i > collection[_.DEFN][2] then
         error(string.format('#%s: index %d exceeds collection capacity', 
                               collection, i),
               2)
@@ -478,7 +477,7 @@ _.collection_metatable = {
           
       -- NOTE: we got called because collection[i] does not exist
       local name_i = string.format('%s[%d]', collection[_.NAME], i)
-      local element_i = _.clone(collection[_.TEMPLATE], name_i)
+      local element_i = _.clone(collection[_.DEFN][1], name_i)
       
       rawset(collection, i, element_i)
       return element_i
@@ -506,7 +505,7 @@ _.collection_metatable = {
   end,
 
   __tostring = function (collection)
-      local capacity = rawget(collection, _.INSTANCES) or ''
+      local capacity = rawget(collection, _.DEFN)[2] or ''
       return string.format('%s{%s}<%s', 
                           collection[_.NAME], collection[_.TEMPLATE], capacity)
   end,
@@ -538,7 +537,7 @@ function _.clone(v, prefix)
             if '' == v[_.NAME] then sep = '' end 
             
             -- create collection instance for 'prefix'
-            result = _.new_instance_collection(v[_.TEMPLATE], v[_.INSTANCES],
+            result = _.new_instance_collection(v[_.DEFN][1], v[_.DEFN][2],
                                            table.concat{prefix, sep, v[_.NAME]})  
         else -- not collection: struct or union
             -- create instance for 'prefix'
@@ -602,8 +601,8 @@ end
 function _.template(instance)
   local template
   if _.is_instance_collection(instance) then
-     return instance[_.TEMPLATE]
-    -- return _.template(instance[_.TEMPLATE]) -- get to the underlying template
+     return instance[_.DEFN][1]
+    -- return _.template(instance[_.DEFN][1]) -- get to the underlying template
   else
     template = 
         'table' == type(instance) and 
