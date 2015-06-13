@@ -1790,6 +1790,28 @@ function Tester:test_ns()
   self:print(m)
 end
 
+Tester[#Tester+1] = 'test_xml'
+function Tester:test_xml()
+  local xmlfile2xtypes = require('xtypes-xml').xmlfile2xtypes
+  
+  local schemas = xmlfile2xtypes('xtypes-xml-tester.xml')
+  
+  for i = 1, #schemas do
+    self:print(schemas[i])
+  end
+end
+
+Tester[#Tester+1] = 'test_xml_advanced'
+function Tester:test_xml_advancedX()
+  local xmlfile2xtypes = require('xtypes-xml').xmlfile2xtypes
+  
+  local schemas = xmlfile2xtypes('types1.xml')
+  
+  for i = 1, #schemas do
+    self:print(schemas[i])
+  end
+end
+
 Tester[#Tester+1] = 'test_api'
 function Tester:test_api()
   -- NOTE: This test also serves as an illustration of the xtypes user API
@@ -1865,17 +1887,6 @@ function Tester:test_api()
     print(role, value)
   end
   
-end
-
-Tester[#Tester+1] = 'test_xml'
-function Tester:test_xml()
-  local xmlfile2xtypes = require('xtypes-xml').xmlfile2xtypes
-  
-  local schemas = xmlfile2xtypes('xtypes-xml-tester.xml')
-  
-  for i = 1, #schemas do
-    self:print(schemas[i])
-  end
 end
 
 ---

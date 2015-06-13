@@ -22,7 +22,7 @@ local templates = {}
 
 --[[
 Look up the given type name first in the user-defined templates, and 
-then in the pre-defined xtype library. 
+then in the pre-defined xtype library.
 @param name [in] name of the type to lookup
 @return the template referenced, or nil.
 --]]
@@ -42,22 +42,91 @@ local function lookup_type(name)
       return template
     end
   end
+
+  error(table.concat{'ERROR: lookup failed for type name: ', name}, 2)
   
   return nil
 end
 
+-- Takes a comma separated dimension string, eg "1,2" and converts it to a table
+-- containing the dimensions: {1, 2}
+local function dim_string2array(comma_separated_dimension_string)
+    local dim = {}
+    for i in string.gmatch(comma_separated_dimension_string, "%d+") do
+      table.insert(dim, i)
+    end
+    return dim
+end
+
+-- Create a role definition table from an XML tag attributes
+-- @param xarg [in] the XML tag's attributes
+-- @return the role definition specified by the xml xarg attributes
+local function xml_xarg2role_definition(xarg)
+  local role_definition = {}
+  for k, v in pairs(xarg) do
+  
+      -- skip the attributes that will be processed with other attributes
+      if 'name'             == k or
+         'stringMaxLength'  == k or 
+         'nonBasicTypeName' == k then
+          -- do nothing
+        
+      -- role_template
+      elseif 'type'         == k then
+         
+        local role_template
+        if 'string' == v then
+          role_template = xtypes.string(tonumber(xarg.stringMaxLength))
+        elseif 'wstring' == v then
+          role_template = xtypes.wstring(tonumber(xarg.stringMaxLength))
+        else
+          role_template = xarg.nonBasicTypeName -- NOTE: use nonBasic if defined
+                            and lookup_type(xarg.nonBasicTypeName)
+                            or  lookup_type(xarg.type)
+        end
+        
+        table.insert(role_definition, 1, role_template) -- at the beginning
+        
+      -- collection: sequence
+      elseif 'sequenceMaxLength' == k then
+          local sequence = xtypes.sequence(tonumber(v))
+          table.insert(role_definition, 2, sequence) -- at the 2nd position
+              
+      -- collection: array
+      elseif 'arrayDimensions' == k then
+          local array = xtypes.array(dim_string2array(v))
+          table.insert(role_definition, 2, array) -- at the 2nd position
+          
+      -- constant: valye              
+      elseif 'value' == k then
+         table.insert(role_definition, v) -- at the end
+        
+      -- annotation: key              
+      elseif 'key' == k then
+        table.insert(role_definition, xtypes.Key) -- at the end
+      end
+  end
+  return role_definition
+end
+
 --[[
-Map an xml tag to an appropriate X-Types 
-   xml tag --> create the corresponding xtype (if appropriate)
+Map an xml tag to an appropriate X-Types template creation function:
+      tag --> action to create X-Type template
 Each creation function returns the newly created X-Type template
 --]]
-local tag2xtype = {
+local tag2template = {
 
+  typedef = function(tag)  
+    local template = xtypes.typedef{
+      [tag.xarg.name] = xml_xarg2role_definition(tag.xarg)
+    }
+    return template
+  end,
+  
   const = function(tag)
-    local template = xtypes.const{[tag.xarg.name] = {
-      lookup_type(tag.xarg.type),
-      tag.xarg.value, -- automatically coerced from string to the correct type
-    }}
+    local template = xtypes.const{
+      [tag.xarg.name] = xml_xarg2role_definition(tag.xarg)
+    }
     return template
   end,
   
@@ -67,18 +136,9 @@ local tag2xtype = {
     -- child tags
     for i, child in ipairs(tag) do
       if 'table' == type(child) then -- skip comments
-        template[i] = { [child.xarg.name] = { 
-          -- type
-          child.xarg.stringMaxLength 
-              and 
-                (('string' == child.xarg.type)
-                    and xtypes.string(lookup_type(child.xarg.stringMaxLength))
-                    or  xtypes.wstring(lookup_type(child.xarg.stringMaxLength)))
-              or lookup_type(child.xarg.type),
-             
-          -- key?
-          child.xarg.key and xtypes.Key           
-        }}
+        template[i] = { 
+          [child.xarg.name] = xml_xarg2role_definition(child.xarg)
+        }
       end
     end
     return template
@@ -93,7 +153,7 @@ xtype definitions
 --]]
 local function xml2xtypes(xml)
 
-  local xtype = tag2xtype[xml.label]
+  local xtype = tag2template[xml.label]
   if xtype then -- process this node (and its child nodes)
     table.insert(templates, xtype(xml)) 
   else -- don't recognize the label as an xtype, visit the child nodes
