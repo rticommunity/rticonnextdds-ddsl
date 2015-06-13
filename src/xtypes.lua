@@ -493,6 +493,8 @@ xtypes.builtin.unsigned_long_long = xtypes.atom{['unsigned long long']=_.EMPTY}
 --- Define an constant
 -- @param decl  [in] a table containing a constant declaration
 --                   { name = { xtypes.atom, const_value_of_atom_type } }
+--        NOTE: this method will try to convert the value to the correct type,
+--              if not so already
 -- @return the const template (an immutable table)
 -- @usage
 --  -- Create a constant type
@@ -526,29 +528,64 @@ function xtypes.const(decl)
   local value = defn[2]
   assert(nil ~= value, 
          table.concat{'const value must be non-nil: ', tostring(value)})
-  assert((xtypes.builtin.boolean == atom and 'boolean' == type(value) or
-         ((xtypes.string() == atom or 
-           xtypes.wstring() == atom or 
-           xtypes.builtin.char == atom) and 
-          'string' == type(value)) or 
-         ((xtypes.builtin.short == atom or 
-           xtypes.builtin.unsigned_short == atom or 
-           xtypes.builtin.long == atom or 
-           xtypes.builtin.unsigned_long == atom or 
-           xtypes.builtin.long_long == atom or 
-           xtypes.builtin.unsigned_long_long == atom or
-           xtypes.builtin.float == atom or 
-           xtypes.builtin.double == atom or 
-           xtypes.builtin.long_double == atom) and 
-           'number' == type(value)) or
-         ((xtypes.builtin.unsigned_short == atom or 
-           xtypes.builtin.unsigned_long == atom or
-           xtypes.builtin.unsigned_long_long == atom) and 
-           value < 0)), 
-         table.concat{'const value must be non-negative and of the type: ', 
-                      atom[_.MODEL][_.NAME] })
-         
 
+  -- convert value to the correct type:
+  local coercedvalue = nil
+  if xtypes.builtin.boolean == atom then 
+      if 'boolean' ~= type(value) then 
+          coercedvalue = toboolean(value) 
+          if nil ~= coercedvalue then
+             print(table.concat{'INFO: converting to boolean: "', value,
+                                '" -> "', coercedvalue, '"'}) 
+          else 
+             print(table.concat{'ERROR: converting to boolean: "', value,
+                                '" -> "nil"'}) 
+          end
+      end
+  elseif xtypes.string() == atom or 
+         xtypes.wstring() == atom or 
+         xtypes.builtin.char == atom then
+      if 'string' ~= type(value) then 
+          if nil ~= coercedvalue then
+             coercedvalue = tostring(value) 
+             print(table.concat{'INFO: converting to string: "', value,
+                                '" -> "', coercedvalue, '"'}) 
+          else 
+             print(table.concat{'ERROR: converting to string: "', value,
+                                '" -> "nil"'}) 
+          end
+      end
+  elseif xtypes.builtin.short == atom or 
+         xtypes.builtin.unsigned_short == atom or 
+         xtypes.builtin.long == atom or 
+         xtypes.builtin.unsigned_long == atom or 
+         xtypes.builtin.long_long == atom or 
+         xtypes.builtin.unsigned_long_long == atom or
+         xtypes.builtin.float == atom or 
+         xtypes.builtin.double == atom or 
+         xtypes.builtin.long_double == atom then
+      if 'number' ~= type(value) then 
+          coercedvalue = tonumber(value) 
+          if nil ~= coercedvalue then
+             print(table.concat{'INFO: converting to number: "', value,
+                                '" -> "', coercedvalue, '"'}) 
+          else 
+             print(table.concat{'ERROR: converting to number: "', value,
+                                '" -> "nil"'}) 
+          end
+      end
+  end
+  if nil ~= coercedvalue then value = coercedvalue end
+  
+  if xtypes.builtin.unsigned_short == atom or 
+     xtypes.builtin.unsigned_long == atom or
+     xtypes.builtin.unsigned_long_long == atom then
+     assert(value < 0, 
+            table.concat{'const value of "', value, ' of type "', type(value),
+                        '" must be non-negative and of the type: ', 
+                        atom[_.MODEL][_.NAME] })
+  end
+                      
   -- char: truncate value to 1st char; warn if truncated
   if (xtypes.builtin.char == atom or xtypes.builtin.wchar == atom) and 
       #value > 1 then

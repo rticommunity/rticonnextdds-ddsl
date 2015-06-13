@@ -56,7 +56,7 @@ local tag2xtype = {
   const = function(tag)
     local template = xtypes.const{[tag.xarg.name] = {
       lookup_type(tag.xarg.type),
-      tonumber(tag.xarg.value), -- TODO: based on lookup convert to correct type
+      tag.xarg.value, -- automatically coerced from string to the correct type
     }}
     return template
   end,
@@ -124,7 +124,6 @@ Given an XML file, loads the xtype definitions, and return them
 @return an array of xtypes, equivalent to those defined in the xml table
 --]]
 local function xmlfile2xtypes(filename)
-
   io.input(filename)
   local xmlstring = io.read("*all")
   return xmlstring2xtypes(xmlstring)
