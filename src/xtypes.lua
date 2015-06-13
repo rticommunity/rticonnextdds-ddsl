@@ -532,8 +532,11 @@ function xtypes.const(decl)
   -- convert value to the correct type:
   local coercedvalue = nil
   if xtypes.builtin.boolean == atom then 
-      if 'boolean' ~= type(value) then 
-          coercedvalue = not not value -- toboolean
+      if 'boolean' ~= type(value) then
+          if 'false' == value then coercedvalue = false 
+          elseif 'true' == value then coercedvalue = true 
+          else coercedvalue = not not value -- toboolean
+          end
           if nil ~= coercedvalue then
              print(table.concat{'INFO: converting to boolean: "', value,
                                 '" -> "', tostring(coercedvalue), '"'}) 

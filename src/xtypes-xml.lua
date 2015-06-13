@@ -43,6 +43,17 @@ local function lookup_type(name)
     end
   end
 
+  -- deviations specific to XML representation  
+  local xmlName2Model = {
+    unsignedShort    = xtypes.unsigned_short,
+    unsignedLong     = xtypes.unsigned_long,
+    longLong         = xtypes.long_long,
+    unsignedLongLong = xtypes.unsigned_long_long,
+    longDouble       = xtypes.long_double,
+  }
+  -- lookup in the deviations table
+  if xmlName2Model[name] then return xmlName2Model[name] end
+  
   error(table.concat{'ERROR: lookup failed for type name: ', name}, 2)
   
   return nil
@@ -156,6 +167,8 @@ local function xml2xtypes(xml)
   local xtype = tag2template[xml.label]
   if xtype then -- process this node (and its child nodes)
     table.insert(templates, xtype(xml)) 
+    local idl = xtypes.utils.visit_model(templates[#templates], {'IDL:'})
+    print(table.concat(idl, '\n\t')) 
   else -- don't recognize the label as an xtype, visit the child nodes
     -- process the child nodes
     for i, child in ipairs(xml) do
