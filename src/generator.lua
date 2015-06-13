@@ -230,9 +230,14 @@ function Generator:stringGen(maxLength, charGen)
            end)
 end
 
-function Generator:aggregateGen(structtype, genLib)
+function Generator:createMemberGenTab(structtype, genLib)
   local memberGenTab = {}
   genLib = genLib or {}
+
+  if structtype[xtypes.BASE] ~= nil then
+    memberGenTab = 
+      Generator:createMemberGenTab(structtype[xtypes.BASE], genLib)
+  end
 
   for key, val in ipairs(structtype) do
     local member, def = next(val)
@@ -250,6 +255,13 @@ function Generator:aggregateGen(structtype, genLib)
     --print()
   end
 
+  return memberGenTab;
+end
+
+function Generator:aggregateGen(structtype, genLib)
+  local memberGenTab 
+    = Generator:createMemberGenTab(structtype)
+
   return Generator:new(function () 
            local data = {}
            for member, gen in pairs(memberGenTab) do
@@ -260,14 +272,17 @@ function Generator:aggregateGen(structtype, genLib)
 end
 
 function Generator:getGenerator(mtype)
-  local gen = Generator:getPrimitiveGen(mtype)
+  local strtype = tostring(mtype)
+  local gen = Generator:getPrimitiveGen(strtype)
 
   if gen then return gen end
 
-  if mtype[xtypes.KIND]()=="enum" then  -- It's a function. Very surprising
+  if mtype[xtypes.KIND]() == "enum" then  -- It's a function. Very surprising
     return Generator:enumGen(mtype)
-  elseif mtype[xtypes.KIND]()=="struct" then  -- It's a function. Very surprising
+  elseif mtype[xtypes.KIND]() == "struct" then  -- It's a function. Very surprising
     return Generator:aggregateGen(mtype)
+  elseif string.find("sequence", strtype) then
+    return Generator:single(tostring("sequence"))
   else
     return Generator:single(tostring(mtype))
   end
@@ -282,8 +297,7 @@ function Generator:enumGen(enumtype)
   return Generator:oneOf(ordinals)
 end
 
-function Generator:getPrimitiveGen(kind)
-  local ptype = tostring(kind)
+function Generator:getPrimitiveGen(ptype)
 
   if ptype=="boolean" then
     return Generator.Bool
@@ -315,8 +329,16 @@ function Generator:getPrimitiveGen(kind)
     return Generator.String
   elseif ptype=="wstring" then
     return Generator.WString
-  elseif ptype=="string<128>" then
-    return Generator:nonEmptyStringGen(128)
+  end
+  
+  local isString = string.find(ptype, "string") or
+                   string.find(ptype, "wstring")
+
+  if isString then
+    local lt    = string.find(ptype, "<")
+    local gt    = string.find(ptype, ">")
+    local bound = string.sub(ptype, lt+1, gt-1)
+    return Generator:nonEmptyStringGen(tonumber(bound))
   else
     return nil
   end

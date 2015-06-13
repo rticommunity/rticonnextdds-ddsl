@@ -61,6 +61,72 @@ function Tester:test_aggregate_gen()
   end
 end
 
+Tester[#Tester+1] = 'test_base_gen'
+function Tester:test_base_gen()
+    
+  local Geometry = xtypes.module{
+    Geometry = {
+      xtypes.struct{
+        Point = {
+          { x = { xtypes.float } },
+          { y = { xtypes.float } }
+        }
+      },
+    }
+  }
+
+  Geometry[#Geometry+1] = xtypes.struct {
+    ThreeDPoint = { 
+      { z = { xtypes.double } }
+    }
+  }
+
+  Geometry.ThreeDPoint[xtypes.BASE] = 
+    Geometry.Point
+  
+  self:print(Geometry)
+ 
+  assert(Geometry.ThreeDPoint.z == 'z')
+ 
+  local PointGen = Gen:aggregateGen(Geometry.ThreeDPoint)
+  local point = PointGen:generate()
+  print(point.x, point.y, point.z)
+
+end
+
+Tester[#Tester+1] = 'test_struct_basic'
+function Tester:test_struct_basic()
+  
+    local Test = {}
+    Test.Name = xtypes.struct{
+      Name = {
+        { first = { xtypes.string(10), xtypes.Key } },
+        { last = { xtypes.wstring(128) } },
+        { nicknames = { xtypes.string(40), xtypes.sequence(3) } },
+--        { aliases = { xtypes.string(7), xtypes.sequence() } },
+--        { birthday = { Test.Days, xtypes.Optional } },
+--        { favorite = { Test.Submodule.Colors, xtypes.sequence(2), xtypes.Optional } },
+      }
+    }
+    self:print(Test.Name)
+
+    assert(Test.Name.first == 'first')
+    assert(Test.Name.last == 'last')
+    assert(Test.Name.nicknames() == 'nicknames#')
+--    assert(Test.Name.nicknames[1] == 'nicknames[1]')
+--    assert(Test.Name.aliases() == 'aliases#')
+--    assert(Test.Name.aliases[1] == 'aliases[1]')
+--    assert(Test.Name.birthday == 'birthday')
+--    assert(Test.Name.favorite() == 'favorite#')
+--    assert(Test.Name.favorite[1] == 'favorite[1]')
+
+    local nameGen = Gen:aggregateGen(Test.Name)
+    local name = nameGen:generate()
+    print("first = ", name.first)
+    print("last = ", name.last)
+    print("nicknames = ", name.nicknames)
+end
+
 Tester[#Tester+1] = 'test_nested_struct_gen'
 function Tester:test_nested_struct_gen()
     
