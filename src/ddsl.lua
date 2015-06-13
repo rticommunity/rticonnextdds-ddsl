@@ -403,7 +403,7 @@ end
 -- Purpose:
 --    Define new named collection of instances
 -- Parameters:
---    <<in>> template_or_collection - the template or collection to use
+--    <<in>> template_or_collection - the element the template or collection 
 --               may be an instance table when it is an non-collection type OR
 --               may be a collection table for a collection of collection
 --    <<in>> capacity - the capacity, ie the maximum number of instances
@@ -437,27 +437,34 @@ function _.new_instance_collection(template_or_collection, capacity, name)
          table.concat{'create_collection(): invalid capacity'})
     
   -- create collection instance
-  local collection = { 
+  local model = {
      [_.NAME]      = name, 
      [_.DEFN]      = { template_or_collection, capacity },
-   }
-  
-  -- set the template meta-table:
-  setmetatable(collection, _.collection_metatable)
+     [_.INSTANCES] = {}, -- the collection instance
+  }
+  local collection = model[_.INSTANCES]
+
+  -- copy the meta-table methods to the 'model', and make it the metatable
+  for k, v in pairs(_.collection_metatable) do model[k] = v end
+  setmetatable(collection, model)
 
   return collection
 end
 
 -- Is the given value a collection of instances:
 function _.is_instance_collection(v) 
-  return getmetatable(v) == _.collection_metatable
+  local model = getmetatable(v)
+  return model and model[_.KIND] == _.collection_metatable[_.KIND]
 end
 
 _.collection_metatable = {    
+  [_.KIND] = function() return 'collection' end,
+  
   __call = function (collection)
       -- the accessor for collection length
       -- NOTE: the length operator returns the actual number of elements
-      return string.format('%s#', collection[_.NAME])
+      local model = getmetatable(collection)
+      return string.format('%s#', model[_.NAME])
   end,
   
   __index = function (collection, i)
@@ -466,18 +473,19 @@ _.collection_metatable = {
         -- print('DEBUG collection __index.1', collection, i)
         return nil 
       end 
-
+      
       -- enforce capacity
-      local capacity = rawget(collection, _.DEFN)[2] or nil
-      if capacity and i > collection[_.DEFN][2] then
-        error(string.format('#%s: index %d exceeds collection capacity', 
-                              collection, i),
+      local model = getmetatable(collection)
+      local capacity = model[_.DEFN][2] or nil
+      if capacity and i > capacity then
+        error(string.format('#%s: index %d exceeds collection capacity of %d', 
+                              collection, i, capacity),
               2)
       end
           
       -- NOTE: we got called because collection[i] does not exist
-      local name_i = string.format('%s[%d]', collection[_.NAME], i)
-      local element_i = _.clone(collection[_.DEFN][1], name_i)
+      local name_i = string.format('%s[%d]',model[_.NAME], i)
+      local element_i = _.clone(model[_.DEFN][1], name_i)
       
       rawset(collection, i, element_i)
       return element_i
@@ -498,16 +506,16 @@ _.collection_metatable = {
         -- tables will be further dereferenced by a . or [] operator 
         error(string.format('#%s: assignment not permitted for ' ..
                             'non-leaf member %s', 
-                            collection, element_i[_.NAME]),
+                            collection, getmetatable(element_i)[_.NAME]),
               2)
       end
       return element_i
   end,
 
   __tostring = function (collection)
-      local capacity = rawget(collection, _.DEFN)[2] or ''
-      return string.format('%s{%s}<%s', 
-                          collection[_.NAME], collection[_.TEMPLATE], capacity)
+      local model = getmetatable(collection)
+      local capacity = model[_.DEFN][2] or ''
+      return string.format('%s{%s}<%s',model[_.NAME],model[_.DEFN][1],capacity)
   end,
 }
 
@@ -533,12 +541,16 @@ function _.clone(v, prefix)
     if 'table' == type_v then -- collection or struct or union
 
         if _.is_instance_collection(v) then -- collection
+            local model = getmetatable(v)
+            
             -- multi-dimensional collection
-            if '' == v[_.NAME] then sep = '' end 
+            if '' == model[_.NAME] then sep = '' end 
             
             -- create collection instance for 'prefix'
-            result = _.new_instance_collection(v[_.DEFN][1], v[_.DEFN][2],
-                                           table.concat{prefix, sep, v[_.NAME]})  
+            result = _.new_instance_collection(
+                        model[_.DEFN][1], -- element template
+                        model[_.DEFN][2], -- capacity
+                        table.concat{prefix, sep, model[_.NAME]})  
         else -- not collection: struct or union
             -- create instance for 'prefix'
             result = _.new_instance(v, prefix) -- use member as template   
@@ -601,7 +613,8 @@ end
 function _.template(instance)
   local template
   if _.is_instance_collection(instance) then
-     return instance[_.DEFN][1]
+     local model = getmetatable(instance) 
+     return model[_.DEFN][1]
     -- return _.template(instance[_.DEFN][1]) -- get to the underlying template
   else
     template = 

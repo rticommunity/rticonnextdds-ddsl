@@ -1470,7 +1470,7 @@ local xutils = {}
 function xutils.visit_instance(instance, result, model) 
   local template = instance -- _.template(instance) -- TODO
   
-  -- print('DEBUG xutils.visit_instance 1: ', instance, template) 
+  print('DEBUG xutils.visit_instance 1: ', instance, template) 
  
   -- initialize the result (or accumulate in the provided result)
   result = result or {} 
