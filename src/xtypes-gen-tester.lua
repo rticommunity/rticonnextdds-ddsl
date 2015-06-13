@@ -2,31 +2,10 @@ local xtypes = require("xtypes")
 local Gen = require("generator")
 
 local Tester = {}
-local Test = {}
+local ShapeTypeGen = {}
 
-Tester[#Tester+1] = 'test_module'
-function Tester:test_module()
-
-    Test.MyModule = xtypes.module{MyModule=xtypes.EMPTY} -- define a module
-
-    self:print(Test.MyModule)
-    
-    assert(Test.MyModule ~= nil)
-end
-
-function ShapeTypeGen(shapetype)
-  for key, val in ipairs(shapetype) do
-    local role, def = next(val)
-    print(role)
-    for k, v in ipairs(def) do
-      print(v)
-    end
-    print()
-  end
-end
-
-Tester[#Tester+1] = 'test_struct_generation'
-function Tester:test_struct_generation()
+Tester[#Tester+1] = 'test_struct_gen'
+function Tester:test_struct_gen()
   local ShapeType = xtypes.struct{
     ShapeType = {
       { x = { xtypes.long } },
@@ -37,16 +16,114 @@ function Tester:test_struct_generation()
   }
   self:print(ShapeType)
   
-  assert('x' == ShapeType.x)
-  assert('y' == ShapeType.y)
+  assert('x'         == ShapeType.x)
+  assert('y'         == ShapeType.y)
   assert('shapesize' == ShapeType.shapesize)
-  assert('color' == ShapeType.color)   
+  assert('color'     == ShapeType.color)   
 
-  ShapeTypeGen(ShapeType)
+  local shapeGenLib = {}
+  shapeGenLib.x         = Gen:rangeGen(0, 200)
+  shapeGenLib.y         = Gen:rangeGen(0, 200)
+  shapeGenLib.color     = Gen:oneOf({ "RED", "GREEN", "BLUE" })
+  shapeGenLib.shapesize = Gen:rangeGen(20, 30)
+
+  ShapeTypeGen = Gen:aggregateGen(ShapeType, shapeGenLib)
+  local shape = ShapeTypeGen:generate()
+
+  print("shape.x = " .. shape.x)
+  print("shape.y = " .. shape.y)
+  print("shape.color = " .. shape.color)
+  print("shape.shapesize = " .. shape.shapesize)
 end
 
-Tester[#Tester+1] = 'test_generators'
-function Tester:test_generators() 
+Tester[#Tester+1] = 'test_seq_gen'
+function Tester:test_seq_gen()
+  local seqGen = Gen:seqGen(Gen.Float, 5)
+  local seq = seqGen:generate()
+  for k, v in ipairs(seq) do
+    print(k, v)
+  end
+end
+
+Tester[#Tester+1] = 'test_aggregate_gen'
+function Tester:test_aggregate_gen()
+  Tester:test_struct_gen()
+  print()
+
+  local seqGen = Gen:seqGen(ShapeTypeGen, 3)
+  local seq = seqGen:generate()
+
+  for k, shape in ipairs(seq) do
+    for member, value in pairs(shape) do
+      print(member, value)
+    end
+    print()
+  end
+end
+
+Tester[#Tester+1] = 'test_nested_struct_gen'
+function Tester:test_nested_struct_gen()
+    
+  local Geometry = xtypes.module{
+    Geometry = {
+      xtypes.struct{
+        Point = {
+          { x = { xtypes.double } },
+          { y = { xtypes.double } }
+        }
+      },
+    }
+  }
+
+  Geometry[#Geometry+1] = 
+    xtypes.struct {
+      Test = {
+        { point  = { Geometry[1]  } },
+        { x      = { xtypes.float } },
+      }
+    }
+  
+  self:print(Geometry)
+ 
+  assert(Geometry.Test.x == 'x')
+ 
+  local testGen = Gen:aggregateGen(Geometry.Test)
+  local testObj = testGen:generate()
+  print(testObj.point.x, testObj.point.y, testObj.x)
+
+end
+
+Tester[#Tester+1] = 'test_enum_gen'
+function Tester:test_enum_gen()
+  local Geometry = xtypes.module { Geometry = xtypes.EMPTY }
+  
+  Geometry[#Geometry+1] = xtypes.enum{ Days = {  
+     'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN',
+  }}
+
+  Geometry[#Geometry+1] = 
+    xtypes.struct {
+      Test = {
+        { s   = { xtypes.short  } },
+        { d   = { xtypes.double } },
+        { day = { Geometry[1]   } }
+      }
+    }
+  
+  self:print(Geometry)
+ 
+  assert(Geometry.Test.s == 's')
+  assert(Geometry.Days.MON == 0)
+  assert(Geometry.Days.SUN == 6)
+ 
+  local testGen = Gen:aggregateGen(Geometry.Test)
+  local testObject = testGen:generate()
+  print(testObject.s, testObject.d, testObject.day)
+
+end
+
+Tester[#Tester+1] = 'test_primitive_gen'
+function Tester:test_primitive_gen() 
   numGen      = Gen:numGen()
   boolGen     = Gen:boolGen()
   charGen     = Gen:charGen()
@@ -101,8 +178,8 @@ end
 -- main() - run the list of tests passed on the command line
 --          if no command line arguments are passed in, run all the tests
 function Tester:main()
+  math.randomseed(os.time())
   if #arg > 0 then -- run selected tests passed in from the command line
-    self:test_module() -- always run this one to initialize the module
     for i, test in ipairs (arg) do
       if 'test_module' ~= test then -- skip, cuz already ran it
         print('\n--- ' .. test .. ' ---')
