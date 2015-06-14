@@ -226,7 +226,7 @@ function _.create_role_instance(role, role_defn)
   _.assert_role(role)
   
   local template = role_defn[1]
-  _.assert_template(template) 
+  _.assert_template_kind(template) 
   
   -- pre-condition: ensure that the rest of the member definition entries are 
   -- annotations: also look for the 1st 'collection' annotation (if any)
@@ -312,7 +312,7 @@ function _.new_instance(template, name)
   -- print('DEBUG new_instance 1: ', model[_.NAME], name)
 
   if nil ~= name then _.assert_role(name) else name = '' end
-  _.assert_template(template)
+  _.assert_template_kind(template)
  
   local instance = nil
   
@@ -655,7 +655,7 @@ end
 -- @param kind   [in] expected model element kind
 -- @param value  [in] table to check if it is a model element of "kind"
 -- @return the model table if the kind matches, or nil
-function _.assert_model(kind, value)
+function _.assert_model_kind(kind, value)
     local model = getmetatable(value)
     assert(model and kind == model[_.KIND],
            table.concat{'expected model kind "', kind(), 
@@ -710,7 +710,7 @@ end
 --- Ensure that value is a template
 -- @param templat [in] the potential template to check
 -- @return the template or nil
-function _.assert_template(template)
+function _.assert_template_kind(template)
     assert(_.info.is_template_kind(template), 
            table.concat{'unexpected template kind \"', tostring(template), '"'})
     return template
@@ -731,16 +731,15 @@ local interface = {
   INSTANCES               = _.INSTANCES,
   QUALIFIERS              = _.QUALIFIERS,
   
-  -- ddsl operations
+  -- ddsl operations: for building an ontology of models
   new_template            = _.new_template,
   populate_template       = _.populate_template,
   create_role_instance    = _.create_role_instance,
   update_instances        = _.update_instances,
   
-  model                   = _.model,
   model_kind              = _.model_kind,
-  assert_model            = _.assert_model,
-  assert_template         = _.assert_template,
+  assert_model_kind       = _.assert_model_kind,
+  assert_template_kind    = _.assert_template_kind,
   assert_qualifier_array  = _.assert_qualifier_array,
    
   
@@ -748,6 +747,8 @@ local interface = {
   new_instance            = _.new_instance,
   new_collection          = _.new_collection,
   is_collection           = _.is_collection,
+  
+  model                   = _.model,
   template                = _.template,
   resolve                 = _.resolve,
   nsname                  = _.nsname,

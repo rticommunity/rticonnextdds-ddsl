@@ -531,7 +531,7 @@ function xtypes.const(decl)
   local name, defn = xtypes.parse_decl(decl)
        
   -- pre-condition: ensure that the 1st defn declaration is a valid type
-  local atom = _.assert_model(xtypes.ATOM, _.resolve(defn[1]))
+  local atom = _.assert_model_kind(xtypes.ATOM, _.resolve(defn[1]))
          
   -- pre-condition: ensure that the 2nd defn declaration is a valid value
   local value = defn[2]
@@ -1002,7 +1002,7 @@ xtypes.API[xtypes.STRUCT] = {
       -- get the base model, if any:
       local new_base
       if nil ~= value then
-        new_base = _.assert_model(xtypes.STRUCT, value)
+        new_base = _.assert_model_kind(xtypes.STRUCT, value)
       end
 
       -- populate the instance fields from the base model struct
@@ -1408,7 +1408,7 @@ function xtypes.typedef(decl)
 
   -- pre-condition: ensure that the 1st defn element is a valid type
   local alias = defn[1]
-  _.assert_template(alias)
+  _.assert_template_kind(alias)
 
   -- pre-condition: ensure that the 2nd defn element if present 
   -- is a 'collection' kind
