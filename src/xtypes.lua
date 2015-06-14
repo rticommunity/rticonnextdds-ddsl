@@ -1550,7 +1550,6 @@ function xutils.visit_instance(instance, result, model)
   -- NOTE: typedefs don't have an array of members  
   for i, defn_i in ipairs(mydefn) do    
     -- skip annotations
-    if not _.model(defn_i) then -- TODO: redundant if (always true): remove it
       -- walk through the elements in the order of definition:
       
       local role
@@ -1571,7 +1570,6 @@ function xutils.visit_instance(instance, result, model)
                                 and template[role] .. ' = ' .. role_instance
                                 or nil) 
       end
-    end
   end
 
   return result
@@ -1671,16 +1669,14 @@ function xutils.visit_model(instance, result, indent_string)
 	elseif xtypes.STRUCT == mytype then
 	 
 		for i, defn_i in ipairs(mydefn) do -- walk through the model definition
-			if not _.model(defn_i) then -- skip struct level annotations -- TODO:if
 			  local role, role_defn = next(defn_i)
         table.insert(result, string.format('%s%s', content_indent_string,
                             xutils.tostring_role(role, role_defn, mymodule)))
-			end
 		end
 
 	elseif xtypes.UNION == mytype then 
 		for i, defn_i in ipairs(mydefn) do -- walk through the model definition
-			if not _.model(defn_i) then -- skip union level annotations TODO: if
+
 				local case = defn_i[1]
 				
 				-- case
@@ -1700,7 +1696,6 @@ function xutils.visit_model(instance, result, indent_string)
 				local role, role_defn = next(defn_i, #defn_i > 0 and #defn_i or nil)
 				table.insert(result, string.format('%s%s', content_indent_string .. '   ',
 				                      xutils.tostring_role(role, role_defn, mymodule)))
-			end
 		end
 		
 	elseif xtypes.ENUM == mytype then
