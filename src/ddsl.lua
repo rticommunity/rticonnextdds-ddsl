@@ -131,7 +131,6 @@ CAVEATS
 --------------------------------------------------------------------------------
 
 local EMPTY = {}  -- initializer/sentinel value to indicate an empty definition
-local MODEL = function() return 'MODEL' end -- key for 'model' meta-data 
 
 local _ = {
   -- model attributes
@@ -163,9 +162,8 @@ local _ = {
  
 --- Create a new 'empty' template
 -- @param name  [in] the name of the underlying model
--- @param kind  [in] the kind of underlying model
 -- @param api   [in] a meta-table to control access to this template
--- @return a new template with the correct meta-model
+-- @return template, model: a new template and its model
 function _.new_template(name, kind, api)
 
   local model = {           -- meta-data
@@ -177,12 +175,12 @@ function _.new_template(name, kind, api)
     [_.TEMPLATE] = {},   -- top-level instance to be installed in the module
   }
   local template = model[_.TEMPLATE]
-  template[MODEL] = model
 
-  -- set the template meta-table:
-  setmetatable(template, api)
-  
-  return template
+  -- copy the meta-table methods to the 'model', and make it the metatable
+  for k, v in pairs(api) do model[k] = v end
+  setmetatable(template, model)
+
+  return template, model
 end
  
 --- Populate a template
@@ -310,7 +308,8 @@ end
 --    print(#myInstance.memberSeq)
 --
 function _.new_instance(template, name) 
-  -- print('DEBUG new_instance 1: ', template[MODEL][_.NAME], name)
+  local model = getmetatable(template)
+  -- print('DEBUG new_instance 1: ', model[_.NAME], name)
 
   if nil ~= name then _.assert_role(name) else name = '' end
   _.assert_template(template)
@@ -324,7 +323,7 @@ function _.new_instance(template, name)
   local alias, alias_collection
   
   if is_alias_kind then
-    local defn = template[MODEL][_.DEFN]
+    local defn = model[_.DEFN]
     alias = defn[1]
     
     for j = 2, #defn do
@@ -378,12 +377,11 @@ function _.new_instance(template, name)
   -- Establish the underlying model definition to create an instance
   -- NOTE: aliases do not hold any instances; the instances are held by the
   --       underlying concrete (non-alias) alias type
-  local model = template[MODEL]
+  model = getmetatable(template)
 
   -- create the instance:
-  local instance = { -- the underlying model, of which this is an instance
-    [MODEL] = template[MODEL],
-  }
+  local instance = {}
+ 
   for k, v in pairs(template) do
     -- skip meta-data attributes
     if 'string' == type(k) then
@@ -391,6 +389,8 @@ function _.new_instance(template, name)
     end
   end
 
+  setmetatable(instance, model)
+ 
   -- cache the instance, so that we can update it when the model changes
   model[_.INSTANCES][instance] = name
 
@@ -568,6 +568,44 @@ end
 -- Helpers
 --------------------------------------------------------------------------------
 
+-- Retrieve the model definition underlying an instance
+-- The instance would have been created previously using 
+--      _.new_instance() or 
+--      _.new_instance_collection() or 
+--      _._new_template() for a "template" instance
+-- @param instance [in] the instance whose model we want to retrieve
+-- @return the underlying data model
+function _.model(instance)
+  return getmetatable(instance)
+end
+
+--- Retrieve the template instance for the given instance
+-- The instance would have been created previously using 
+--      _.new_instance() or 
+--      _.new_instance_collection() or 
+--      _._new_template() for a "template" instance
+-- @param instance [in] the instance whose template we want to retrieve
+-- @return the underlying template
+function _.template(instance)
+  local model = getmetatable(instance)
+  return model and model[_.TEMPLATE]
+end
+
+--- Resolve the alias template to the underlying non-alias template
+-- @param template [in] the data model element to resolve to the underlying
+--                      non alias data model
+-- @return the underlying non-alias data model template
+function _.resolve(template)
+  local is_alias_kind = template and _.info.is_alias_kind(template)
+  local model = getmetatable(template)
+  local alias = model and model[_.DEFN][1]
+  if is_alias_kind then
+    return _.resolve(alias)
+  else 
+    return template
+  end
+end
+
 --- Name of a model element relative to a namespace
 -- @param template [in] the data model element whose name is desired in 
 --        the context of the namespace
@@ -581,7 +619,7 @@ function _.nsname(template, namespace)
                                         "nsname(): not a valid namespace")
                            
   -- traverse up the template namespaces, until 'module' is found
-  local model = template[MODEL]
+  local model = getmetatable(template)
   if namespace == model[_.NS] or nil == model[_.NS] then
     return model[_.NAME]
   else
@@ -589,47 +627,12 @@ function _.nsname(template, namespace)
   end
 end
 
---- Resolve the alias template to the underlying non-alias template
--- @param template [in] the data model element to resolve to the underlying
---                      non alias data model
--- @return the underlying non-alias data model template
-function _.resolve(template)
-  local is_alias_kind = template and _.info.is_alias_kind(template)
-  local alias = template and template[MODEL][_.DEFN][1]
-  if is_alias_kind then
-    return _.resolve(alias)
-  else 
-    return template
-  end
-end
-
---- Retrieve the template instance for the given instance
--- The instance would have been created previously using 
---      _.new_instance() or 
---      _.new_instance_collection() or 
---      _._new_template() for a "template" instance
--- @param instance [in] the instance whose template we want to retrieve
--- @return the underlying non-alias data model template
-function _.template(instance)
-  local template
-  if _.is_instance_collection(instance) then
-     local model = getmetatable(instance) 
-     return model[_.DEFN][1]
-    -- return _.template(instance[_.DEFN][1]) -- get to the underlying template
-  else
-    template = 
-        'table' == type(instance) and 
-        instance[MODEL] and
-        instance[MODEL][_.TEMPLATE]
-  end
-  return template
-end
-
 --- Get the model type of any arbitrary value
 -- @param value  [in] the value for which to retrieve the model type
 -- @return the model type or nil (if 'value' does not have a MODEL)
 function _.model_kind(value)
-    return ('table' == type(value) and value[MODEL]) and value[MODEL][_.KIND]
+  local model = getmetatable(value)
+  return model and model[_.KIND]
 end
 
 --- Ensure that the value is a model element
@@ -637,9 +640,8 @@ end
 -- @param value  [in] table to check if it is a model element of "kind"
 -- @return the model table if the kind matches, or nil
 function _.assert_model(kind, value)
-    assert('table' == type(value) and 
-           value[MODEL] and 
-           kind == value[MODEL][_.KIND],
+    local model = getmetatable(value)
+    assert(model and kind == model[_.KIND],
            table.concat{'expected model kind "', kind(), 
                         '", instead got "', tostring(value), '"'})
     return value
@@ -713,8 +715,7 @@ end
 local interface = {
   -- empty initializer sentinel value
   EMPTY                   = EMPTY,
-  MODEL                   = MODEL,
-   
+
   -- accessors and mutators (meta-attributes for types)
   NS                      = _.NS,
   NAME                    = _.NAME,
@@ -729,6 +730,7 @@ local interface = {
   create_role_instance    = _.create_role_instance,
   update_instances        = _.update_instances,
   
+  model                   = _.model,
   model_kind              = _.model_kind,
   assert_model            = _.assert_model,
   assert_collection       = _.assert_collection,
@@ -737,12 +739,12 @@ local interface = {
    
   
   -- for users of templates created with ddsl
-  nsname                  = _.nsname,
-  template                = _.template,
-  resolve                 = _.resolve,
   new_instance            = _.new_instance,
   new_instance_collection = _.new_instance_collection,
   is_instance_collection  = _.is_instance_collection,
+  template                = _.template,
+  resolve                 = _.resolve,
+  nsname                  = _.nsname,
 }
 
 -- enforce that the user provides a function to binds the 
