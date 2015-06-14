@@ -230,23 +230,24 @@ function Generator:stringGen(maxLength, charGen)
            end)
 end
 
-function Generator:createMemberGenTab(structtype, genLib)
-  local memberGenTab = {}
-  genLib = genLib or {}
+function Generator:createMemberGenTab(structtype, genLib, memoizeGen)
+  local memberGenTab = { }
+  genLib = genLib or { }
+  genLib.typeGenLib = genLib.typeGenLib or { }
 
   if structtype[xtypes.BASE] ~= nil then
     memberGenTab = 
-      Generator:createMemberGenTab(structtype[xtypes.BASE], genLib)
+      Generator:createMemberGenTab(structtype[xtypes.BASE], genLib, memoizeGen)
   end
 
   for idx, val in ipairs(structtype) do
     local member, def = next(val)
     --io.write(member .. ": ")
-    if(genLib[member]) then -- if library already has a generator 
+    if genLib[member] then -- if library already has a generator 
       memberGenTab[member] = genLib[member]
     else
-      memberGenTab[member] = Generator:getGenerator(def)
-      genLib[member] = memberGenTab[member]
+      memberGenTab[member] = Generator:getGenerator(def, genLib, memoizeGen)
+      if memoizeGen then genLib[member] = memberGenTab[member] end
     end
     --print()
   end
@@ -254,15 +255,23 @@ function Generator:createMemberGenTab(structtype, genLib)
   return memberGenTab;
 end
 
-function Generator:getGenerator(roledef)
+function Generator:getGenerator(roledef, genLib, memoizeGen)
   local gen = nil
+  local baseTypename = tostring(roledef[1])
 
-  if roledef[1][xtypes.KIND]() == "atom" then  -- It's a function!
-    gen = Generator:getPrimitiveGen(roledef[1])
-  elseif roledef[1][xtypes.KIND]() == "enum" then  -- It's a function!
-    gen = Generator:enumGen(roledef[1])
-  elseif roledef[1][xtypes.KIND]() == "struct" then  -- It's a function!
-    gen = Generator:aggregateGen(roledef[1])
+  if genLib.typeGenLib[baseTypename] == nil then -- if genertor isn't there
+
+    if roledef[1][xtypes.KIND]() == "atom" then  -- It's a function!
+      gen = Generator:getPrimitiveGen(baseTypename)
+    elseif roledef[1][xtypes.KIND]() == "enum" then  -- It's a function!
+      gen = Generator:enumGen(roledef[1])
+    elseif roledef[1][xtypes.KIND]() == "struct" then  -- It's a function!
+      gen = Generator:aggregateGen(roledef[1], genLib, memoizeGen)
+    end
+    if memoizeGen then genLib.typeGenLib[baseTypename] = gen end
+
+  else 
+    gen = genLib.typeGenLib[baseTypename] -- cache the generator
   end
 
   for i=2, #roledef do
@@ -293,9 +302,9 @@ function Generator:sequenceParseGen(gen, info)
   return gen
 end
 
-function Generator:aggregateGen(structtype, genLib)
+function Generator:aggregateGen(structtype, genLib, memoizeGen)
   local memberGenTab 
-    = Generator:createMemberGenTab(structtype)
+    = Generator:createMemberGenTab(structtype, genLib, memoizeGen)
 
   return Generator:new(function () 
            local data = {}
@@ -315,8 +324,7 @@ function Generator:enumGen(enumtype)
   return Generator:oneOf(ordinals)
 end
 
-function Generator:getPrimitiveGen(roledef)
-  local ptype = tostring(roledef)
+function Generator:getPrimitiveGen(ptype)
 
   if ptype=="boolean" then
     return Generator.Bool

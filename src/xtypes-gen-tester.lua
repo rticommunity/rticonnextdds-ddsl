@@ -115,8 +115,8 @@ function Tester:test_base_gen()
 
 end
 
-Tester[#Tester+1] = 'test_struct_basic'
-function Tester:test_struct_basic()
+Tester[#Tester+1] = 'test_struct_moderate'
+function Tester:test_struct_moderate()
   
   local Test = {}
   Test.Color = xtypes.enum{Colors = {
@@ -126,6 +126,13 @@ function Tester:test_struct_basic()
       'PINK',
   }}
 
+  Test.Point = xtypes.struct {
+      Point = {
+        { x = { xtypes.float } },
+        { y = { xtypes.float } }
+      }
+  }
+
   Test.Name = xtypes.struct{
     Name = {
       { first     = { xtypes.string(10),   xtypes.Key         } },
@@ -133,7 +140,10 @@ function Tester:test_struct_basic()
       { nicknames = { xtypes.string(40),   xtypes.sequence(3) } },
       { aliases   = { xtypes.string(),     xtypes.sequence()  } },
       { birthday  = { xtypes.long,         xtypes.Optional    } },
+      { multidim  = { xtypes.long,         xtypes.sequence(3),
+                                           xtypes.sequence(4) } },
       { favorite  = { Test.Color,          xtypes.sequence(2), xtypes.Optional } },
+      { trajectory= { Test.Point,          xtypes.sequence(3) } }
     }
   }
   self:print(Test.Name)
@@ -152,19 +162,48 @@ function Tester:test_struct_basic()
   assert(Test.Color.GREEN == -9)
   assert(Test.Color.PINK == 3)
 
-  local nameGen = Gen:aggregateGen(Test.Name)
+  local genLib = {} -- empty user-defined generator library
+  local memoizeGen = true -- cache/dont-cache generators
+  local nameGen = Gen:aggregateGen(Test.Name, genLib, memoizeGen)
   local name = nameGen:generate()
+
   print("first = ", name.first)
   print("last = ", name.last)
+  print("#nicknames = ", #name.nicknames)
   print("nicknames[1] = ", name.nicknames[1])
   print("nicknames[2] = ", name.nicknames[2])
   print("nicknames[3] = ", name.nicknames[3])
   print("#aliases = ", #name.aliases)
   print("aliases[1] = ", name.aliases[1])
   print("birthday = ", name.birthday)
-  print("favorite = ", name.favorite)
+  print("#multidim = ", #name.multidim)
+  for i, arr in ipairs(name.multidim) do
+    if #arr==0 then  
+      io.write("empty sequence") 
+    end
+
+    for j, val in ipairs(arr) do
+      io.write(string.format("%d ", val))
+    end
+    print()
+  end
+  print("#favorite = ", #name.favorite)
   print("favorite[1] = ", name.favorite[1])
   print("favorite[2] = ", name.favorite[2])
+  print("#trajectory = ", #name.trajectory)
+  for i, point in ipairs(name.trajectory) do
+    print("point.x =", point.x, "point.y = ", point.y)
+  end
+
+  print("\nCached member generators: ")
+  for k, v in pairs(genLib) do
+    print(k, v)
+  end
+  
+  print("\nCached type generators: ")
+  for k, v in pairs(genLib.typeGenLib) do
+    print(k, v)
+  end
 end
 
 Tester[#Tester+1] = 'test_nested_struct_gen'
@@ -228,6 +267,15 @@ function Tester:test_enum_gen()
   print(testObject.s, testObject.d, testObject.day)
 
 end
+
+--Tester[#Tester+1] = 'test_random_types'
+--function Tester:test_random_types()
+--  local randomType    = xtypes.struct {Top=xtypes.EMPTY}
+--  local name="x"
+--  randomType[1] = {}
+--  randomType[1].x = { xtypes.long } 
+--  self:print(randomType)
+--end
 
 Tester[#Tester+1] = 'test_primitive_gen'
 function Tester:test_primitive_gen() 
