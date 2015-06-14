@@ -1500,9 +1500,8 @@ local xutils = {}
 -- @return the cumulative result of visiting all the fields. Each field that is
 --         visited is inserted into this table. This returned value table can be 
 --         passed to another call to this method (to build it cumulatively).
-function xutils.visit_instance(instance, result, model) 
-  local template = instance 
-  -- local template _.template(instance) -- TODO
+function xutils.visit_instance(instance, result, model, template) 
+  template = template or _.template(instance)
   
   -- print('DEBUG xutils.visit_instance 1: ', instance, template) 
  
@@ -1515,14 +1514,17 @@ function xutils.visit_instance(instance, result, model)
       local _ = instance[1]
       
       -- length operator and actual length
-      table.insert(result, template() .. ' = ' ..  #instance)
+      table.insert(result, 
+             table.concat{'[',template(), '] = ', #template, ' = ', #instance})
           
       -- visit all the elements
-      for i = 1, #instance do 
+      for i = 1, tonumber(#instance) or 1 do 
         if 'table' == type(instance[i]) then -- composite collection
-            xutils.visit_instance(instance[i], result) -- visit i-th element 
+            -- visit i-th element
+            xutils.visit_instance(instance[i], result, nil, template[i]) 
         else -- leaf collection
-            table.insert(result, template[i] .. ' = ' .. instance[i])
+            table.insert(result, 
+                table.concat{'[', template[i], '] = ', instance[i]})
         end
       end
       
@@ -1541,13 +1543,13 @@ function xutils.visit_instance(instance, result, model)
           
   -- union discriminator, if any
   if xtypes.UNION == mytype then
-    table.insert(result, template._d .. ' = ' .. instance._d)
+    table.insert(result, table.concat{'[', template._d, '] = ', instance._d})
   end
     
   -- struct base type, if any
   local base = model[_.DEFN][xtypes.BASE]
   if nil ~= base then
-    result = xutils.visit_instance(instance, result, _.model(base)) 
+    result = xutils.visit_instance(instance, result, _.model(base), template) 
   end
   
   -- preserve the order of model definition
@@ -1569,11 +1571,11 @@ function xutils.visit_instance(instance, result, model)
       -- print('DEBUG index 3: ', role, role_instance)
 
       if 'table' == role_instance_type then -- composite or collection
-        result = xutils.visit_instance(role_instance, result)
+        result = xutils.visit_instance(role_instance,result,nil,template[role])
       else -- leaf
         table.insert(result, template[role] 
-                                and template[role] .. ' = ' .. role_instance
-                                or nil) 
+                    and table.concat{'[',template[role],'] = ', role_instance}
+                    or nil) 
       end
   end
 

@@ -1552,98 +1552,85 @@ end
 Tester[#Tester+1] = 'test_assignment'
 function Tester:test_assignment()
 
-  local AssignTemplate = xtypes.struct{
-    AssignTemplate = {
+  print("---MyTemplate---")
+  local MyTemplate = xtypes.struct{
+    MyTemplate = {
         { long0      = { xtypes.long }, },
         { long1SeqX  = { xtypes.long, xtypes.sequence(3) } },
-        { long2ArrXX = { xtypes.long, xtypes.array(3, 5) } },
         { longUSeqX  = { xtypes.long, xtypes.sequence() } }, -- unbounded
+        { long2ArrXX = { xtypes.long, xtypes.array(3, 5) } },
     }
   }
-  
+  self:print(MyTemplate)
+    
+  print("---myInstance---")
   -- create an instance to store values
   -- NOTE: we don't want to clobber the template
-  local Assign = xtypes.utils.new_instance(AssignTemplate)
-  
-  self:print(Assign)
-  print()
+  local myInstance = xtypes.utils.new_instance(MyTemplate) --, "myInstance")
+  self:print(myInstance)
   
   -- atomic member
-  Assign.long0 = 100   
-  print('Assign.long0', Assign.long0)
-  assert(Assign.long0 == 100)
+  myInstance.long0 = 100   
+  print(MyTemplate.long0, myInstance.long0)
+  assert(myInstance.long0 == 100)
   
   
-  -- 1D Seq
-  Assign.long1SeqX[1] = 100  -- NOTE: already instantiated by print()
-  print('Assign.long1SeqX[1]', Assign.long1SeqX[1]) 
-  assert(Assign.long1SeqX[1] == 100)
-    
-  Assign.long1SeqX[2] = 200  
-  print('Assign.long1SeqX[2]', Assign.long1SeqX[2]) 
-  assert(Assign.long1SeqX[2] == 200)
-
-  assert(not print(pcall(function() Assign.long1SeqX[4] = 400 end)))
-
-  -- Length: 1D Seq
-  print('Assign.long1SeqX()', Assign.long1SeqX()) 
-  assert(Assign.long1SeqX() == 'long1SeqX#')
-  print('#Assign.long1SeqX', #Assign.long1SeqX) 
-  assert(#Assign.long1SeqX == 2)
-  
-  
-
-  -- 2D Array
-  Assign.long2ArrXX[1][1] = 100*100  -- NOTE: already instantiated by print()
-  print('Assign.long2ArrXX[1][1]', Assign.long2ArrXX[1][1]) 
-  assert(Assign.long2ArrXX[1][1] == 100*100)
-
-  Assign.long2ArrXX[1][2] = 100*200  
-  print('Assign.long2ArrXX[1][2]', Assign.long2ArrXX[1][2]) 
-  assert(Assign.long2ArrXX[1][2] == 100*200)
-
-  Assign.long2ArrXX[2][1] = 200*100  
-  print('Assign.long2ArrXX[2][1]', Assign.long2ArrXX[2][1]) 
-  assert(Assign.long2ArrXX[2][1] == 200*100)  
-  
-  Assign.long2ArrXX[2][2] = 200*200  
-  print('Assign.long2ArrXX[2][2]', Assign.long2ArrXX[2][2]) 
-  assert(Assign.long2ArrXX[2][2] == 200*200)  
-  
-  assert(not print(pcall(function() Assign.long2ArrXX[3] = 'XXXrandomXXX' end)))
-  
-  assert(not print(pcall(function() Assign.long2ArrXX[4][1] = 400*100 end)))
-  assert(not print(pcall(function() Assign.long2ArrXX[1][6] = 100*600 end)))
-
-  
-  -- Length: 2D Array
-  print('Assign.long2ArrXX()', Assign.long2ArrXX()) 
-  assert(Assign.long2ArrXX() == 'long2ArrXX#')
-  print('#Assign.long2ArrXX', #Assign.long2ArrXX) 
-  assert(#Assign.long2ArrXX == 3)
-
-  print('Assign.long2ArrXX[1]()', Assign.long2ArrXX[1]()) 
-  assert(Assign.long2ArrXX[1]() == 'long2ArrXX[1]#')
-  print('#Assign.long2ArrXX[1]', #Assign.long2ArrXX[1]) 
-  assert(#Assign.long2ArrXX[1] == 2)
-  
-    
-  -- Unbounded Seq
-  for i = 1, 17 do
-    Assign.longUSeqX[i] = 100 * i 
-    print(string.format('Assign.longUSeqX[%d]', i), Assign.longUSeqX[i]) 
-    assert(Assign.longUSeqX[i] == 100 * i)
+  -- 1D Bounded Seq
+  for i = 1, 3 do
+    myInstance.long1SeqX[i] = i * 100
+    print(MyTemplate.long1SeqX[i], myInstance.long1SeqX[i]) 
+    assert(myInstance.long1SeqX[i] == i * 100)
+    assert(MyTemplate.long1SeqX[i] == 'long1SeqX['..i..']')
   end
-  Assign.longUSeqX[999] = 100 * 999 -- add hole
-  print(string.format('Assign.longUSeqX[%d]', 999), Assign.longUSeqX[999]) 
-  assert(Assign.longUSeqX[999] == 100 * 999)
-    
-  -- Length: Unbounded Seq
-  print('Assign.longUSeqX()', Assign.longUSeqX()) 
-  assert(Assign.longUSeqX() == 'longUSeqX#')
-  print('#Assign.longUSeqX', #Assign.longUSeqX) 
-  assert(#Assign.longUSeqX == 17) -- NOTE: hole is is not counted (Lua array)
-  self:print(Assign)    
+  print(#MyTemplate.long1SeqX, #myInstance.long1SeqX) 
+  assert(#MyTemplate.long1SeqX == 'long1SeqX#')
+  assert(#myInstance.long1SeqX == 3)
+  
+  assert(not print(pcall(function() myInstance.long1SeqX[4] = 400 end)))
+  
+  self:print(myInstance) 
+     
+  -- 1D Unbounded Seq
+  for i = 1, 17 do
+    myInstance.longUSeqX[i] = 100 * i 
+    print(MyTemplate.longUSeqX[i], myInstance.longUSeqX[i]) 
+    assert(myInstance.longUSeqX[i] == 100 * i)
+    assert(MyTemplate.longUSeqX[i]==string.format('longUSeqX[%d]', i))
+  end
+  myInstance.longUSeqX[999] = 100 * 999 -- add hole
+  print(MyTemplate.longUSeqX[999], myInstance.longUSeqX[999]) 
+  assert(myInstance.longUSeqX[999] == 100 * 999)
+  assert(MyTemplate.longUSeqX[999] == string.format('longUSeqX[%d]', 999))
+  
+  print(#MyTemplate.longUSeqX, #myInstance.longUSeqX) 
+  assert(#MyTemplate.longUSeqX == 'longUSeqX#')
+  assert(#myInstance.longUSeqX == 17) -- NOTE: hole is is not counted (Lua array)
+  
+  self:print(myInstance) 
+  
+  -- 2D Array
+  for i = 1, 3 do
+    for j = 1, 5 do
+      myInstance.long2ArrXX[i][j] = i * 100 * j * 100
+      print(MyTemplate.long2ArrXX[i][j], myInstance.long2ArrXX[i][j]) 
+      assert(myInstance.long2ArrXX[i][j] == i * 100 * j * 100)
+      assert(MyTemplate.long2ArrXX[i][j] == 'long2ArrXX['..i..']['..j..']')
+    end
+    print(#MyTemplate.long2ArrXX[i], #myInstance.long2ArrXX[i]) 
+    assert(#MyTemplate.long2ArrXX[i] == 'long2ArrXX['..i..']#')
+    assert(#myInstance.long2ArrXX[i] == 5)
+  end
+  print(#MyTemplate.long2ArrXX, #myInstance.long2ArrXX) 
+  assert(#MyTemplate.long2ArrXX == 'long2ArrXX#')
+  assert(#myInstance.long2ArrXX == 3)
+  
+  
+  assert(not print(pcall(function() myInstance.long2ArrXX[3] = 'XrandomX' end)))
+  assert(not print(pcall(function() myInstance.long2ArrXX[4][1] = 400*100 end)))
+  assert(not print(pcall(function() myInstance.long2ArrXX[1][6] = 100*600 end)))  
+  
+  -- print the initialized instance
+  -- self:print(myInstance) -- TODO
 end
 
 Tester[#Tester+1] = 'test_module_manipulation'
@@ -1863,7 +1850,7 @@ function Tester:test_api()
   
   -- type:
   print('NAME = ', ShapeType[xtypes.NAME], 
-        'KIND = ', ShapeType[xtypes.KIND](),
+        'KIND = ', ShapeType[xtypes.KIND](), -- evaluate to convert to string
         'BASE = ', ShapeType[xtypes.BASE])
   for i, qualifier in ipairs(ShapeType[xtypes.QUALIFIERS]) do
      print(table.concat{'qualifier[', i, '] = '}, qualifier)  -- use tostring
@@ -1917,6 +1904,25 @@ function Tester:test_api()
     print('', role, value)
   end
   
+  print('-- shape (instance) modifications ---')
+  
+  -- cannot add new fields
+  shape.z = 99
+  assert(shape.z == nil)
+  
+  -- but can mark fields nil (for optional fields)
+  shape.shapesize = nil
+  assert(shape.shapesize == nil)
+  
+  print('shape (modified): ordered')
+  for i = 1, #ShapeType do
+    local role = next(ShapeType[i])
+    print('', role, '=', shape[role])     -- shape instance members
+  end
+  print('shape (modified): unordered')
+  for role, value in pairs(shape) do
+    print('', role, value)
+  end
 end
 
 ---
