@@ -239,23 +239,58 @@ function Generator:createMemberGenTab(structtype, genLib)
       Generator:createMemberGenTab(structtype[xtypes.BASE], genLib)
   end
 
-  for key, val in ipairs(structtype) do
+  for idx, val in ipairs(structtype) do
     local member, def = next(val)
     --io.write(member .. ": ")
-    for k, kind in ipairs(def) do
-      --io.write(tostring(v) .. " ")
-      if(genLib[member]) then
-        memberGenTab[member] = genLib[member]
-      else
-        memberGenTab[member] = Generator:getGenerator(kind)
-        genLib[member] = memberGenTab[member]
-      end
-      break
+    if(genLib[member]) then -- if library already has a generator 
+      memberGenTab[member] = genLib[member]
+    else
+      memberGenTab[member] = Generator:getGenerator(def)
+      genLib[member] = memberGenTab[member]
     end
     --print()
   end
 
   return memberGenTab;
+end
+
+function Generator:getGenerator(roledef)
+  local gen = nil
+
+  if roledef[1][xtypes.KIND]() == "atom" then  -- It's a function!
+    gen = Generator:getPrimitiveGen(roledef[1])
+  elseif roledef[1][xtypes.KIND]() == "enum" then  -- It's a function!
+    gen = Generator:enumGen(roledef[1])
+  elseif roledef[1][xtypes.KIND]() == "struct" then  -- It's a function!
+    gen = Generator:aggregateGen(roledef[1])
+  end
+
+  for i=2, #roledef do
+    --io.write(tostring(roledef[i]) .. " ")
+    local info = tostring(roledef[i])
+    if string.find(info, "Sequence") then
+      gen = Generator:sequenceParseGen(gen, info)
+    elseif string.find(info, "Optional") then
+      gen = gen:amb(Generator:single(nil))
+    end
+  end
+
+  return gen
+end
+
+function Generator:sequenceParseGen(gen, info)
+  local o = 10 -- open parenthesis "@Sequence(...)"
+  local close = string.find(info, ")")
+  
+  if close == nil then -- unbounded sequence
+    gen = Generator:seqGen(gen)
+  else
+    local bound = string.sub(info, o+1, close-1)
+    --print(tonumber(bound))
+    gen = Generator:seqGen(gen, tonumber(bound))
+  end
+
+  return gen
 end
 
 function Generator:aggregateGen(structtype, genLib)
@@ -271,23 +306,6 @@ function Generator:aggregateGen(structtype, genLib)
          end)
 end
 
-function Generator:getGenerator(mtype)
-  local strtype = tostring(mtype)
-  local gen = Generator:getPrimitiveGen(strtype)
-
-  if gen then return gen end
-
-  if mtype[xtypes.KIND]() == "enum" then  -- It's a function. Very surprising
-    return Generator:enumGen(mtype)
-  elseif mtype[xtypes.KIND]() == "struct" then  -- It's a function. Very surprising
-    return Generator:aggregateGen(mtype)
-  elseif string.find("sequence", strtype) then
-    return Generator:single(tostring("sequence"))
-  else
-    return Generator:single(tostring(mtype))
-  end
-end
-
 function Generator:enumGen(enumtype)
   local ordinals = {}
   for idx, enumdef in ipairs(enumtype) do
@@ -297,7 +315,8 @@ function Generator:enumGen(enumtype)
   return Generator:oneOf(ordinals)
 end
 
-function Generator:getPrimitiveGen(ptype)
+function Generator:getPrimitiveGen(roledef)
+  local ptype = tostring(roledef)
 
   if ptype=="boolean" then
     return Generator.Bool

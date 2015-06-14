@@ -4,6 +4,27 @@ local Gen = require("generator")
 local Tester = {}
 local ShapeTypeGen = {}
 
+function getAllData(t, prevData)
+  -- if prevData == nil, start empty, otherwise start with prevData
+  local data = prevData or {}
+
+  -- copy all the attributes from t
+  for k,v in pairs(t) do
+    data[k] = data[k] or v
+  end
+
+  -- get t's metatable, or exit if not existing
+  local mt = getmetatable(t)
+  if type(mt)~='table' then return data end
+
+  -- get the __index from mt, or exit if not table
+  local index = mt.__index
+  if type(index)~='table' then return data end
+
+  -- include the data from index into data, recursively, and return
+  return getAllData(index, data)
+end
+
 Tester[#Tester+1] = 'test_struct_gen'
 function Tester:test_struct_gen()
   local ShapeType = xtypes.struct{
@@ -97,34 +118,53 @@ end
 Tester[#Tester+1] = 'test_struct_basic'
 function Tester:test_struct_basic()
   
-    local Test = {}
-    Test.Name = xtypes.struct{
-      Name = {
-        { first = { xtypes.string(10), xtypes.Key } },
-        { last = { xtypes.wstring(128) } },
-        { nicknames = { xtypes.string(40), xtypes.sequence(3) } },
---        { aliases = { xtypes.string(7), xtypes.sequence() } },
---        { birthday = { Test.Days, xtypes.Optional } },
---        { favorite = { Test.Submodule.Colors, xtypes.sequence(2), xtypes.Optional } },
-      }
+  local Test = {}
+  Test.Color = xtypes.enum{Colors = {
+      { RED =  -5 },
+      { YELLOW =  7 },
+      { GREEN = -9 },
+      'PINK',
+  }}
+
+  Test.Name = xtypes.struct{
+    Name = {
+      { first     = { xtypes.string(10),   xtypes.Key         } },
+      { last      = { xtypes.wstring(128)                     } },
+      { nicknames = { xtypes.string(40),   xtypes.sequence(3) } },
+      { aliases   = { xtypes.string(),     xtypes.sequence()  } },
+      { birthday  = { xtypes.long,         xtypes.Optional    } },
+      { favorite  = { Test.Color,          xtypes.sequence(2), xtypes.Optional } },
     }
-    self:print(Test.Name)
+  }
+  self:print(Test.Name)
 
-    assert(Test.Name.first == 'first')
-    assert(Test.Name.last == 'last')
-    assert(Test.Name.nicknames() == 'nicknames#')
---    assert(Test.Name.nicknames[1] == 'nicknames[1]')
---    assert(Test.Name.aliases() == 'aliases#')
---    assert(Test.Name.aliases[1] == 'aliases[1]')
---    assert(Test.Name.birthday == 'birthday')
---    assert(Test.Name.favorite() == 'favorite#')
---    assert(Test.Name.favorite[1] == 'favorite[1]')
+  assert(Test.Name.first == 'first')
+  assert(Test.Name.last == 'last')
+  assert(Test.Name.nicknames() == 'nicknames#')
+  assert(Test.Name.nicknames[1] == 'nicknames[1]')
+  assert(Test.Name.aliases() == 'aliases#')
+  assert(Test.Name.aliases[1] == 'aliases[1]')
+  assert(Test.Name.birthday == 'birthday')
+  assert(Test.Name.favorite() == 'favorite#')
+  assert(Test.Name.favorite[1] == 'favorite[1]')
 
-    local nameGen = Gen:aggregateGen(Test.Name)
-    local name = nameGen:generate()
-    print("first = ", name.first)
-    print("last = ", name.last)
-    print("nicknames = ", name.nicknames)
+  assert(Test.Color.YELLOW == 7)
+  assert(Test.Color.GREEN == -9)
+  assert(Test.Color.PINK == 3)
+
+  local nameGen = Gen:aggregateGen(Test.Name)
+  local name = nameGen:generate()
+  print("first = ", name.first)
+  print("last = ", name.last)
+  print("nicknames[1] = ", name.nicknames[1])
+  print("nicknames[2] = ", name.nicknames[2])
+  print("nicknames[3] = ", name.nicknames[3])
+  print("#aliases = ", #name.aliases)
+  print("aliases[1] = ", name.aliases[1])
+  print("birthday = ", name.birthday)
+  print("favorite = ", name.favorite)
+  print("favorite[1] = ", name.favorite[1])
+  print("favorite[2] = ", name.favorite[2])
 end
 
 Tester[#Tester+1] = 'test_nested_struct_gen'
@@ -184,6 +224,7 @@ function Tester:test_enum_gen()
  
   local testGen = Gen:aggregateGen(Geometry.Test)
   local testObject = testGen:generate()
+
   print(testObject.s, testObject.d, testObject.day)
 
 end
