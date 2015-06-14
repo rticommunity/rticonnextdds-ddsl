@@ -113,7 +113,7 @@ IMPLEMENTATION
       Or a composite field 
           model.role = _.new_instance(RoleModel, 'role')
       or a sequence
-          model.role = _.new_instance_collection(RoleModel, [capacity], 'role')
+          model.role = _.new_collection(RoleModel, [capacity], 'role')
    
 CAVEATS
 
@@ -247,9 +247,9 @@ function _.create_role_instance(role, role_defn)
     if collection then
       local iterator = template
       for i = #collection, 2, -1  do -- create iterator for inner dimensions
-        iterator = _.new_instance_collection(iterator, collection[i]) -- unnamed 
+        iterator = _.new_collection(iterator, collection[i]) -- unnamed 
       end
-      role_instance = _.new_instance_collection(iterator, collection[1], role)
+      role_instance = _.new_collection(iterator, collection[1], role)
     else
       role_instance = _.new_instance(template, role)
     end
@@ -346,9 +346,9 @@ function _.new_instance(template, name)
   if alias_collection then
     local iterator = template
     for i = #alias_collection, 2, - 1  do -- create for inner dimensions:unnamed
-      iterator = _.new_instance_collection(iterator, alias_collection[i])
+      iterator = _.new_collection(iterator, alias_collection[i])
     end
-    instance = _.new_instance_collection(iterator, alias_collection[1], name)
+    instance = _.new_collection(iterator, alias_collection[1], name)
     return instance
   end
   
@@ -397,39 +397,39 @@ function _.new_instance(template, name)
   return instance
 end
 
--- Creates a collection of instances specified by the template or the instance 
--- collection previously created via this call
+-- Creates a collection template comprising of elements specified by the 
+-- given template or the collection (previously created via this call)
 -- 
 -- Purpose:
 --    Define new named collection of instances
 -- Parameters:
---    <<in>> template_or_collection - the element the template or collection 
---               may be an instance table when it is an non-collection type OR
---               may be a collection table for a collection of collection
+--    <<in>> content_template - the template describing the collection elements 
+--               may be an instance table i.e. non-collection type OR
+--               may be a collection table i.e. a collection of collections
 --    <<in>> capacity - the capacity, ie the maximum number of instances
 --                      maybe nil (=> unbounded)
 --    <<in>> name  - the collection instance name; maybe nil (=> '')
 --    <<returns>> the newly created collection of instances
 -- Usage:
 --    -- As an index into DDS dynamic data: sample[]
---    local mySeq = _.new_instance_collection(template, "my")
+--    local mySeq = _.new_collection(template, "my")
 --    for i = 1, sample[mySeq()] do -- length accessor for the collection
 --       local element_i = sample[mySeq[i]] -- access the i-th element
 --    end    
 --
 --    -- As a sample itself
---    local mySeq = _.new_instance_collection(template, "my")
+--    local mySeq = _.new_collection(template, "my")
 --    for i = 1, 10 do
 --        mySeq[i]] = element_i -- access the i-th element
 --    end  
 --    print(#mySeq) -- the actual number of elements
-function _.new_instance_collection(template_or_collection, capacity, name) 
-  -- print('DEBUG new_instance_collection',template_or_collection,capacity,name)
+function _.new_collection(content_template, capacity, name) 
+  -- print('DEBUG new_collection',content_template,capacity,name)
 
   if nil ~= name then _.assert_role(name) else name = '' end
-  assert(_.is_instance_collection(template_or_collection) or
-         _.info.is_template_kind(template_or_collection),
-         table.concat{'create_collection(): needs a template or collection'})
+  assert(_.is_collection(content_template) or
+         _.info.is_template_kind(content_template),
+         table.concat{'new_collection(): needs a template or collection'})
   
   -- convert capacity model element into its value
   if _.model_kind(capacity) then capacity = capacity() end
@@ -439,10 +439,10 @@ function _.new_instance_collection(template_or_collection, capacity, name)
   -- create collection instance
   local model = {
      [_.NAME]      = name, 
-     [_.DEFN]      = { template_or_collection, capacity },
-     [_.INSTANCES] = {}, -- the collection instance
+     [_.DEFN]      = { content_template, capacity },
+     [_.TEMPLATE]  = {}, -- the "original" collection 
   }
-  local collection = model[_.INSTANCES]
+  local collection = model[_.TEMPLATE]
 
   -- copy the meta-table methods to the 'model', and make it the metatable
   for k, v in pairs(_.collection_metatable) do model[k] = v end
@@ -451,8 +451,26 @@ function _.new_instance_collection(template_or_collection, capacity, name)
   return collection
 end
 
+
+-- Create new named collection of instances based on another collection 
+-- Parameters:
+-- @param collection  <<in>>  - the template collection 
+-- @param name   <<in>>  - the collection instance name; maybe nil (=> '')
+-- @return the newly created collection with the given name, and the given
+--         collection as the "collection template"
+function _.new_collection_instance(collection, name) 
+  local model = getmetatable(collection)
+  local new_collection_instance = _.new_collection(
+                                     model[_.DEFN][1], -- element template
+                                     model[_.DEFN][2], -- capacity
+                                     name) 
+  local new_collection_model = getmetatable(new_collection_instance) 
+  new_collection_model[_.TEMPLATE] = collection                       
+  return new_collection_instance                              
+end             
+                        
 -- Is the given value a collection of instances:
-function _.is_instance_collection(v) 
+function _.is_collection(v) 
   local model = getmetatable(v)
   return model and model[_.KIND] == _.collection_metatable[_.KIND]
 end
@@ -540,17 +558,15 @@ function _.clone(v, prefix)
     -- clone the instance  
     if 'table' == type_v then -- collection or struct or union
 
-        if _.is_instance_collection(v) then -- collection
+        if _.is_collection(v) then -- collection
             local model = getmetatable(v)
             
             -- multi-dimensional collection
             if '' == model[_.NAME] then sep = '' end 
             
             -- create collection instance for 'prefix'
-            result = _.new_instance_collection(
-                        model[_.DEFN][1], -- element template
-                        model[_.DEFN][2], -- capacity
-                        table.concat{prefix, sep, model[_.NAME]})  
+            result = _.new_collection_instance(v, 
+                                    table.concat{prefix, sep, model[_.NAME]})  
         else -- not collection: struct or union
             -- create instance for 'prefix'
             result = _.new_instance(v, prefix) -- use member as template   
@@ -571,7 +587,7 @@ end
 -- Retrieve the model definition underlying an instance
 -- The instance would have been created previously using 
 --      _.new_instance() or 
---      _.new_instance_collection() or 
+--      _.new_collection() or 
 --      _._new_template() for a "template" instance
 -- @param instance [in] the instance whose model we want to retrieve
 -- @return the underlying data model
@@ -582,7 +598,7 @@ end
 --- Retrieve the template instance for the given instance
 -- The instance would have been created previously using 
 --      _.new_instance() or 
---      _.new_instance_collection() or 
+--      _.new_collection() or 
 --      _._new_template() for a "template" instance
 -- @param instance [in] the instance whose template we want to retrieve
 -- @return the underlying template
@@ -645,15 +661,6 @@ function _.assert_model(kind, value)
            table.concat{'expected model kind "', kind(), 
                         '", instead got "', tostring(value), '"'})
     return value
-end
-
---- Ensure that value is a collection
--- @param collection [in] the potential collection to check
--- @return the collection or nil
-function _.assert_collection(collection)
-    assert(_.info.is_collection_kind(collection), 
-           table.concat{'expected collection \"', tostring(collection), '"'})
-    return collection
 end
 
 --- Ensure that value is a qualifier
@@ -733,15 +740,14 @@ local interface = {
   model                   = _.model,
   model_kind              = _.model_kind,
   assert_model            = _.assert_model,
-  assert_collection       = _.assert_collection,
   assert_template         = _.assert_template,
   assert_qualifier_array  = _.assert_qualifier_array,
    
   
   -- for users of templates created with ddsl
   new_instance            = _.new_instance,
-  new_instance_collection = _.new_instance_collection,
-  is_instance_collection  = _.is_instance_collection,
+  new_collection          = _.new_collection,
+  is_collection           = _.is_collection,
   template                = _.template,
   resolve                 = _.resolve,
   nsname                  = _.nsname,

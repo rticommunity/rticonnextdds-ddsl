@@ -1411,9 +1411,13 @@ function xtypes.typedef(decl)
   _.assert_template(alias)
 
   -- pre-condition: ensure that the 2nd defn element if present 
-  -- is a 'collection' type
-  local collection = defn[2] and _.assert_collection(defn[2])
-
+  -- is a 'collection' kind
+  local collection = defn[2]
+  if collection and not xtypes.info.is_collection_kind(collection) then
+    error(table.concat{'expected sequence or array, got: ', tostring(value)},
+          2)     
+  end
+ 
   -- create the template
   local template, model = _.new_template(name, xtypes.TYPEDEF, 
                                                xtypes.API[xtypes.TYPEDEF]) 
@@ -1497,7 +1501,8 @@ local xutils = {}
 --         visited is inserted into this table. This returned value table can be 
 --         passed to another call to this method (to build it cumulatively).
 function xutils.visit_instance(instance, result, model) 
-  local template = instance -- _.template(instance) -- TODO
+  local template = instance 
+  -- local template _.template(instance) -- TODO
   
   -- print('DEBUG xutils.visit_instance 1: ', instance, template) 
  
@@ -1505,7 +1510,7 @@ function xutils.visit_instance(instance, result, model)
   result = result or {} 
 
   -- collection instance
-  if _.is_instance_collection(instance) then
+  if _.is_collection(instance) then
         -- ensure 1st element exists for illustration
       local _ = instance[1]
       
@@ -1863,8 +1868,8 @@ local interface = {
     resolve                 = _.resolve,
     template                = _.template,
     new_instance            = _.new_instance,
-    new_instance_collection = _.new_instance_collection,
-    is_instance_collection  = _.is_instance_collection,
+    new_collection          = _.new_collection,
+    is_collection           = _.is_collection,
     visit_instance          = xutils.visit_instance,
     visit_model             = xutils.visit_model,
   }
