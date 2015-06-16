@@ -75,7 +75,7 @@ end
 
 local function parseargs(s)
   local arg = {}
-  string.gsub(s, "([%w:]+)=([\"'])(.-)%2", function (w, _, a)
+  string.gsub(s, "([%w:]+)%s*=%s*([\"'])(.-)%2", function (w, _, a)
     arg[w] = a
   end)
   return arg
