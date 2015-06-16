@@ -35,6 +35,8 @@ Lua:
     }
 --]]
 
+local table2string
+
 local function val_to_str ( v )
   if "string" == type( v ) then
     v = string.gsub( v, "\n", "\\n" )
@@ -43,7 +45,7 @@ local function val_to_str ( v )
     end
     return '"' .. string.gsub(v,'"', '\\"' ) .. '"'
   else
-    return "table" == type( v ) and table.tostring( v ) or
+    return "table" == type( v ) and table2string( v ) or
       tostring( v )
   end
 end
@@ -56,7 +58,7 @@ local function key_to_str ( k )
   end
 end
 
-function table.tostring( tbl )
+table2string = function ( tbl )
   local result, done = {}, {}
   for k, v in ipairs( tbl ) do
     table.insert( result, val_to_str( v ) )
@@ -124,6 +126,7 @@ end
 -- Public interface
 local interface = {
   xmlstring2table   = collect,
+  table2luastring   = table2string,
 }
 
 return interface
