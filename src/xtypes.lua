@@ -1515,7 +1515,7 @@ function xutils.visit_instance(instance, result, model, template)
       
       -- length operator and actual length
       table.insert(result, 
-             table.concat{'[',template(), '] = ', #template, ' = ', #instance})
+             table.concat{#template, ' = ', #instance})
           
       -- visit all the elements
       for i = 1, tonumber(#instance) or 1 do 
@@ -1524,7 +1524,7 @@ function xutils.visit_instance(instance, result, model, template)
             xutils.visit_instance(instance[i], result, nil, template[i]) 
         else -- leaf collection
             table.insert(result, 
-                table.concat{'[', template[i], '] = ', instance[i]})
+                table.concat{template[i], ' = ', instance[i]})
         end
       end
       
@@ -1543,7 +1543,7 @@ function xutils.visit_instance(instance, result, model, template)
           
   -- union discriminator, if any
   if xtypes.UNION == mytype then
-    table.insert(result, table.concat{'[', template._d, '] = ', instance._d})
+    table.insert(result, table.concat{template._d, ' = ', instance._d})
   end
     
   -- struct base type, if any
@@ -1573,9 +1573,10 @@ function xutils.visit_instance(instance, result, model, template)
       if 'table' == role_instance_type then -- composite or collection
         result = xutils.visit_instance(role_instance,result,nil,template[role])
       else -- leaf
-        table.insert(result, template[role] 
-                    and table.concat{'[',template[role],'] = ', role_instance}
-                    or nil) 
+        table.insert(result, 
+                  template[role] 
+                     and table.concat{template[role],' = ', role_instance}
+                     or nil) 
       end
   end
 

@@ -1549,90 +1549,6 @@ function Tester:test_collection_bounds()
   assert(BoundsTest.longUSeqX[999] == 'longUSeqX[999]')
 end
 
-Tester[#Tester+1] = 'test_assignment'
-function Tester:test_assignment()
-
-  print("---MyTemplate---")
-  local MyTemplate = xtypes.struct{
-    MyTemplate = {
-        { long0      = { xtypes.long }, },
-        { long1SeqX  = { xtypes.long, xtypes.sequence(3) } },
-        { longUSeqX  = { xtypes.long, xtypes.sequence() } }, -- unbounded
-        { long2ArrXX = { xtypes.long, xtypes.array(3, 5) } },
-    }
-  }
-  self:print(MyTemplate)
-    
-  print("---myInstance---")
-  -- create an instance to store values
-  -- NOTE: we don't want to clobber the template
-  local myInstance = xtypes.utils.new_instance(MyTemplate) --, "myInstance")
-  self:print(myInstance)
-  
-  -- atomic member
-  myInstance.long0 = 100   
-  print(MyTemplate.long0, myInstance.long0)
-  assert(myInstance.long0 == 100)
-  
-  
-  -- 1D Bounded Seq
-  for i = 1, 3 do
-    myInstance.long1SeqX[i] = i * 100
-    print(MyTemplate.long1SeqX[i], myInstance.long1SeqX[i]) 
-    assert(myInstance.long1SeqX[i] == i * 100)
-    assert(MyTemplate.long1SeqX[i] == 'long1SeqX['..i..']')
-  end
-  print(#MyTemplate.long1SeqX, #myInstance.long1SeqX) 
-  assert(#MyTemplate.long1SeqX == 'long1SeqX#')
-  assert(#myInstance.long1SeqX == 3)
-  
-  assert(not print(pcall(function() myInstance.long1SeqX[4] = 400 end)))
-  
-  self:print(myInstance) 
-     
-  -- 1D Unbounded Seq
-  for i = 1, 17 do
-    myInstance.longUSeqX[i] = 100 * i 
-    print(MyTemplate.longUSeqX[i], myInstance.longUSeqX[i]) 
-    assert(myInstance.longUSeqX[i] == 100 * i)
-    assert(MyTemplate.longUSeqX[i]==string.format('longUSeqX[%d]', i))
-  end
-  myInstance.longUSeqX[999] = 100 * 999 -- add hole
-  print(MyTemplate.longUSeqX[999], myInstance.longUSeqX[999]) 
-  assert(myInstance.longUSeqX[999] == 100 * 999)
-  assert(MyTemplate.longUSeqX[999] == string.format('longUSeqX[%d]', 999))
-  
-  print(#MyTemplate.longUSeqX, #myInstance.longUSeqX) 
-  assert(#MyTemplate.longUSeqX == 'longUSeqX#')
-  assert(#myInstance.longUSeqX == 17) -- NOTE: hole is is not counted (Lua array)
-  
-  self:print(myInstance) 
-  
-  -- 2D Array
-  for i = 1, 3 do
-    for j = 1, 5 do
-      myInstance.long2ArrXX[i][j] = i * 100 * j * 100
-      print(MyTemplate.long2ArrXX[i][j], myInstance.long2ArrXX[i][j]) 
-      assert(myInstance.long2ArrXX[i][j] == i * 100 * j * 100)
-      assert(MyTemplate.long2ArrXX[i][j] == 'long2ArrXX['..i..']['..j..']')
-    end
-    print(#MyTemplate.long2ArrXX[i], #myInstance.long2ArrXX[i]) 
-    assert(#MyTemplate.long2ArrXX[i] == 'long2ArrXX['..i..']#')
-    assert(#myInstance.long2ArrXX[i] == 5)
-  end
-  print(#MyTemplate.long2ArrXX, #myInstance.long2ArrXX) 
-  assert(#MyTemplate.long2ArrXX == 'long2ArrXX#')
-  assert(#myInstance.long2ArrXX == 3)
-  
-  
-  assert(not print(pcall(function() myInstance.long2ArrXX[3] = 'XrandomX' end)))
-  assert(not print(pcall(function() myInstance.long2ArrXX[4][1] = 400*100 end)))
-  assert(not print(pcall(function() myInstance.long2ArrXX[1][6] = 100*600 end)))  
-  
-  -- print the initialized instance
-  -- self:print(myInstance) -- TODO
-end
-
 Tester[#Tester+1] = 'test_module_manipulation'
 function Tester:test_module_manipulation()
 
@@ -1816,6 +1732,90 @@ function Tester:test_xml_advancedX()
   for i = 1, #schemas do
     self:print(schemas[i])
   end
+end
+
+Tester[#Tester+1] = 'test_assignment'
+function Tester:test_assignment()
+
+  print("---MyTemplate---")
+  local MyTemplate = xtypes.struct{
+    MyTemplate = {
+        { long0      = { xtypes.long }, },
+        { long1SeqX  = { xtypes.long, xtypes.sequence(3) } },
+        { longUSeqX  = { xtypes.long, xtypes.sequence() } }, -- unbounded
+        { long2ArrXX = { xtypes.long, xtypes.array(3, 5) } },
+    }
+  }
+  self:print(MyTemplate)
+    
+  print("---myInstance---")
+  -- create an instance to store values
+  -- NOTE: we don't want to clobber the template
+  local myInstance = xtypes.utils.new_instance(MyTemplate) --, "myInstance")
+  self:print(myInstance)
+  
+  -- atomic member
+  myInstance.long0 = 100   
+  print(MyTemplate.long0, myInstance.long0)
+  assert(myInstance.long0 == 100)
+  
+  
+  -- 1D Bounded Seq
+  for i = 1, 3 do
+    myInstance.long1SeqX[i] = i * 100
+    print(MyTemplate.long1SeqX[i], myInstance.long1SeqX[i]) 
+    assert(myInstance.long1SeqX[i] == i * 100)
+    assert(MyTemplate.long1SeqX[i] == 'long1SeqX['..i..']')
+  end
+  print(#MyTemplate.long1SeqX, #myInstance.long1SeqX) 
+  assert(#MyTemplate.long1SeqX == 'long1SeqX#')
+  assert(#myInstance.long1SeqX == 3)
+  
+  assert(not print(pcall(function() myInstance.long1SeqX[4] = 400 end)))
+  
+  self:print(myInstance) 
+     
+  -- 1D Unbounded Seq
+  for i = 1, 17 do
+    myInstance.longUSeqX[i] = 100 * i 
+    print(MyTemplate.longUSeqX[i], myInstance.longUSeqX[i]) 
+    assert(myInstance.longUSeqX[i] == 100 * i)
+    assert(MyTemplate.longUSeqX[i]==string.format('longUSeqX[%d]', i))
+  end
+  myInstance.longUSeqX[999] = 100 * 999 -- add hole
+  print(MyTemplate.longUSeqX[999], myInstance.longUSeqX[999]) 
+  assert(myInstance.longUSeqX[999] == 100 * 999)
+  assert(MyTemplate.longUSeqX[999] == string.format('longUSeqX[%d]', 999))
+  
+  print(#MyTemplate.longUSeqX, #myInstance.longUSeqX) 
+  assert(#MyTemplate.longUSeqX == 'longUSeqX#')
+  assert(#myInstance.longUSeqX == 17) -- NOTE: hole is is not counted (Lua array)
+  
+  self:print(myInstance) 
+  
+  -- 2D Array
+  for i = 1, 3 do
+    for j = 1, 5 do
+      myInstance.long2ArrXX[i][j] = i * 100 * j * 100
+      print(MyTemplate.long2ArrXX[i][j], myInstance.long2ArrXX[i][j]) 
+      assert(myInstance.long2ArrXX[i][j] == i * 100 * j * 100)
+      assert(MyTemplate.long2ArrXX[i][j] == 'long2ArrXX['..i..']['..j..']')
+    end
+    print(#MyTemplate.long2ArrXX[i], #myInstance.long2ArrXX[i]) 
+    assert(#MyTemplate.long2ArrXX[i] == 'long2ArrXX['..i..']#')
+    assert(#myInstance.long2ArrXX[i] == 5)
+  end
+  print(#MyTemplate.long2ArrXX, #myInstance.long2ArrXX) 
+  assert(#MyTemplate.long2ArrXX == 'long2ArrXX#')
+  assert(#myInstance.long2ArrXX == 3)
+  
+  -- print the initialized instance
+  self:print(myInstance)
+    
+  assert(not print(pcall(function() myInstance.long2ArrXX[3] = 'XrandomX' end)))
+  assert(not print(pcall(function() myInstance.long2ArrXX[4][1] = 400*100 end)))
+  assert(not print(pcall(function() myInstance.long2ArrXX[1][6] = 100*600 end)))  
+ 
 end
 
 Tester[#Tester+1] = 'test_api'
