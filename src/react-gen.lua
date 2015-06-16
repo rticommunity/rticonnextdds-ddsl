@@ -13,9 +13,62 @@ local ReactGen = {
   flatMap    = nil,
 
   propagate  = nil, -- private
-  cont       = nil, -- private
-  attachImpl = nil -- private
+  attachImpl = nil, -- private
+  cont       = nil, -- private (data)
 }
+
+local Disposable = {
+  dispose    = nil
+}
+
+function Disposable:new(o)
+  o =  o or { } 
+  setmetatable(o, self)
+  self.__index = self
+  return o
+end
+
+function Disposable:dispose()
+  -- no-op
+end
+
+local SerialDisposable = 
+  Disposable:new({ disposable = nil, isDisposed = false })
+
+function SerialDisposable:add(newDisposable)
+  if isDisposed==true then
+    if newDisposable then newDisposable:dispose() end
+  else
+    if self.disposable then
+      self.disposable:dispose()
+    end
+    self.disposable = newDisposable
+  end
+end
+
+function SerialDisposable:dispose()
+  self:add(nil)
+  self.isDisposed = true
+end
+
+local CompositeDisposable = 
+  Disposable:new({ list = {}, isDisposed = false })
+
+function CompositeDisposable:add(disposable)
+  if isDisposed==true then
+    if disposable then disposable:dispose() end
+  elseif disposable then 
+    self.list[#self.list+1] = disposable
+  end 
+end
+
+function CompositeDisposable:dispose()
+  for i, d in ipairs(self.list) do
+    d:dispose()
+  end
+  self.list = {}
+  self.isDisposed = true
+end
 
 function ReactGen:new(o)
   o =  o or { } 
@@ -33,32 +86,42 @@ function ReactGen:propagate(value)
 end
 
 function ReactGen:map(func)
-  local nextGen = ReactGen:new()
-  
-  local disposable = 
-      self:attach(
-          function (input)
-            nextGen:propagate(func(input))
-          end)
-
-  return nextGen
+  local prev = self
+  return ReactGen:new(
+      { attachImpl = function (unused, continuation)
+                       return prev:attach(function (value) 
+                                continuation(func(value))
+                              end)
+                     end 
+      })
 end
 
 function ReactGen:flatMap(func)
-  local nextGen = ReactGen:new()
-  
-  self:attach(
-      function (input)
-        local output = func(input)
-        output:attach(function (op) 
-                          nextGen:propagate(op)
-                        end)
-      end)
+  local prev = self
+  local innerDisposable = CompositeDisposable:new()
 
-  return nextGen
+  return ReactGen:new(
+      { innerDisposable = innerDisposable,
+        attachImpl = function (observable, continuation)
+                       local outerDisposable = 
+                          prev:map(func)
+                              :attach(function (nested) 
+                                 observable.innerDisposable:add( 
+                                   nested:attach(function (op)
+                                     continuation(op)
+                                   end))
+                               end)
+
+                       return { dispose = function () 
+                                            innerDisposable:dispose()
+                                            outerDisposable:dispose()
+                                          end 
+                              }
+                     end 
+      })
 end
 
-function ReactGen:zip2(zipperFunc)
+function ReactGen:zip2(otherGen, zipperFunc)
   
 end
 
@@ -84,8 +147,8 @@ function ReactGenPackage.createSubjectFromPullGen(pullgen)
               attachImpl = function (subject, continuation)
                              subject.cont = continuation
                              return { dispose = function () 
-                                                 subject.cont   = nil
-                                               end 
+                                                  subject.cont = nil
+                                                end 
                                     }
                            end 
             })

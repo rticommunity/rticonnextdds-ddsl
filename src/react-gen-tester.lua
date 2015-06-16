@@ -4,35 +4,40 @@ local Gen = require("generator")
 local sub1 = 
   reactGen.createSubjectFromPullGen(Gen.rangeGen(1,50))
 
-local disposable = sub1:attach(function (val) 
-  print("val = ", val)
-  end)
---[[
-local sub2 = reactGen.createSubjectFromPullGen(Gen.singleGen(5))
+local sub2 = 
+  reactGen.createSubjectFromPullGen(Gen.rangeGen(1, 5))
 
-local observable = 
-     sub1:map(function (i) 
-                print("i = ", i)
-                return 2*i 
+local disposable = 
+  sub1:map(function (i) 
+             --print("i = ", i)
+             return 2*i
+           end)
+      :flatMap(function (j) 
+                 --print("j = ", j)
+                 return sub2:map(function (v) 
+                                  --print("v = ", v)
+                                   return j*v 
+                                 end)
+               end)
+      :attach(function (k) 
+                --print("k = ", k)
               end)
-         :flatMap(function (j) 
-                    print("j = ", j)
-                    return sub2:map(function (v) 
-                                      return j*v 
-                                    end)
-                  end)
-         :map(function (k) 
-                print("k = ", k)
-                return 2*k 
-              end)
-]]
+
 Gen.initialize()
 
-print("Calling push")
-sub1:push()
+for i=1,5 do
+  --print("Calling sub1 push ", i)
+  sub1:push()
+
+  --print("Calling sub2 push")
+  sub2:push()
+end
+
+print("disposing")
 disposable:dispose()
-print("Calling push again")
+
+print("Calling sub1 push again")
 sub1:push()
 
---sub2:push()
-
+print("Calling sub2 push again")
+sub2:push()
