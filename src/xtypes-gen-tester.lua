@@ -2,7 +2,6 @@ local xtypes = require("xtypes")
 local Gen = require("generator")
 
 local Tester = {}
-local ShapeTypeGen = {}
 
 function getAllData(t, prevData)
   -- if prevData == nil, start empty, otherwise start with prevData
@@ -26,7 +25,7 @@ function getAllData(t, prevData)
 end
 
 Tester[#Tester+1] = 'test_struct_gen'
-function Tester:test_struct_gen()
+function Tester.test_struct_gen()
   local ShapeType = xtypes.struct{
     ShapeType = {
       { x = { xtypes.long } },
@@ -35,7 +34,7 @@ function Tester:test_struct_gen()
       { color = { xtypes.string(128), xtypes.Key } },
     }
   }
-  self:print(ShapeType)
+  Tester.print(ShapeType)
   
   assert('x'         == ShapeType.x)
   assert('y'         == ShapeType.y)
@@ -43,23 +42,25 @@ function Tester:test_struct_gen()
   assert('color'     == ShapeType.color)   
 
   local shapeGenLib = {}
-  shapeGenLib.x         = Gen:rangeGen(0, 200)
-  shapeGenLib.y         = Gen:rangeGen(0, 200)
-  shapeGenLib.color     = Gen:oneOf({ "RED", "GREEN", "BLUE" })
-  shapeGenLib.shapesize = Gen:rangeGen(20, 30)
+  shapeGenLib.x         = Gen.rangeGen(0, 200)
+  shapeGenLib.y         = Gen.rangeGen(0, 200)
+  shapeGenLib.color     = Gen.oneOf({ "RED", "GREEN", "BLUE" })
+  shapeGenLib.shapesize = Gen.rangeGen(20, 30)
 
-  ShapeTypeGen = Gen:aggregateGen(ShapeType, shapeGenLib)
+  local ShapeTypeGen = Gen.aggregateGen(ShapeType, shapeGenLib)
   local shape = ShapeTypeGen:generate()
 
   print("shape.x = " .. shape.x)
   print("shape.y = " .. shape.y)
   print("shape.color = " .. shape.color)
   print("shape.shapesize = " .. shape.shapesize)
+
+  return ShapeTypeGen
 end
 
 Tester[#Tester+1] = 'test_seq_gen'
-function Tester:test_seq_gen()
-  local seqGen = Gen:seqGen(Gen.Float, 5)
+function Tester.test_seq_gen()
+  local seqGen = Gen.seqGen(Gen.Float, 5)
   local seq = seqGen:generate()
   for k, v in ipairs(seq) do
     print(k, v)
@@ -67,11 +68,11 @@ function Tester:test_seq_gen()
 end
 
 Tester[#Tester+1] = 'test_aggregate_gen'
-function Tester:test_aggregate_gen()
-  Tester:test_struct_gen()
+function Tester.test_aggregate_gen()
+  local ShapeTypeGen = Tester.test_struct_gen()
   print()
 
-  local seqGen = Gen:seqGen(ShapeTypeGen, 3)
+  local seqGen = Gen.seqGen(ShapeTypeGen, 3)
   local seq = seqGen:generate()
 
   for k, shape in ipairs(seq) do
@@ -83,7 +84,7 @@ function Tester:test_aggregate_gen()
 end
 
 Tester[#Tester+1] = 'test_base_gen'
-function Tester:test_base_gen()
+function Tester.test_base_gen()
     
   local Geometry = xtypes.module{
     Geometry = {
@@ -105,18 +106,18 @@ function Tester:test_base_gen()
   Geometry.ThreeDPoint[xtypes.BASE] = 
     Geometry.Point
   
-  self:print(Geometry)
+  Tester.print(Geometry)
  
   assert(Geometry.ThreeDPoint.z == 'z')
  
-  local PointGen = Gen:aggregateGen(Geometry.ThreeDPoint)
+  local PointGen = Gen.aggregateGen(Geometry.ThreeDPoint)
   local point = PointGen:generate()
   print(point.x, point.y, point.z)
 
 end
 
 Tester[#Tester+1] = 'test_struct_moderate'
-function Tester:test_struct_moderate()
+function Tester.test_struct_moderate()
   
   local Test = {}
   Test.Color = xtypes.enum{Colors = {
@@ -146,7 +147,7 @@ function Tester:test_struct_moderate()
       { trajectory= { Test.Point,          xtypes.sequence(3) } }
     }
   }
-  self:print(Test.Name)
+  Tester.print(Test.Name)
 
   assert(Test.Name.first == 'first')
   assert(Test.Name.last == 'last')
@@ -164,7 +165,7 @@ function Tester:test_struct_moderate()
 
   local genLib = {} -- empty user-defined generator library
   local memoizeGen = true -- cache/dont-cache generators
-  local nameGen = Gen:aggregateGen(Test.Name, genLib, memoizeGen)
+  local nameGen = Gen.aggregateGen(Test.Name, genLib, memoizeGen)
   local name = nameGen:generate()
 
   print("first = ", name.first)
@@ -207,7 +208,7 @@ function Tester:test_struct_moderate()
 end
 
 Tester[#Tester+1] = 'test_nested_struct_gen'
-function Tester:test_nested_struct_gen()
+function Tester.test_nested_struct_gen()
     
   local Geometry = xtypes.module{
     Geometry = {
@@ -228,18 +229,18 @@ function Tester:test_nested_struct_gen()
       }
     }
   
-  self:print(Geometry)
+  Tester.print(Geometry)
  
   assert(Geometry.Test.x == 'x')
  
-  local testGen = Gen:aggregateGen(Geometry.Test)
+  local testGen = Gen.aggregateGen(Geometry.Test)
   local testObj = testGen:generate()
   print(testObj.point.x, testObj.point.y, testObj.x)
 
 end
 
 Tester[#Tester+1] = 'test_enum_gen'
-function Tester:test_enum_gen()
+function Tester.test_enum_gen()
   local Geometry = xtypes.module { Geometry = xtypes.EMPTY }
   
   Geometry[#Geometry+1] = xtypes.enum{ Days = {  
@@ -255,13 +256,13 @@ function Tester:test_enum_gen()
       }
     }
   
-  self:print(Geometry)
+  Tester.print(Geometry)
  
   assert(Geometry.Test.s == 's')
   assert(Geometry.Days.MON == 0)
   assert(Geometry.Days.SUN == 6)
  
-  local testGen = Gen:aggregateGen(Geometry.Test)
+  local testGen = Gen.aggregateGen(Geometry.Test)
   local testObject = testGen:generate()
 
   print(testObject.s, testObject.d, testObject.day)
@@ -269,28 +270,28 @@ function Tester:test_enum_gen()
 end
 
 --Tester[#Tester+1] = 'test_random_types'
---function Tester:test_random_types()
+--function Tester.test_random_types()
 --  local randomType    = xtypes.struct {Top=xtypes.EMPTY}
 --  local name="x"
 --  randomType[1] = {}
 --  randomType[1].x = { xtypes.long } 
---  self:print(randomType)
+--  Tester.print(randomType)
 --end
 
 Tester[#Tester+1] = 'test_primitive_gen'
-function Tester:test_primitive_gen() 
-  numGen      = Gen:numGen()
-  boolGen     = Gen:boolGen()
-  charGen     = Gen:charGen()
-  alphaNumGen = Gen:alphaNumGen()
-  stringGen   = Gen:stringGen()
+function Tester.test_primitive_gen() 
+  numGen      = Gen.numGen()
+  boolGen     = Gen.boolGen()
+  charGen     = Gen.charGen()
+  alphaNumGen = Gen.alphaNumGen()
+  stringGen   = Gen.stringGen()
 
   math.randomseed(os.time())
 
   for i=1,5 do 
     print(numGen:generate()) 
     print(boolGen:generate()) 
-    local c = alphaNumGen.generate();
+    local c = alphaNumGen:generate();
     print(string.format("%d:'%c'", c, c))
     print(stringGen:generate()) 
     print()
@@ -300,7 +301,7 @@ end
 function fibonacciGen()
   local a = 0
   local b = 1
-  return Gen:new(function ()
+  return Gen.newGen(function ()
            local c = a;
            a = b
            b = c+b
@@ -309,7 +310,7 @@ function fibonacciGen()
 end  
 
 Tester[#Tester+1] = 'test_fibonacciGen'
-function Tester:test_fibonacciGen()
+function Tester.test_fibonacciGen()
   local fiboGen     = fibonacciGen()
   print("Generating fibonacci numbers")
   for i=1,5 do 
@@ -319,7 +320,7 @@ end
 
 ---
 -- print - helper method to print the IDL and the index for data definition
-function Tester:print(instance)
+function Tester.print(instance)
     -- print IDL
     local idl = xtypes.utils.visit_model(instance, {'idl:'})
     print(table.concat(idl, '\n\t'))
@@ -333,7 +334,8 @@ end
 -- main() - run the list of tests passed on the command line
 --          if no command line arguments are passed in, run all the tests
 function Tester:main()
-  math.randomseed(os.time())
+  Gen.initialize()
+
   if #arg > 0 then -- run selected tests passed in from the command line
     for i, test in ipairs (arg) do
       if 'test_module' ~= test then -- skip, cuz already ran it
