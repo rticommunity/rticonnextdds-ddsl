@@ -1,202 +1,302 @@
 xtypes = require ("xtypes")
 
-local Generator   = {}
+-- The Generator<T> monad
+-- It's the prototype ("class") for all generator objects
+-- Every generator has a method named "generate" that 
+-- produces a new T. I.e., every Generator looks like below
+-- class Generator<T> { T generate() }
+local TGenerator = {
 
-local MAX_BYTE    = 0xFF
+  -- All methods of TGenerator are instance methods
+  new      = nil,  
+  map      = nil,
+  flatMap  = nil,
+  zip2     = nil,
+  amb      = nil,
+  generate = nil,   
+}
 
-local MAX_INT16   = 0x7FFF 
-local MAX_INT32   = 0x7FFFFFFF 
-local MAX_INT64   = 0x7FFFFFFFFFFFFFFF 
+-- Generator package object
+local GenPackage   = {
 
-local MIN_INT16   = -MAX_INT16-1 
-local MIN_INT32   = -MAX_INT32-1 
-local MIN_INT64   = -MAX_INT64-1 
+  -- Numeric limits
+  MAX_BYTE    = 0xFF,
 
-local MAX_UINT16  = 0xFFFF 
-local MAX_UINT32  = 0xFFFFFFFF 
-local MAX_UINT64  = 0xFFFFFFFFFFFFFFFF 
+  MAX_INT16   = 0x7FFF, 
+  MAX_INT32   = 0x7FFFFFFF, 
+  MAX_INT64   = 0x7FFFFFFFFFFFFFFF, 
 
-local MAX_FLOAT   = 3.4028234 * math.pow(10,38)
-local MAX_DOUBLE  = 1.7976931348623157 * math.pow(10, 308)
+  MAX_UINT16  = 0xFFFF, 
+  MAX_UINT32  = 0xFFFFFFFF, 
+  MAX_UINT64  = 0xFFFFFFFFFFFFFFFF, 
 
-local MIN_FLOAT   = -MAX_FLOAT
-local MIN_DOUBLE  = -MAX_DOUBLE
+  MAX_FLOAT   = 3.4028234 * math.pow(10,38),
+  MAX_DOUBLE  = 1.7976931348623157 * math.pow(10, 308),
 
-function Generator:new(generatorFunc)
+  -- Built-in generator objects
+  Bool         = nil,
+  Octet        = nil, 
+  Char         = nil, 
+  WChar        = nil, 
+  Float        = nil, 
+  Double       = nil, 
+  LongDouble   = nil, 
+  Short        = nil,
+  Long         = nil,
+  LongLong     = nil,
+  UShort       = nil,
+  ULong        = nil,
+  ULongLong    = nil,
+  String       = nil,
+  WString      = nil,
+
+  -- Generator factories
+  -- Most methods produce new generators. 
+  -- All methods below are non-instance methods.
+  singleGen         = nil, 
+  oneOf             = nil,
+  numGen            = nil,
+
+  boolGen           = nil,
+  charGen           = nil,
+  wcharGen          = nil,
+  octetGen          = nil,
+  shortGen          = nil,
+  int16Gen          = nil,
+  int32Gen          = nil,
+  int64Gen          = nil,
+  uint16Gen         = nil,
+  uint32Gen         = nil,
+  uint64Gen         = nil,
+
+  posFloatGen       = nil,
+  posDoubleGen      = nil,
+  floatGen          = nil,
+  doubleGen         = nil,
+
+  getPrimitiveGen   = nil,
+
+  lowercaseGen      = nil,
+  uppercaseGen      = nil,
+  alphaGen          = nil,
+  alphaNumGen       = nil,
+  printableGen      = nil,
+  stringGen         = nil,
+  nonEmptyStringGen = nil,
+
+  rangeGen          = nil,
+  seqGen            = nil,
+  aggregateGen      = nil,
+  enumGen           = nil,
+
+  newGen            = nil,
+
+  -- Initialize the random number generator.  
+  initialize        = nil,
+
+} -- GenPackage
+
+GenPackage.MIN_FLOAT   = -GenPackage.MAX_FLOAT
+GenPackage.MIN_DOUBLE  = -GenPackage.MAX_DOUBLE
+
+GenPackage.MIN_INT16   = -GenPackage.MAX_INT16-1 
+GenPackage.MIN_INT32   = -GenPackage.MAX_INT32-1 
+GenPackage.MIN_INT64   = -GenPackage.MAX_INT64-1 
+
+-- Only private methods/data
+local Private = { 
+  createMemberGenTab = nil,
+  getGenerator       = nil,
+  seqParseGen        = nil
+}
+
+
+-----------------------------------------------------
+-------------------- TGenerator ---------------------
+-----------------------------------------------------
+
+function TGenerator:new(generatorFunc)
   o = { generate = generatorFunc }
   setmetatable(o, self)
   self.__index = self
   return o
 end
 
-function Generator:single(val)
-  return Generator:new(function () return val end)
-end
-
-function Generator:map(func)
-  return Generator:new(function () 
+function TGenerator:map(func)
+  return TGenerator:new(function () 
            return func(self:generate())
          end)
 end
 
-function Generator:flatMap(func)
+function TGenerator:flatMap(func)
   return self:map(function (x) 
            return func(x):generate()
          end)
 end
 
-function Generator:zip2(otherGen, zipperFunc)
-  return Generator:new(function () 
+function TGenerator:zip2(otherGen, zipperFunc)
+  return TGenerator:new(function () 
            return zipperFunc(self:generate(),
                              otherGen:generate())
          end)
 end
 
-function Generator:oneOf(array)
-  return Generator:rangeGen(1, #array)
+function TGenerator:amb(otherGen) 
+  return GenPackage.boolGen():flatMap(function (b) 
+        return b and self or otherGen
+      end)
+end
+
+---------------------------------------------------
+------------------- GenPackage --------------------
+---------------------------------------------------
+
+function GenPackage.singleGen(val)
+  return TGenerator:new(function () return val end)
+end
+
+function GenPackage.oneOf(array)
+  return GenPackage.rangeGen(1, #array)
                   :map(function (i)
                          return array[i]
                        end)
 end
 
-function Generator:numGen()
-  return Generator:new(function () 
-    return math.random(MAX_INT32);
+function GenPackage.numGen()
+  return TGenerator:new(function () 
+    return math.random(GenPackage.MAX_INT32);
   end)
 end
   
-function Generator:int16Gen()
-  return Generator:new(function () 
-    return math.random(MIN_INT16, MAX_INT16);
+function GenPackage.int16Gen()
+  return TGenerator:new(function () 
+    return math.random(GenPackage.MIN_INT16, 
+                       GenPackage.MAX_INT16);
   end)
 end
   
-function Generator:int32Gen()
-  return Generator:new(function () 
-    return math.random(MIN_INT32, MAX_INT32);
+function GenPackage.int32Gen()
+  return TGenerator:new(function () 
+    return math.random(GenPackage.MIN_INT32, 
+                       GenPackage.MAX_INT32);
   end)
 end
   
-function Generator:int64Gen()
-  return Generator:new(function () 
-    return math.random(MIN_INT64, MAX_INT64);
+function GenPackage.int64Gen()
+  return TGenerator:new(function () 
+    return math.random(GenPackage.MIN_INT64, 
+                       GenPackage.MAX_INT64);
   end)
 end
   
-function Generator:uint16Gen()
-  return Generator:new(function () 
-    return math.random(0, MAX_UINT16);
+function GenPackage.uint16Gen()
+  return TGenerator:new(function () 
+    return math.random(0, GenPackage.MAX_UINT16);
   end)
 end
   
-function Generator:uint32Gen()
-  return Generator:new(function () 
-    return math.random(0, MAX_UINT32);
+function GenPackage.uint32Gen()
+  return TGenerator:new(function () 
+    return math.random(0, GenPackage.MAX_UINT32);
   end)
 end
   
-function Generator:uint64Gen()
-  return Generator:new(function () 
-    return math.random(0, MAX_UINT64);
+function GenPackage.uint64Gen()
+  return TGenerator:new(function () 
+    return math.random(0, GenPackage.MAX_UINT64);
   end)
 end
   
-function Generator:rangeGen(loInt, hiInt)
-  return Generator:new(function() 
+function GenPackage.rangeGen(loInt, hiInt)
+  return TGenerator:new(function() 
         return math.random(loInt, hiInt)
       end)
 end
 
-function Generator:boolGen()
-  return Generator:new(function () 
+function GenPackage.boolGen()
+  return TGenerator:new(function () 
     return math.random(2) > 1;
   end)
 end
 
-function Generator:charGen()
-  return Generator:rangeGen(0, MAX_BYTE)
+function GenPackage.charGen()
+  return GenPackage.rangeGen(0, GenPackage.MAX_BYTE)
 end
 
-function Generator:wcharGen()
-  return Generator:rangeGen(0, MAX_INT16)
+function GenPackage.wcharGen()
+  return GenPackage.rangeGen(0, GenPackage.MAX_INT16)
 end
 
-function Generator:octetGen()
-  return Generator:rangeGen(0, MAX_BYTE)
+function GenPackage.octetGen()
+  return GenPackage.rangeGen(0, GenPackage.MAX_BYTE)
 end
 
-function Generator:shortGen()
-  return Generator:int16Gen()
+function GenPackage.shortGen()
+  return GenPackage.int16Gen()
 end
 
-function Generator:posFloatGen()
-  return Generator:new(function()
-           return math.random() * math.random(0, MAX_INT16)
+function GenPackage.posFloatGen()
+  return TGenerator:new(function()
+           return math.random() * math.random(0, GenPackage.MAX_INT16)
          end)
 end
 
-function Generator:posDoubleGen()
-  return Generator:new(function()
-           return math.random() * math.random(0, MAX_INT32)
+function GenPackage.posDoubleGen()
+  return TGenerator:new(function()
+           return math.random() * math.random(0, GenPackage.MAX_INT32)
          end)
 end
 
-function Generator:floatGen()
-  return Generator:boolGen():map(function(b)
-           local num = math.random() * math.random(0, MAX_INT16)
+function GenPackage.floatGen()
+  return GenPackage.boolGen():map(function(b)
+           local num = math.random() * math.random(0, GenPackage.MAX_INT16)
            return b and -num or num
          end)
 end
 
-function Generator:doubleGen()
-  return Generator:boolGen():map(function(b)
-           local num = math.random() * math.random(0, MAX_INT32)         
+function GenPackage.doubleGen()
+  return GenPackage.boolGen():map(function(b)
+           local num = math.random() * math.random(0, GenPackage.MAX_INT32)         
            return b and -num or num
          end)
 end
 
-function Generator:amb(otherGen) 
-  return Generator:boolGen():flatMap(function (b) 
-        return b and self or otherGen
-      end)
-end
-
-function Generator:lowercaseGen()
+function GenPackage.lowercaseGen()
   local a = 97
   local z = 122
-  return Generator:rangeGen(a, z)
+  return GenPackage.rangeGen(a, z)
 end
 
-function Generator:uppercaseGen()
+function GenPackage.uppercaseGen()
   local A = 65
   local Z = 90
-  return Generator:rangeGen(A, Z)
+  return GenPackage.rangeGen(A, Z)
 end
 
-function Generator:alphaGen()
-  return Generator:lowercaseGen():amb(
-            Generator:uppercaseGen())
+function GenPackage.alphaGen()
+  return GenPackage.lowercaseGen():amb(
+            GenPackage.uppercaseGen())
 end
 
-function Generator:alphaNumGen()
+function GenPackage.alphaNumGen()
   local zero = 48
   local nine = 57
-  return Generator:alphaGen():amb(
-            Generator:rangeGen(zero, nine))
+  return GenPackage.alphaGen():amb(
+            GenPackage.rangeGen(zero, nine))
 end
 
-function Generator:printableGen()
+function GenPackage.printableGen()
   local space = 32
   local tilde = 126
-  return Generator:rangeGen(space, tilde)
+  return GenPackage.rangeGen(space, tilde)
 end
 
-function Generator:seqGen(elemGen, maxLength)
-  elemGen = elemGen or Generator:single("unknown ")
-  maxLength = maxLength or MAX_BYTE+1
+function GenPackage.seqGen(elemGen, maxLength)
+  elemGen = elemGen or GenPackage.singleGen("unknown ")
+  maxLength = maxLength or GenPackage.MAX_BYTE+1
  
   return 
-    Generator:rangeGen(0, maxLength)
+    GenPackage.rangeGen(0, maxLength)
              :map(function (length) 
                     local arr = {}
                     for i=1,length do
@@ -206,12 +306,12 @@ function Generator:seqGen(elemGen, maxLength)
                   end)
 end
 
-function Generator:nonEmptyStringGen(maxLength, charGen)
-  charGen = charGen or Generator:printableGen()
-  maxLength = maxLength or MAX_BYTE+1
+function GenPackage.nonEmptyStringGen(maxLength, charGen)
+  charGen = charGen or GenPackage.printableGen()
+  maxLength = maxLength or GenPackage.MAX_BYTE+1
 
   return 
-    Generator:rangeGen(1, maxLength)
+    GenPackage.rangeGen(1, maxLength)
              :map(function (length) 
                     local arr = {}
                     for i=1,length do
@@ -221,36 +321,39 @@ function Generator:nonEmptyStringGen(maxLength, charGen)
                   end)
 end
 
-function Generator:stringGen(maxLength, charGen)
-  return Generator:boolGen():flatMap(
+function GenPackage.stringGen(maxLength, charGen)
+  return GenPackage.boolGen():flatMap(
            function (empty)
               return empty 
-              and Generator:single("") 
-              or  Generator:nonEmptyStringGen(maxLength, charGen)
+              and GenPackage.singleGen("") 
+              or  GenPackage.nonEmptyStringGen(maxLength, charGen)
            end)
 end
 
-function Generator:createMemberGenTab(structtype, genLib)
-  local memberGenTab = {}
-  genLib = genLib or {}
+function Private.createMemberGenTab(
+    structtype, 
+    genLib, 
+    memoizeGen)
+
+  local memberGenTab = { }
+  genLib = genLib or { }
+  genLib.typeGenLib = genLib.typeGenLib or { }
 
   if structtype[xtypes.BASE] ~= nil then
     memberGenTab = 
-      Generator:createMemberGenTab(structtype[xtypes.BASE], genLib)
+      Private.createMemberGenTab(
+          structtype[xtypes.BASE], genLib, memoizeGen)
   end
 
-  for key, val in ipairs(structtype) do
+  for idx, val in ipairs(structtype) do
     local member, def = next(val)
     --io.write(member .. ": ")
-    for k, kind in ipairs(def) do
-      --io.write(tostring(v) .. " ")
-      if(genLib[member]) then
-        memberGenTab[member] = genLib[member]
-      else
-        memberGenTab[member] = Generator:getGenerator(kind)
-        genLib[member] = memberGenTab[member]
-      end
-      break
+    if genLib[member] then -- if library already has a generator 
+      memberGenTab[member] = genLib[member]
+    else
+      memberGenTab[member] = Private.getGenerator(
+                                def, genLib, memoizeGen)
+      if memoizeGen then genLib[member] = memberGenTab[member] end
     end
     --print()
   end
@@ -258,11 +361,62 @@ function Generator:createMemberGenTab(structtype, genLib)
   return memberGenTab;
 end
 
-function Generator:aggregateGen(structtype, genLib)
-  local memberGenTab 
-    = Generator:createMemberGenTab(structtype)
+function Private.getGenerator(
+    roledef, genLib, memoizeGen)
+  local gen = nil
+  local baseTypename = tostring(roledef[1])
 
-  return Generator:new(function () 
+  if genLib.typeGenLib[baseTypename] == nil then -- if genertor isn't there
+
+    if roledef[1][xtypes.KIND]() == "atom" then  -- It's a function!
+      gen = GenPackage.getPrimitiveGen(baseTypename)
+    elseif roledef[1][xtypes.KIND]() == "enum" then  -- It's a function!
+      gen = GenPackage.enumGen(roledef[1])
+    elseif roledef[1][xtypes.KIND]() == "struct" then  -- It's a function!
+      gen = GenPackage.aggregateGen(roledef[1], genLib, memoizeGen)
+    end
+    if memoizeGen then genLib.typeGenLib[baseTypename] = gen end
+
+  else 
+    gen = genLib.typeGenLib[baseTypename] -- cache the generator
+  end
+
+  for i=2, #roledef do
+    --io.write(tostring(roledef[i]) .. " ")
+    local info = tostring(roledef[i])
+    if string.find(info, "Sequence") then
+      gen = Private.sequenceParseGen(gen, info)
+    elseif string.find(info, "Optional") then
+      gen = gen:amb(GenPackage.singleGen(nil))
+    end
+  end
+
+  return gen
+end
+
+function Private.sequenceParseGen(gen, info)
+  local o = 10 -- open parenthesis "@Sequence(...)"
+  local close = string.find(info, ")")
+  
+  if close == nil then -- unbounded sequence
+    gen = GenPackage.seqGen(gen)
+  else
+    local bound = string.sub(info, o+1, close-1)
+    --print(tonumber(bound))
+    gen = GenPackage.seqGen(gen, tonumber(bound))
+  end
+
+  return gen
+end
+
+function GenPackage.aggregateGen(
+    structtype, genLib, memoizeGen)
+
+  local memberGenTab 
+    = Private.createMemberGenTab(
+          structtype, genLib, memoizeGen)
+
+  return TGenerator:new(function () 
            local data = {}
            for member, gen in pairs(memberGenTab) do
              data[member] = gen:generate()
@@ -271,64 +425,47 @@ function Generator:aggregateGen(structtype, genLib)
          end)
 end
 
-function Generator:getGenerator(mtype)
-  local strtype = tostring(mtype)
-  local gen = Generator:getPrimitiveGen(strtype)
-
-  if gen then return gen end
-
-  if mtype[xtypes.KIND]() == "enum" then  -- It's a function. Very surprising
-    return Generator:enumGen(mtype)
-  elseif mtype[xtypes.KIND]() == "struct" then  -- It's a function. Very surprising
-    return Generator:aggregateGen(mtype)
-  elseif string.find("sequence", strtype) then
-    return Generator:single(tostring("sequence"))
-  else
-    return Generator:single(tostring(mtype))
-  end
-end
-
-function Generator:enumGen(enumtype)
+function GenPackage.enumGen(enumtype)
   local ordinals = {}
   for idx, enumdef in ipairs(enumtype) do
     local elem, value = next(enumdef)
     ordinals[idx] = value
   end
-  return Generator:oneOf(ordinals)
+  return GenPackage.oneOf(ordinals)
 end
 
-function Generator:getPrimitiveGen(ptype)
+function GenPackage.getPrimitiveGen(ptype)
 
   if ptype=="boolean" then
-    return Generator.Bool
+    return GenPackage.Bool
   elseif ptype=="octet" then
-    return Generator.Octet
+    return GenPackage.Octet
   elseif ptype=="char" then
-    return Generator.Char
+    return GenPackage.Char
   elseif ptype=="wchar" then
-    return Generator.WChar
+    return GenPackage.WChar
   elseif ptype=="float" then
-    return Generator.Float
+    return GenPackage.Float
   elseif ptype=="double" then
-    return Generator.Double
+    return GenPackage.Double
   elseif ptype=="long_double" then
-    return Generator.LongDouble
+    return GenPackage.LongDouble
   elseif ptype=="short" then
-    return Generator.Short
+    return GenPackage.Short
   elseif ptype=="long" then
-    return Generator.Long
+    return GenPackage.Long
   elseif ptype=="long_long" then
-    return Generator.LongLong
+    return GenPackage.LongLong
   elseif ptype=="unsigned_short" then
-    return Generator.UShort
+    return GenPackage.UShort
   elseif ptype=="unsigned_long" then
-    return Generator.ULong
+    return GenPackage.ULong
   elseif ptype=="unsigned_long_long" then
-    return Generator.ULongLong
+    return GenPackage.ULongLong
   elseif ptype=="string" then
-    return Generator.String
+    return GenPackage.String
   elseif ptype=="wstring" then
-    return Generator.WString
+    return GenPackage.WString
   end
   
   local isString = string.find(ptype, "string") or
@@ -338,27 +475,36 @@ function Generator:getPrimitiveGen(ptype)
     local lt    = string.find(ptype, "<")
     local gt    = string.find(ptype, ">")
     local bound = string.sub(ptype, lt+1, gt-1)
-    return Generator:nonEmptyStringGen(tonumber(bound))
+    return GenPackage.nonEmptyStringGen(tonumber(bound))
   else
     return nil
   end
 end
 
-Generator.Bool       = Generator:boolGen()
-Generator.Octet      = Generator:octetGen()
-Generator.Char       = Generator:charGen()
-Generator.WChar      = Generator:wcharGen()
-Generator.Float      = Generator:floatGen()
-Generator.Double     = Generator:doubleGen()
-Generator.LongDouble = Generator:doubleGen()
-Generator.Short      = Generator:int16Gen()
-Generator.Long       = Generator:int32Gen()
-Generator.LongLong   = Generator:int64Gen()
-Generator.UShort     = Generator:uint16Gen()
-Generator.ULong      = Generator:uint32Gen()
-Generator.ULongLong  = Generator:uint64Gen()
-Generator.String     = Generator:nonEmptyStringGen()
-Generator.WString    = Generator:nonEmptyStringGen()
+function GenPackage.initialize(seed)
+  seed = seed or os.time()
+  math.randomseed(seed)
+end
 
-return Generator 
+function GenPackage.newGen(func)
+  return TGenerator:new(func)
+end
+
+GenPackage.Bool       = GenPackage.boolGen()
+GenPackage.Octet      = GenPackage.octetGen()
+GenPackage.Char       = GenPackage.charGen()
+GenPackage.WChar      = GenPackage.wcharGen()
+GenPackage.Float      = GenPackage.floatGen()
+GenPackage.Double     = GenPackage.doubleGen()
+GenPackage.LongDouble = GenPackage.doubleGen()
+GenPackage.Short      = GenPackage.int16Gen()
+GenPackage.Long       = GenPackage.int32Gen()
+GenPackage.LongLong   = GenPackage.int64Gen()
+GenPackage.UShort     = GenPackage.uint16Gen()
+GenPackage.ULong      = GenPackage.uint32Gen()
+GenPackage.ULongLong  = GenPackage.uint64Gen()
+GenPackage.String     = GenPackage.nonEmptyStringGen()
+GenPackage.WString    = GenPackage.nonEmptyStringGen()
+
+return GenPackage
 
