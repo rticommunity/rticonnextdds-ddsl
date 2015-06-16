@@ -509,22 +509,13 @@ end
 
 _.collection_metatable = {    
   [_.KIND] = function() return 'collection' end,
-  
-  __call = function (collection)
-      -- the accessor for collection length
-      -- NOTE: the length operator returns the actual number of elements
-      local model = getmetatable(collection)
-      return string.format('%s#', model[_.NAME])
-  end,
 
----[[ TODO
   __len = function (collection)
+      -- NOTE: defined for template instances (i.e. is_role_instance) only
       -- the accessor for collection length
-      -- NOTE: the length operator returns the actual number of elements
       local model = getmetatable(collection)
       return string.format('%s#', model[_.NAME])
   end,
---]]
 
   __index = function (collection, i)
       -- print('DEBUG collection __index', collection, i)
