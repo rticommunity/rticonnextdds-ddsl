@@ -451,7 +451,7 @@ function _.new_collection(content_template, capacity, name, is_role_instance)
   -- copy the meta-table methods to the 'model', and make it the metatable
   for k, v in pairs(_.collection_metatable) do model[k] = v end
 
-  -- Does this instance part of a template?
+  -- Does this instance belong to a part of a template?
   if is_role_instance then -- yes
      model[_.TEMPLATE] = collection -- this instance belongs to template!
 
@@ -498,6 +498,13 @@ function _.new_collection_instance(collection, name, is_role_instance)
                                 table.concat{name or '', sep, model[_.NAME]},
                                 is_role_instance) 
 
+  -- Does this instance belong to a part of a template?
+  if not is_role_instance then -- no!
+      -- sets its template to the collection we used to create this instance
+      local new_collection_model = getmetatable(new_collection_instance)
+      new_collection_model[_.TEMPLATE] = collection
+  end
+
   return new_collection_instance                              
 end             
                         
@@ -535,7 +542,8 @@ _.collection_metatable = {
           
       -- NOTE: we got called because collection[i] does not exist
       local name_i = string.format('%s[%d]',model[_.NAME], i)
-      local element_i = _.clone(model[_.DEFN][1], name_i, model[_.TEMPLATE])
+      local element_i = _.clone(model[_.DEFN][1], name_i, 
+                                collection == model[_.TEMPLATE])
       
       rawset(collection, i, element_i)
       return element_i
