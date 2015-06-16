@@ -1909,17 +1909,31 @@ function Tester:test_api()
   -- cannot add new fields
   shape.z = 99
   assert(shape.z == nil)
+  print('shape (modified): could not add arbitrary field, not in the model')
   
   -- but can mark fields nil (for optional fields)
   shape.shapesize = nil
   assert(shape.shapesize == nil)
   
-  print('shape (modified): ordered')
+  print('shape (modified): ordered - removed field shapesize')
   for i = 1, #ShapeType do
     local role = next(ShapeType[i])
     print('', role, '=', shape[role])     -- shape instance members
   end
-  print('shape (modified): unordered')
+  print('shape (modified): unordered - removed field shapesize')
+  for role, value in pairs(shape) do
+    print('', role, value)
+  end
+  
+  -- and add them back (for optional fields)
+  shape.shapesize = 50
+  assert(shape.shapesize == 50)
+  print('shape (modified): ordered - added field shapesize')
+  for i = 1, #ShapeType do
+    local role = next(ShapeType[i])
+    print('', role, '=', shape[role])     -- shape instance members
+  end
+  print('shape (modified): unordered - added field shapesize')
   for role, value in pairs(shape) do
     print('', role, value)
   end

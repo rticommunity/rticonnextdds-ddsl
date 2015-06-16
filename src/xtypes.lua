@@ -1043,6 +1043,15 @@ xtypes.API[xtypes.STRUCT] = {
         -- visit up the base model inheritance hierarchy
         base = base_model[_.DEFN][xtypes.BASE] -- parent base
       end
+      
+    else
+        -- accept the key if it is defined in the model definition
+        -- e.g. could have been an optional member that was removed
+        for i = 1, #model_defn do
+          if key == next(model_defn[i]) then
+              rawset(template, key, value)
+          end
+        end
     end
   end
 }
@@ -1236,6 +1245,15 @@ xtypes.API[xtypes.UNION] = {
           }
         end
       end
+
+    else
+        -- accept the key if it is defined in the model definition
+        -- e.g. could have been an optional member that was removed
+        for i = 1, #model_defn do
+          if key == next(model_defn[i]) then
+              rawset(template, key, value)
+          end
+        end
     end
   end
 }
