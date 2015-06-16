@@ -113,7 +113,7 @@ IMPLEMENTATION
       Or a composite field 
           model.role = _.new_instance(RoleModel, 'role')
       or a sequence
-          model.role = _.new_instance_collection(RoleModel, [capacity], 'role')
+          model.role = _.new_collection(RoleModel, [capacity], 'role')
    
 CAVEATS
 
@@ -226,7 +226,7 @@ function _.create_role_instance(role, role_defn)
   _.assert_role(role)
   
   local template = role_defn[1]
-  _.assert_template(template) 
+  _.assert_template_kind(template) 
   
   -- pre-condition: ensure that the rest of the member definition entries are 
   -- annotations: also look for the 1st 'collection' annotation (if any)
@@ -247,11 +247,11 @@ function _.create_role_instance(role, role_defn)
     if collection then
       local iterator = template
       for i = #collection, 2, -1  do -- create iterator for inner dimensions
-        iterator = _.new_instance_collection(iterator, collection[i]) -- unnamed 
+        iterator = _.new_collection(iterator, collection[i], '', true) -- empty
       end
-      role_instance = _.new_instance_collection(iterator, collection[1], role)
+      role_instance = _.new_collection(iterator, collection[1], role, true)
     else
-      role_instance = _.new_instance(template, role)
+      role_instance = _.new_instance(template, role, true)
     end
   end
   
@@ -289,30 +289,27 @@ end
 --  Defines a table that can be used to index into an instance of a model
 -- 
 -- @param template  <<in>> the template to use for creating an instance
--- @param name      <<in>> the role|instance name; maybe nil (=> '')
+-- @param name      <<in>> the template role name; maybe nil
+--                         non-nil => creating a template instance 
+--                         nil => creating an instance for holding data
+-- @param is_role_instance <<in>> is this part of a role instance, i.e.
+--                   does this instance belong to a template? (default: nil)
 -- @return the newly created instance that supports indexing by 'name'
 -- @usage
 --    -- As an index into DDS dynamic data: sample[]
---    local myInstance = _.new_instance(template, "my")
---    local member = sample[myInstance.member] 
---    for i = 1, sample[myInstance.memberSeq()] do -- length of the sequence
---       local element_i = sample[memberSeq[i]] -- access the i-th element
---    end  
+--    -- MyType.member = _.new_instance(Member, "member")
+--    local member = sample[MyType.member] 
 --
 --    -- As a sample itself
---    local myInstance = _.new_instance(template, "my")
+--    local myInstance = _.new_instance(MyType)
 --    myInstance.member = "value"
---    for i = 1, 10 do -- length of the sequence
---       myInstance.memberSeq[i] = element_i -- NOTE: capacity is enforced
---    end  
---    print(#myInstance.memberSeq)
---
-function _.new_instance(template, name) 
+--    
+function _.new_instance(template, name, is_role_instance) 
   local model = getmetatable(template)
   -- print('DEBUG new_instance 1: ', model[_.NAME], name)
 
-  if nil ~= name then _.assert_role(name) else name = '' end
-  _.assert_template(template)
+  if nil ~= name then _.assert_role(name) end
+  _.assert_template_kind(template)
  
   local instance = nil
   
@@ -346,9 +343,11 @@ function _.new_instance(template, name)
   if alias_collection then
     local iterator = template
     for i = #alias_collection, 2, - 1  do -- create for inner dimensions:unnamed
-      iterator = _.new_instance_collection(iterator, alias_collection[i])
+      iterator = _.new_collection(iterator, alias_collection[i], '',
+                is_role_instance)
     end
-    instance = _.new_instance_collection(iterator, alias_collection[1], name)
+    instance = _.new_collection(iterator, alias_collection[1], name, 
+                is_role_instance)
     return instance
   end
   
@@ -357,7 +356,7 @@ function _.new_instance(template, name)
   ---------------------------------------------------------------------------
 
   if is_alias_kind and _.info.is_alias_kind(alias) then
-    instance = _.new_instance(template, name) -- recursive
+    instance = _.new_instance(template, name, is_role_instance) -- recursive
     return instance
   end
 
@@ -385,7 +384,7 @@ function _.new_instance(template, name)
   for k, v in pairs(template) do
     -- skip meta-data attributes
     if 'string' == type(k) then
-      instance[k] = _.clone(v, name)
+      instance[k] = _.clone(v, name, is_role_instance)
     end
   end
 
@@ -397,39 +396,43 @@ function _.new_instance(template, name)
   return instance
 end
 
--- Creates a collection of instances specified by the template or the instance 
--- collection previously created via this call
+-- Creates a collection template comprising of elements specified by the 
+-- given template or the collection (previously created via this call)
 -- 
 -- Purpose:
 --    Define new named collection of instances
 -- Parameters:
---    <<in>> template_or_collection - the element the template or collection 
---               may be an instance table when it is an non-collection type OR
---               may be a collection table for a collection of collection
---    <<in>> capacity - the capacity, ie the maximum number of instances
+-- @param content_template <<in>> - the template describing collection elements 
+--               may be an instance table i.e. non-collection type OR
+--               may be a collection table i.e. a collection of collections
+-- @param capacity - the capacity, ie the maximum number of instances
 --                      maybe nil (=> unbounded)
---    <<in>> name  - the collection instance name; maybe nil (=> '')
---    <<returns>> the newly created collection of instances
+-- @param name <<in>> the template role name; maybe nil
+--                         non-nil => creating a template instance 
+--                         nil => creating an instance for holding data
+-- @param is_role_instance <<in>> is this part of a role instance, i.e.
+--                   does this instance belong to a template? (default: nil)
+-- @return returns the newly created collection
 -- Usage:
 --    -- As an index into DDS dynamic data: sample[]
---    local mySeq = _.new_instance_collection(template, "my")
---    for i = 1, sample[mySeq()] do -- length accessor for the collection
---       local element_i = sample[mySeq[i]] -- access the i-th element
+--    -- MyType.mySeq = _.new_collection(MySeq, "mySeq")
+--    for i = 1, sample[#MyType.mySeq] do -- length accessor for the collection
+--       local element_i = sample[MyType.mySeq[i]] -- access the i-th element
 --    end    
 --
 --    -- As a sample itself
---    local mySeq = _.new_instance_collection(template, "my")
+--    local myInstance = _.new_collection(MyType)
 --    for i = 1, 10 do
---        mySeq[i]] = element_i -- access the i-th element
+--        myInstance.mySeq[i] = element_i -- access the i-th element
 --    end  
---    print(#mySeq) -- the actual number of elements
-function _.new_instance_collection(template_or_collection, capacity, name) 
-  -- print('DEBUG new_instance_collection',template_or_collection,capacity,name)
+--    print(#myInstance.mySeq) -- the actual number of elements
+function _.new_collection(content_template, capacity, name, is_role_instance) 
+  -- print('DEBUG new_collection',content_template,capacity,name)
 
-  if nil ~= name then _.assert_role(name) else name = '' end
-  assert(_.is_instance_collection(template_or_collection) or
-         _.info.is_template_kind(template_or_collection),
-         table.concat{'create_collection(): needs a template or collection'})
+  if nil ~= name then _.assert_role(name) end
+  assert(_.is_collection(content_template) or
+         _.info.is_template_kind(content_template),
+         table.concat{'new_collection(): needs a template or collection'})
   
   -- convert capacity model element into its value
   if _.model_kind(capacity) then capacity = capacity() end
@@ -438,35 +441,89 @@ function _.new_instance_collection(template_or_collection, capacity, name)
     
   -- create collection instance
   local model = {
-     [_.NAME]      = name, 
-     [_.DEFN]      = { template_or_collection, capacity },
-     [_.INSTANCES] = {}, -- the collection instance
+     [_.NAME]      = name or '', 
+     [_.DEFN]      = { content_template, capacity },
+     [_.INSTANCES] = {}, -- the collection of instances 
+     [_.TEMPLATE]  = nil,-- non-nil iff is_role_instance (ie part of a template)
   }
   local collection = model[_.INSTANCES]
 
   -- copy the meta-table methods to the 'model', and make it the metatable
   for k, v in pairs(_.collection_metatable) do model[k] = v end
-  setmetatable(collection, model)
 
+  -- Does this instance belong to a part of a template?
+  if is_role_instance then -- yes
+     model[_.TEMPLATE] = collection -- this instance belongs to template!
+
+  
+  else -- no
+      -- The __len metamethod is needed only for collections belonging to 
+      -- a template instance. 
+      --
+      -- For non-template collection instances, we won't define the __len 
+      -- metamethod. Thus the rawleng would be invoked, returning the actual 
+      -- length (and this is the fast!)
+  
+      --print('DEBUG new_collection',model.__len,name,content_template,capacity)
+      model.__len = nil
+  end            
+
+  setmetatable(collection, model)      
   return collection
 end
 
+
+-- Create new named collection of instances based on another collection 
+-- Parameters:
+-- @param collection  <<in>>  - the template collection 
+-- @param name <<in>> the template role name; maybe nil
+-- @param is_role_instance <<in>> is this part of a role instance, i.e.
+--                   does this instance belong to a template? (default: nil)
+-- @return the newly created collection with the given name, and the given
+--         collection as the "collection template"
+function _.new_collection_instance(collection, name, is_role_instance) 
+
+  local model = getmetatable(collection)   
+  
+  --  decide on the separator
+  local sep = '.'
+  if nil == name or  '' == name or  '' == model[_.NAME] then
+     sep = ''
+  end
+
+  -- create a new collection instance                         
+  local new_collection_instance = _.new_collection(
+                                model[_.DEFN][1], -- element template
+                                model[_.DEFN][2], -- capacity
+                                table.concat{name or '', sep, model[_.NAME]},
+                                is_role_instance) 
+
+  -- Does this instance belong to a part of a template?
+  if not is_role_instance then -- no!
+      -- sets its template to the collection we used to create this instance
+      local new_collection_model = getmetatable(new_collection_instance)
+      new_collection_model[_.TEMPLATE] = collection
+  end
+
+  return new_collection_instance                              
+end             
+                        
 -- Is the given value a collection of instances:
-function _.is_instance_collection(v) 
+function _.is_collection(v) 
   local model = getmetatable(v)
   return model and model[_.KIND] == _.collection_metatable[_.KIND]
 end
 
 _.collection_metatable = {    
   [_.KIND] = function() return 'collection' end,
-  
-  __call = function (collection)
+
+  __len = function (collection)
+      -- NOTE: defined for template instances (i.e. is_role_instance) only
       -- the accessor for collection length
-      -- NOTE: the length operator returns the actual number of elements
       local model = getmetatable(collection)
       return string.format('%s#', model[_.NAME])
   end,
-  
+
   __index = function (collection, i)
       -- print('DEBUG collection __index', collection, i)
       if 'number' ~= type(i) then
@@ -485,7 +542,8 @@ _.collection_metatable = {
           
       -- NOTE: we got called because collection[i] does not exist
       local name_i = string.format('%s[%d]',model[_.NAME], i)
-      local element_i = _.clone(model[_.DEFN][1], name_i)
+      local element_i = _.clone(model[_.DEFN][1], name_i, 
+                                collection == model[_.TEMPLATE])
       
       rawset(collection, i, element_i)
       return element_i
@@ -521,44 +579,41 @@ _.collection_metatable = {
 
 --- Clone a new instance from another instance using the given 'name' prefix
 -- @param v [in] an instance (maybe collection) with properly initialized fields
--- @param name [in] name (maybe empty, '') to prefix the instance fields with   
+-- @param prefix [in] the name to prefix the instance fields with (maybe nil)
+--                    non-nil => creating a template instance
+--                    nil     => creating a user instance for holding data
+-- @param is_role_instance <<in>> is this part of a role instance, i.e.
+--                   does this instance belong to a template? (default: nil)
 -- @return new instance with fields properly initialized for 'prefix'
-function _.clone(v, prefix) 
+function _.clone(v, prefix, is_role_instance) 
 
     local type_v = type(v)
     local result 
-    
-    --  decide on the separator
-    local sep = '.' -- default separator
-    if 
-      '' == prefix or                          -- empty prefix (unnamed clone)
-      '#' == v                                 -- union discriminator: _d      
-    then
-      sep = ''      
-    end
-    
+        
     -- clone the instance  
     if 'table' == type_v then -- collection or struct or union
 
-        if _.is_instance_collection(v) then -- collection
-            local model = getmetatable(v)
-            
-            -- multi-dimensional collection
-            if '' == model[_.NAME] then sep = '' end 
-            
+        if _.is_collection(v) then -- collection
             -- create collection instance for 'prefix'
-            result = _.new_instance_collection(
-                        model[_.DEFN][1], -- element template
-                        model[_.DEFN][2], -- capacity
-                        table.concat{prefix, sep, model[_.NAME]})  
+            result = _.new_collection_instance(v, prefix, is_role_instance)  
         else -- not collection: struct or union
-            -- create instance for 'prefix'
-            result = _.new_instance(v, prefix) -- use member as template   
+            -- create instance for 'prefix' 
+            result = _.new_instance(v, prefix, is_role_instance) 
         end
         
     elseif 'string' == type_v then -- leaf
+        --  decide on the separator
+        local sep = '.' -- default separator
+        if 
+          nil == prefix or          -- not a template instance
+          '' == prefix or           -- empty prefix (unnamed clone)
+          '#' == v                  -- union discriminator: _d      
+        then
+          sep = ''      
+        end
+ 
         -- create instance for 'prefix'
-        result = table.concat{prefix, sep, v}
+        result = table.concat{prefix or '', sep, v} -- prefix may be nil
     end
     
     return result
@@ -571,7 +626,7 @@ end
 -- Retrieve the model definition underlying an instance
 -- The instance would have been created previously using 
 --      _.new_instance() or 
---      _.new_instance_collection() or 
+--      _.new_collection() or 
 --      _._new_template() for a "template" instance
 -- @param instance [in] the instance whose model we want to retrieve
 -- @return the underlying data model
@@ -582,7 +637,7 @@ end
 --- Retrieve the template instance for the given instance
 -- The instance would have been created previously using 
 --      _.new_instance() or 
---      _.new_instance_collection() or 
+--      _.new_collection() or 
 --      _._new_template() for a "template" instance
 -- @param instance [in] the instance whose template we want to retrieve
 -- @return the underlying template
@@ -639,21 +694,12 @@ end
 -- @param kind   [in] expected model element kind
 -- @param value  [in] table to check if it is a model element of "kind"
 -- @return the model table if the kind matches, or nil
-function _.assert_model(kind, value)
+function _.assert_model_kind(kind, value)
     local model = getmetatable(value)
     assert(model and kind == model[_.KIND],
            table.concat{'expected model kind "', kind(), 
                         '", instead got "', tostring(value), '"'})
     return value
-end
-
---- Ensure that value is a collection
--- @param collection [in] the potential collection to check
--- @return the collection or nil
-function _.assert_collection(collection)
-    assert(_.info.is_collection_kind(collection), 
-           table.concat{'expected collection \"', tostring(collection), '"'})
-    return collection
 end
 
 --- Ensure that value is a qualifier
@@ -703,7 +749,7 @@ end
 --- Ensure that value is a template
 -- @param templat [in] the potential template to check
 -- @return the template or nil
-function _.assert_template(template)
+function _.assert_template_kind(template)
     assert(_.info.is_template_kind(template), 
            table.concat{'unexpected template kind \"', tostring(template), '"'})
     return template
@@ -724,24 +770,24 @@ local interface = {
   INSTANCES               = _.INSTANCES,
   QUALIFIERS              = _.QUALIFIERS,
   
-  -- ddsl operations
+  -- ddsl operations: for building an ontology of models
   new_template            = _.new_template,
   populate_template       = _.populate_template,
   create_role_instance    = _.create_role_instance,
   update_instances        = _.update_instances,
   
-  model                   = _.model,
   model_kind              = _.model_kind,
-  assert_model            = _.assert_model,
-  assert_collection       = _.assert_collection,
-  assert_template         = _.assert_template,
+  assert_model_kind       = _.assert_model_kind,
+  assert_template_kind    = _.assert_template_kind,
   assert_qualifier_array  = _.assert_qualifier_array,
    
   
   -- for users of templates created with ddsl
   new_instance            = _.new_instance,
-  new_instance_collection = _.new_instance_collection,
-  is_instance_collection  = _.is_instance_collection,
+  new_collection          = _.new_collection,
+  is_collection           = _.is_collection,
+  
+  model                   = _.model,
   template                = _.template,
   resolve                 = _.resolve,
   nsname                  = _.nsname,

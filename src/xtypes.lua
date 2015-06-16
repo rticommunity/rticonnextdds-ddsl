@@ -531,7 +531,7 @@ function xtypes.const(decl)
   local name, defn = xtypes.parse_decl(decl)
        
   -- pre-condition: ensure that the 1st defn declaration is a valid type
-  local atom = _.assert_model(xtypes.ATOM, _.resolve(defn[1]))
+  local atom = _.assert_model_kind(xtypes.ATOM, _.resolve(defn[1]))
          
   -- pre-condition: ensure that the 2nd defn declaration is a valid value
   local value = defn[2]
@@ -1002,7 +1002,7 @@ xtypes.API[xtypes.STRUCT] = {
       -- get the base model, if any:
       local new_base
       if nil ~= value then
-        new_base = _.assert_model(xtypes.STRUCT, value)
+        new_base = _.assert_model_kind(xtypes.STRUCT, value)
       end
 
       -- populate the instance fields from the base model struct
@@ -1043,6 +1043,15 @@ xtypes.API[xtypes.STRUCT] = {
         -- visit up the base model inheritance hierarchy
         base = base_model[_.DEFN][xtypes.BASE] -- parent base
       end
+      
+    else
+        -- accept the key if it is defined in the model definition
+        -- e.g. could have been an optional member that was removed
+        for i = 1, #model_defn do
+          if key == next(model_defn[i]) then
+              rawset(template, key, value)
+          end
+        end
     end
   end
 }
@@ -1236,6 +1245,15 @@ xtypes.API[xtypes.UNION] = {
           }
         end
       end
+
+    else
+        -- accept the key if it is defined in the model definition
+        -- e.g. could have been an optional member that was removed
+        for i = 1, #model_defn do
+          if key == next(model_defn[i]) then
+              rawset(template, key, value)
+          end
+        end
     end
   end
 }
@@ -1408,12 +1426,16 @@ function xtypes.typedef(decl)
 
   -- pre-condition: ensure that the 1st defn element is a valid type
   local alias = defn[1]
-  _.assert_template(alias)
+  _.assert_template_kind(alias)
 
   -- pre-condition: ensure that the 2nd defn element if present 
-  -- is a 'collection' type
-  local collection = defn[2] and _.assert_collection(defn[2])
-
+  -- is a 'collection' kind
+  local collection = defn[2]
+  if collection and not xtypes.info.is_collection_kind(collection) then
+    error(table.concat{'expected sequence or array, got: ', tostring(value)},
+          2)     
+  end
+ 
   -- create the template
   local template, model = _.new_template(name, xtypes.TYPEDEF, 
                                                xtypes.API[xtypes.TYPEDEF]) 
@@ -1496,8 +1518,8 @@ local xutils = {}
 -- @return the cumulative result of visiting all the fields. Each field that is
 --         visited is inserted into this table. This returned value table can be 
 --         passed to another call to this method (to build it cumulatively).
-function xutils.visit_instance(instance, result, model) 
-  local template = instance -- _.template(instance) -- TODO
+function xutils.visit_instance(instance, result, model, template) 
+  template = template or _.template(instance)
   
   -- print('DEBUG xutils.visit_instance 1: ', instance, template) 
  
@@ -1505,19 +1527,22 @@ function xutils.visit_instance(instance, result, model)
   result = result or {} 
 
   -- collection instance
-  if _.is_instance_collection(instance) then
+  if _.is_collection(instance) then
         -- ensure 1st element exists for illustration
       local _ = instance[1]
       
       -- length operator and actual length
-      table.insert(result, template() .. ' = ' ..  #instance)
+      table.insert(result, 
+             table.concat{#template, ' = ', #instance})
           
       -- visit all the elements
-      for i = 1, #instance do 
+      for i = 1, tonumber(#instance) or 1 do 
         if 'table' == type(instance[i]) then -- composite collection
-            xutils.visit_instance(instance[i], result) -- visit i-th element 
+            -- visit i-th element
+            xutils.visit_instance(instance[i], result, nil, template[i]) 
         else -- leaf collection
-            table.insert(result, template[i] .. ' = ' .. instance[i])
+            table.insert(result, 
+                table.concat{template[i], ' = ', instance[i]})
         end
       end
       
@@ -1536,13 +1561,13 @@ function xutils.visit_instance(instance, result, model)
           
   -- union discriminator, if any
   if xtypes.UNION == mytype then
-    table.insert(result, template._d .. ' = ' .. instance._d)
+    table.insert(result, table.concat{template._d, ' = ', instance._d})
   end
     
   -- struct base type, if any
   local base = model[_.DEFN][xtypes.BASE]
   if nil ~= base then
-    result = xutils.visit_instance(instance, result, _.model(base)) 
+    result = xutils.visit_instance(instance, result, _.model(base), template) 
   end
   
   -- preserve the order of model definition
@@ -1564,11 +1589,12 @@ function xutils.visit_instance(instance, result, model)
       -- print('DEBUG index 3: ', role, role_instance)
 
       if 'table' == role_instance_type then -- composite or collection
-        result = xutils.visit_instance(role_instance, result)
+        result = xutils.visit_instance(role_instance,result,nil,template[role])
       else -- leaf
-        table.insert(result, template[role] 
-                                and template[role] .. ' = ' .. role_instance
-                                or nil) 
+        table.insert(result, 
+                  template[role] 
+                     and table.concat{template[role],' = ', role_instance}
+                     or nil) 
       end
   end
 
@@ -1863,8 +1889,8 @@ local interface = {
     resolve                 = _.resolve,
     template                = _.template,
     new_instance            = _.new_instance,
-    new_instance_collection = _.new_instance_collection,
-    is_instance_collection  = _.is_instance_collection,
+    new_collection          = _.new_collection,
+    is_collection           = _.is_collection,
     visit_instance          = xutils.visit_instance,
     visit_model             = xutils.visit_model,
   }
