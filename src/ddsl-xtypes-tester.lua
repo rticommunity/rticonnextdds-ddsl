@@ -33,9 +33,7 @@ Tester[#Tester+1] = 'test_module'
 function Tester:test_module()
 
     Test.MyModule = xtypes.module{MyModule=xtypes.EMPTY} -- define a module
-
-    self:print(Test.MyModule)
-    
+   
     assert(Test.MyModule ~= nil)
 end
 
@@ -1727,10 +1725,18 @@ Tester[#Tester+1] = 'test_xml_advanced'
 function Tester:test_xml_advancedX()
   local xmlfile2xtypes = require('xtypes-xml').xmlfile2xtypes
   
-  local schemas = xmlfile2xtypes('types1.xml')
+  local testfiles = {
+    'test.xml',
+    'types1.xml'
+  }
   
-  for i = 1, #schemas do
-    self:print(schemas[i])
+  for i, file in ipairs(testfiles) do
+    print('========= ', file, ' do =========')
+    local schemas = xmlfile2xtypes(file)
+    for i = 1, #schemas do
+      self:print(schemas[i])
+    end
+    print('--------- ', file, ' end ---------')
   end
 end
 

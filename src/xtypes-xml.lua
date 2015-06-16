@@ -16,7 +16,7 @@ local xmlstring2table = require('xml-parser').xmlstring2table
 
 local is_trace_on = true
 function trace(...) 
-  if is_trace_on then return print(...) end
+  if is_trace_on then return print('TRACE: ', ...) end
 end
 
 
@@ -40,10 +40,13 @@ local function lookup_type(name)
     longLong         = xtypes.long_long,
     unsignedLongLong = xtypes.unsigned_long_long,
     longDouble       = xtypes.long_double,
+    
     key              = xtypes.Key,
+    optional         = xtypes.Optional,
   }
   -- lookup in the deviations table
-  if xmlName2Model[name] then return xmlName2Model[name] end
+  local template = xmlName2Model[name] 
+  if nil ~= template then return template end
 
   -- lookup in the xtypes pre-defined templates
   for i, template in pairs(xtypes) do
@@ -61,7 +64,7 @@ local function lookup_type(name)
     end
   end
   
-  -- print(table.concat{'WARNING: Skipping unresolved name: ', name})
+  trace(table.concat{'Skipping unresolved name: "', name, '"'})
                               
   return nil
 end
@@ -98,7 +101,7 @@ local function xml_xarg2role_definition(xarg)
         
         -- determine the stringMaxLength 
         local stringMaxLength -- NOTE: "-1" means unbounded
-        if '-1' ~= xarg.stringMaxLength then -- bounded
+        if xarg.stringMaxLength and '-1' ~= xarg.stringMaxLength then -- bounded
           stringMaxLength = lookup_type(xarg.stringMaxLength) or 
                             tonumber(xarg.stringMaxLength)
         end
@@ -171,25 +174,36 @@ Each creation function returns the newly created X-Type template
 --]]
 local tag2template = {
 
+  typedef = function(tag)  
+    local template = xtypes.typedef{
+      [tag.xarg.name] = xml_xarg2role_definition(tag.xarg)
+    }
+    return template
+  end,
+  
   const = function(tag)
     local template = xtypes.const{
       [tag.xarg.name] = xml_xarg2role_definition(tag.xarg)
     }
     return template
   end,
-  
+    
   enum = function(tag)
     local template = xtypes.enum{
       [tag.xarg.name] = xtypes.EMPTY
     }
     
     -- child tags
+    local member_count = 0
     for i, child in ipairs(tag) do
       if 'table' == type(child) then -- skip comments
+        member_count = member_count + 1
         if child.xarg.value then
-          template[i] = { [child.xarg.name] = tonumber(child.xarg.value) }
+          template[member_count] = { 
+              [child.xarg.name] = tonumber(child.xarg.value) 
+          }
         else
-          template[i] = child.xarg.name
+          template[member_count] = child.xarg.name
         end
       end
     end
@@ -200,9 +214,12 @@ local tag2template = {
     local template = xtypes.struct{[tag.xarg.name]=xtypes.EMPTY}
 
     -- child tags
+    local member_count = 0
     for i, child in ipairs(tag) do
       if 'table' == type(child) then -- skip comments
-        template[i] = { 
+        member_count = member_count + 1
+        trace(tag.label, child.label, child.xarg.name)
+        template[member_count] = { 
           [child.xarg.name] = xml_xarg2role_definition(child.xarg)
         }
       end
@@ -210,16 +227,55 @@ local tag2template = {
     return template
   end,
   
-  -- union
-  
-  typedef = function(tag)  
-    local template = xtypes.typedef{
-      [tag.xarg.name] = xml_xarg2role_definition(tag.xarg)
-    }
+  union = function (tag)
+    
+    local template
+
+    -- child tags
+    local member_count = 0
+    for i, child in ipairs(tag) do
+      if 'table' == type(child) then -- skip comments
+      
+        if 'discriminator' == child.label then
+          template=xtypes.union{[tag.xarg.name]={lookup_type(child.xarg.type)}}
+        
+        elseif 'case' == child.label then
+          member_count = member_count + 1
+          local case = nil -- default
+          for j, grandchild in ipairs(child) do
+            trace(tag.label, child.label, grandchild.label, 
+                  grandchild.xarg.name or grandchild.xarg.value)
+            if 'table' == type(grandchild) then -- skip comments
+              if 'caseDiscriminator' == grandchild.label then
+                 if 'default' ~= grandchild.xarg.value then
+                   case = lookup_type(grandchild.xarg.value) or 
+                          tonumber(grandchild.xarg.value) -- TODO
+                 end
+              else -- member
+                template[member_count] = { 
+                  case, 
+                      [grandchild.xarg.name] = 
+                                    xml_xarg2role_definition(grandchild.xarg)
+                }
+              end
+            end
+          end
+        end
+      end
+    end
     return template
   end,
+  
+  -- module
 }
 
+-- Legacy tags:
+tag2template.valuetype = function (tag)
+    print('WARNING: Importing valuetype as a struct')
+    return tag2template.struct(tag)
+end
+    
+    
 --[[
 Visit all the nodes in the xml table, and a return a table containing the 
 xtype definitions
@@ -230,6 +286,7 @@ local function xml2xtypes(xml)
 
   local xtype = tag2template[xml.label]
   if xtype then -- process this node (and its child nodes)
+    trace(xml.label, xml.xarg.name)
     table.insert(templates, xtype(xml)) 
     local idl = xtypes.utils.visit_model(templates[#templates], {'IDL:'})
     print(table.concat(idl, '\n\t')) 
