@@ -14,6 +14,11 @@ Created: Rajive Joshi, 2014 Apr 1
 local xtypes = require('xtypes')
 local xmlstring2table = require('xml-parser').xmlstring2table
 
+local is_trace_on = true
+function trace(...) 
+  if is_trace_on then return print(...) end
+end
+
 
 --[[
 Templates created from XML. This list is built as the XML is processed.
@@ -67,7 +72,7 @@ local function dim_string2array(comma_separated_dimension_string)
     local dim = {}
     for w in string.gmatch(comma_separated_dimension_string, "[%w_]+") do
       table.insert(dim, lookup_type(w) or tonumber(w))
-      -- print('dim = ', w, lookup_type(w))
+      trace('dim = ', w, lookup_type(w))
     end
     return table.unpack(dim)
 end
@@ -166,20 +171,31 @@ Each creation function returns the newly created X-Type template
 --]]
 local tag2template = {
 
-  typedef = function(tag)  
-    local template = xtypes.typedef{
-      [tag.xarg.name] = xml_xarg2role_definition(tag.xarg)
-    }
-    return template
-  end,
-  
   const = function(tag)
     local template = xtypes.const{
       [tag.xarg.name] = xml_xarg2role_definition(tag.xarg)
     }
     return template
   end,
-
+  
+  enum = function(tag)
+    local template = xtypes.enum{
+      [tag.xarg.name] = xtypes.EMPTY
+    }
+    
+    -- child tags
+    for i, child in ipairs(tag) do
+      if 'table' == type(child) then -- skip comments
+        if child.xarg.value then
+          template[i] = { [child.xarg.name] = tonumber(child.xarg.value) }
+        else
+          template[i] = child.xarg.name
+        end
+      end
+    end
+    return template
+  end,
+  
   struct = function (tag)
     local template = xtypes.struct{[tag.xarg.name]=xtypes.EMPTY}
 
@@ -191,6 +207,15 @@ local tag2template = {
         }
       end
     end
+    return template
+  end,
+  
+  -- union
+  
+  typedef = function(tag)  
+    local template = xtypes.typedef{
+      [tag.xarg.name] = xml_xarg2role_definition(tag.xarg)
+    }
     return template
   end,
 }
