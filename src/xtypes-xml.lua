@@ -118,7 +118,7 @@ local function lookup_type(name)
  
   if not template then
     trace(table.concat{'\tSkipping unresolved name: "', name, 
-          '"  ns = ', ns and xtypes.utils.nsname(ns)})
+          '"  in ', ns and xtypes.utils.nsname(ns)})
   end      
                          
   return template
@@ -230,7 +230,8 @@ Map an xml tag to an appropriate X-Types template creation function:
       tag --> action to create X-Type template
 Each creation function returns the newly created X-Type template
 --]]
-local tag2template
+local xmlfile2xtypes -- forward declaration
+local tag2template   -- forward declaration
 tag2template = {
 
   typedef = function(tag)  
@@ -356,6 +357,11 @@ tag2template = {
     return template
   end,
   
+  include = function (tag)
+    local file = tag.xarg.file
+    if file then xmlfile2xtypes(file) end
+  end,
+  
   -- Legacy tags
   valuetype = function (tag)
       print('WARNING: Importing valuetype as a struct')
@@ -379,11 +385,12 @@ local function xml2xtypes(xml)
 
   local tag_handler = tag2template[xml.label]
   if tag_handler then -- process this node (and its child nodes)
-    trace('\n-----\n', xml.label, xml.xarg.name)
-    table.insert(templates, tag_handler(xml)) 
-    trace(table.concat(
-                    xtypes.utils.visit_model(templates[#templates], {'IDL:'}), 
-                    '\n\t'))
+    trace('\n-----\n', xml.label, xml.xarg.name or xml.xarg.file)
+    local xtype = tag_handler(xml)
+    if xtype then 
+      table.insert(templates, xtype) 
+      trace(table.concat(xtypes.utils.visit_model(xtype, {'IDL:'}), '\n\t'))
+    end
   else -- don't recognize the label as an xtype, visit the child nodes  
     -- process the child nodes
     for i, child in ipairs(xml) do
@@ -407,14 +414,23 @@ local function xmlstring2xtypes(xmlstring)
 end
 
 --[[
+Cache of files that have been processed so far. If a file is encountered again,
+it is skipped. Worked much like the package.loaded mechanism used by require()
+--]]
+local files_loaded = {}
+
+--[[
 Given an XML file, loads the xtype definitions, and return them
 @param filename [in] xml file containing XML type definitions
 @return an array of xtypes, equivalent to those defined in the xml table
 --]]
-local function xmlfile2xtypes(filename)
-  io.input(filename)
-  local xmlstring = io.read("*all")
-  return xmlstring2xtypes(xmlstring)
+function xmlfile2xtypes(filename)
+  if not files_loaded[filename] then
+    io.input(filename)
+    local xmlstring = io.read("*all")
+    files_loaded[filename] = true
+    return xmlstring2xtypes(xmlstring)
+  end
 end
 
 -------------------------------------------------------------------------------
