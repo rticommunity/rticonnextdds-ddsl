@@ -253,6 +253,8 @@ xtypes.API[xtypes.ANNOTATION] = {
       return model[_.NAME]
     elseif _.KIND == key then
       return model[_.KIND]
+    elseif _.NS == key then
+      return model[_.NS]
     end
   end,
   
@@ -447,6 +449,8 @@ xtypes.API[xtypes.ATOM] = {
       return model[_.NAME]
     elseif _.KIND == key then
       return model[_.KIND]
+    elseif _.NS == key then
+      return model[_.NS]
     end
   end,
   
@@ -647,6 +651,8 @@ xtypes.API[xtypes.CONST] = {
       return model[_.NAME]
     elseif _.KIND == key then
       return model[_.KIND]
+    elseif _.NS == key then
+      return model[_.NS]
     end
   end,
   
@@ -755,6 +761,8 @@ xtypes.API[xtypes.ENUM] = {
       return model[_.NAME]
     elseif _.KIND == key then
       return model[_.KIND]
+    elseif _.NS == key then
+      return model[_.NS]
     else -- delegate to the model definition
        return model[_.DEFN][key]
     end
@@ -922,6 +930,8 @@ xtypes.API[xtypes.STRUCT] = {
       return model[_.NAME]
     elseif _.KIND == key then
       return model[_.KIND]
+    elseif _.NS == key then
+      return model[_.NS]
     else -- delegate to the model definition
       return model[_.DEFN][key]
     end
@@ -1154,6 +1164,8 @@ xtypes.API[xtypes.UNION] = {
       return model[_.NAME]
     elseif _.KIND == key then
       return model[_.KIND]
+    elseif _.NS == key then
+      return model[_.NS]
     else -- delegate to the model definition
        return model[_.DEFN][key]
     end
@@ -1342,6 +1354,8 @@ xtypes.API[xtypes.MODULE] = {
       return model[_.NAME]
     elseif _.KIND == key then
       return model[_.KIND]
+    elseif _.NS == key then
+      return model[_.NS]
     else -- delegate to the model definition
       return model[_.DEFN][key]
     end
@@ -1460,6 +1474,8 @@ xtypes.API[xtypes.TYPEDEF] = {
       return model[_.NAME]
     elseif _.KIND == key then
       return model[_.KIND]
+    elseif _.NS == key then
+      return model[_.NS]
     end
   end,
   
@@ -1827,12 +1843,12 @@ local interface = {
   
   
   -- accesors and mutators (meta-attributes for types)
+  NS                 = _.NS,
   NAME               = _.NAME,
   KIND               = _.KIND,
   QUALIFIERS         = _.QUALIFIERS,
   BASE               = xtypes.BASE,
   SWITCH             = xtypes.SWITCH,
-  
     
   -- qualifiers
   annotation         = xtypes.annotation,
