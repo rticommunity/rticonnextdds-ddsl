@@ -47,7 +47,8 @@ function Tester.test_struct_gen()
   shapeGenLib.color     = Gen.oneOf({ "RED", "GREEN", "BLUE" })
   shapeGenLib.shapesize = Gen.rangeGen(20, 30)
 
-  local ShapeTypeGen = Gen.aggregateGen(ShapeType, shapeGenLib)
+  local memoize = false
+  local ShapeTypeGen = Gen.aggregateGen(ShapeType, shapeGenLib, memoize)
   local shape = ShapeTypeGen:generate()
 
   print("shape.x = " .. shape.x)
@@ -151,12 +152,12 @@ function Tester.test_struct_moderate()
 
   assert(Test.Name.first == 'first')
   assert(Test.Name.last == 'last')
-  assert(Test.Name.nicknames() == 'nicknames#')
+  assert(#Test.Name.nicknames == 'nicknames#')
   assert(Test.Name.nicknames[1] == 'nicknames[1]')
-  assert(Test.Name.aliases() == 'aliases#')
+  assert(#Test.Name.aliases == 'aliases#')
   assert(Test.Name.aliases[1] == 'aliases[1]')
   assert(Test.Name.birthday == 'birthday')
-  assert(Test.Name.favorite() == 'favorite#')
+  assert(#Test.Name.favorite == 'favorite#')
   assert(Test.Name.favorite[1] == 'favorite[1]')
 
   assert(Test.Color.YELLOW == 7)
