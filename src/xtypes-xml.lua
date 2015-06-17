@@ -14,9 +14,12 @@ Created: Rajive Joshi, 2014 Apr 1
 local xtypes = require('xtypes')
 local xmlstring2table = require('xml-parser').xmlstring2table
 
-local is_trace_on = true
+--[[
+TRACE: turn tracing on/off to help debug XML import
+--]]
+local is_trace_on = true -- turn on tracing?
 local function trace(...) 
-  if is_trace_on then return print('TRACE: ', ...) end
+  return is_trace_on and print('TRACE: ', ...)
 end
 
 
@@ -68,7 +71,7 @@ local function lookup_type(name)
   -- lookup in module types that have bee defined so far
   -- TODO
   
-  trace(table.concat{'Skipping unresolved name: "', name, '"'})
+  trace(table.concat{'\tSkipping unresolved name: "', name, '"'})
                               
   return nil
 end
@@ -78,8 +81,9 @@ end
 local function dim_string2array(comma_separated_dimension_string)
     local dim = {}
     for w in string.gmatch(comma_separated_dimension_string, "[%w_]+") do
-      table.insert(dim, lookup_type(w) or tonumber(w))
-      trace('dim = ', w, lookup_type(w))
+      local dim_i = tonumber(w) or lookup_type(w)
+      table.insert(dim, dim_i)       
+      trace('\tdim = ', dim_i)
     end
     return table.unpack(dim)
 end
@@ -106,8 +110,9 @@ local function xml_xarg2role_definition(xarg)
         -- determine the stringMaxLength 
         local stringMaxLength -- NOTE: "-1" means unbounded
         if xarg.stringMaxLength and '-1' ~= xarg.stringMaxLength then -- bounded
-          stringMaxLength = lookup_type(xarg.stringMaxLength) or 
-                            tonumber(xarg.stringMaxLength)
+          stringMaxLength = tonumber(xarg.stringMaxLength) or
+                            lookup_type(xarg.stringMaxLength)
+                            
         end
         
         if 'string' == v then
@@ -125,8 +130,9 @@ local function xml_xarg2role_definition(xarg)
         -- determine the stringMaxLength 
         local sequenceMaxLength -- NOTE: "-1" means unbounded
         if '-1' ~= xarg.sequenceMaxLength then -- bounded
-          sequenceMaxLength = lookup_type(xarg.sequenceMaxLength) or 
-                              tonumber(xarg.sequenceMaxLength)
+          sequenceMaxLength = tonumber(xarg.sequenceMaxLength) or 
+                              lookup_type(xarg.sequenceMaxLength) 
+                              
         end
         sequence = xtypes.sequence(sequenceMaxLength)
          
@@ -312,10 +318,11 @@ local function xml2xtypes(xml)
 
   local xtype = tag2template[xml.label]
   if xtype then -- process this node (and its child nodes)
-    trace(xml.label, xml.xarg.name)
+    trace('\n-----\n', xml.label, xml.xarg.name)
     table.insert(templates, xtype(xml)) 
-    local idl = xtypes.utils.visit_model(templates[#templates], {'IDL:'})
-    print(table.concat(idl, '\n\t')) 
+    trace(table.concat(
+                    xtypes.utils.visit_model(templates[#templates], {'IDL:'}), 
+                    '\n\t'))
   else -- don't recognize the label as an xtype, visit the child nodes  
     -- process the child nodes
     for i, child in ipairs(xml) do
