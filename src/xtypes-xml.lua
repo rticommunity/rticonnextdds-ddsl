@@ -75,9 +75,9 @@ local function lookup_type(name)
   local template_toplevel = nil
   local template = nil
   for w in string.gmatch(name, "[%w_]+") do     
-    trace('\t::name:: = ', w)
+    trace('\t::' .. w .. '::')
     
-    -- retrieve the top-level template (the first element)
+    -- retrieve the top-level template (for the first capture)
     if not template_toplevel then -- always runs first!
                 
       -- is w defined as a top-level namespace so far?
@@ -92,17 +92,24 @@ local function lookup_type(name)
       
       -- is w defined in the context of the current namespace? (if any)
       if not template_toplevel and ns then 
-        template_toplevel = ns[w]
-        trace('\t\t ::', ns, template_toplevel)
+        local parent = ns
+        repeat
+          trace('\t\t ::', parent)
+          template_toplevel = parent[w]
+          parent = parent[xtypes.NS]
+        until template_toplevel or not parent
       end
                
       -- set the resolution of w: the first name segment 
       template = template_toplevel
       
+      -- could not resolve the first capture => skip the other capture segments
+      if not template then break end
+      
     else
       -- Now, lookup the template specified by the name segments within the
       -- top-level template's (first w's) name space
-      trace('\t\t **', template, w, template[w])
+      trace('\t\t ..', template[w])
       template = xtypes.utils.template(template[w])
     end
     
@@ -111,7 +118,7 @@ local function lookup_type(name)
  
   if not template then
     trace(table.concat{'\tSkipping unresolved name: "', name, 
-          '"  ns = ', tostring(ns)})
+          '"  ns = ', ns and xtypes.utils.nsname(ns)})
   end      
                          
   return template
@@ -246,16 +253,14 @@ tag2template = {
     }
     
     -- child tags
-    local member_count = 0
     for i, child in ipairs(tag) do
       if 'table' == type(child) then -- skip comments
-        member_count = member_count + 1
         if child.xarg.value then
-          template[member_count] = { 
+          template[#template+1] = { 
               [child.xarg.name] = tonumber(child.xarg.value) 
           }
         else
-          template[member_count] = child.xarg.name
+          template[#template+1] = child.xarg.name
         end
       end
     end
@@ -266,12 +271,10 @@ tag2template = {
     local template = xtypes.struct{[tag.xarg.name]=xtypes.EMPTY}
 
     -- child tags
-    local member_count = 0
     for i, child in ipairs(tag) do
       if 'table' == type(child) and 'member' == child.label then-- skip comments
-        member_count = member_count + 1
         trace(tag.label, child.label, child.xarg.name)
-        template[member_count] = { 
+        template[#template+1] = { 
           [child.xarg.name] = xml_xarg2role_definition(child.xarg)
         }
       end
@@ -284,7 +287,6 @@ tag2template = {
     local template
 
     -- child tags
-    local member_count = 0
     for i, child in ipairs(tag) do
       if 'table' == type(child) then -- skip comments
       
@@ -303,8 +305,7 @@ tag2template = {
                           grandchild.xarg.value
                  end
               elseif 'member' == grandchild.label then
-                member_count = member_count + 1
-                template[member_count] = { 
+                template[#template+1] = { 
                   case, 
                       [grandchild.xarg.name] = 
                                     xml_xarg2role_definition(grandchild.xarg)
@@ -320,22 +321,33 @@ tag2template = {
   
   module = function (tag)
     -- create a new module only if it is not yet defined:
-    local template = lookup_type(tag.xarg.name) or
-                     xtypes.module{[tag.xarg.name]=xtypes.EMPTY}
+    local template = lookup_type(tag.xarg.name) 
+    if not template then
+      template = xtypes.module{[tag.xarg.name]=xtypes.EMPTY}
+      
+      -- add to paremt ns upon creation, so that child nodes can navigate 
+      -- to the parent namespace to lookup names:
+      if ns then ns[#ns+1] = template  end
+    end
             
-    -- set the nsamespace context
+    -- set this module as the name-space context
     local prev_ns = ns        
     ns = template -- set the namespace context in which to load the children
-    
+    trace('ns', ns and xtypes.utils.nsname(ns))
+            
     -- child tags
-    local member_count = #template -- add to the module
     for i, child in ipairs(tag) do
       if 'table' == type(child) then -- skip comments
-        member_count = member_count + 1
         trace(tag.label, child.label, child.xarg.name)
-        local xtype = tag2template[child.label]
-        if xtype then
-            template[member_count] = tag2template[child.label](child)
+        local tag_handler = tag2template[child.label]
+
+        if tag_handler then
+          local xtype = tag_handler(child)
+        
+          -- add to this module if not already so
+          -- NOTE: a 'module' child would have already been added by the
+          -- module tag handler (this function)
+          if 'module' ~= child.label then template[#template+1] = xtype end
         end
       end
     end
@@ -365,10 +377,10 @@ xtype definitions
 --]]
 local function xml2xtypes(xml)
 
-  local xtype = tag2template[xml.label]
-  if xtype then -- process this node (and its child nodes)
+  local tag_handler = tag2template[xml.label]
+  if tag_handler then -- process this node (and its child nodes)
     trace('\n-----\n', xml.label, xml.xarg.name)
-    table.insert(templates, xtype(xml)) 
+    table.insert(templates, tag_handler(xml)) 
     trace(table.concat(
                     xtypes.utils.visit_model(templates[#templates], {'IDL:'}), 
                     '\n\t'))
