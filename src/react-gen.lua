@@ -1,5 +1,3 @@
--- local PullGen = require("generator")
-
 -- Every reative generator accepts a continuation as a 
 -- argument to method named "attach". Every continuation 
 -- is of type T->(). I.e., it accepts something and does 
@@ -63,8 +61,8 @@ function CompositeDisposable:add(disposable)
 end
 
 function CompositeDisposable:dispose()
-  for i, d in ipairs(self.list) do
-    d:dispose()
+  for i=1, #self.list do
+    if self.list[i] then self.list[i]:dispose() end
   end
   self.list = {}
   self.isDisposed = true
@@ -90,15 +88,15 @@ function ReactGen:map(func)
   return ReactGen:new(
       { attachImpl = function (unused, continuation)
                        return prev:attach(function (value) 
-                                continuation(func(value))
+                                if continuation then continuation(func(value)) end
                               end)
                      end 
       })
 end
 
-function ReactGen:flatMap(func)
+function ReactGen:flatMap(func, innerDisposable)
   local prev = self
-  local innerDisposable = CompositeDisposable:new()
+  innerDisposable = innerDisposable or CompositeDisposable:new()
 
   return ReactGen:new(
       { innerDisposable = innerDisposable,
@@ -108,7 +106,7 @@ function ReactGen:flatMap(func)
                               :attach(function (nested) 
                                  observable.innerDisposable:add( 
                                    nested:attach(function (op)
-                                     continuation(op)
+                                     if continuation then continuation(op) end
                                    end))
                                end)
 
@@ -122,7 +120,50 @@ function ReactGen:flatMap(func)
 end
 
 function ReactGen:zip2(otherGen, zipperFunc)
-  
+  local prev = self
+  return ReactGen:new(
+        { queue = { first=nil, second=nil }, 
+          attachImpl = function(observable, continuation) 
+            local disp1 = prev:attach(function (i) 
+              if observable.queue.second then
+                local zip = zipperFunc(i, observable.queue.second)
+                if continuation then continuation(zip) end
+                observable.queue = { first=nil, second=nil }
+              else
+                observable.queue.first = i
+              end
+            end)
+
+            local disp2 = otherGen:attach(function (j) 
+              if observable.queue.first then
+                local zip = zipperFunc(observable.queue.first, j)
+                if continuation then continuation(zip) end
+                observable.queue = { first=nil, second=nil }
+              else
+                observable.queue.second = j
+              end
+            end)
+
+            local disposable = CompositeDisposable:new()
+            disposable.add(disp1)
+            disposable.add(disp2)
+
+            return disposable
+          end
+        })
+end
+
+function ReactGen:where(predicate)
+  local prev = self
+  return ReactGen:new(
+      { attachImpl = function (unused, continuation)
+                       return prev:attach(function (value) 
+                                if predicate(value) then
+                                  if continuation then continuation(value) end
+                                end
+                              end)
+                     end 
+      })
 end
 
 -- Subject inherts from ReactGen and has the following
@@ -137,17 +178,35 @@ function Subject:push()
   self:propagate(self.source:generate()) 
 end
 
+function Subject:propagate(value)
+  for i=1, #self.contList do
+    if self.contList[i] then self.contList[i](value) end
+  end
+end
+
+function findFirstEmpty(list)
+  -- local idx = #list + 1
+  for i=1, #list do
+    if list[i] == nil then 
+      return i 
+    end  
+  end
+  return #list + 1
+end 
+
 function ReactGenPackage.createSubjectFromPullGen(pullgen)
   if pullgen==nil then
     error "Invalid argument: nil generator." 
   end
 
   return Subject:new(
-            { source = pullgen,
-              attachImpl = function (subject, continuation)
-                             subject.cont = continuation
+            { source   = pullgen,
+              contList = { },
+              attachImpl = function (sub, continuation)
+                             local idx = findFirstEmpty(sub.contList)
+                             sub.contList[idx] = continuation
                              return { dispose = function () 
-                                                  subject.cont = nil
+                                                  sub.contList[idx] = nil
                                                 end 
                                     }
                            end 
