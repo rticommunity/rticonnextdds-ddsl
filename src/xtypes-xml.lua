@@ -15,7 +15,7 @@ local xtypes = require('xtypes')
 local xmlstring2table = require('xml-parser').xmlstring2table
 
 local is_trace_on = true
-function trace(...) 
+local function trace(...) 
   if is_trace_on then return print('TRACE: ', ...) end
 end
 
@@ -172,7 +172,8 @@ Map an xml tag to an appropriate X-Types template creation function:
       tag --> action to create X-Type template
 Each creation function returns the newly created X-Type template
 --]]
-local tag2template = {
+local tag2template
+tag2template = {
 
   typedef = function(tag)  
     local template = xtypes.typedef{
@@ -266,15 +267,36 @@ local tag2template = {
     return template
   end,
   
-  -- module
+  module = function (tag)
+    local template = xtypes.module{[tag.xarg.name]=xtypes.EMPTY}
+
+    -- child tags
+    local member_count = 0
+    for i, child in ipairs(tag) do
+      if 'table' == type(child) then -- skip comments
+        member_count = member_count + 1
+        trace(tag.label, child.label, child.xarg.name)
+        local xtype = tag2template[child.label]
+        if xtype then
+            template[member_count] = tag2template[child.label](child)
+        end
+      end
+    end
+    return template
+  end,
+  
+  -- Legacy tags
+  valuetype = function (tag)
+      print('WARNING: Importing valuetype as a struct')
+      return tag2template.struct(tag)
+  end,
+
+  sparse_valuetype = function (tag)
+      print('WARNING: Importing sparse_valuetype as a struct')
+      return tag2template.struct(tag)
+  end,
 }
 
--- Legacy tags:
-tag2template.valuetype = function (tag)
-    print('WARNING: Importing valuetype as a struct')
-    return tag2template.struct(tag)
-end
-    
     
 --[[
 Visit all the nodes in the xml table, and a return a table containing the 
@@ -290,7 +312,7 @@ local function xml2xtypes(xml)
     table.insert(templates, xtype(xml)) 
     local idl = xtypes.utils.visit_model(templates[#templates], {'IDL:'})
     print(table.concat(idl, '\n\t')) 
-  else -- don't recognize the label as an xtype, visit the child nodes
+  else -- don't recognize the label as an xtype, visit the child nodes  
     -- process the child nodes
     for i, child in ipairs(xml) do
       if 'table' == type(child) then -- skip comments
@@ -330,4 +352,3 @@ local interface = {
 }
 
 return interface
-
