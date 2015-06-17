@@ -88,7 +88,7 @@ local function collect(s)
   local ni,c,label,xarg, empty
   local i, j = 1, 1
   while true do
-    ni,j,c,label,xarg, empty = string.find(s, "<(%/?)([%w:]+)(.-)(%/?)>", i)
+    ni,j,c,label,xarg, empty = string.find(s, "<(%/?)([%w:_]+)(.-)(%/?)>", i)
     if not ni then break end
     local text = string.sub(s, i, ni-1)
     if not string.find(text, "^%s*$") then
