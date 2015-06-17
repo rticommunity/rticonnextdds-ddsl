@@ -52,6 +52,7 @@ local function lookup_type(name)
   local template = xmlName2Model[name] 
   if nil ~= template then return template end
 
+
   -- lookup in the xtypes pre-defined templates
   for i, template in pairs(xtypes) do
     if 'table' == type(template) and
@@ -61,19 +62,38 @@ local function lookup_type(name)
     end
   end
   
+
   -- lookup in the templates that we have defined so far
-  for i, template in ipairs(templates) do
-    if name == template[xtypes.NAME] then
-      return template
+  -- NOTE: for path names with a '::' name-space separator for each name-space
+  -- segment, lookup the path name in module name-spaces defined so far
+  local template_toplevel = nil
+  local template = nil
+  for w in string.gmatch(name, "[%w_]+") do     
+    
+    -- retrieve the top-level template (the first element)
+    if not template_toplevel then
+      for i, template in ipairs(templates) do
+        if w == template[xtypes.NAME] then
+          template_toplevel = template
+          break
+        end
+      end
+      template = template_toplevel
+      
+    -- lookup the template specified by the name segments within the
+    -- top-level template's name space
+    else
+      template = xtypes.utils.template(template[w])
     end
+    
+    trace('\t::name:: = ', w, '->', template)
   end
-  
-  -- lookup in module types that have bee defined so far
-  -- TODO
-  
-  trace(table.concat{'\tSkipping unresolved name: "', name, '"'})
-                              
-  return nil
+ 
+  if not template then
+    trace(table.concat{'\tSkipping unresolved name: "', name, '"'})
+  end      
+                         
+  return template
 end
 
 -- Takes a comma separated dimension string, eg "1,2" and converts it to a table
@@ -142,7 +162,7 @@ local function xml_xarg2role_definition(xarg)
     
       -- constant: value              
       elseif 'value' == k then
-        value = lookup_type(v) or v -- use the string literal if not found
+        value = v -- let the constant definition do the conversion from string 
         
       -- annotations         
       else
@@ -227,7 +247,7 @@ tag2template = {
     -- child tags
     local member_count = 0
     for i, child in ipairs(tag) do
-      if 'table' == type(child) then -- skip comments
+      if 'table' == type(child) and 'member' == child.label then-- skip comments
         member_count = member_count + 1
         trace(tag.label, child.label, child.xarg.name)
         template[member_count] = { 
@@ -251,7 +271,6 @@ tag2template = {
           template=xtypes.union{[tag.xarg.name]={lookup_type(child.xarg.type)}}
         
         elseif 'case' == child.label then
-          member_count = member_count + 1
           local case = nil -- default
           for j, grandchild in ipairs(child) do
             trace(tag.label, child.label, grandchild.label, 
@@ -262,7 +281,8 @@ tag2template = {
                    case = lookup_type(grandchild.xarg.value) or 
                           grandchild.xarg.value
                  end
-              else -- member
+              elseif 'member' == grandchild.label then
+                member_count = member_count + 1
                 template[member_count] = { 
                   case, 
                       [grandchild.xarg.name] = 

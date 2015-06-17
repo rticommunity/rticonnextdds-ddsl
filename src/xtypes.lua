@@ -401,7 +401,8 @@ function xtypes.atom(decl)
   local dim_value = xtypes.CONST == dim_kind and dim() or dim
   if nil ~= dim then
     if type(dim_value) ~='number' then
-      error(table.concat{'invalid dimension: ', tostring(dim)}, 2)
+      error(table.concat{'invalid dimension: ',tostring(dim), ' = ', dim_value}, 
+            2)
     end
     if not(dim_value > 0 and dim_value - math.floor(dim_value) == 0) then 
       error(table.concat{'dimension must be an integer > 0: ', tostring(dim)}, 
