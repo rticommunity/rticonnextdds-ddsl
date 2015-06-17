@@ -22,6 +22,12 @@ local function trace(...)
   return is_trace_on and print('TRACE: ', ...)
 end
 
+--[[
+Current namespace (module) inside which the child elements are being defined
+NOTE: set when loading module elements; reset to nil when not loading a module
+--]]
+local ns = nil
+
 
 --[[
 Templates created from XML. This list is built as the XML is processed.
@@ -69,28 +75,43 @@ local function lookup_type(name)
   local template_toplevel = nil
   local template = nil
   for w in string.gmatch(name, "[%w_]+") do     
+    trace('\t::name:: = ', w)
     
     -- retrieve the top-level template (the first element)
-    if not template_toplevel then
-      for i, template in ipairs(templates) do
-        if w == template[xtypes.NAME] then
-          template_toplevel = template
-          break
+    if not template_toplevel then -- always runs first!
+                
+      -- is w defined as a top-level namespace so far?
+      if not template_toplevel then
+        for i, template in ipairs(templates) do
+          if w == template[xtypes.NAME] then
+            template_toplevel = template
+            break
+          end
         end
       end
+      
+      -- is w defined in the context of the current namespace? (if any)
+      if not template_toplevel and ns then 
+        template_toplevel = ns[w]
+        trace('\t\t ::', ns, template_toplevel)
+      end
+               
+      -- set the resolution of w: the first name segment 
       template = template_toplevel
       
-    -- lookup the template specified by the name segments within the
-    -- top-level template's name space
     else
+      -- Now, lookup the template specified by the name segments within the
+      -- top-level template's (first w's) name space
+      trace('\t\t **', template, w, template[w])
       template = xtypes.utils.template(template[w])
     end
     
-    trace('\t::name:: = ', w, '->', template)
+    trace('\t\t ->', template)
   end
  
   if not template then
-    trace(table.concat{'\tSkipping unresolved name: "', name, '"'})
+    trace(table.concat{'\tSkipping unresolved name: "', name, 
+          '"  ns = ', tostring(ns)})
   end      
                          
   return template
@@ -298,10 +319,16 @@ tag2template = {
   end,
   
   module = function (tag)
-    local template = xtypes.module{[tag.xarg.name]=xtypes.EMPTY}
-
+    -- create a new module only if it is not yet defined:
+    local template = lookup_type(tag.xarg.name) or
+                     xtypes.module{[tag.xarg.name]=xtypes.EMPTY}
+            
+    -- set the nsamespace context
+    local prev_ns = ns        
+    ns = template -- set the namespace context in which to load the children
+    
     -- child tags
-    local member_count = 0
+    local member_count = #template -- add to the module
     for i, child in ipairs(tag) do
       if 'table' == type(child) then -- skip comments
         member_count = member_count + 1
@@ -312,6 +339,8 @@ tag2template = {
         end
       end
     end
+    
+    ns = prev_ns-- done with loading name-space: reset context to previous state
     return template
   end,
   
