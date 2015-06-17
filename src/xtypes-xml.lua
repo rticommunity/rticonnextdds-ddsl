@@ -29,6 +29,7 @@ local templates = {}
 Look up the template from a name. Searches in several places:
  - in  the pre-defined xtypes, 
  - in the user-defined templates
+ - in the user defined modules (for nested namespaces)
 @param name [in] name of the type to lookup
 @return the template referenced by name, or nil.
 --]]
@@ -63,6 +64,9 @@ local function lookup_type(name)
       return template
     end
   end
+  
+  -- lookup in module types that have bee defined so far
+  -- TODO
   
   trace(table.concat{'Skipping unresolved name: "', name, '"'})
                               
@@ -250,7 +254,7 @@ tag2template = {
               if 'caseDiscriminator' == grandchild.label then
                  if 'default' ~= grandchild.xarg.value then
                    case = lookup_type(grandchild.xarg.value) or 
-                          tonumber(grandchild.xarg.value) -- TODO
+                          grandchild.xarg.value
                  end
               else -- member
                 template[member_count] = { 

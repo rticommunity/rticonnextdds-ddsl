@@ -542,8 +542,8 @@ function xtypes.const(decl)
   local coercedvalue = nil
   if xtypes.builtin.boolean == atom then 
       if 'boolean' ~= type(value) then
-          if 'false' == value then coercedvalue = false 
-          elseif 'true' == value then coercedvalue = true 
+          if 'false' == value or '0' == value then coercedvalue = false 
+          elseif 'true' == value or '1' == value then coercedvalue = true 
           else coercedvalue = not not value -- toboolean
           end
           if nil ~= coercedvalue then
@@ -558,8 +558,8 @@ function xtypes.const(decl)
          xtypes.wstring() == atom or 
          xtypes.builtin.char == atom then
       if 'string' ~= type(value) then 
+          coercedvalue = tostring(value) 
           if nil ~= coercedvalue then
-             coercedvalue = tostring(value) 
              print(table.concat{'INFO: converting to string: "', value,
                                 '" -> "', coercedvalue, '"'}) 
           else 
@@ -1489,15 +1489,19 @@ function xtypes.assert_case(discriminator, case)
   if xtypes.builtin.long == discriminator or -- integral type
      xtypes.builtin.short == discriminator or 
      xtypes.builtin.octet == discriminator then
-    assert(tonumber(case) and math.floor(case) == case, err_msg)     
+      case = tonumber(case)
+      assert(case and math.floor(case) == case, err_msg)     
    elseif xtypes.builtin.char == discriminator then -- character
-    assert('string' == type(case) and 1 == string.len(case), err_msg) 
+      assert('string' == type(case) and 1 == string.len(case), err_msg) 
    elseif xtypes.builtin.boolean == discriminator then -- boolean
-    assert(true == case or false == case, err_msg)
+      if 'false' == case or '0' == case then case = false 
+      elseif 'true' == case or '1' == case then case = true 
+      end
+      assert(true == case or false == case, err_msg)
    elseif xtypes.ENUM == discriminator[_.KIND] then -- enum
-    assert(discriminator[case], err_msg)
+      assert(discriminator[case], err_msg)
    else -- invalid 
-    assert(false, err_msg)
+      assert(false, err_msg)
    end
   
    return case
