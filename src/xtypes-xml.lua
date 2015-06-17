@@ -53,6 +53,7 @@ local function lookup_type(name)
     
     key              = xtypes.Key,
     optional         = xtypes.Optional,
+    extensibility    = xtypes.Extensibility,
   }
   -- lookup in the deviations table
   local template = xmlName2Model[name] 
@@ -270,7 +271,12 @@ tag2template = {
   
   struct = function (tag)
     local template = xtypes.struct{[tag.xarg.name]=xtypes.EMPTY}
-
+     
+    -- base type    
+    if tag.xarg.baseType then
+      template[xtypes.BASE] = lookup_type(tag.xarg.baseType)
+    end
+  
     -- child tags
     for i, child in ipairs(tag) do
       if 'table' == type(child) and 'member' == child.label then-- skip comments
@@ -359,7 +365,10 @@ tag2template = {
   
   include = function (tag)
     local file = tag.xarg.file
-    if file then xmlfile2xtypes(file) end
+    if file then 
+      xmlfile2xtypes(file) 
+      trace(tag.label, tag.xarg.file, 'DONE!')
+    end
   end,
   
   -- Legacy tags
