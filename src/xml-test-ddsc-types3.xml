@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="iso-8859-1"?>
+<!-- 
+ (c) Copyright, Real-Time Innovations, $Date: 2013/09/12 14:09:20 $.
+ All rights reserved.
+ No duplications, whole or partial, manual or electronic, may be made
+ without express written permission.  Any such copies, or
+ revisions thereof, must display this notice unaltered.
+ This code contains trade secrets of Real-Time Innovations, Inc.
+
+modification history
+5.01,08apr13,acr CORE-5717 Support for optional members
+1.5e,12jun11,fcs Replaced baseClass with baseType
+1.5e,06may11,acr Created (CXTYPES-76)
+1.5d,06jan11,fcs  RTI-27 Created
+-->
+<types xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
+       xsi:noNamespaceSchemaLocation="../../../nddsgen.1.0/resource/xsd/rti_dds_topic_types.xsd">
+    <include file="xml-test-ddsc-types2.xml"/>
+    <include file="xml-test-ddsc-types4.xml"/>
+    
+    <struct name="MyIncludeStruct3000">
+        <member name="m1" type="boolean"/>
+        <member name="m2" type="nonBasic" nonBasicTypeName="MyIncludeStruct4000"/>
+    </struct>
+    
+    <struct name="BaseType1" extensibility="final">
+        <member name="x" type="long"/>
+    </struct>
+
+    <struct name="BaseType2" baseType="BaseType1" extensibility="final">
+        <member name="y" type="long"/>
+    </struct>
+
+    <struct name="ExtendedType1" baseType="BaseType2" extensibility="final">
+        <member name="z" type="long"/>
+    </struct>
+
+    <struct name="ExtensibleType1" baseType="BaseType1" extensibility="extensible">
+        <member name="t" type="double"/>
+    </struct>
+
+    <struct name="MutableType" extensibility="mutable">
+        <member name="t" type="double"/>
+    </struct>
+
+    <struct name="MutableType2" extensibility="mutable">
+        <member name="t" type="double"/>
+    </struct>
+
+    <!-- default: extensibility="extensible" -->
+    <struct name="ExtensibleType2">
+        <member name="et1" type="nonBasic" nonBasicTypeName="ExtensibleType1"/>
+    </struct>
+
+    <bitset name="BitSet1" bitBound="32">
+        <flag name="FIRST_FLAG" value="8"/>
+        <flag name="SECOND_FLAG" value="22"/>
+        <flag name="THIRD_FLAG" value="23"/>
+        <flag name="FOURTH_FLAG" value="30"/>
+        <flag name="FIFTH_FLAG" value="31"/>
+    </bitset>
+
+    <struct name="BitSetStruct">
+        <member name="m1" type="nonBasic" nonBasicTypeName="ExtensibleType2"/>
+    </struct>
+    
+    <struct name="OptionalMemberStruct">
+        <member name="optionalMember" type="double" optional="true"/>
+        <member name="nonOptionalMember" type="double" optional="false"/>
+        <member name="defaultMember" type="double"/>
+    </struct>
+    
+</types>

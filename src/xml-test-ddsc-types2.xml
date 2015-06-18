@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="iso-8859-1"?>
+<!-- 
+ (c) Copyright, Real-Time Innovations, $Date: 2013/09/12 14:09:20 $.
+ All rights reserved.
+ No duplications, whole or partial, manual or electronic, may be made
+ without express written permission.  Any such copies, or
+ revisions thereof, must display this notice unaltered.
+ This code contains trade secrets of Real-Time Innovations, Inc.
+
+modification history
+5.0.1,28jun13,fcs CORE-5740: Added MyMutableStruct1
+1.5d,06jan11,fcs  RTI-27 Allow circular dependencies in file inclusion
+1.4d,10mar09,fcs  Created
+-->
+<types xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
+       xsi:noNamespaceSchemaLocation="../../../nddsgen.1.0/resource/xsd/rti_dds_topic_types.xsd">
+    <include file="xml-test-ddsc-types3.xml"/>
+    
+    <struct name="MyIncludeStruct1">
+        <member name="m1" type="boolean"/>
+    </struct>
+    
+    <struct name="MyMutableStruct1" extensibility="mutable">
+        <member name="m1" type="boolean" id="34"/>
+        <member name="m2" type="long" id="37" optional="true"/>        
+    </struct>
+
+    <module name="MyModule1">
+        <struct name="MyModule1IncludeStruct1">
+            <member name="m1" type="string" stringMaxLength="128"/>
+        </struct>
+        <struct name="MyModule1IncludeStruct2">
+            <member name="m1" type="string" stringMaxLength="128"/>
+        </struct>
+    </module>
+</types>

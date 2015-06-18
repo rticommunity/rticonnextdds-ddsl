@@ -1712,22 +1712,23 @@ end
 
 Tester[#Tester+1] = 'test_xml'
 function Tester:test_xml()
-  local xmlfile2xtypes = require('xtypes-xml').file2xtypes
+  local xml = require('xtypes-xml')
   
-  local schemas = xmlfile2xtypes('xml-test-simple.xml')
-  
+  xml.is_trace_on = true
+  local schemas = xml.file2xtypes('xml-test-simple.xml')
+
   for i = 1, #schemas do
     self:print(schemas[i])
   end
 end
 
 Tester[#Tester+1] = 'test_xml_advanced'
-function Tester:test_xml_advancedX()  
+function Tester:test_xml_advanced()  
   local xml = require('xtypes-xml') 
    
   local testfiles = {
-    'test.xml',
-    'types1.xml'
+    'xml-test-connector.xml',
+    'xml-test-ddsc-types1.xml'
   }
   
   -- xml.is_trace_on = true
@@ -1742,6 +1743,14 @@ function Tester:test_xml_advancedX()
     -- clear the loaded schema list to prevent collisions between files
     xml.clear() 
   end
+end
+
+Tester[#Tester+1] = 'test_idl'
+function Tester:test_xml_tester()  
+    for _, template in pairs(Test) do
+      local idl = xtypes.utils.visit_model(template)
+      print(table.concat(idl, '\n'))
+    end
 end
 
 Tester[#Tester+1] = 'test_assignment'

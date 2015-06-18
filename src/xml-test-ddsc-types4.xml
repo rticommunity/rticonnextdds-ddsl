@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="iso-8859-1"?>
+<!-- 
+ (c) Copyright, Real-Time Innovations, $Date: 2012/04/23 00:53:57 $.
+ All rights reserved.
+ No duplications, whole or partial, manual or electronic, may be made
+ without express written permission.  Any such copies, or
+ revisions thereof, must display this notice unaltered.
+ This code contains trade secrets of Real-Time Innovations, Inc.
+
+modification history
+1.5d,06jan11,fcs  RTI-27 Created
+-->
+<types xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
+       xsi:noNamespaceSchemaLocation="../../../nddsgen.1.0/resource/xsd/rti_dds_topic_types.xsd">
+    <include file="xml-test-ddsc-types2.xml"/>
+    <include file="xml-test-ddsc-types3.xml"/>
+    
+    <struct name="MyIncludeStruct4000">
+        <member name="m1" type="boolean"/>
+    </struct>
+</types>

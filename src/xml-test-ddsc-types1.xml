@@ -1,0 +1,344 @@
+<?xml version="1.0" encoding="iso-8859-1"?>
+<!-- 
+ (c) Copyright, Real-Time Innovations, $Date: 2013/11/16 03:37:02 $.
+ All rights reserved.
+ No duplications, whole or partial, manual or electronic, may be made
+ without express written permission.  Any such copies, or
+ revisions thereof, must display this notice unaltered.
+ This code contains trade secrets of Real-Time Innovations, Inc.
+
+modification history
+5.0.1,15nov13,fcs Test for bug CORE-6027
+1.5c,12oct10,fcs  Test for bug 13687
+1.5c,27feb10,fcs  Test for bug 13312
+1.5a,06nov09,fcs  Added MyUnion2
+1.4d,10mar09,fcs  Created
+-->
+<types xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
+       xsi:noNamespaceSchemaLocation="../../../nddsgen.1.0/resource/rtiddsgen/schema/rti_dds_topic_types.xsd">
+    <include file="xml-test-ddsc-types2.xml"/>
+    <typedef name="MyLongTypedef" type="long"/>
+    <typedef name="MyBooleanTypedef" type="boolean"/>
+    
+    <const name="MyConst1" type="long" value="2 | 1"/>      
+    <const name="MyConst2" type="long" value="254 + (2 &amp; 1)"/>
+    <const name="MyConst3" type="long" value="2 ^ 1"/>
+    <const name="MyConst4" type="long" value="2 &lt;&lt; 1"/>
+    <const name="MyConst5" type="long" value="2 &gt;&gt; 1"/>
+    <const name="MyConst6" type="long" value="(2 + 1) - 4"/>
+    <const name="MyConst7" type="long" value="2"/>
+    <const name="MyConst8" type="nonBasic" nonBasicTypeName="MyLongTypedef" value="(::MyConst1+1)/2"/>
+    <const name="MyConst9" type="string" value="&quot;Hello&quot;"/>
+    <const name="MyConst10" type="char" value="'\n'"/>
+    <const name="MyConst11" type="long" value="5"/>
+    <const name="MyConst12" type="nonBasic" nonBasicTypeName="MyBooleanTypedef" value="false"/>
+    <const name="MyConst13" type="boolean" value="true"/>
+
+    <enum name="MyEnum">
+        <enumerator name="Enumerator0"/>
+        <enumerator name="Enumerator1" value="100"/>
+        <enumerator name="Enumerator2" value="200"/>
+    </enum>
+
+    <enum name="MyEnum2">
+        <enumerator name="Enumerator20" value="100"/>
+        <enumerator name="Enumerator21"/>
+        <enumerator name="Enumerator22"/>
+    </enum>
+
+    <struct name="MyPrimitiveStruct" topLevel="true">
+        <member name="m1" type="boolean" key="true"/>
+        <member name="m2" type="octet" pointer="true"/>
+        <member name="m3" type="char"/>
+        <member name="m4" type="short"/>
+        <member name="m5" type="unsignedShort"/>
+        <member name="m6" type="wchar"/>
+        <member name="m7" type="long"/>
+        <member name="m8" type="unsignedLong"/>
+        <member name="m9" type="float"/>
+        <member name="m10" type="double"/>
+        <member name="m11" type="longLong"/>
+        <member name="m12" type="unsignedLongLong"/>
+        <member name="m13" type="longDouble"/>
+        <Xmember name="m14" type="string" stringMaxLength="MyConst2 + 1"/>
+        <member name="m15" type="string" stringMaxLength="1"/>
+        <member name="m16" type="string"/>
+        <member name="m17" type="wstring" stringMaxLength="255"/>
+        <member name="m18" type="wstring" stringMaxLength="-1"/>
+        <member name="m19" type="wstring"/>
+    </struct>
+
+    <struct name="MyBitfieldStruct" topLevel="true">
+        <member name="m1" type="short" bitField="3"/>
+        <member name="m2" type="octet" bitField="2"/>
+        <member name="" type="long" bitField="0"/>
+        <member name="m3" type="long" bitField="16"/>
+    </struct>
+
+    <struct name="MyPrimitiveArrayStruct">
+        <member name="m1" type="boolean" key="true" arrayDimensions="MyConst7"/>
+        <member name="m2" type="octet" arrayDimensions="MyConst11 , 3"/>
+        <member name="m3" type="char" arrayDimensions="2"/>
+        <member name="m4" type="short" arrayDimensions="3"/>
+        <member name="m5" type="unsignedShort" arrayDimensions="4"/>
+        <member name="m6" type="wchar" arrayDimensions="5"/>
+        <member name="m7" type="long" arrayDimensions="6"/>
+        <member name="m8" type="unsignedLong" arrayDimensions="7"/>
+        <member name="m9" type="float" arrayDimensions="8"/>
+        <member name="m10" type="double" arrayDimensions="2"/>
+        <member name="m11" type="longLong" arrayDimensions="3 , 4"/>
+        <member name="m12" type="unsignedLongLong" arrayDimensions="5,6"/>
+        <member name="m13" type="longDouble" arrayDimensions="2"/>
+        <member name="m14" type="string" stringMaxLength="128" arrayDimensions=" 1,2 "/>
+        <member name="m15" type="string" stringMaxLength="-1" arrayDimensions="3"/>
+        <member name="m16" type="string" arrayDimensions="4"/>
+        <member name="m17" type="wstring" stringMaxLength="128" arrayDimensions="1,5"/>
+        <member name="m18" type="wstring" stringMaxLength="-1" arrayDimensions="1,2"/>
+        <member name="m19" type="wstring" arrayDimensions="1"/>
+    </struct>
+
+    <struct name="MyPrimitiveSequenceStruct" topLevel="false">
+        <member name="m1" type="boolean" key="true" sequenceMaxLength="::MyConst11"/>
+        <member name="m2" type="octet" sequenceMaxLength="-1"/>
+        <member name="m3" type="char" sequenceMaxLength="3"/>
+        <member name="m4" type="short" sequenceMaxLength="4"/>
+        <member name="m5" type="unsignedShort" sequenceMaxLength="5"/>
+        <member name="m6" type="wchar" sequenceMaxLength="6"/>
+        <member name="m7" type="long" sequenceMaxLength="7"/>
+        <member name="m8" type="unsignedLong" sequenceMaxLength="8"/>
+        <member name="m9" type="float" sequenceMaxLength="9"/>
+        <member name="m10" type="double" sequenceMaxLength="10"/>
+        <member name="m11" type="longLong" sequenceMaxLength="11"/>
+        <member name="m12" type="unsignedLongLong" sequenceMaxLength="12"/>
+        <member name="m13" type="longDouble" sequenceMaxLength="13"/>
+        <member name="m14" type="string" sequenceMaxLength="14"/>
+        <member name="m15" type="string" stringMaxLength="-1" sequenceMaxLength="-1"/>
+        <member name="m16" type="string" sequenceMaxLength="16"/>
+        <member name="m17" type="wstring" sequenceMaxLength="17"/>
+        <member name="m18" type="wstring" stringMaxLength="-1" sequenceMaxLength="18"/>
+        <member name="m19" type="wstring" sequenceMaxLength="-1"/>
+    </struct>
+
+    <struct name="MyPrimitiveSequenceArrayStruct">
+        <member name="m1" type="boolean" key="true" sequenceMaxLength="2" arrayDimensions="1,2"/>
+        <member name="m2" type="octet" sequenceMaxLength="-1" arrayDimensions="2"/>
+        <member name="m3" type="char" sequenceMaxLength="3" arrayDimensions="3"/>
+        <member name="m4" type="short" sequenceMaxLength="4" arrayDimensions="4"/>
+        <member name="m5" type="unsignedShort" sequenceMaxLength="5" arrayDimensions="5"/>
+        <member name="m6" type="wchar" sequenceMaxLength="6" arrayDimensions="6"/>
+        <member name="m7" type="long" sequenceMaxLength="7" arrayDimensions="7"/>
+        <member name="m8" type="unsignedLong" sequenceMaxLength="8" arrayDimensions="1"/>
+        <member name="m9" type="float" sequenceMaxLength="9" arrayDimensions="3,4"/>
+        <member name="m10" type="double" sequenceMaxLength="10" arrayDimensions="1"/>
+        <member name="m11" type="longLong" sequenceMaxLength="11" arrayDimensions="2"/>
+        <member name="m12" type="unsignedLongLong" sequenceMaxLength="12" arrayDimensions="3"/>
+        <member name="m13" type="longDouble" sequenceMaxLength="13" arrayDimensions="4"/>
+        <member name="m14" type="string" sequenceMaxLength="14" arrayDimensions="5"/>
+        <member name="m15" type="string" stringMaxLength="-1" sequenceMaxLength="-1" arrayDimensions="6"/>
+        <member name="m16" type="string" sequenceMaxLength="16" arrayDimensions="7"/>
+        <member name="m17" type="wstring" sequenceMaxLength="17" arrayDimensions="2"/>
+        <member name="m18" type="wstring" stringMaxLength="-1" sequenceMaxLength="18" arrayDimensions="9"/>
+        <member name="m19" type="wstring" sequenceMaxLength="-1" arrayDimensions="1"/>
+    </struct>
+
+    <module name="MyModule1">
+        <struct name="MyModule1Struct1">
+            <member name="m1" type="boolean"/>
+        </struct>
+    </module>
+
+    <module name="MyModule1">
+        <struct name="MyModule1Struct2">
+            <member name="m1" type="boolean"/>
+            <member name="m2" type="nonBasic" nonBasicTypeName="MyModule1::MyModule1Struct1"/>
+            <member name="m3" type="nonBasic" nonBasicTypeName="MyModule1Struct1"/>
+        </struct>
+
+        <module name="MyModule2">
+            <struct name="MyModule2Struct1">
+                <member name="m1" type="nonBasic" nonBasicTypeName="MyPrimitiveStruct"/>
+                <member name="m2" type="nonBasic" nonBasicTypeName="::MyEnum"/>
+                <member name="m3" type="nonBasic" nonBasicTypeName="::MyPrimitiveStruct" arrayDimensions="1,2"/>
+                <member name="m4" type="nonBasic" nonBasicTypeName="MyEnum" arrayDimensions="1,2"/>
+                <member name="m5" type="nonBasic" nonBasicTypeName="::MyPrimitiveStruct" sequenceMaxLength="2"/>
+                <member name="m6" type="nonBasic" nonBasicTypeName="MyEnum" sequenceMaxLength="1"/>
+                <member name="m7" type="nonBasic" nonBasicTypeName="::MyPrimitiveStruct" sequenceMaxLength="2" arrayDimensions="2"/>
+                <member name="m8" type="nonBasic" nonBasicTypeName="MyEnum" sequenceMaxLength="1" arrayDimensions="3"/>
+           	    <member name="m99" type="nonBasic" nonBasicTypeName="MyModule1::MyModule1Struct2"/>
+                <member name="m9" type="nonBasic" nonBasicTypeName="MyModule1::MyModule1Struct1"/>
+                <member name="m10" type="nonBasic" nonBasicTypeName="MyModule1Struct1"/>
+                <member name="m11" type="nonBasic" nonBasicTypeName="MyModule1Struct2"/>
+                <member name="m12" type="nonBasic" nonBasicTypeName="MyModule1IncludeStruct1"/>
+            </struct>            
+        </module>
+    </module>
+
+    <valuetype name="MyBaseValue" typeModifier="custom">
+        <member name="m1" type="boolean" visibility="public"/>
+    </valuetype>
+
+    <valuetype name="MyDerivedValue" baseClass="::MyBaseValue" typeModifier="abstract">
+        <member name="m1" type="boolean" visibility="public"/>
+        <member name="m2" type="boolean" visibility="public"/>
+    </valuetype>
+
+    <sparse_valuetype name="MyBaseSparseValue" typeModifier="custom">
+        <member name="m1" type="boolean" visibility="public" required="false" id="1"/>
+    </sparse_valuetype>
+
+    <sparse_valuetype name="MyDerivedSparseValue" baseClass="::MyBaseSparseValue" typeModifier="abstract">
+        <member name="m1" type="boolean" visibility="public" key="true" id="2"/>
+        <member name="m2" type="boolean" visibility="public" required="true" id="3"/>
+        <member name="m3" type="boolean" visibility="private" id="4"/>
+    </sparse_valuetype>
+
+    <union name="MyUnion1" topLevel="1">
+        <discriminator type="boolean"/>
+        <case>
+            <caseDiscriminator value="1"/>
+            <member name="m1" type="long"/>
+        </case>
+        <case>
+            <caseDiscriminator value="MyConst11"/>
+            <caseDiscriminator value="false"/>
+            <member name="m2" arrayDimensions="1,2" type="nonBasic" nonBasicTypeName="MyModule1::MyModule1Struct1"/>
+        </case>
+        <case>
+            <caseDiscriminator value="default"/>
+            <member name="m3" type="float"/>
+        </case>
+    </union>
+
+    <typedef name="MyShortTypedef" type="short"/>
+    <typedef name="MyValueTypedef" type="nonBasic" nonBasicTypeName="MyBaseValue"/>
+    <typedef name="MyArrayTypedef" type="short" arrayDimensions="1,2"/>
+    <typedef name="MySequenceTypedef" type="short" sequenceMaxLength="2"/>
+
+
+    <union name="MyUnion2" topLevel="1">
+        <discriminator type="nonBasic" nonBasicTypeName="MyEnum"/>
+        <case>
+            <caseDiscriminator value="Enumerator0"/>
+            <member name="m1" type="long"/>
+        </case>
+        <case>
+            <caseDiscriminator value="Enumerator1"/>
+            <XcaseDiscriminator value="3"/>
+            <member name="m2" arrayDimensions="1,2" type="nonBasic" nonBasicTypeName="MyModule1::MyModule1Struct1"/>
+        </case>
+        <case>
+            <caseDiscriminator value="default"/>
+            <member name="m3" type="float"/>
+        </case>
+    </union>
+
+    <module name="MyModule2">
+        <enum name="MyEnum">
+            <enumerator name="Enum0"/>
+            <enumerator name="Enum1" value="100"/>
+            <enumerator name="Enum2" value="200"/>
+        </enum>
+    </module>
+
+    <union name="MyUnion3" topLevel="1">
+        <discriminator type="nonBasic" nonBasicTypeName="MyModule2::MyEnum"/>
+        <case>
+            <caseDiscriminator value="MyModule2::MyEnum::Enum1"/>
+            <member name="m1" type="long"/>
+        </case>
+        <case>
+            <caseDiscriminator value="MyModule2::MyEnum::Enum2"/>
+            <caseDiscriminator value="MyModule2::MyEnum::Enum0"/>
+            <member name="m2" arrayDimensions="1,2" type="nonBasic" nonBasicTypeName="MyModule1::MyModule1Struct1"/>
+        </case>
+        <case>
+            <caseDiscriminator value="default"/>
+            <member name="m3" type="float"/>
+        </case>
+    </union>
+    <const name="MAX_APPLICATION_STATUSES" type="short" value="40"/>
+    <typedef name="ApplicationStatusSeq" type="long" sequenceMaxLength="MAX_APPLICATION_STATUSES"/>
+    
+    <struct name="MyPrimitiveSequenceStruct2" extensibility="final">
+        <member name="m1" type="boolean"/>
+    </struct>
+        
+    <struct name="FinalStructure" extensibility="final">
+        <member name="m1" type="boolean"/>
+    </struct>
+    
+    <union name="FinalUnion" extensibility="final">
+        <discriminator type="long"/>
+        <case>
+            <caseDiscriminator value="0"/>
+            <member type="boolean" name="testBool"/>
+        </case>
+    </union>
+    
+    <!-- Mutable types -->
+    <struct name="MutableStructure1" extensibility="mutable">
+        <member name="m1" type="long"/>
+        <member name="m2" type="short" id="100"/>
+        <member name="m3" type="string" stringMaxLength="125"/>               
+    </struct>
+
+    <typedef name="MutableStructure1Typedef" type="nonBasic" nonBasicTypeName="MutableStructure1"/>
+
+   	<Xstruct name="MutableStructure2" baseType="MutableStructure1Typedef" extensibility="mutable"/>
+    <struct name="MutableStructure2" baseType="MutableStructure1" extensibility="mutable">
+        <member name="m4" type="long"/>
+        <member name="m5" type="short" id="200000"/>
+        <member name="m6" type="string" stringMaxLength="125" id="200002"/>               
+    </struct>
+    
+    <union name="MutableUnion1" extensibility="mutable">
+        <discriminator type="long"/>
+        <case>
+            <caseDiscriminator value="1"/>
+            <member name="m1" type="long"/>
+        </case>
+        <case>
+            <caseDiscriminator value="4"/>
+            <caseDiscriminator value="3"/>
+            <member name="m2" type="short" id="10"/>
+        </case>
+        <case>
+            <caseDiscriminator value="default"/>
+            <member name="m3" type="float"/>
+        </case>
+    </union>
+    
+    <!-- Extensible types with ID -->
+    <struct name="ExtStructure1" extensibility="extensible">
+        <member name="m1" type="long"/>
+        <member name="m2" type="short" id="100"/>
+        <member name="m3" type="string" stringMaxLength="125"/>               
+    </struct>
+
+    <typedef name="ExtStructure1Typedef" type="nonBasic" nonBasicTypeName="ExtStructure1"/>
+
+	<Xstruct name="ExtStructure2" baseType="ExtStructure1Typedef" extensibility="extensible"/>
+    <struct name="ExtStructure2" baseType="ExtStructure1" extensibility="extensible">
+        <member name="m4" type="long"/>
+        <member name="m5" type="short" id="200000"/>
+        <member name="m6" type="string" stringMaxLength="125" id="200002"/>               
+    </struct>
+    
+    <union name="ExtUnion1" extensibility="extensible">
+        <discriminator type="long"/>
+        <case>
+            <caseDiscriminator value="1"/>
+            <member name="m1" type="long"/>
+        </case>
+        <case>
+            <caseDiscriminator value="4"/>
+            <caseDiscriminator value="3"/>
+            <member name="m2" type="short" id="10"/>
+        </case>
+        <case>
+            <caseDiscriminator value="default"/>
+            <member name="m3" type="float"/>
+        </case>
+    </union>
+    
+</types>

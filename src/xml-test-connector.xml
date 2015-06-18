@@ -1,0 +1,210 @@
+
+<!--
+RTI Data Distribution Service Deployment
+-->
+<dds xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+     xsi:noNamespaceSchemaLocation="../dds_c.1.0/resource/qos_profiles_5.1.0/schema/rti_dds_profiles.xsd" 
+     version="5.1.0">
+         
+    <!-- Qos Library -->
+    <qos_library name="qosLibrary">
+        <qos_profile name="defaultProfile" is_default_qos="true">
+        </qos_profile>
+    </qos_library>
+
+    <!-- types -->
+    <types>
+         <const name="MAX_COLOR_LEN" type="long" value="255"/>
+
+        <typedef name="MYBOOL" type="boolean"/>
+        
+        <union name="AUnionType">
+            <discriminator type="long"/>
+            <case>
+                <caseDiscriminator value="0"/>
+                <member type="long" name="aLong"/>
+            </case>
+            <case>
+                <caseDiscriminator value="1"/>
+                <member type="short" name="aShort"/>
+            </case>
+            <case>
+                <caseDiscriminator value="2"/>
+                <member optional="true" type="long" name="aLongOpt"/>
+            </case>
+            <case>
+	            <caseDiscriminator value="default"/>
+	            <member name="aFloat" type="float"/>
+        	</case>
+        </union>
+        
+        <struct name="PrimitivesType2">
+             <member name="aUnion" type="nonBasic" nonBasicTypeName="AUnionType"/>
+             <member name="aString" type="string"  stringMaxLength="MAX_COLOR_LEN"/>
+             <member name="aWstring" type="wstring"  stringMaxLength="MAX_COLOR_LEN"/>
+             <member name="aLong" type="long"/>
+             <member name="aShort" type="short"/>
+             <member name="anUnsignedShort" type="unsignedShort"/>
+             <member name="anUnsignedLong" type="unsignedLong"/>
+             <member name="aFloat" type="float"/>
+             <member name="aDouble" type="double"/>
+             <member name="aBoolean" type="boolean"/>
+             <member name="aChar" type="char"/>
+             <member name="aWchar" type="wchar"/>
+             <member name="aLongLong" type="longLong"/>
+             <member name="aUnsignedLongLong" type="unsignedLongLong"/>
+         </struct>
+        
+        <struct name="PrimitivesType">
+            <member name="aStruct2" type="nonBasic" nonBasicTypeName="PrimitivesType2"/>
+             <member name="aUnion" type="nonBasic" nonBasicTypeName="AUnionType"/>
+             <member name="aString" type="string"  stringMaxLength="MAX_COLOR_LEN"/>
+             <member name="aWstring" type="wstring"  stringMaxLength="MAX_COLOR_LEN"/>
+             <member name="aLong" type="long"/>
+             <member name="aShort" type="short"/>
+             <member name="anUnsignedShort" type="unsignedShort"/>
+             <member name="anUnsignedLong" type="unsignedLong"/>
+             <member name="aFloat" type="float"/>
+             <member name="aDouble" type="double"/>
+             <member name="aBoolean" type="boolean"/>
+             <member name="aChar" type="char"/>
+             <member name="aWchar" type="wchar"/>
+             <member name="aLongLong" type="longLong"/>
+             <member name="aUnsignedLongLong" type="unsignedLongLong"/>
+
+             <member optional="true" name="aUnionOpt" type="nonBasic" nonBasicTypeName="AUnionType"/>
+             <member optional="true" name="aStringOpt" type="string"  stringMaxLength="MAX_COLOR_LEN"/>
+             <member optional="true" name="aWstringOpt" type="wstring"  stringMaxLength="MAX_COLOR_LEN"/>
+             <member optional="true" name="aLongOpt" type="long"/>
+             <member optional="true" name="aShortOpt" type="short"/>
+             <member optional="true" name="anUnsignedShortOpt" type="unsignedShort"/>
+             <member optional="true" name="anUnsignedLongOpt" type="unsignedLong"/>
+             <member optional="true" name="aFloatOpt" type="float"/>
+             <member optional="true" name="aDoubleOpt" type="double"/>
+             <member optional="true" name="aBooleanOpt" type="boolean"/>
+             <member optional="true" name="aCharOpt" type="char"/>
+             <member optional="true" name="aWcharOpt" type="wchar"/>
+             <member optional="true" name="aLongLongOpt" type="longLong"/>
+             <member optional="true" name="aUnsignedLongLongOpt" type="unsignedLongLong"/>
+         </struct>
+
+
+        <typedef name="MYSTRUCT" type="nonBasic" nonBasicTypeName="PrimitivesType"/>
+
+         <valuetype name="ValueType">
+            <member name="aStruct" type="nonBasic" nonBasicTypeName="PrimitivesType"/>
+         </valuetype>
+        <enum name="MyEnum">
+            <enumerator name="ACE" value="1"/>
+            <enumerator name="KING" value="13"/>
+            <enumerator name="QUEEN" value="12"/>
+        </enum>
+         <struct name="ShapeType">
+             <member name="aUnion" type="nonBasic" nonBasicTypeName="AUnionType"/>
+             <member sequenceMaxLength="3" name ="aValueSeq" type="nonBasic" nonBasicTypeName="ValueType"/>
+             <member arrayDimensions="3" name ="aValueArr" type="nonBasic" nonBasicTypeName="ValueType"/>
+             <member name="aValue" type="nonBasic" nonBasicTypeName="ValueType"/>
+             <member sequenceMaxLength="3" name ="aStructSeq" type="nonBasic" nonBasicTypeName="PrimitivesType"/>
+             <member arrayDimensions="3" name ="aStructArr" type="nonBasic" nonBasicTypeName="PrimitivesType"/>
+             <member name="aStruct" type="nonBasic" nonBasicTypeName="PrimitivesType"/>
+             <member name="aString" type="string"  stringMaxLength="MAX_COLOR_LEN"/>
+             <member name="aWstring" type="wstring"  stringMaxLength="MAX_COLOR_LEN"/>
+             <member name="aLong" type="long"/>
+             <member name="aShort" type="short"/>
+             <member name="anOctet" type="octet"/>
+             <member name="anUnsignedShort" type="unsignedShort"/>
+             <member name="anUnsignedLong" type="unsignedLong"/>
+             <member name="aFloat" type="float"/>
+             <member name="aDouble" type="double"/>
+             <member name="aBoolean" type="boolean"/>
+             <member name="aChar" type="char"/>
+             <member name="aWchar" type="wchar"/>
+             <member name="aLongLong" type="longLong"/>
+             <member name="aUnsignedLongLong" type="unsignedLongLong"/>
+             
+             <member name="anAlias" type="nonBasic" nonBasicTypeName="MYBOOL"/>
+             <member name="aComplexAlias" type="nonBasic" nonBasicTypeName="MYSTRUCT"/>
+             <member name="aEnum" type="nonBasic" nonBasicTypeName="MyEnum"/>
+             
+             <member arrayDimensions="3" name="aStringArr" type="string"  stringMaxLength="MAX_COLOR_LEN"/>
+             <member arrayDimensions="3" name="aWstringArr" type="wstring"  stringMaxLength="MAX_COLOR_LEN"/>
+             <member arrayDimensions="3" name="aLongArr" type="long"/>
+             <member arrayDimensions="3" name="aShortArr" type="short"/>
+             <member arrayDimensions="3" name="anUnsignedShortArr" type="unsignedShort"/>
+             <member arrayDimensions="3" name="anUnsignedLongArr" type="unsignedLong"/>
+             <member arrayDimensions="3" name="aFloatArr" type="float"/>
+             <member arrayDimensions="3" name="aDoubleArr" type="double"/>
+             <member arrayDimensions="3" name="aBooleanArr" type="boolean"/>
+             <member arrayDimensions="3" name="aCharArr" type="char"/>
+             <member arrayDimensions="3" name="aWcharArr" type="wchar"/>
+             <member arrayDimensions="3" name="aLongLongArr" type="longLong"/>
+             <member arrayDimensions="3" name="aUnsignedLongLongArr" type="unsignedLongLong"/>
+             <member arrayDimensions="3" name="anOctetArr" type="octet"/>
+             <member arrayDimensions="3" name="aEnumArr" type="nonBasic" nonBasicTypeName="MyEnum"/>
+             
+             <member sequenceMaxLength="3" name="aUnionSeq" type="nonBasic"  nonBasicTypeName="AUnionType" stringMaxLength="MAX_COLOR_LEN"/>
+             <member sequenceMaxLength="3" name="aStringSeq" type="string"  stringMaxLength="MAX_COLOR_LEN"/>
+             <member sequenceMaxLength="3" name="aWstringSeq" type="wstring"  stringMaxLength="MAX_COLOR_LEN"/>
+             <member sequenceMaxLength="3" name="aLongSeq" type="long"/>
+             <member sequenceMaxLength="3" name="aShortSeq" type="short"/>
+             <member sequenceMaxLength="3" name="anUnsignedShortSeq" type="unsignedShort"/>
+             <member sequenceMaxLength="3" name="anUnsignedLongSeq" type="unsignedLong"/>
+             <member sequenceMaxLength="3" name="aFloatSeq" type="float"/>
+             <member sequenceMaxLength="3" name="aDoubleSeq" type="double"/>
+             <member sequenceMaxLength="3" name="aBooleanSeq" type="boolean"/>
+             <member sequenceMaxLength="3" name="aCharSeq" type="char"/>
+             <member sequenceMaxLength="3" name="aWcharSeq" type="wchar"/>
+             <member sequenceMaxLength="3" name="aLongLongSeq" type="longLong"/>
+             <member sequenceMaxLength="3" name="aUnsignedLongLongSeq" type="unsignedLongLong"/>
+             <member sequenceMaxLength="3" name="anOctetSeq" type="octet"/>
+             <member sequenceMaxLength="3" name="aEnumSeq" type="nonBasic" nonBasicTypeName="MyEnum"/>
+         </struct>
+         
+         <union name="ShapeType1">
+            <discriminator type="long"/>
+            <case>
+                <caseDiscriminator value="0"/>
+                <member type="long" name="aLong"/>
+            </case>
+            <case>
+                <caseDiscriminator value="1"/>
+                <member name="aFloat" type="float"/>
+            </case>
+        </union>
+    </types>
+    
+    
+
+    <!-- Domain Library -->
+    <domain_library name="MyDomainLibrary" >
+
+        <domain name="ShapeDomain" domain_id="0">
+            <register_type name="ShapeType" kind="dynamicData"
+                           type_ref="ShapeType" /> 
+    <register_type name="PrimitivesType" kind="dynamicData"
+                           type_ref="PrimitivesType" />  
+
+            <topic name="Square"   register_type_ref="ShapeType"/>
+            <topic name="Circle"   register_type_ref="ShapeType"/>
+            <topic name="Triangle" register_type_ref="ShapeType"/>
+            
+        </domain>
+    </domain_library>
+
+    <!-- Participant library -->
+    <participant_library name="LuaLib">
+
+        <!-- testGetOnInputAndOnOutput -->
+        <domain_participant name="testGetOnInputAndOnOutput" 
+                            domain_ref="MyDomainLibrary::ShapeDomain">
+            <subscriber name="MySubscriber">
+                <data_reader name="MyCircleReader" topic_ref="Circle"/>
+            </subscriber>
+            <publisher name="MyPublisher">
+                <data_writer name="MyCircleWriter" topic_ref="Circle"/>
+            </publisher>
+                        
+        </domain_participant>
+           
+    </participant_library>
+</dds>
