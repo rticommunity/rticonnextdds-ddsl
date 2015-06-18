@@ -1726,7 +1726,7 @@ function Tester:test_xml_advancedX()
   local xmlfile2xtypes = require('xtypes-xml').xmlfile2xtypes
   
   local testfiles = {
-    -- 'test.xml',
+    --'test.xml',
     'types1.xml'
   }
   
@@ -1736,7 +1736,7 @@ function Tester:test_xml_advancedX()
     for i = 1, #schemas do
       self:print(schemas[i])
     end
-    print('--------- ', file, ' end ---------')
+    print('--------- ', file, ' end --------')
   end
 end
 

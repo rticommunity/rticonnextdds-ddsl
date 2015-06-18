@@ -7,8 +7,8 @@
 --[[
 -------------------------------------------------------------------------------
 Purpose: Load X-Types in Lua from an XML file
-Created: Rajive Joshi, 2014 Apr 1
--------------------------------------------------------------------------------
+Created: Rajive Joshi, 2015 Jun 16
+------------------------------------------------------------------------------
 --]]
 
 local xtypes = require('xtypes')
@@ -134,10 +134,10 @@ appropriate X-Types model element.
 local xmlattr2xtype   -- forward declaration
 xmlattr2xtype = {
   -- skip these:
-  name             = function(xarg) return xarg.name end,
-  nonBasicTypeName = function(xarg) return xarg.nonBasicTypeName end,
-  stringMaxLength  = function(xarg) return xarg.stringMaxLength end,
-  
+  name             = xtypes.EMPTY,
+  nonBasicTypeName = xtypes.EMPTY,
+  stringMaxLength  = xtypes.EMPTY,
+  baseType         = xtypes.EMPTY,
   
   -- role_template
   type = function(xarg)
@@ -201,30 +201,41 @@ xmlattr2xtype = {
 }
 
 --[[
-Return the role definition specified by the given xml attribute list
+Return the array of annotations by the given xml attribute list. Also output
+a warning if there are any unrecognized xml attributes
 --]]
-local function xarg2roledefn(xarg)
-
-    -- role template
-    local role_defn = { xmlattr2xtype.type(xarg) }
-    
-    -- collection
-    if xarg.arrayDimensions then 
-      table.insert(role_defn, xmlattr2xtype.arrayDimensions(xarg))
-    end
-    if xarg.sequenceMaxLength then
-      table.insert(role_defn, xmlattr2xtype.sequenceMaxLength(xarg))
-    end
-    
+local function xarg2annotations(xarg)
     -- annotations
+    local annotations = {}
     for k, v in pairs(xarg) do
       if xmlattr2xtype.annotations[k] then 
-        table.insert(role_defn, xmlattr2xtype.annotations[k](xarg))  
+        table.insert(annotations, xmlattr2xtype.annotations[k](xarg))  
       elseif not xmlattr2xtype[k] then
         print(table.concat{'WARNING: Skipping unrecognized XML attribute: ',
                             k, ' = ', v})      
       end
     end
+    return annotations
+end
+
+--[[
+Return the role definition specified by the given xml attribute list
+--]]
+local function xarg2roledefn(xarg)
+
+    -- annotations
+    local role_defn = xarg2annotations(xarg)
+    
+    -- collection
+    if xarg.arrayDimensions then 
+      table.insert(role_defn, 1, xmlattr2xtype.arrayDimensions(xarg))
+    end
+    if xarg.sequenceMaxLength then
+      table.insert(role_defn, 1, xmlattr2xtype.sequenceMaxLength(xarg))
+    end
+        
+    -- role template
+    table.insert(role_defn, 1, xmlattr2xtype.type(xarg))
     
     return role_defn
 end
@@ -243,6 +254,10 @@ tag2template = {
     local template = xtypes.typedef{
       [tag.xarg.name] = xarg2roledefn(tag.xarg)
     }
+
+    -- annotations
+    template[xtypes.QUALIFIERS] = xarg2annotations(tag.xarg)
+
     return template
   end,
   
@@ -252,6 +267,10 @@ tag2template = {
         xmlattr2xtype.type(tag.xarg), xmlattr2xtype.value(tag.xarg) 
       }
     }
+    
+    -- annotations
+    template[xtypes.QUALIFIERS] = xarg2annotations(tag.xarg)
+    
     return template
   end,
     
@@ -272,14 +291,16 @@ tag2template = {
         end
       end
     end
+    
+    -- annotations
+    template[xtypes.QUALIFIERS] = xarg2annotations(tag.xarg)
+
     return template
   end,
   
   struct = function (tag)
     local template = xtypes.struct{[tag.xarg.name]=xtypes.EMPTY}
-     
-    -- TODO: annotations
-    
+         
     -- base type    
     if tag.xarg.baseType then
       template[xtypes.BASE] = lookup_type(tag.xarg.baseType)
@@ -292,6 +313,10 @@ tag2template = {
         template[#template+1] = { [child.xarg.name] = xarg2roledefn(child.xarg) }
       end
     end
+    
+    -- annotations
+    template[xtypes.QUALIFIERS] = xarg2annotations(tag.xarg)
+    
     return template
   end,
   
@@ -331,6 +356,10 @@ tag2template = {
         end
       end
     end
+    
+    -- annotations
+    template[xtypes.QUALIFIERS] = xarg2annotations(tag.xarg)
+    
     return template
   end,
   
@@ -366,7 +395,10 @@ tag2template = {
         end
       end
     end
-    
+
+    -- annotations
+    template[xtypes.QUALIFIERS] = xarg2annotations(tag.xarg)
+
     ns = prev_ns-- done with loading name-space: reset context to previous state
     return template
   end,
