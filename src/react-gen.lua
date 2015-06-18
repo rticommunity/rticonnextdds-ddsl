@@ -1,23 +1,27 @@
+local PullGen = require("generator")
+
 -- Every reative generator accepts a continuation as a 
--- argument to method named "attach". Every continuation 
+-- argument to method named "listen". Every continuation 
 -- is of type T->(). I.e., it accepts something and does 
 -- not return anything. In short, ReactGen looks like below
--- class ReactGen<T> { void attach(T->()) }
+-- class ReactGen<T> { void listen(T->()) }
   
 local ReactGen = {
   new        = nil,
-  attach     = nil,
+  listen     = nil,
   map        = nil,
   flatMap    = nil,
 
   propagate  = nil, -- private
-  attachImpl = nil, -- private
+  listenImpl = nil, -- private
   cont       = nil, -- private (data)
 }
 
 local Disposable = {
   dispose    = nil
 }
+
+local Private = {}
 
 function Disposable:new(o)
   o =  o or { } 
@@ -75,8 +79,12 @@ function ReactGen:new(o)
   return o
 end
 
-function ReactGen:attach(continuation) 
-  return self:attachImpl(continuation)
+function ReactGen.kind()
+  return "reactive"
+end
+
+function ReactGen:listen(continuation) 
+  return self:listenImpl(continuation)
 end
 
 function ReactGen:propagate(value)
@@ -86,8 +94,8 @@ end
 function ReactGen:map(func)
   local prev = self
   return ReactGen:new(
-      { attachImpl = function (unused, continuation)
-                       return prev:attach(function (value) 
+      { listenImpl = function (unused, continuation)
+                       return prev:listen(function (value) 
                                 if continuation then continuation(func(value)) end
                               end)
                      end 
@@ -100,12 +108,12 @@ function ReactGen:flatMap(func, innerDisposable)
 
   return ReactGen:new(
       { innerDisposable = innerDisposable,
-        attachImpl = function (observable, continuation)
+        listenImpl = function (observable, continuation)
                        local outerDisposable = 
                           prev:map(func)
-                              :attach(function (nested) 
+                              :listen(function (nested) 
                                  observable.innerDisposable:add( 
-                                   nested:attach(function (op)
+                                   nested:listen(function (op)
                                      if continuation then continuation(op) end
                                    end))
                                end)
@@ -119,12 +127,13 @@ function ReactGen:flatMap(func, innerDisposable)
       })
 end
 
-function ReactGen:zip2(otherGen, zipperFunc)
+function ReactGen:zip2old(otherGen, zipperFunc)
   local prev = self
   return ReactGen:new(
         { queue = { first=nil, second=nil }, 
-          attachImpl = function(observable, continuation) 
-            local disp1 = prev:attach(function (i) 
+          listenImpl = function(observable, continuation) 
+
+            local disp1 = prev:listen(function (i) 
               if observable.queue.second then
                 local zip = zipperFunc(i, observable.queue.second)
                 if continuation then continuation(zip) end
@@ -134,7 +143,7 @@ function ReactGen:zip2(otherGen, zipperFunc)
               end
             end)
 
-            local disp2 = otherGen:attach(function (j) 
+            local disp2 = otherGen:listen(function (j) 
               if observable.queue.first then
                 local zip = zipperFunc(observable.queue.first, j)
                 if continuation then continuation(zip) end
@@ -145,19 +154,84 @@ function ReactGen:zip2(otherGen, zipperFunc)
             end)
 
             local disposable = CompositeDisposable:new()
-            disposable.add(disp1)
-            disposable.add(disp2)
+            disposable:add(disp1)
+            disposable:add(disp2)
 
             return disposable
           end
         })
 end
 
+function Private.tryCall(expectedCacheLen, zipperFunc, cache, continuation)
+  local ready = true
+   
+  for i=1, expectedCacheLen do
+    if cache[i] == nil then
+      ready = false
+      return
+    end
+  end
+
+  if ready then
+    local result = zipperFunc(unpack(cache))
+    if continuation then continuation(result) end
+
+    for i=1, #cache do
+      cache[i] = nil
+    end
+  end
+end
+
+function Private.zipConcatenate(idx, genList, zipperObj, continuation)
+  return genList[idx]:listen(function (value) 
+    zipperObj.cache[idx] = value
+    Private.tryCall(#genList,
+                    zipperObj.zipperFunc, 
+                    zipperObj.cache,
+                    continuation)
+  end)
+end
+
+function Private.zipImpl(...)
+  local argLen = select("#", ...)
+  local zipperFunction = select(argLen, ...)
+  local genList = {  }
+
+  for i=1, argLen-1 do
+    genList[i] = select(i, ...)
+  end
+
+  local zipper = ReactGen:new(
+        { cache      = { }, 
+          zipperFunc = zipperFunction, 
+          listenImpl = function(zipperObj, continuation) 
+            local disposable = CompositeDisposable:new()
+
+            for i=1, #genList do 
+              disposable:add(
+                Private.zipConcatenate(i, genList, zipperObj,
+                                       continuation))
+            end
+            return disposable
+          end
+        })
+
+  return zipper
+end
+
+function ReactGen:zip2(otherGen, zipperFunc)
+  return Private.zipImpl(self, otherGen, zipperFunc)
+end
+
+function ReactGen:zipMany(...)
+  return Private.zipImpl(self, select(1, ...))
+end
+
 function ReactGen:where(predicate)
   local prev = self
   return ReactGen:new(
-      { attachImpl = function (unused, continuation)
-                       return prev:attach(function (value) 
+      { listenImpl = function (unused, continuation)
+                       return prev:listen(function (value) 
                                 if predicate(value) then
                                   if continuation then continuation(value) end
                                 end
@@ -194,6 +268,72 @@ function findFirstEmpty(list)
   return #list + 1
 end 
 
+function Private.createMemberGenTab(
+    structtype, genLib, memoizeGen)
+
+  local pullGenTab         = { }
+  local pushGenTab         = { }
+  local pushGenMemberNames = { }
+  genLib = genLib or { }
+  genLib.typeGenLib = genLib.typeGenLib or { }
+
+--  if structtype[xtypes.KIND]() == "struct" and
+--  if   structtype[xtypes.BASE] ~= nil then
+--    memberGenTab = 
+--      Private.createMemberGenTab(
+--          structtype[xtypes.BASE], genLib, memoizeGen)
+--  end
+
+  local pushIdx = 1
+  for idx, val in ipairs(structtype) do
+    local member, def = next(val)
+    --io.write(member .. ": ")
+    if genLib[member] then -- if library already has a generator 
+      if(genLib[member].kind() == "pull") then
+        --print("pull member = ", member)
+        pullGenTab[member] = genLib[member]
+      else
+        --print("push member = ", member)
+        pushGenTab[pushIdx] = genLib[member]
+        pushGenMemberNames[pushIdx] = member
+        pushIdx = pushIdx + 1
+      end
+    else
+      pullGenTab[member] = PullGen.getGenerator(
+                                   def, genLib, memoizeGen)
+      if memoizeGen then genLib[member] = memberGenTab[member] end
+    end
+    --print()
+  end
+
+  return pullGenTab, pushGenTab, pushGenMemberNames;
+end
+
+function ReactGenPackage.aggregateGen(structtype, genLib, memoize)
+
+  local pullGenTab, pushGenTab, pushGenMemberNames = 
+    Private.createMemberGenTab(structtype, genLib, memoize)
+
+  pushGenTab[#pushGenTab+1] = 
+         function (...)
+            local data = { }
+            local argLen = select("#", ...)
+            
+            for i=1, argLen do
+                local name = pushGenMemberNames[i]
+                data[name] = select(i, ...)
+            end
+            
+            for member, gen in pairs(pullGenTab) do
+              data[member] = gen:generate()
+            end
+
+            return data
+          end
+
+  return Private.zipImpl(unpack(pushGenTab))
+end
+
 function ReactGenPackage.createSubjectFromPullGen(pullgen)
   if pullgen==nil then
     error "Invalid argument: nil generator." 
@@ -202,7 +342,7 @@ function ReactGenPackage.createSubjectFromPullGen(pullgen)
   return Subject:new(
             { source   = pullgen,
               contList = { },
-              attachImpl = function (sub, continuation)
+              listenImpl = function (sub, continuation)
                              local idx = findFirstEmpty(sub.contList)
                              sub.contList[idx] = continuation
                              return { dispose = function () 

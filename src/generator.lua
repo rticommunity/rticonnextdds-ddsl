@@ -122,6 +122,10 @@ function TGenerator:new(generatorFunc)
   return o
 end
 
+function TGenerator.kind()
+  return "pull"
+end
+
 function TGenerator:map(func)
   return TGenerator:new(function () 
            return func(self:generate())
@@ -456,6 +460,11 @@ function GenPackage.enumGen(enumtype)
     ordinals[idx] = value
   end
   return GenPackage.oneOf(ordinals)
+end
+
+function GenPackage.getGenerator(
+    roledef, genLib, memoizeGen)
+  return Private.getGenerator(roledef, genLib, memoizeGen)
 end
 
 function GenPackage.getPrimitiveGen(ptype)

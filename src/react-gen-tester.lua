@@ -1,4 +1,4 @@
-local reactGen = require("react-gen")
+local ReactGen = require("react-gen")
 local Gen      = require("generator")
 local xtypes   = require("xtypes")
 
@@ -23,36 +23,32 @@ function Tester.test_struct_gen()
 
   local shapeGenLib = { }
 
-  reactXGen = 
-     reactGen.createSubjectFromPullGen(Gen.rangeGen(0, 200))
-
-  reactYGen = 
-     -- reactGen.createSubjectFromPullGen(Gen.rangeGen(0, 300))
-     reactXGen:map(function (x) return 2*x end)
-
-  shapeGenLib.color = Gen.oneOf({ "RED", "GREEN", "BLUE" })
-
+  shapeGenLib.x         = ReactGen.createSubjectFromPullGen(Gen.rangeGen(0, 200))
+  shapeGenLib.y         = shapeGenLib.x:map(function (x) return 2*x end)
+  shapeGenLib.color     = Gen.oneOf({ "RED", "GREEN", "BLUE" })
   shapeGenLib.shapesize = Gen.rangeGen(20, 30)
 
+--    shapeGenLib.x:zip2(shapeGenLib.y, 
+--                       function(x, y)
+--                         return { x = x, 
+--                                  y = y,
+--                                 color = shapeGenLib.color:generate(),
+--                                 shapesize = shapeGenLib.shapesize:generate()
+--                                }
+--                  end)
+
   local reactiveShapeGen = 
-    reactXGen:zip2(reactYGen, 
-                   function(x, y)
-                      return { x = x, 
-                               y = y,
-                               color = shapeGenLib.color:generate(),
-                               shapesize = shapeGenLib.shapesize:generate()
-                             }
-                    end)
-              :attach(function (shape) 
-                        print("shape.x = " .. shape.x)
-                        print("shape.y = " .. shape.y)
-                        print("shape.color = " .. shape.color)
-                        print("shape.shapesize = " .. shape.shapesize)
+      ReactGen.aggregateGen(ShapeType, shapeGenLib)
+              :listen(function (shape) 
+                        print("shape.x = ", shape.x)
+                        print("shape.y = ", shape.y)
+                        print("shape.color = ", shape.color)
+                        print("shape.shapesize = ", shape.shapesize)
                         print()
                       end)
 
   for i=1, 5 do
-    reactXGen:push()
+    shapeGenLib.x:push()
     --reactYGen:push()
   end
 end
@@ -61,10 +57,10 @@ Tester[#Tester+1] = "test_react_gen"
 function Tester.test_react_gen()
 
   local sub1 = 
-    reactGen.createSubjectFromPullGen(Gen.rangeGen(1, 50))
+    ReactGen.createSubjectFromPullGen(Gen.rangeGen(1, 50))
 
   local sub2 = 
-    reactGen.createSubjectFromPullGen(Gen.rangeGen(1, 5))
+    ReactGen.createSubjectFromPullGen(Gen.rangeGen(1, 5))
 
   local disp1 = 
     sub1:map(function (i) 
@@ -78,7 +74,7 @@ function Tester.test_react_gen()
                                      return j*v 
                                    end)
                  end)
-        :attach(function (k) 
+        :listen(function (k) 
                   print("k = ", k)
                 end)
 
@@ -88,7 +84,7 @@ function Tester.test_react_gen()
                       return x+y
                     end)
         :where(function (z) return z % 2 == 0 end)
-        :attach(function (z) print("z = ", z) end)
+        :listen(function (z) print("z = ", z) end)
 
   for i=1,2 do
     print("Calling sub1 push ", i)
