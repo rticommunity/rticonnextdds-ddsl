@@ -17,9 +17,9 @@ local xmlstring2table = require('xml-parser').xmlstring2table
 --[[
 TRACE: turn tracing on/off to help debug XML import
 --]]
-local is_trace_on = true -- turn on tracing?
+local interface
 local function trace(...) 
-  return is_trace_on and print('TRACE: ', ...)
+  return interface.is_trace_on and print('TRACE: ', ...)
 end
 
 --[[
@@ -28,21 +28,21 @@ NOTE: set when loading module elements; reset to nil when not loading a module
 --]]
 local ns = nil
 
-
 --[[
 Templates created from XML. This list is built as the XML is processed.
 --]]
-local templates = {}
+local template_list = {}
 
 --[[
 Look up the template from a name. Searches in several places:
  - in  the pre-defined xtypes, 
- - in the user-defined templates
+ - in the user-defined template_list
  - in the user defined modules (for nested namespaces)
 @param name [in] name of the type to lookup
 @return the template referenced by name, or nil.
 --]]
 local function lookup_type(name)
+
   -- deviations specific to XML representation  
   local xmlName2Model = {
     unsignedShort    = xtypes.unsigned_short,
@@ -66,7 +66,7 @@ local function lookup_type(name)
   end
   
 
-  -- lookup in the templates that we have defined so far
+  -- lookup in the template_list that we have defined so far
   -- NOTE: for path names with a '::' name-space separator for each name-space
   -- segment, lookup the path name in module name-spaces defined so far
   local template_toplevel = nil
@@ -79,7 +79,7 @@ local function lookup_type(name)
                 
       -- is w defined as a top-level namespace so far?
       if not template_toplevel then
-        for i, template in ipairs(templates) do
+        for i, template in ipairs(template_list) do
           if w == template[xtypes.NAME] then
             template_toplevel = template
             break
@@ -436,10 +436,10 @@ local function xml2xtypes(xml)
   local tag_handler = tag2template[xml.label]
   if tag_handler then -- process this node (and its child nodes)
     trace('\n-----\n', xml.label, xml.xarg.name or xml.xarg.file)
-    local xtype = tag_handler(xml)
-    if xtype then 
-      table.insert(templates, xtype) 
-      trace(table.concat(xtypes.utils.visit_model(xtype, {'IDL:'}), '\n\t'))
+    local template = tag_handler(xml)
+    if template then 
+      table.insert(template_list, template)
+      trace(table.concat(xtypes.utils.visit_model(template, {'IDL:'}), '\n\t'))
     end
   else -- don't recognize the label as an xtype, visit the child nodes  
     -- process the child nodes
@@ -450,7 +450,7 @@ local function xml2xtypes(xml)
     end
   end
   
-  return templates
+  return template_list
 end
 
 --[[
@@ -484,9 +484,13 @@ function xmlfile2xtypes(filename)
 end
 
 -------------------------------------------------------------------------------
-local interface = {
-    xmlstring2xtypes = xmlstring2xtypes,
-    xmlfile2xtypes   = xmlfile2xtypes,
+interface = {
+    string2xtypes = xmlstring2xtypes,
+    file2xtypes   = xmlfile2xtypes,
+    is_trace_on   = false, -- turn on tracing?
+    
+    -- clear the list of templates
+    clear         = function() template_list = {} end,
 }
 
 return interface

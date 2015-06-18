@@ -1712,9 +1712,9 @@ end
 
 Tester[#Tester+1] = 'test_xml'
 function Tester:test_xml()
-  local xmlfile2xtypes = require('xtypes-xml').xmlfile2xtypes
+  local xmlfile2xtypes = require('xtypes-xml').file2xtypes
   
-  local schemas = xmlfile2xtypes('xtypes-xml-tester.xml')
+  local schemas = xmlfile2xtypes('xml-test-simple.xml')
   
   for i = 1, #schemas do
     self:print(schemas[i])
@@ -1722,21 +1722,25 @@ function Tester:test_xml()
 end
 
 Tester[#Tester+1] = 'test_xml_advanced'
-function Tester:test_xml_advancedX()
-  local xmlfile2xtypes = require('xtypes-xml').xmlfile2xtypes
-  
+function Tester:test_xml_advancedX()  
+  local xml = require('xtypes-xml') 
+   
   local testfiles = {
-    --'test.xml',
+    'test.xml',
     'types1.xml'
   }
   
+  -- xml.is_trace_on = true
   for i, file in ipairs(testfiles) do
     print('========= ', file, ' do =========')
-    local schemas = xmlfile2xtypes(file)
-    for i = 1, #schemas do
-      self:print(schemas[i])
+    local schemas = xml.file2xtypes(file)
+    for i, schema in ipairs(schemas) do
+      self:print(schema)
     end
     print('--------- ', file, ' end --------')
+    
+    -- clear the loaded schema list to prevent collisions between files
+    xml.clear() 
   end
 end
 
