@@ -24,6 +24,33 @@ function getAllData(t, prevData)
   return getAllData(index, data)
 end
 
+--[[Tester[#Tester+1] = 'test_union_gen'
+function Tester:test_union_gen()
+
+  local TestUnion = xtypes.union{
+    TestUnion = {xtypes.short,
+      { 1,   x = { xtypes.string() } },
+      { 2,   y = { xtypes.long_double } },
+      { nil, z = { xtypes.boolean } }, -- default
+    }
+  }
+  
+  self:print(TestUnion)
+  
+  assert(TestUnion._d == '#')
+  assert(TestUnion.x == 'x')
+  assert(TestUnion.y == 'y')
+  assert(TestUnion.z == 'z')
+ 
+  local memoize = false
+  local lib = {}
+  local unionGen = Gen.aggregateGen(TestUnion, lib, memoize)
+  local union = unionGen:generate()
+
+  print("union._d = ", union._d)
+
+end]]
+
 Tester[#Tester+1] = 'test_struct_gen'
 function Tester.test_struct_gen()
   local ShapeType = xtypes.struct{
@@ -189,9 +216,15 @@ function Tester.test_struct_moderate()
     end
     print()
   end
-  print("#favorite = ", #name.favorite)
-  print("favorite[1] = ", name.favorite[1])
-  print("favorite[2] = ", name.favorite[2])
+
+  if name.favorite then 
+    print("#favorite = ", #name.favorite) 
+    print("favorite[1] = ", name.favorite[1])
+    print("favorite[2] = ", name.favorite[2])
+  else
+    print("favorite = ", name.favorite)
+  end
+
   print("#trajectory = ", #name.trajectory)
   for i, point in ipairs(name.trajectory) do
     print("point.x =", point.x, "point.y = ", point.y)
@@ -270,15 +303,6 @@ function Tester.test_enum_gen()
 
 end
 
---Tester[#Tester+1] = 'test_random_types'
---function Tester.test_random_types()
---  local randomType    = xtypes.struct {Top=xtypes.EMPTY}
---  local name="x"
---  randomType[1] = {}
---  randomType[1].x = { xtypes.long } 
---  Tester.print(randomType)
---end
-
 Tester[#Tester+1] = 'test_primitive_gen'
 function Tester.test_primitive_gen() 
   numGen      = Gen.numGen()
@@ -299,38 +323,48 @@ function Tester.test_primitive_gen()
   end
 end
 
-function fibonacciGen()
-  local a = 0
-  local b = 1
-  return Gen.newGen(function ()
-           local c = a;
-           a = b
-           b = c+b
-           return b
-         end)
-end  
-
 Tester[#Tester+1] = 'test_fibonacciGen'
 function Tester.test_fibonacciGen()
-  local fiboGen     = fibonacciGen()
+  local fiboGen = Gen.fibonacciGen()
   print("Generating fibonacci numbers")
-  for i=1,5 do 
-    io.write(string.format("%d ", fiboGen.generate()))
+  for i=1,15 do 
+    io.write(string.format("%d ", fiboGen:generate()))
   end
+  print()
 end
 
----
+Tester[#Tester+1] = 'test_stepGen'
+function Tester.test_stepGen()
+  local gen = Gen.stepGen(-1,-10, -1, false)
+  print("Generating number series")
+  for i=1,20 do 
+    io.write(string.format("%d ", gen:generate()))
+  end
+  print()
+end
+
+Tester[#Tester+1] = 'test_fromSequenceGen'
+function Tester.test_fromSequenceGen()
+  local array = { 10, 20, 30 }
+  local gen = Gen.inOrderGen(array, false)
+  print("Generating numbers from an array")
+  for i=1,20 do 
+    io.write(string.format("%d ", gen:generate()))
+  end
+  print()
+end
+
+--
 -- print - helper method to print the IDL and the index for data definition
 function Tester.print(instance)
     -- print IDL
-    local idl = xtypes.utils.visit_model(instance, {'idl:'})
+    local idl = xtypes.utils.visit_model(instance, {'model (IDL):'})
     print(table.concat(idl, '\n\t'))
     
     -- print the result of visiting each field
-    local fields = xtypes.utils.visit_instance(instance, {'index:'})
+    local fields = xtypes.utils.visit_instance(instance, {'instance:'})
     print(table.concat(fields, '\n\t'))
 end
-
 ---
 -- main() - run the list of tests passed on the command line
 --          if no command line arguments are passed in, run all the tests
