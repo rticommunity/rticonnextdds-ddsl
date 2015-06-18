@@ -331,15 +331,14 @@ function GenPackage.stringGen(maxLength, charGen)
 end
 
 function Private.createMemberGenTab(
-    structtype, 
-    genLib, 
-    memoizeGen)
+    structtype, genLib, memoizeGen)
 
   local memberGenTab = { }
   genLib = genLib or { }
   genLib.typeGenLib = genLib.typeGenLib or { }
 
-  if structtype[xtypes.BASE] ~= nil then
+--  if structtype[xtypes.KIND]() == "struct" and
+  if   structtype[xtypes.BASE] ~= nil then
     memberGenTab = 
       Private.createMemberGenTab(
           structtype[xtypes.BASE], genLib, memoizeGen)
@@ -374,6 +373,10 @@ function Private.getGenerator(
       gen = GenPackage.enumGen(roledef[1])
     elseif roledef[1][xtypes.KIND]() == "struct" then  -- It's a function!
       gen = GenPackage.aggregateGen(roledef[1], genLib, memoizeGen)
+--    elseif roledef[1][xtypes.KIND]() == "union" then  -- It's a function!
+--      gen = GenPackage.aggregateGen(roledef[1], genLib, memoizeGen)
+    else
+      error "Error: Unknown kind"  
     end
     if memoizeGen then genLib.typeGenLib[baseTypename] = gen end
 
@@ -409,8 +412,29 @@ function Private.sequenceParseGen(gen, info)
   return gen
 end
 
+function Private.unionGen(
+    structtype, genLib, memoizeGen)
+
+  local memberGenTab 
+    = Private.createMemberGenTab(
+          structtype, genLib, memoizeGen)
+
+  return TGenerator:new(function () 
+           local data = {}
+           for member, gen in pairs(memberGenTab) do
+             data[member] = gen:generate()
+           end
+           return data
+         end)
+end
+
+
 function GenPackage.aggregateGen(
     structtype, genLib, memoizeGen)
+
+--  if structtype[xtypes.KIND]()=="union" then
+--    return Private.unionGen(structtype, genLib, memoizeGen)
+--  end
 
   local memberGenTab 
     = Private.createMemberGenTab(
@@ -488,6 +512,60 @@ end
 
 function GenPackage.newGen(func)
   return TGenerator:new(func)
+end
+
+function GenPackage.fibonacciGen()
+  local a = 0
+  local b = 1
+  return TGenerator:new(function ()
+           local c = a;
+           a = b
+           b = c+b
+           return c
+         end)
+end  
+
+function GenPackage.stepGen(start, max, step, cycle)
+  if start == nil then 
+    error "Error in stepGen: start is nil" 
+  end
+
+  max   = max   or math.huge
+  step  = step  or 1
+  cycle = cycle or false
+  
+  local current = start
+  local init = false
+
+  return TGenerator:new(function ()
+           if init==false then 
+             init = true
+           else
+             if step >= 0 then
+               if current + step <= max then 
+                  current = current + step
+               else
+                 if cycle then current = start end
+               end
+             else
+               if current + step >= max then 
+                  current = current + step
+               else
+                 if cycle then current = start end
+               end
+             end
+           end
+           return current 
+         end)
+end  
+
+function GenPackage.inOrderGen(array, cycle)
+  if #array == 0 then error "Error: Empty sequence" end
+
+  return GenPackage.stepGen(1, #array, 1, cycle)
+                   :map(function (i)
+                          return array[i]
+                        end)
 end
 
 GenPackage.Bool       = GenPackage.boolGen()
