@@ -53,6 +53,9 @@ local function lookup_type(name)
     
     key              = xtypes.Key,
     optional         = xtypes.Optional,
+    id               = xtypes.ID,
+    topLevel         = xtypes.top_level,
+    
     extensibility    = xtypes.Extensibility,
   }
   -- lookup in the deviations table
@@ -111,7 +114,11 @@ local function lookup_type(name)
       -- Now, lookup the template specified by the name segments within the
       -- top-level template's (first w's) name space
       trace('\t\t ..', template[w])
-      template = xtypes.utils.template(template[w])
+      if 'enum' == template[xtypes.KIND]() then
+          template = w
+      else
+          template = xtypes.utils.template(template[w])
+      end
     end
     
     trace('\t\t ->', template)
@@ -125,8 +132,10 @@ local function lookup_type(name)
   return template
 end
 
--- Takes a comma separated dimension string, eg "1,2" and converts it to a table
--- containing the dimensions: {1, 2}
+--[[
+Takes a comma separated dimension string, eg "1,2" and converts it to a table
+containing the dimensions: {1, 2}
+--]]
 local function dim_string2array(comma_separated_dimension_string)
     local dim = {}
     for w in string.gmatch(comma_separated_dimension_string, "[%w_]+") do
@@ -136,14 +145,14 @@ local function dim_string2array(comma_separated_dimension_string)
     end
     return table.unpack(dim)
 end
-
+        
 -- Create a role definition table from an XML tag attributes
 -- @param xarg [in] the XML tag's attributes
 -- @return the role definition specified by the xml xarg attributes
 local function xml_xarg2role_definition(xarg)
   local role_definition = {}
   local role_template, sequence, array, value 
-  
+
   -- process the xarg and cache the attributes as they are traversed
   for k, v in pairs(xarg) do
   
@@ -197,6 +206,7 @@ local function xml_xarg2role_definition(xarg)
       else
         local annotation = lookup_type(k) 
         if annotation then
+          if v then annotation = annotation{v} end
           table.insert(role_definition, annotation) -- at the end
         else
           print(table.concat{'WARNING: Skipping unrecognized XML attribute: ',
@@ -272,6 +282,8 @@ tag2template = {
   struct = function (tag)
     local template = xtypes.struct{[tag.xarg.name]=xtypes.EMPTY}
      
+    -- annotations   TODO
+    
     -- base type    
     if tag.xarg.baseType then
       template[xtypes.BASE] = lookup_type(tag.xarg.baseType)
@@ -298,7 +310,11 @@ tag2template = {
       if 'table' == type(child) then -- skip comments
       
         if 'discriminator' == child.label then
-          template=xtypes.union{[tag.xarg.name]={lookup_type(child.xarg.type)}}
+          template=xtypes.union{[tag.xarg.name]={
+              child.xarg.nonBasicTypeName -- NOTE: use nonBasic if defined
+                            and lookup_type(child.xarg.nonBasicTypeName)
+                            or  lookup_type(child.xarg.type)    
+          }}
         
         elseif 'case' == child.label then
           local case = nil -- default
