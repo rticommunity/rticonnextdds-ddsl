@@ -50,13 +50,6 @@ local function lookup_type(name)
     longLong         = xtypes.long_long,
     unsignedLongLong = xtypes.unsigned_long_long,
     longDouble       = xtypes.long_double,
-    
-    key              = xtypes.Key,
-    optional         = xtypes.Optional,
-    id               = xtypes.ID,
-    topLevel         = xtypes.top_level,
-    
-    extensibility    = xtypes.Extensibility,
   }
   -- lookup in the deviations table
   local template = xmlName2Model[name] 
@@ -125,7 +118,7 @@ local function lookup_type(name)
   end
  
   if not template then
-    trace(table.concat{'\tSkipping unresolved name: "', name, 
+    trace(table.concat{'\tUnresolved name: "', name, 
           '"  in ', ns and xtypes.utils.nsname(ns)})
   end      
                          
@@ -133,128 +126,131 @@ local function lookup_type(name)
 end
 
 --[[
-Takes a comma separated dimension string, eg "1,2" and converts it to a table
-containing the dimensions: {1, 2}
+Map an xml attribute to an appropriate handler to generate X-Types
+      xml attribute --> action to generate X-Type template (attribute handler)
+Each handler takes the attribute list as an argument, and returns an 
+appropriate X-Types model element.
 --]]
-local function dim_string2array(comma_separated_dimension_string)
+local xmlattr2xtype   -- forward declaration
+xmlattr2xtype = {
+  -- skip these:
+  name             = function(xarg) return xarg.name end,
+  nonBasicTypeName = function(xarg) return xarg.nonBasicTypeName end,
+  stringMaxLength  = function(xarg) return xarg.stringMaxLength end,
+  
+  
+  -- role_template
+  type = function(xarg)
+    -- determine the stringMaxLength 
+    local stringMaxLength -- NOTE: "-1" means unbounded
+    if xarg.stringMaxLength and '-1' ~= xarg.stringMaxLength then -- bounded
+      stringMaxLength = tonumber(xarg.stringMaxLength) or
+                        lookup_type(xarg.stringMaxLength)
+                        
+    end
+    
+    if 'string' == xarg.type then
+      return xtypes.string(stringMaxLength)
+    elseif 'wstring' ==  xarg.type then
+      return xtypes.wstring(stringMaxLength)
+    else
+      return xarg.nonBasicTypeName -- NOTE: use nonBasic if defined
+                        and lookup_type(xarg.nonBasicTypeName)
+                        or  lookup_type(xarg.type)
+    end
+  end,
+  
+  -- collection: sequence
+  sequenceMaxLength = function(xarg)
+    -- determine the stringMaxLength 
+    local sequenceMaxLength -- NOTE: "-1" means unbounded
+    if '-1' ~= xarg.sequenceMaxLength then -- bounded
+      sequenceMaxLength = tonumber(xarg.sequenceMaxLength) or 
+                          lookup_type(xarg.sequenceMaxLength) 
+                          
+    end
+    return xtypes.sequence(sequenceMaxLength)
+  end,
+     
+  -- collection: array
+  arrayDimensions = function(xarg)
     local dim = {}
-    for w in string.gmatch(comma_separated_dimension_string, "[%w_]+") do
+    for w in string.gmatch(xarg.arrayDimensions, "[%w_]+") do
       local dim_i = tonumber(w) or lookup_type(w)
       table.insert(dim, dim_i)       
       trace('\tdim = ', dim_i)
     end
-    return table.unpack(dim)
-end
-        
--- Create a role definition table from an XML tag attributes
--- @param xarg [in] the XML tag's attributes
--- @return the role definition specified by the xml xarg attributes
-local function xml_xarg2role_definition(xarg)
-  local role_definition = {}
-  local role_template, sequence, array, value 
-
-  -- process the xarg and cache the attributes as they are traversed
-  for k, v in pairs(xarg) do
+    return xtypes.array(table.unpack(dim))          
+  end,
   
-      -- skip the attributes that will be processed with other attributes
-      if 'name'             == k or
-         'stringMaxLength'  == k or 
-         'nonBasicTypeName' == k then
-          -- do nothing
-        
-      -- role_template
-      elseif 'type'         == k then
-        
-        -- determine the stringMaxLength 
-        local stringMaxLength -- NOTE: "-1" means unbounded
-        if xarg.stringMaxLength and '-1' ~= xarg.stringMaxLength then -- bounded
-          stringMaxLength = tonumber(xarg.stringMaxLength) or
-                            lookup_type(xarg.stringMaxLength)
-                            
-        end
-        
-        if 'string' == v then
-          role_template = xtypes.string(stringMaxLength)
-        elseif 'wstring' == v then
-          role_template = xtypes.wstring(stringMaxLength)
-        else
-          role_template = xarg.nonBasicTypeName -- NOTE: use nonBasic if defined
-                            and lookup_type(xarg.nonBasicTypeName)
-                            or  lookup_type(xarg.type)
-        end
-        
-      -- collection: sequence
-      elseif 'sequenceMaxLength' == k then
-        -- determine the stringMaxLength 
-        local sequenceMaxLength -- NOTE: "-1" means unbounded
-        if '-1' ~= xarg.sequenceMaxLength then -- bounded
-          sequenceMaxLength = tonumber(xarg.sequenceMaxLength) or 
-                              lookup_type(xarg.sequenceMaxLength) 
-                              
-        end
-        sequence = xtypes.sequence(sequenceMaxLength)
-         
-      -- collection: array
-      elseif 'arrayDimensions' == k then
-        array = xtypes.array(dim_string2array(v))
+  -- constant: value              
+  value = function(xarg)
+      return xarg.value -- let the constant definition do the conversion
+  end,
+  
+  -- annotations
+  annotations = {
+    key           = function() return xtypes.Key end,
+    optional      = function() return xtypes.Optional end,
+    topLevel      = function() return xtypes.top_level end,
+    id            = function(xarg) return xtypes.ID{xarg.id} end,
+    extensibility = function(xarg) 
+      return xtypes.Extensibility{xarg.extensibility} 
+    end,
+  }
+}
+
+--[[
+Return the role definition specified by the given xml attribute list
+--]]
+local function xarg2roledefn(xarg)
+
+    -- role template
+    local role_defn = { xmlattr2xtype.type(xarg) }
     
-      -- constant: value              
-      elseif 'value' == k then
-        value = v -- let the constant definition do the conversion from string 
-        
-      -- annotations         
-      else
-        local annotation = lookup_type(k) 
-        if annotation then
-          if v then annotation = annotation{v} end
-          table.insert(role_definition, annotation) -- at the end
-        else
-          print(table.concat{'WARNING: Skipping unrecognized XML attribute: ',
-                              k, ' = ', v})
-        end
+    -- collection
+    if xarg.arrayDimensions then 
+      table.insert(role_defn, xmlattr2xtype.arrayDimensions(xarg))
+    end
+    if xarg.sequenceMaxLength then
+      table.insert(role_defn, xmlattr2xtype.sequenceMaxLength(xarg))
+    end
+    
+    -- annotations
+    for k, v in pairs(xarg) do
+      if xmlattr2xtype.annotations[k] then 
+        table.insert(role_defn, xmlattr2xtype.annotations[k](xarg))  
+      elseif not xmlattr2xtype[k] then
+        print(table.concat{'WARNING: Skipping unrecognized XML attribute: ',
+                            k, ' = ', v})      
       end
-  end
-  
-  -- insert the cached attributes in the correct order to for a role definition
-  
-  -- value
-  if value then -- const
-    table.insert(role_definition, 1, value) 
-  end 
-  
-  -- collection:
-  if array then
-    table.insert(role_definition, 1, array) 
-  end
-  if sequence then 
-    table.insert(role_definition, 1, sequence) 
-  end
-  
-  -- role template will always be present, and must be the first item
-  table.insert(role_definition, 1, role_template)
-
-  return role_definition
+    end
+    
+    return role_defn
 end
 
 --[[
-Map an xml tag to an appropriate X-Types template creation function:
-      tag --> action to create X-Type template
-Each creation function returns the newly created X-Type template
+Map an xml tag to an appropriate X-Types template creation function (handler):
+      tag --> action to create X-Type template (tag handler)
+Each handler takes the xml tag as an argument, and returns a newly 
+created X-Types template or nil
 --]]
-local xmlfile2xtypes -- forward declaration
 local tag2template   -- forward declaration
+local xmlfile2xtypes -- forward declaration
 tag2template = {
 
   typedef = function(tag)  
     local template = xtypes.typedef{
-      [tag.xarg.name] = xml_xarg2role_definition(tag.xarg)
+      [tag.xarg.name] = xarg2roledefn(tag.xarg)
     }
     return template
   end,
   
   const = function(tag)
     local template = xtypes.const{
-      [tag.xarg.name] = xml_xarg2role_definition(tag.xarg)
+      [tag.xarg.name] = { 
+        xmlattr2xtype.type(tag.xarg), xmlattr2xtype.value(tag.xarg) 
+      }
     }
     return template
   end,
@@ -282,7 +278,7 @@ tag2template = {
   struct = function (tag)
     local template = xtypes.struct{[tag.xarg.name]=xtypes.EMPTY}
      
-    -- annotations   TODO
+    -- TODO: annotations
     
     -- base type    
     if tag.xarg.baseType then
@@ -293,9 +289,7 @@ tag2template = {
     for i, child in ipairs(tag) do
       if 'table' == type(child) and 'member' == child.label then-- skip comments
         trace(tag.label, child.label, child.xarg.name)
-        template[#template+1] = { 
-          [child.xarg.name] = xml_xarg2role_definition(child.xarg)
-        }
+        template[#template+1] = { [child.xarg.name] = xarg2roledefn(child.xarg) }
       end
     end
     return template
@@ -310,10 +304,9 @@ tag2template = {
       if 'table' == type(child) then -- skip comments
       
         if 'discriminator' == child.label then
+          local disc = xmlattr2xtype.type(child.xarg)
           template=xtypes.union{[tag.xarg.name]={
-              child.xarg.nonBasicTypeName -- NOTE: use nonBasic if defined
-                            and lookup_type(child.xarg.nonBasicTypeName)
-                            or  lookup_type(child.xarg.type)    
+                xmlattr2xtype.type(child.xarg)
           }}
         
         elseif 'case' == child.label then
@@ -330,8 +323,7 @@ tag2template = {
               elseif 'member' == grandchild.label then
                 template[#template+1] = { 
                   case, 
-                      [grandchild.xarg.name] = 
-                                    xml_xarg2role_definition(grandchild.xarg)
+                      [grandchild.xarg.name] = xarg2roledefn(grandchild.xarg)
                 }
               end
             end
@@ -385,6 +377,7 @@ tag2template = {
       xmlfile2xtypes(file) 
       trace(tag.label, tag.xarg.file, 'DONE!')
     end
+    return nil
   end,
   
   -- Legacy tags
