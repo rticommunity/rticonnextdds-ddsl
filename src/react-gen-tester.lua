@@ -35,14 +35,14 @@ function Tester.test_struct_gen()
 --                                 color = shapeGenLib.color:generate(),
 --                                 shapesize = shapeGenLib.shapesize:generate()
 --                                }
---                  end)
+--                       end)
 
   local reactiveShapeGen = 
       ReactGen.aggregateGen(ShapeType, shapeGenLib)
               :listen(function (shape) 
-                        print("shape.x = ", shape.x)
-                        print("shape.y = ", shape.y)
-                        print("shape.color = ", shape.color)
+                        print("shape.x         = ", shape.x)
+                        print("shape.y         = ", shape.y)
+                        print("shape.color     = ", shape.color)
                         print("shape.shapesize = ", shape.shapesize)
                         print()
                       end)

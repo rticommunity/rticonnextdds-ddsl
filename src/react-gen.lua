@@ -127,7 +127,7 @@ function ReactGen:flatMap(func, innerDisposable)
       })
 end
 
-function ReactGen:zip2old(otherGen, zipperFunc)
+function ReactGen:zip2simple(otherGen, zipperFunc)
   local prev = self
   return ReactGen:new(
         { queue = { first=nil, second=nil }, 
@@ -248,8 +248,9 @@ local Subject = ReactGen:new()
 
 local ReactGenPackage = {}
 
-function Subject:push()
-  self:propagate(self.source:generate()) 
+function Subject:push(value)
+  value = value or self.source:generate()
+  self:propagate(value) 
 end
 
 function Subject:propagate(value)
