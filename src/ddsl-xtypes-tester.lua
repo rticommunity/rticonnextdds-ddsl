@@ -1715,7 +1715,7 @@ function Tester:test_xml()
   local xml = require('xtypes-xml')
   
   -- xml.is_trace_on = true
-  local schemas = xml.file2xtypes('xml-test-simple.xml')
+  local schemas = xml.files2xtypes({'xml-test-simple.xml'})
 
   for i = 1, #schemas do
     self:print(schemas[i])

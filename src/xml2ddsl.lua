@@ -15,18 +15,6 @@ Created: Rajive Joshi, 2015 Jun 26
 local xtypes = require('xtypes')
 local xml = require('xtypes-xml')
 
-local function files2ddsl(files)
-  -- xml.is_trace_on = true
-  local schemas
-  for i = 1, #files do
-    local file = files[i]
-    print('========= ', file, ' do =========')
-    schemas = xml.file2xtypes(file)
-    print('--------- ', file, ' end --------')
-  end
-  return schemas
-end
-
 local function main(arg)
   if #arg == 0 then
     print('Usage: ' .. arg[0] .. [[' <xml-file> [ <xml-files> ...]
@@ -41,8 +29,8 @@ local function main(arg)
     return
   end
 
-  -- import
-  local schemas = files2ddsl(arg)
+  -- import XML files
+  local schemas = xml.files2xtypes(arg)
 
   -- print on stdout
   print('\n********* DDSL: Global X-Types Namespace *********')

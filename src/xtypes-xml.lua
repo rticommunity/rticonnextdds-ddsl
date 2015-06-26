@@ -472,7 +472,7 @@ local files_loaded = {}
 --[[
 Given an XML file, loads the xtype definitions, and return them
 @param filename [in] xml file containing XML type definitions
-@return an array of xtypes, equivalent to those defined in the xml table
+@return an array of xtypes, equivalent to those defined in the xml file
 --]]
 function xmlfile2xtypes(filename)
   if not files_loaded[filename] then
@@ -483,10 +483,28 @@ function xmlfile2xtypes(filename)
   end
 end
 
+--[[
+Given an array of XML files, loads the xtype definitions in a single global 
+X-Types namespaces, and returns the list of loaded DDSL schemas
+@param filenames [in] array of xml file names containing XML type definitions
+@return an array of xtypes, equivalent to those defined in the xml files
+--]]
+local function xmlfiles2xtypes(files)
+  local schemas
+  for i = 1, #files do
+    local file = files[i]
+    print('========= ', file, ' do =========')
+    schemas = xmlfile2xtypes(file)
+    print('--------- ', file, ' end --------')
+  end
+  return schemas
+end
+
 -------------------------------------------------------------------------------
 interface = {
     string2xtypes = xmlstring2xtypes,
     file2xtypes   = xmlfile2xtypes,
+    files2xtypes  = xmlfiles2xtypes,
     is_trace_on   = false, -- turn on tracing?
     
     -- clear the list of templates
