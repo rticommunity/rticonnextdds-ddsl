@@ -17,7 +17,11 @@ local xml = require('xtypes-xml')
 
 local function main(arg)
   if #arg == 0 then
-    print('Usage: ' .. arg[0] .. [[' <xml-file> [ <xml-files> ...]
+    print('Usage: ' .. arg[0] .. [[' [-t] <xml-file> [ <xml-files> ...]
+    
+    where:
+      -t            turn tracing ON
+      <xml-file>    is an XML file
     
     Imports all the XML files into a single X-Types global namespace. 
     Cross-references between files are resolved. However, duplicates 
@@ -27,6 +31,12 @@ local function main(arg)
     should be processed in separate command line invocations of this utility.
     ]])
     return
+  end
+
+  -- turn on tracing?
+  if '-t' == arg[1] then 
+    table.remove(arg, 1) -- pop the argument
+    xml.is_trace_on = true
   end
 
   -- import XML files
