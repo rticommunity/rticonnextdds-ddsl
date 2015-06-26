@@ -1,4 +1,4 @@
-#!/usr/local/bin/lua
+#!/usr/bin/env lua
 --[[
   (c) 2005-2014 Copyright, Real-Time Innovations, All rights reserved.     
                                                                            
@@ -1714,7 +1714,7 @@ Tester[#Tester+1] = 'test_xml'
 function Tester:test_xml()
   local xml = require('xtypes-xml')
   
-  xml.is_trace_on = true
+  -- xml.is_trace_on = true
   local schemas = xml.file2xtypes('xml-test-simple.xml')
 
   for i = 1, #schemas do

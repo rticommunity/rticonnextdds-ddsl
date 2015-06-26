@@ -1,4 +1,4 @@
-#!/usr/local/bin/lua
+#!/usr/bin/env lua
 --[[
   (c) 2005-2014 Copyright, Real-Time Innovations, All rights reserved.     
                                                                            
