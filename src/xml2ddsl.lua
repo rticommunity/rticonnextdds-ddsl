@@ -55,6 +55,7 @@ local function main(arg)
     
     -- TODO: print the DDSL representation
   end  
+  print('\n********* DDSL: ' .. #schemas .. ' elements *********')
 end
 
 main(arg)

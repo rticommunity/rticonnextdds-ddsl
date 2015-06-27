@@ -175,7 +175,7 @@ xmlattr2xtype = {
   -- collection: array
   arrayDimensions = function(xarg)
     local dim = {}
-    for w in string.gmatch(xarg.arrayDimensions, "[%w_]+") do
+    for w in string.gmatch(xarg.arrayDimensions, "[%w_::]+") do
       local dim_i = tonumber(w) or lookup_type(w)
       table.insert(dim, dim_i)       
       trace('\tdim = ', dim_i)

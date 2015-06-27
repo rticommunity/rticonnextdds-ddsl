@@ -747,7 +747,7 @@ function _.assert_role(role)
 end
 
 --- Ensure that value is a template
--- @param templat [in] the potential template to check
+-- @param template [in] the potential template to check
 -- @return the template or nil
 function _.assert_template_kind(template)
     assert(_.info.is_template_kind(template), 
