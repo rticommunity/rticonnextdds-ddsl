@@ -9,11 +9,16 @@
  -----------------------------------------------------------------------------
  Purpose: Test Lua X-Types and Domain Specific Language (DDSL)
  Created: Rajive Joshi, 2014 Feb 14
+ Usage:
+          ../bin/run ddsl-xtypes-tester
+    OR
+          ./ddsl-xtypes-tester.lua
 -----------------------------------------------------------------------------
 --]]
 
-local xtypes = require('xtypes')
+package.path = table.concat{'../src/?.lua;', package.path}
 
+local xtypes = require('xtypes')
 --------------------------------------------------------------------------------
 -- Tester - the unit tests
 --------------------------------------------------------------------------------
