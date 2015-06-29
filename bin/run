@@ -18,10 +18,10 @@
 #   MY_HOME/
 #       <any-dir>/run     <<<=== THIS SCRIPT
 #       bin/
-#					  [<arch>/]
+#           [<arch>/]
 #       lib/
 #           [<arch>/]
-#				src/
+#       src/
 #
 #   1. The <lua_script> must be co-located in the same directory as this
 #      shell script or in the current working directory or must be an

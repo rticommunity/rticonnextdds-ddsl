@@ -12,7 +12,7 @@ Data Domain Specific Language
 ### Command Line
 
 
-    bin/run xml2ddsl.lua [-t] <xml-file> [ <xml-files> ...]
+    bin/run xml2ddsl [-t] <xml-file> [ <xml-files> ...]
 
 e.g.:
 
