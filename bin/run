@@ -1,12 +1,12 @@
 #!/bin/sh
 #-------------------------------------------------------------------------------
-# Purpose: Utility to launch lua scripts with correct LUA_PATH and LUA_CPATH, 
+# Purpose: Utility to launch lua scripts with correct LUA_PATH and LUA_CPATH,
 #          so that module dependencies are correctly resolved, and the scripts
 #          can be location independent
 #
 # Usage:
 #         run <lua_script> <lua_script_args>
-#    
+#
 #         e.g.
 #               run xml2ddsl <file.xml>
 #		  or
@@ -15,22 +15,22 @@
 # Configuration:
 #   Assumes the following package layout structure:
 #
-#			MY_HOME/
-#                 <any-dir>/run     <<<=== THIS SCRIPT
-#                 bin/
+#   MY_HOME/
+#       <any-dir>/run     <<<=== THIS SCRIPT
+#       bin/
 #					  [<arch>/]
-#                 lib/
-#                     [<arch>/]
-#				  src/
+#       lib/
+#           [<arch>/]
+#				src/
 #
 #   1. The <lua_script> must be co-located in the same directory as this
-#      shell script or in the current working directory or must be an 
+#      shell script or in the current working directory or must be an
 #      absolute path to the script
-#   2. Note the .lua extenion is added automatically, and should not be 
+#   2. Note the .lua extenion is added automatically, and should not be
 #      specified
-#   3. If a lua interpreter is present in the the bin/ directories, 
+#   3. If a lua interpreter is present in the the bin/ directories,
 #      it is the one used (instead of the one installed on the system)
-#   4. The module dependencies must be located in ../src/ or ../lib/ 
+#   4. The module dependencies must be located in ../src/ or ../lib/
 #      directories. The src/ directory contents, if present, overide the lib/
 #      definitions (thus allowing for rapid development). The lib/* directories
 #      may have compiled lua byte-code (created using luac on the src/ files).
@@ -43,7 +43,7 @@ MY_HOME=$(cd $(dirname "$0")/..; pwd -P)
 # Locate architecture specific path, if any:
 # NOTE: we assume there will be only one match
 MY_BIN_ARCH=`echo ${MY_HOME}/bin/*$(uname)*`
-MY_LIB_ARCH=`echo ${MY_HOME}/lib/*$(uname)*` 
+MY_LIB_ARCH=`echo ${MY_HOME}/lib/*$(uname)*`
 
 # ensure that we can find the lua scripts and their dependencies
 export LUA_PATH="${MY_HOME}/src/?.lua;${MY_HOME}/lib/lua/?.lua;;" #src overrides
@@ -69,4 +69,3 @@ env lua ${LUA_CMD_PATH} $*
 #echo MY_BIN_ARCH=${MY_BIN_ARCH}
 #echo MY_LIB_ARCH=${MY_LIB_ARCH}
 #echo LUA_CMD_PATH=${LUA_CMD_PATH}
-

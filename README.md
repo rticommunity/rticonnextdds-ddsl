@@ -29,4 +29,4 @@ or, with tracing on:
 
     -- xml.is_trace_on = true -- OPTIONAL: turn on tracing
 
-    local schemas = xml.files2xtypes( { 'xml-test-simple.xml' }) -- array of files
+    local schemas = xml.files2xtypes( { 'xml-test-simple.xml' } ) -- array of files
