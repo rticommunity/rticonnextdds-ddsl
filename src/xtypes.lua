@@ -1,12 +1,12 @@
 --[[
-  (c) 2005-2014 Copyright, Real-Time Innovations, All rights reserved.     
-                                                                           
- Permission to modify and use for internal purposes granted.               
+  (c) 2005-2014 Copyright, Real-Time Innovations, All rights reserved.
+
+ Permission to modify and use for internal purposes granted.
  This software is provided "as is", without warranty, express or implied.
 --]]
 --[[
 -----------------------------------------------------------------------------
- Purpose: Define X-Types in Lua using the DDSL (Data type definition Domain 
+ Purpose: Define X-Types in Lua using the DDSL (Data type definition Domain
            Specific Language)
  Created: Rajive Joshi, 2014 Feb 14
 -----------------------------------------------------------------------------
@@ -18,26 +18,26 @@ SUMMARY
 
 USAGE
   See the examples in ddsl-xtypes-tester.lua for user defined X-Types in Lua.
-   
+
 IMPLEMENTATION
 
-  Note that DDSL does not impose any specific syntax on how the types are 
+  Note that DDSL does not impose any specific syntax on how the types are
   expressed in Lua. This module defines the syntax. The general pattern is:
-  
-     { <name> = { <definition> } } 
-  
+
+     { <name> = { <definition> } }
+
   Each X-Type constructor is documented in detail, with examples.
-  
-  To illustrate, here are some role definitions:  
+
+  To illustrate, here are some role definitions:
     Unions:
      { { case, role = { template, [collection,] [annotation1, ...] } } }
-  
+
     Structs:
      { { role = { template, [collection,] [annotation1, annotation2, ...] } } }
-  
+
     Typedefs:
      { template, [collection,] [annotation1, annotation2, ...] }
- 
+
 -----------------------------------------------------------------------------
 --]]
 
@@ -56,14 +56,14 @@ local xtypes = {
   UNION      = function() return 'union' end,
   MODULE     = function() return 'module' end,
   TYPEDEF    = function() return 'typedef' end,
-  
+
   -- X-types attributes
   BASE       = function() return ' : ' end,    -- inheritance, e.g. struct base
   SWITCH     = function() return 'switch' end, -- choice: e.g.: union switch
-  
+
   -- Concrete X-Types model info interface
   info = {},
-  
+
   -- Meta-tables that define/control the Public API for the X-Type templates
   API = {},
 }
@@ -74,10 +74,10 @@ local _ = require('ddsl')(xtypes.info)
 --- Is the given model element a qualifier?
 -- NOTE: collections are qualifiers
 -- @param value [in] the model element to check
--- @return the value (qualifier), or nil if it is not a qualifier 
+-- @return the value (qualifier), or nil if it is not a qualifier
 function xtypes.info.is_qualifier_kind(value)
   local kind = _.model_kind(value)
-  return (xtypes.ANNOTATION == kind) 
+  return (xtypes.ANNOTATION == kind)
          and value
          or nil
 end
@@ -88,7 +88,7 @@ end
 function xtypes.info.is_collection_kind(value)
   local model = _.model(value)
   return (xtypes.ARRAY == model or
-          xtypes.SEQUENCE == model) 
+          xtypes.SEQUENCE == model)
          and value
          or nil
 end
@@ -98,8 +98,8 @@ end
 -- @return the value (alias), or nil if it is not an alias
 function xtypes.info.is_alias_kind(value)
   local kind = _.model_kind(value)
-  return (xtypes.TYPEDEF == kind) 
-         and value 
+  return (xtypes.TYPEDEF == kind)
+         and value
          or nil
 end
 
@@ -108,7 +108,7 @@ end
 -- @return the value (leaf), or nil if it is not a leaf type
 function xtypes.info.is_leaf_kind(value)
   local kind = _.model_kind(value)
-  return (xtypes.ATOM == kind or 
+  return (xtypes.ATOM == kind or
           xtypes.ENUM == kind)
          and value
          or nil
@@ -121,7 +121,7 @@ function xtypes.info.is_template_kind(value)
   local kind = _.model_kind(value)
   return (xtypes.ATOM == kind or
           xtypes.ENUM == kind or
-          xtypes.STRUCT == kind or 
+          xtypes.STRUCT == kind or
           xtypes.UNION == kind or
           xtypes.TYPEDEF == kind)
         and value
@@ -132,22 +132,22 @@ end
 -- Helpers
 -------------------------------------------------------------------------------
 
---- Split a decl into a name and defin after ensuring that we don't have an 
+--- Split a decl into a name and defin after ensuring that we don't have an
 -- invalid declaration
--- @param decl [in] a table containing at least one {name=defn} entry 
+-- @param decl [in] a table containing at least one {name=defn} entry
 --                where *name* is a string model name
 --                and *defn* is a table containing the definition
 -- @return name, def
 function xtypes.parse_decl(decl)
   -- pre-condition: decl is a table
-  assert('table' == type(decl), 
+  assert('table' == type(decl),
     table.concat{'parse_decl(): invalid declaration: ', tostring(decl)})
-       
+
   local name, defn = next(decl)
-  
+
   assert('string' == type(name),
     table.concat{'parse_decl(): invalid model name: ', tostring(name)})
-    
+
   assert('table' == type(defn),
   table.concat{'parse_decl(): invalid model definition: ', tostring(defn)})
 
@@ -155,11 +155,11 @@ function xtypes.parse_decl(decl)
 end
 
 --------------------------------------------------------------------------------
--- X-Types Model Definitions -- 
+-- X-Types Model Definitions --
 --------------------------------------------------------------------------------
 
 --- Create an annotation
---  Annotations attributes are not interpreted, and kept intact 
+--  Annotations attributes are not interpreted, and kept intact
 -- @param decl  [in] a table containing an annotation declaration
 --                 { name = {...}  }
 --    where ...  are the optional 'default' attributes of the annotation
@@ -168,10 +168,10 @@ end
 --   -- IDL @Key
 --     xtypes.Key
 --     xtypes.Key{GUID=N}
---     
+--
 --  --  IDL @Exensibility(EXTENSIBLE_EXTENSIBILITY)
 --    xtypes.Extensibility{'EXTENSIBLE_EXTENSIBILITY'},
--- 
+--
 --  -- Create user defined annotation @MyAnnotation(value1 = 42, value2 = 42.0)
 --    local MyAnnotation = xtypes.annotation{
 --            MyAnnotation = {value1 = 42, value2 = 9.0}
@@ -179,36 +179,36 @@ end
 --
 --  -- Use user defined annotation with custom attributes
 --    MyAnnotation{value1 = 942, value2 = 999.0}
---        
-function xtypes.annotation(decl)   
+--
+function xtypes.annotation(decl)
   local name, defn = xtypes.parse_decl(decl)
-  
+
   -- create the template
-  local template = _.new_template(name, xtypes.ANNOTATION, 
+  local template = _.new_template(name, xtypes.ANNOTATION,
                                   xtypes.API[xtypes.ANNOTATION])
   local model = _.model(template)
-  
+
   -- annotation definition function (closure)
   -- NOTE: the attributes passed to the annotation are not interpreted,
   --       and are kept intact; we simply add the MODEL definition
-  --   A function that returns a model table, with user defined 
+  --   A function that returns a model table, with user defined
   --   annotation attributes passed as a table of {name = value} pairs
   --      eg: xtypes.MyAnnotation{value1 = 42, value2 = 42.0}
   model[_.DEFN] = function (attributes) -- parameters to the annotation
     if attributes then
-      assert('table' == type(attributes), 
-        table.concat{'table with {name=value, ...} attributes expected: ', 
+      assert('table' == type(attributes),
+        table.concat{'table with {name=value, ...} attributes expected: ',
                    tostring(attributes)})
     end
     local instance = attributes ~= _.EMPTY and attributes or template
     setmetatable(instance, model)
     -- not caching the instance in model[_.INSTANCES] because we don't need it
-    return instance   
+    return instance
   end
-  
+
   -- initialize template with the attributes
   template = template(defn)
- 
+
   return template
 end
 
@@ -257,7 +257,7 @@ xtypes.API[xtypes.ANNOTATION] = {
       return model[_.NS]
     end
   end,
-  
+
   __newindex = function (template, key, value)
   -- immutable: do-nothing
   end,
@@ -271,16 +271,16 @@ xtypes.API[xtypes.ANNOTATION] = {
 --------------------------------------------------------------------------------
 -- Arrays
 
--- Arrays are implemented as a special annotations, whose 
+-- Arrays are implemented as a special annotations, whose
 -- attributes are positive integer constants, that specify the dimension bounds
--- NOTE: Since an array is an annotation, it can appear anywhere 
+-- NOTE: Since an array is an annotation, it can appear anywhere
 --       after a member type declaration; the 1st one is used
 local array = xtypes.annotation{Array=_.EMPTY}
 xtypes.ARRAY = _.model(array)
 
 --- Create/use a array with specified dimensions
--- 
--- Ensures that a valid set of dimension values is passed in. Returns the 
+--
+-- Ensures that a valid set of dimension values is passed in. Returns the
 -- array instance, initialized with the specified dimensions.
 -- @param n [in] the first dimension
 -- @param ... the remaining dimensions
@@ -292,16 +292,16 @@ end
 --------------------------------------------------------------------------------
 -- Sequences
 
--- Sequences are implemented as a special annotations, whose 
+-- Sequences are implemented as a special annotations, whose
 -- attributes are positive integer constants, that specify the dimension bounds
--- NOTE: Since a sequence is an annotation, it can appear anywhere 
+-- NOTE: Since a sequence is an annotation, it can appear anywhere
 --       after a member type declaration; the 1st one is used
 local sequence = xtypes.annotation{Sequence=_.EMPTY}
 xtypes.SEQUENCE = _.model(sequence)
 
 --- Create/use a sequence with specified dimensions
--- 
--- Ensures that a valid set of dimension values is passed in. Returns the 
+--
+-- Ensures that a valid set of dimension values is passed in. Returns the
 -- sequence instance, initialized with the specified dimensions.
 -- @param n [in] the first dimension
 -- @param ... the remaining dimensions
@@ -313,15 +313,15 @@ end
 --------------------------------------------------------------------------------
 --- make_collection
 -- Ensure a collection (array or sequence) of the kind specified by the
--- underlying annotation, and retrieve an instance of it with the 
+-- underlying annotation, and retrieve an instance of it with the
 -- specified dimension attributes.
--- 
--- Ensures that a valid set of dimension values is passed in. Returns the 
+--
+-- Ensures that a valid set of dimension values is passed in. Returns the
 -- annotation instance, initialized with the specified dimensions.
--- 
+--
 -- NOTE: a new annotation instance is created for each dimension. There may be
 -- room for optimization by caching the annotation instances.
---  
+--
 -- @param annotation [in] the underlying annotation ARRAY or SEQUENCE
 -- @param n [in] the first dimension
 -- @param ... the remaining dimensions
@@ -333,22 +333,22 @@ function xtypes.make_collection(annotation, n, ...)
   table.insert(dimensions, 1, n) -- insert n at the beginning
   for i, v in ipairs(dimensions) do
     local dim = v
-         
+
     -- if the dim is a CONST, use its value for validation
     if  xtypes.CONST == _.model_kind(v) then
        dim = v()
     end
-   
+
     -- check if the 'dim' is valid
     if not(type(dim)=='number') then
       error(table.concat{'invalid collection bound: ', tostring(dim)}, 2)
     end
-    if not(dim > 0 and dim - math.floor(dim) == 0) then -- positive integer  
+    if not(dim > 0 and dim - math.floor(dim) == 0) then -- positive integer
       error(table.concat{'collection bound must be an integer > 0: ', dim}, 2)
     end
   end
-  
-  -- return the predefined annotation instance, whose attributes are 
+
+  -- return the predefined annotation instance, whose attributes are
   -- the collection dimension bounds
   return annotation(dimensions)
 end
@@ -367,64 +367,64 @@ xtypes.builtin.Shared = xtypes.annotation{Shared=_.EMPTY}
 xtypes.builtin.BitBound = xtypes.annotation{BitBound=_.EMPTY}
 xtypes.builtin.BitSet = xtypes.annotation{BitSet=_.EMPTY}
 xtypes.builtin.Nested = xtypes.annotation{Nested=_.EMPTY}
-xtypes.builtin.top_level = xtypes.annotation{['top-level']=_.EMPTY} -- legacy  
+xtypes.builtin.top_level = xtypes.annotation{['top-level']=_.EMPTY} -- legacy
 
 --------------------------------------------------------------------------------
 
 --- Create an atomic type
--- 
+--
 -- There are two kinds of atomic types:
 --   - un-dimensioned
 --   - dimensioned, e.g. bounded size/length (eg string)
 --
--- @param decl  [in] a table with a name assigned to an empty table or 
+-- @param decl  [in] a table with a name assigned to an empty table or
 --              a table containing a size/length/dimension value
 --                 un-dimensioned:
 --                           { name = _.EMPTY }
 --                 dimensioned:
 --                         { name = {n} }
 --                         { name = {const_defined_previously} }
---                   where n a dimension, e.g. max length  
+--                   where n a dimension, e.g. max length
 --        and 'name' specifies the underlying atom
 --              e.g.: string | wstring
 -- @return the atom template (an immutable table)
 -- @usage
 --  -- Create an un-dimensioned atomic type:
 --     local MyAtom = xtypes.atom{MyAtom=_.EMPTY}
---     
+--
 --  -- Create a dimensioned atomic type:
 --     local string10 = xtypes.atom{string={10}}    -- bounded length string
 --     local wstring10 = xtypes.atom{wstring={10}}  -- bounded length wstring
 function xtypes.atom(decl)
   local name, defn = xtypes.parse_decl(decl)
   local dim, dim_kind = defn[1], _.model_kind(defn[1])
- 
+
   -- pre-condition: validate the dimension
   local dim_value = xtypes.CONST == dim_kind and dim() or dim
   if nil ~= dim then
     if type(dim_value) ~='number' then
-      error(table.concat{'invalid dimension: ',tostring(dim), ' = ', dim_value}, 
+      error(table.concat{'invalid dimension: ',tostring(dim), ' = ', dim_value},
             2)
     end
-    if not(dim_value > 0 and dim_value - math.floor(dim_value) == 0) then 
-      error(table.concat{'dimension must be an integer > 0: ', tostring(dim)}, 
+    if not(dim_value > 0 and dim_value - math.floor(dim_value) == 0) then
+      error(table.concat{'dimension must be an integer > 0: ', tostring(dim)},
             2)
     end
   end
-  
+
   -- build up the atom template name:
   if xtypes.CONST == dim_kind then
     name = table.concat{name, '<', _.nsname(dim), '>'}
   elseif nil ~= dim then
     name = table.concat{name, '<', tostring(dim), '>'}
   end
-  
+
   -- lookup the atom name in the builtins
   local template = xtypes.builtin[name]
   if nil == template then
     -- not found => create it
     local model
-    template, model = _.new_template(name, xtypes.ATOM, xtypes.API[xtypes.ATOM]) 
+    template, model = _.new_template(name, xtypes.ATOM, xtypes.API[xtypes.ATOM])
     model[_.DEFN][1] = dim -- may be nil
     xtypes.builtin[name] = template -- NOTE: install it in the builtin module
   end
@@ -453,17 +453,17 @@ xtypes.API[xtypes.ATOM] = {
       return model[_.NS]
     end
   end,
-  
+
   __newindex = function (template, key, value)
     -- immutable: do-nothing
   end
 }
-    
+
 --------------------------------------------------------------------------------
 
 --- Create/Use a string<n> atom
--- 
--- string of length n (i.e. string<n>) 
+--
+-- string of length n (i.e. string<n>)
 -- @param n the maximum length of the string
 -- @return the string template
 function xtypes.string(n)
@@ -473,8 +473,8 @@ end
 --------------------------------------------------------------------------------
 
 --- Create/Use a wstring<n> atom
--- 
--- wstring of length n (i.e. wstring<n>) 
+--
+-- wstring of length n (i.e. wstring<n>)
 -- @param n the maximum length of the wstring
 -- @return the wstring template
 function xtypes.wstring(n)
@@ -489,15 +489,15 @@ xtypes.builtin.octet = xtypes.atom{octet=_.EMPTY}
 
 xtypes.builtin.char= xtypes.atom{char=_.EMPTY}
 xtypes.builtin.wchar = xtypes.atom{wchar=_.EMPTY}
-    
+
 xtypes.builtin.float = xtypes.atom{float=_.EMPTY}
 xtypes.builtin.double = xtypes.atom{double=_.EMPTY}
 xtypes.builtin.long_double = xtypes.atom{['long double']=_.EMPTY}
-    
+
 xtypes.builtin.short = xtypes.atom{short=_.EMPTY}
 xtypes.builtin.long = xtypes.atom{long=_.EMPTY}
 xtypes.builtin.long_long = xtypes.atom{['long long']=_.EMPTY}
-    
+
 xtypes.builtin.unsigned_short = xtypes.atom{['unsigned short']=_.EMPTY}
 xtypes.builtin.unsigned_long = xtypes.atom{['unsigned long']=_.EMPTY}
 xtypes.builtin.unsigned_long_long = xtypes.atom{['unsigned long long']=_.EMPTY}
@@ -512,124 +512,124 @@ xtypes.builtin.unsigned_long_long = xtypes.atom{['unsigned long long']=_.EMPTY}
 -- @return the const template (an immutable table)
 -- @usage
 --  -- Create a constant type
---       local MY_CONST = xtypes.const{ 
+--       local MY_CONST = xtypes.const{
 --          MY_CONST = { xtypes.<atom>, <const_value> }
 --       }
---  
+--
 --  -- Examples
---       local PI = xtypes.const{ 
---          PI = { xtypes.double, 3.14 } 
+--       local PI = xtypes.const{
+--          PI = { xtypes.double, 3.14 }
 --       }
--- 
---       local MY_SHORT = xtypes.const{ 
---            MY_SHORT = { xtypes.short, 10 } 
+--
+--       local MY_SHORT = xtypes.const{
+--            MY_SHORT = { xtypes.short, 10 }
 --       }
---       
---       local MY_STRING = xtypes.const{ 
+--
+--       local MY_STRING = xtypes.const{
 --          MY_STRING = { xtypes.string(), "String Constant" }
 --       }
---       
---       local MyStringSeq =  xtypes.typedef{ 
---             MyStringSeq = { xtypes.string, xtypes.sequence(MY_CONST) } 
+--
+--       local MyStringSeq =  xtypes.typedef{
+--             MyStringSeq = { xtypes.string, xtypes.sequence(MY_CONST) }
 --       }
-function xtypes.const(decl) 
+function xtypes.const(decl)
   local name, defn = xtypes.parse_decl(decl)
-       
+
   -- pre-condition: ensure that the 1st defn declaration is a valid type
   local atom = _.assert_model_kind(xtypes.ATOM, _.resolve(defn[1]))
-         
+
   -- pre-condition: ensure that the 2nd defn declaration is a valid value
   local value = defn[2]
-  assert(nil ~= value, 
+  assert(nil ~= value,
          table.concat{'const value must be non-nil: ', tostring(value)})
 
   -- convert value to the correct type:
   local coercedvalue = nil
-  if xtypes.builtin.boolean == atom then 
+  if xtypes.builtin.boolean == atom then
       if 'boolean' ~= type(value) then
-          if 'false' == value or '0' == value then coercedvalue = false 
-          elseif 'true' == value or '1' == value then coercedvalue = true 
+          if 'false' == value or '0' == value then coercedvalue = false
+          elseif 'true' == value or '1' == value then coercedvalue = true
           else coercedvalue = not not value -- toboolean
           end
           if nil ~= coercedvalue then
              print(table.concat{'INFO: converting to boolean: "', value,
-                                '" -> "', tostring(coercedvalue), '"'}) 
-          else 
+                                '" -> "', tostring(coercedvalue), '"'})
+          else
              print(table.concat{'WARNING: converting to boolean: "', value,
-                                '" -> "nil"'}) 
+                                '" -> "nil"'})
           end
       end
-  elseif xtypes.string() == atom or 
-         xtypes.wstring() == atom or 
+  elseif xtypes.string() == atom or
+         xtypes.wstring() == atom or
          xtypes.builtin.char == atom then
-      if 'string' ~= type(value) then 
-          coercedvalue = tostring(value) 
+      if 'string' ~= type(value) then
+          coercedvalue = tostring(value)
           if nil ~= coercedvalue then
              print(table.concat{'INFO: converting to string: "', value,
-                                '" -> "', coercedvalue, '"'}) 
-          else 
+                                '" -> "', coercedvalue, '"'})
+          else
              print(table.concat{'WARNING: converting to string: "', value,
-                                '" -> "nil"'}) 
+                                '" -> "nil"'})
           end
       end
-  elseif xtypes.builtin.short == atom or 
-         xtypes.builtin.unsigned_short == atom or 
-         xtypes.builtin.long == atom or 
-         xtypes.builtin.unsigned_long == atom or 
-         xtypes.builtin.long_long == atom or 
+  elseif xtypes.builtin.short == atom or
+         xtypes.builtin.unsigned_short == atom or
+         xtypes.builtin.long == atom or
+         xtypes.builtin.unsigned_long == atom or
+         xtypes.builtin.long_long == atom or
          xtypes.builtin.unsigned_long_long == atom or
-         xtypes.builtin.float == atom or 
-         xtypes.builtin.double == atom or 
+         xtypes.builtin.float == atom or
+         xtypes.builtin.double == atom or
          xtypes.builtin.long_double == atom then
-      if 'number' ~= type(value) then 
-          coercedvalue = tonumber(value) 
+      if 'number' ~= type(value) then
+          coercedvalue = tonumber(value)
           if nil ~= coercedvalue then
              print(table.concat{'INFO: converting to number: "', value,
-                                '" -> "', coercedvalue, '"'}) 
+                                '" -> "', coercedvalue, '"'})
           else
              print(table.concat{'WARNING: converting to number: "', value,
-                                '" -> "nil"'}) 
+                                '" -> "nil"'})
           end
       end
   end
   if nil ~= coercedvalue then value = coercedvalue end
-  
+
   local model = _.model(atom)
-  if xtypes.builtin.unsigned_short == atom or 
+  if xtypes.builtin.unsigned_short == atom or
      xtypes.builtin.unsigned_long == atom or
      xtypes.builtin.unsigned_long_long == atom then
-     if value < 0 then 
-       print(table.concat{'INFO: const value of "', value, ' of type "', 
+     if value < 0 then
+       print(table.concat{'INFO: const value of "', value, ' of type "',
                         type(value),
-                        '" must be non-negative and of the type: ', 
+                        '" must be non-negative and of the type: ',
                         model[_.NAME] })
-     end                   
+     end
   end
-                      
+
   -- char: truncate value to 1st char; warn if truncated
-  if (xtypes.builtin.char == atom or xtypes.builtin.wchar == atom) and 
+  if (xtypes.builtin.char == atom or xtypes.builtin.wchar == atom) and
       #value > 1 then
     value = string.sub(value, 1, 1)
     print(table.concat{'WARNING: truncating string value for ',
                        model[_.NAME],
-                       ' constant to: ', value})  
+                       ' constant to: ', value})
   end
- 
+
   -- integer: truncate value to integer; warn if truncated
-  if (xtypes.builtin.short == atom or xtypes.builtin.unsigned_short == atom or 
-      xtypes.builtin.long == atom or xtypes.builtin.unsigned_long == atom or 
-      xtypes.builtin.long_long == atom or 
+  if (xtypes.builtin.short == atom or xtypes.builtin.unsigned_short == atom or
+      xtypes.builtin.long == atom or xtypes.builtin.unsigned_long == atom or
+      xtypes.builtin.long_long == atom or
       xtypes.builtin.unsigned_long_long == atom) and
       'number' == type(value) and
       value - math.floor(value) ~= 0 then
     value = math.floor(value)
-    print(table.concat{'WARNING: truncating decimal value for integer constant', 
+    print(table.concat{'WARNING: truncating decimal value for integer constant',
                        ' to: ', value})
   end
 
   -- create the template
-  local template, model = 
-                   _.new_template(name, xtypes.CONST, xtypes.API[xtypes.CONST]) 
+  local template, model =
+                   _.new_template(name, xtypes.CONST, xtypes.API[xtypes.CONST])
   model[_.DEFN] = atom
   model[_.INSTANCES] = value
   return template
@@ -642,7 +642,7 @@ xtypes.API[xtypes.CONST] = {
   __tostring = function(template)
     local model = _.model(template)
     return model[_.NAME] or
-           model[_.KIND]() -- evaluate the function  
+           model[_.KIND]() -- evaluate the function
   end,
 
   __index = function (template, key)
@@ -655,7 +655,7 @@ xtypes.API[xtypes.CONST] = {
       return model[_.NS]
     end
   end,
-  
+
   __newindex = function (template, key, value)
     -- immutable: do-nothing
   end,
@@ -675,39 +675,39 @@ xtypes.API[xtypes.CONST] = {
 --        { EnumName = { { str1 = ord1 }, { str2 = ord2 }, ... } }
 --    or  { EnumName = { str1, str2, ... } }
 --    or a mix of the above
--- @return The enum template. A table representing the enum data model. 
--- The table fields  contain the string index to de-reference the enum's 
--- constants in a top-level DDS Dynamic Data Type 
+-- @return The enum template. A table representing the enum data model.
+-- The table fields  contain the string index to de-reference the enum's
+-- constants in a top-level DDS Dynamic Data Type
 -- @usage
 --    -- Create enum: Declarative style
---    local MyEnum = xtypes.enum{ 
+--    local MyEnum = xtypes.enum{
 --      MyEnum = {
 --          { role_1 = ordinal_value },
 --          :
 --          { role_M = ordinal_value },
---      
+--
 --          -- OR --
 --
 --          role_A,
 --          :
 --          role_Z,
---      
+--
 --          -- OPTIONAL --
 --          annotation?,
 --          :
 --          annotation?,
 --      }
 --    }
---    
+--
 -- -- Create enum: Declarative style
 --   MyEnum = xtypes.enum{MyEnum=_.EMPTY}
---   
+--
 --  -- Get | Set an annotation:
 --   print(MyEnum[_.QUALIFIERS])
---   MyEnum[_.QUALIFIERS] = {    
+--   MyEnum[_.QUALIFIERS] = {
 --        xtypes.Extensibility{'EXTENSIBLE_EXTENSIBILITY'},
 --      }
---      
+--
 --  -- Get | Set a member:
 --   print(next(MyEnum[i]))
 --   MyEnum[i] = { role = ordinal_value },
@@ -716,8 +716,8 @@ xtypes.API[xtypes.CONST] = {
 --
 --  -- After either of the above definition, the following post-condition holds:
 --    MyEnum.role == ordinal_value
---  
---    
+--
+--
 --  -- Iterate over the model definition (ordered):
 --    for i, v in ipairs(MyEnum) do print(next(v)) end
 --    for i = 1, #MyEnum do print(next(MyEnum[i])) end
@@ -725,9 +725,9 @@ xtypes.API[xtypes.CONST] = {
 --  -- Iterate over enum and ordinal values (unordered):
 --    for k, v in pairs(MyEnum) do print(k, v) end
 --
-function xtypes.enum(decl) 
+function xtypes.enum(decl)
   local name, defn = xtypes.parse_decl(decl)
-    
+
   -- create the template
   local template = _.new_template(name, xtypes.ENUM, xtypes.API[xtypes.ENUM])
 
@@ -738,13 +738,13 @@ end
 --- Enum API meta-table
 xtypes.API[xtypes.ENUM] = {
 
-  __tostring = function(template) 
+  __tostring = function(template)
     -- the name or the kind (if no name has been assigned)
     local model = _.model(template)
-    return model[_.NAME] or 
+    return model[_.NAME] or
            model[_.KIND]() -- evaluate the function
   end,
-  
+
   __len = function (template)
     local model = _.model(template)
     return #model[_.DEFN]
@@ -767,7 +767,7 @@ xtypes.API[xtypes.ENUM] = {
        return model[_.DEFN][key]
     end
   end,
-  
+
   __newindex = function (template, key, value)
 
     local model = _.model(template)
@@ -796,33 +796,33 @@ xtypes.API[xtypes.ENUM] = {
 
       else
         --  Format:
-        --    { role = role_defn (i.e. ordinal value) } 
-        -- OR 
-        --    role 
-        local role, role_defn 
+        --    { role = role_defn (i.e. ordinal value) }
+        -- OR
+        --    role
+        local role, role_defn
         if 'table' ==  type(value) then
-          role, role_defn = next(value)        --  { role = value } 
+          role, role_defn = next(value)        --  { role = value }
         else
            role, role_defn = value, #template  --    role
         end
-        
+
         -- role must be a string
-        assert(type(role) == 'string', 
+        assert(type(role) == 'string',
           table.concat{'invalid member name: ', tostring(role)})
 
         -- ensure the definition is an ordinal value
-        assert('number' == type(role_defn) and 
-               math.floor(role_defn) == role_defn, -- integer  
-        table.concat{'invalid definition: ', 
+        assert('number' == type(role_defn) and
+               math.floor(role_defn) == role_defn, -- integer
+        table.concat{'invalid definition: ',
                       tostring(role), ' = ', tostring(role_defn) })
-          
+
         -- is the role already defined?
         assert(nil == rawget(template, role),-- check template
           table.concat{'member name already defined: "', role, '"'})
-        
+
         -- insert the new role
         rawset(template, role, role_defn)
-        
+
         -- insert the new member definition
         model_defn[key] = {
           [role] = role_defn   -- map with one entry
@@ -836,46 +836,46 @@ xtypes.API[xtypes.ENUM] = {
 
 --- Create a struct type
 -- @param decl  [in] a table containing a struct declaration
---      { Name = { { role1 = {...}, { role2 = {...} }, ... } } 
--- @return The struct template. A table representing the struct data model. 
--- The table fields contain the string index to de-reference the struct's 
--- value in a top-level DDS Dynamic Data Type 
+--      { Name = { { role1 = {...}, { role2 = {...} }, ... } }
+-- @return The struct template. A table representing the struct data model.
+-- The table fields contain the string index to de-reference the struct's
+-- value in a top-level DDS Dynamic Data Type
 -- @usage
 --    -- Create struct: Declarative style
 --    local MyStruct = xtypes.struct{
---      MyStruct = {OptionalBaseStruct, 
+--      MyStruct = {OptionalBaseStruct,
 --        { role_1 = { type, multiplicity?, annotation? } },
---        :  
+--        :
 --        { role_M = { type, multiplicity?, annotation? } },
 --        annotation?,
 --         :
 --        annotation?,
 --      }
 --    }
---    
+--
 --  -- Create struct: Imperative style
 --   local MyStruct = xtypes.struct{MyStruct={OptionalBaseStruct}|xtypes._.EMPTY}
---   
+--
 --  -- Get | Set an annotation:
 --   print(MyStruct[_.QUALIFIERS])
---   MyStruct[_.QUALIFIERS] = {    
+--   MyStruct[_.QUALIFIERS] = {
 --        xtypes.Extensibility{'EXTENSIBLE_EXTENSIBILITY'},
 --        xtypes.Nested{'FALSE'},
 --      }
---      
+--
 --  -- Get | Set a member:
 --   print(next(MyStruct[i]))
 --   MyStruct[i] = { role = { type, multiplicity?, annotation? } },
---   
+--
 --  -- Get | Set base class:
 --   print(MyStruct[xtypes.BASE])
 --   MyStruct[xtypes.BASE] = BaseStruct, -- optional
--- 
--- 
+--
+--
 --  -- After either of the above definition, the following post-condition holds:
 --    MyStruct.role == 'container.prefix.upto.role'
--- 
---    
+--
+--
 --  -- Iterate over the model definition (ordered):
 --    for i, v in ipairs(MyStruct) do print(next(v)) end
 --    for i = 1, #MyStruct do print(next(MyStruct[i])) end
@@ -883,14 +883,14 @@ xtypes.API[xtypes.ENUM] = {
 --  -- Iterate over instance members and the indexes (unordered):
 --    for k, v in pairs(MyStruct) do print(k, v) end
 --
-function xtypes.struct(decl) 
+function xtypes.struct(decl)
   local name, defn = xtypes.parse_decl(decl)
-       
+
   -- create the template
-  local template, model = _.new_template(name, xtypes.STRUCT, 
+  local template, model = _.new_template(name, xtypes.STRUCT,
                                                xtypes.API[xtypes.STRUCT])
   model[_.INSTANCES] = {}
-  
+
   -- OPTIONAL base: pop the next element if it is a base model element
   local base
   if xtypes.STRUCT == _.model_kind(defn[1]) then
@@ -971,7 +971,7 @@ xtypes.API[xtypes.STRUCT] = {
     else
       -- get the new role and role_defn
       local role, role_defn = next(value)
- 
+
       -- is the role already defined?
       assert(nil == rawget(template, role),-- check template
         table.concat{'member name already defined: "', role, '"'})
@@ -1047,14 +1047,14 @@ xtypes.API[xtypes.STRUCT] = {
       base = new_base
       while base do
         local base_model = _.model(base)
-        
+
         -- NOTE: Use empty string as the 'instance' name of the base struct
         base_model[_.INSTANCES][template] = '' -- empty instance name
 
         -- visit up the base model inheritance hierarchy
         base = base_model[_.DEFN][xtypes.BASE] -- parent base
       end
-      
+
     else
         -- accept the key if it is defined in the model definition
         -- e.g. could have been an optional member that was removed
@@ -1071,50 +1071,50 @@ xtypes.API[xtypes.STRUCT] = {
 
 --- Create a union type
 -- @param decl  [in] a table containing a union declaration
---      { Name = {discriminator, { case, role = {...} }, ... } } 
--- @return The union template. A table representing the union data model. 
+--      { Name = {discriminator, { case, role = {...} }, ... } }
+-- @return The union template. A table representing the union data model.
 -- The table fields contain the string index to de-reference the union's value
--- in a top-level DDS Dynamic Data Type 
+-- in a top-level DDS Dynamic Data Type
 -- @usage
 --    -- Create union: Declarative style
 --    local MyUnion = xtypes.union{
 --      MyUnion = {discriminator,
---        { case, 
+--        { case,
 --         [ { role_1 = { type, multiplicity?, annotation? } } ] },
---        :  
---        { case, 
+--        :
+--        { case,
 --         [ { role_M = { type, multiplicity?, annotation? } } ] },
---        { nil, 
+--        { nil,
 --         [ { role_Default = { type, multiplicity?, annotation? } } ] },
 --        annotation?,
 --         :
 --       annotation?,
 --      }
 --    }
---    
+--
 -- -- Create union: Imperative style
 --   local MyUnion = xtypes.union{MyUnion={discriminator}}
---   
+--
 --  -- Get | Set an annotation:
 --   print(MyUnion[_.QUALIFIERS])
---   MyUnion[_.QUALIFIERS] = {    
+--   MyUnion[_.QUALIFIERS] = {
 --        xtypes.Extensibility{'EXTENSIBLE_EXTENSIBILITY'},
 --      }
---      
+--
 --  -- Get | Set a member:
 --   print(next(MyUnion[i]))
 --   MyUnion[i] = { case, [ { role = { type, multiplicity?, annotation? } } ] },
---   
+--
 --  -- Get | Set discriminator:
 --   print(MyUnion[xtypes.SWITCH])
 --   MyUnion[xtypes.SWITCH] = discriminator
--- 
--- 
+--
+--
 --  -- After either of the above definition, the following post-condition holds:
 --    MyUnion._d == '#'
 --    MyUnion.role == 'container.prefix.upto.role'
---  
---    
+--
+--
 --  -- Iterate over the model definition (ordered):
 --    for i, v in ipairs(MyUnion) do print(v[1], ':', next(v, 1)) end
 --    for i = 1, #MyUnion do print(t[i][1], ':', next(MyUnion[i], 1)) end
@@ -1122,14 +1122,14 @@ xtypes.API[xtypes.STRUCT] = {
 --  -- Iterate over instance members and the indexes (unordered):
 --    for k, v in pairs(MyUnion) do print(k, v) end
 --
-function xtypes.union(decl) 
+function xtypes.union(decl)
   local name, defn = xtypes.parse_decl(decl)
-       
-  -- create the template 
-  local template, model = _.new_template(name, xtypes.UNION, 
+
+  -- create the template
+  local template, model = _.new_template(name, xtypes.UNION,
                                                xtypes.API[xtypes.UNION])
   model[_.INSTANCES] = {}
- 
+
  	-- pop the discriminator
 	template[xtypes.SWITCH] = defn[1] -- invokes meta-table __newindex()
   table.remove(defn, 1)
@@ -1138,13 +1138,13 @@ function xtypes.union(decl)
   return _.populate_template(template, defn)
 end
 
---- Union API meta-table 
+--- Union API meta-table
 xtypes.API[xtypes.UNION] = {
 
-  __tostring = function(template) 
+  __tostring = function(template)
     -- the name or the kind (if no name has been assigned)
     local model = _.model(template)
-    return model[_.NAME] or 
+    return model[_.NAME] or
            model[_.KIND]() -- evaluate the function
   end,
 
@@ -1186,21 +1186,21 @@ xtypes.API[xtypes.UNION] = {
     elseif xtypes.SWITCH == key then -- switch definition
 
       local discriminator, discriminator_type = value, _.model_kind(value)
-      
+
       -- pre-condition: ensure discriminator is an atom or enum
       assert(xtypes.ATOM == discriminator_type or
         xtypes.ENUM == discriminator_type,
         'discriminator type must be an "atom" or an "enum"')
-     
+
       -- pre-condition: ensure that 'cases' are compatible with discriminator
       for i, v in ipairs(model_defn) do
         xtypes.assert_case(discriminator, v[1])
       end
-     
+
       -- update the discriminator
       model[_.DEFN][xtypes.SWITCH] = discriminator
       rawset(template, '_d', '#')
-           
+
     elseif 'number' == type(key) then -- member definition
       --  Format:
       --   { case,
@@ -1232,10 +1232,10 @@ xtypes.API[xtypes.UNION] = {
 
         -- get the role and definition
         local role, role_defn = next(value, 1) -- 2nd item after the 'case'
- 
+
           -- add the role
         if role then
-          
+
           -- is the role already defined?
           assert(nil == rawget(template, role),-- check template
             table.concat{'member name already defined: "', role, '"'})
@@ -1273,21 +1273,21 @@ xtypes.API[xtypes.UNION] = {
 
 --------------------------------------------------------------------------------
 
---- Create a module 
--- 
+--- Create a module
+--
 -- A module represents a name-space that holds various user defined types
 -- @param decl  [in] a table containing a sequence of templates (model elements)
 --      { Name = { const{...}, typedef{...}, enum{...},
 --                 struct{...}, union{...}, module{...}, ... } }
--- @return The module template. A table representing the module data model. 
--- The table fields contain the templates to produce string indices to 
+-- @return The module template. A table representing the module data model.
+-- The table fields contain the templates to produce string indices to
 -- de-reference the **user-defined** data types
 -- @usage
 --    -- Create module: Declarative style
 --    local MyModule = xtypes.module{
 --      MyModule = {
 --        -- templates ---
---        xtypes.const{...}, 
+--        xtypes.const{...},
 --        xtypes.typedef{...},
 --        xtypes.enum{...},
 --        xtypes.struct{...},
@@ -1298,7 +1298,7 @@ xtypes.API[xtypes.UNION] = {
 --    }
 --  -- Create module: Imperative style
 --   local MyModule = xtypes.module{MyModule=xtypes._.EMPTY}
---   
+--
 --  -- Get | Set a member:
 --   print(MyModule[i])
 --   MyModule[i] = template
@@ -1306,22 +1306,22 @@ xtypes.API[xtypes.UNION] = {
 --  -- After either of the above definition, the following post-condition holds:
 --    MyModule.role == template
 --  where 'role' is the name of the template
---  
---  The the fully qualified name of the template includes the fully qualified 
+--
+--  The the fully qualified name of the template includes the fully qualified
 --  module name (i.e. nested within the module namespace hierarchy).
---    
+--
 --  -- Iterate over the module definition (ordered):
 --   for i, v in ipairs(MyModule) do print(v) end
 --   for i = 1, #MyModule do print(MyModule[i]) end
 --
 --  -- Iterate over module namespace (unordered):
 --   for k, v in pairs(MyModule) do print(k, v) end
---   
-function xtypes.module(decl) 
+--
+function xtypes.module(decl)
   local name, defn = xtypes.parse_decl(decl)
-       
+
   --create the template
-  local template = _.new_template(name, xtypes.MODULE, 
+  local template = _.new_template(name, xtypes.MODULE,
                                   xtypes.API[xtypes.MODULE])
 
   -- populate the template
@@ -1360,12 +1360,12 @@ xtypes.API[xtypes.MODULE] = {
       return model[_.DEFN][key]
     end
   end,
-  
+
   __newindex = function (template, key, value)
 
     local model = _.model(template)
     local model_defn = model[_.DEFN]
-                
+
     if _.NAME == key then -- set the model name
       rawset(model, _.NAME, value)
 
@@ -1378,7 +1378,7 @@ xtypes.API[xtypes.MODULE] = {
       if model_defn[key] then
         local old_role_model = _.model(model_defn[key])
         local old_role = old_role_model[_.NAME]
-        
+
         -- update namespace: remove the old_role
         rawset(template, old_role, nil)
       end
@@ -1391,25 +1391,25 @@ xtypes.API[xtypes.MODULE] = {
       else
         --  Format:
         --    role_template
-        
+
         -- pre-condition: value must be a model instance (template)
-        assert(nil ~= _.model_kind(value), 
+        assert(nil ~= _.model_kind(value),
                table.concat{'invalid template: ', tostring(value)})
-               
+
         local role_template = value
-        local role = role_template[_.NAME]                  
-                     
+        local role = role_template[_.NAME]
+
         -- is the role already defined?
         assert(nil == rawget(template, role),
           table.concat{'member name already defined: "', role, '"'})
-            
+
 				-- update the module definition
-        model_defn[key] = role_template 
-    
-        -- move the model element to this module 
+        model_defn[key] = role_template
+
+        -- move the model element to this module
         local role_model = _.model(role_template)
         role_model[_.NS] = template
-        
+
         -- update namespace: add the role
         rawset(template, role, role_template)
       end
@@ -1419,41 +1419,41 @@ xtypes.API[xtypes.MODULE] = {
 
 --------------------------------------------------------------------------------
 
---- Create a typedef. 
--- 
--- Typedefs are aliases for underlying primitive or composite types 
+--- Create a typedef.
+--
+-- Typedefs are aliases for underlying primitive or composite types
 -- @param decl  [in] a table containing a typedef declaration
 --      { name = { template, [collection,] [annotation1, annotation2, ...] }  }
--- i.e. the underlying type definition and optional multiplicity and annotations                
+-- i.e. the underlying type definition and optional multiplicity and annotations
 -- @return the typedef template
 -- @usage
 --  IDL: typedef sequence<MyStruct> MyStructSeq
---  Lua: local MyStructSeq = xtypes.typedef{ 
---            MyStructSeq = { xtypes.MyStruct, xtypes.sequence() } 
+--  Lua: local MyStructSeq = xtypes.typedef{
+--            MyStructSeq = { xtypes.MyStruct, xtypes.sequence() }
 --       }
 --
 --  IDL: typedef MyStruct MyStructArray[10][20]
---  Lua: local MyStructArray = xtypes.typedef{ 
+--  Lua: local MyStructArray = xtypes.typedef{
 --          MyStructArray = { xtypes.MyStruct, xtypes.array(10, 20) }
 --       }
-function xtypes.typedef(decl) 
+function xtypes.typedef(decl)
   local name, defn = xtypes.parse_decl(decl)
 
   -- pre-condition: ensure that the 1st defn element is a valid type
   local alias = defn[1]
   _.assert_template_kind(alias)
 
-  -- pre-condition: ensure that the 2nd defn element if present 
+  -- pre-condition: ensure that the 2nd defn element if present
   -- is a 'collection' kind
   local collection = defn[2]
   if collection and not xtypes.info.is_collection_kind(collection) then
     error(table.concat{'expected sequence or array, got: ', tostring(value)},
-          2)     
+          2)
   end
- 
+
   -- create the template
-  local template, model = _.new_template(name, xtypes.TYPEDEF, 
-                                               xtypes.API[xtypes.TYPEDEF]) 
+  local template, model = _.new_template(name, xtypes.TYPEDEF,
+                                               xtypes.API[xtypes.TYPEDEF])
   model[_.DEFN] = { alias, collection }
   return template
 end
@@ -1478,11 +1478,11 @@ xtypes.API[xtypes.TYPEDEF] = {
       return model[_.NS]
     end
   end,
-  
+
   __newindex = function (template, key, value)
     -- immutable: do-nothing
   end,
-  
+
   -- alias information is obtained by evaluating the table:
   -- @return { alias, collection }
   -- eg: my_typedef()
@@ -1499,28 +1499,28 @@ xtypes.API[xtypes.TYPEDEF] = {
 --- Ensure that case is a valid discriminator value
 -- @return the case
 function xtypes.assert_case(discriminator, case)
-  if nil == case then return case end -- default case 
+  if nil == case then return case end -- default case
 
   local err_msg = table.concat{'invalid case value: ', tostring(case)}
-  
+
   if xtypes.builtin.long == discriminator or -- integral type
-     xtypes.builtin.short == discriminator or 
+     xtypes.builtin.short == discriminator or
      xtypes.builtin.octet == discriminator then
       case = tonumber(case)
-      assert(case and math.floor(case) == case, err_msg)     
+      assert(case and math.floor(case) == case, err_msg)
    elseif xtypes.builtin.char == discriminator then -- character
-      assert('string' == type(case) and 1 == string.len(case), err_msg) 
+      assert('string' == type(case) and 1 == string.len(case), err_msg)
    elseif xtypes.builtin.boolean == discriminator then -- boolean
-      if 'false' == case or '0' == case then case = false 
-      elseif 'true' == case or '1' == case then case = true 
+      if 'false' == case or '0' == case then case = false
+      elseif 'true' == case or '1' == case then case = true
       end
       assert(true == case or false == case, err_msg)
    elseif xtypes.ENUM == discriminator[_.KIND] then -- enum
       assert(discriminator[case], err_msg)
-   else -- invalid 
+   else -- invalid
       assert(false, err_msg)
    end
-  
+
    return case
 end
 
@@ -1529,82 +1529,82 @@ end
 --------------------------------------------------------------------------------
 local xutils = {}
 
--- @function xutils.visit_instance() - Visit all fields (depth-first) in 
---       the given instance and return their values as a linear (flattened) 
+-- @function xutils.visit_instance() - Visit all fields (depth-first) in
+--       the given instance and return their values as a linear (flattened)
 --       list. For instance collections, the 1st element is visited.
 -- @param instance [in] the instance to visit
 -- @param result [in] OPTIONAL the index table to which the results are appended
 -- @param model [in] OPTIONAL nil means use the instance's model;
 --              needed to support inheritance and typedefs
 -- @return the cumulative result of visiting all the fields. Each field that is
---         visited is inserted into this table. This returned value table can be 
+--         visited is inserted into this table. This returned value table can be
 --         passed to another call to this method (to build it cumulatively).
-function xutils.visit_instance(instance, result, model, template) 
+function xutils.visit_instance(instance, result, model, template)
   template = template or _.template(instance)
-  
-  -- print('DEBUG xutils.visit_instance 1: ', instance, template) 
- 
+
+  -- print('DEBUG xutils.visit_instance 1: ', instance, template)
+
   -- initialize the result (or accumulate in the provided result)
-  result = result or {} 
+  result = result or {}
 
   -- collection instance
   if _.is_collection(instance) then
         -- ensure 1st element exists for illustration
       local _ = instance[1]
-      
+
       -- length operator and actual length
-      table.insert(result, 
+      table.insert(result,
              table.concat{#template, ' = ', #instance})
-          
+
       -- visit all the elements
-      for i = 1, tonumber(#instance) or 1 do 
+      for i = 1, tonumber(#instance) or 1 do
         if 'table' == type(instance[i]) then -- composite collection
             -- visit i-th element
-            xutils.visit_instance(instance[i], result, nil, template[i]) 
+            xutils.visit_instance(instance[i], result, nil, template[i])
         else -- leaf collection
-            table.insert(result, 
+            table.insert(result,
                 table.concat{template[i], ' = ', instance[i]})
         end
       end
-      
+
       return result
   end
-  
+
   -- struct or union
   local mytype = _.model_kind(instance)
   local model = model or _.model(instance)
   local mydefn = model[_.DEFN]
-  
+
   -- print('DEBUG index 1: ', mytype(), _.model(instance)[_.NAME])
-      
+
   -- skip if not an indexable type:
   if xtypes.STRUCT ~= mytype and xtypes.UNION ~= mytype then return result end
-          
+
   -- union discriminator, if any
   if xtypes.UNION == mytype then
     table.insert(result, table.concat{template._d, ' = ', instance._d})
   end
-    
+
   -- struct base type, if any
   local base = model[_.DEFN][xtypes.BASE]
   if nil ~= base then
-    result = xutils.visit_instance(instance, result, _.model(base), template) 
+    result = xutils.visit_instance(instance, result, _.model(base), template)
   end
-  
+
   -- preserve the order of model definition
   -- walk through the body of the model definition
-  -- NOTE: typedefs don't have an array of members  
-  for i, defn_i in ipairs(mydefn) do    
+  -- NOTE: typedefs don't have an array of members
+  for i, defn_i in ipairs(mydefn) do
     -- skip annotations
       -- walk through the elements in the order of definition:
-      
+
       local role
-      if xtypes.STRUCT == mytype then     
+      if xtypes.STRUCT == mytype then
         role = next(defn_i)
       elseif xtypes.UNION == mytype then
         role = next(defn_i, #defn_i > 0 and #defn_i or nil)
       end
-      
+
       local role_instance = instance[role]
       local role_instance_type = type(role_instance)
       -- print('DEBUG index 3: ', role, role_instance)
@@ -1612,20 +1612,20 @@ function xutils.visit_instance(instance, result, model, template)
       if 'table' == role_instance_type then -- composite or collection
         result = xutils.visit_instance(role_instance,result,nil,template[role])
       else -- leaf
-        table.insert(result, 
-                  template[role] 
+        table.insert(result,
+                  template[role]
                      and table.concat{template[role],' = ', role_instance}
-                     or nil) 
+                     or nil)
       end
   end
 
   return result
 end
 
--- xutils.visit_model() - Visit all elements (depth-first) of 
---       the given model definition and return their values as a linear 
---       (flattened) list. 
---       
+-- xutils.visit_model() - Visit all elements (depth-first) of
+--       the given model definition and return their values as a linear
+--       (flattened) list.
+--
 --        The default implementation returns the stringified
 --        OMG IDL X-Types representation of each model definition element
 --
@@ -1633,14 +1633,14 @@ end
 -- @param result [in] OPTIONAL the index table to which the results are appended
 -- @param indent_string [in] the indentation for the string representation
 -- @return the cumulative result of visiting all the definition. Each definition
---        that is visited is inserted into this table. This returned table 
+--        that is visited is inserted into this table. This returned table
 --        can be passed to another call to this method (to build cumulatively).
 function xutils.visit_model(instance, result, indent_string)
 	-- pre-condition: ensure valid instance
 	assert(_.model_kind(instance), 'invalid instance')
-	
+
 	-- initialize the result (or accumulate in the provided result)
-  result = result or {} 
+  result = result or {}
 
 	local indent_string = indent_string or ''
 	local content_indent_string = indent_string
@@ -1649,15 +1649,15 @@ function xutils.visit_model(instance, result, indent_string)
 	local mytype = model[_.KIND]
 	local mydefn = model[_.DEFN]
   local mymodule = model[_.NS]
-  		
+
 	-- print('DEBUG visit_model: ', Data, model, mytype(), myname)
-	
+
 	-- skip: atomic types, annotations
 	if xtypes.ATOM == mytype or
-	   xtypes.ANNOTATION == mytype then 
+	   xtypes.ANNOTATION == mytype then
 	   return result
 	end
-    
+
   if xtypes.CONST == mytype then
     local atom = mydefn
     local value = instance()
@@ -1667,23 +1667,23 @@ function xutils.visit_model(instance, result, indent_string)
     elseif xtypes.string() == atom or xtypes.wstring() == atom then
       value = table.concat{'"', tostring(value), '"'}
     end
-     table.insert(result, 
-                  string.format('%sconst %s %s = %s;', content_indent_string, 
-                        atom, 
+     table.insert(result,
+                  string.format('%sconst %s %s = %s;', content_indent_string,
+                        atom,
                         myname, value))
      return result
   end
-    
+
 	if xtypes.TYPEDEF == mytype then
-		local defn = mydefn	
+		local defn = mydefn
     table.insert(result, string.format('%s%s %s', indent_string,  mytype(),
                                 xutils.tostring_role(myname, defn, mymodule)))
-		return result 
+		return result
 	end
-	
+
 	-- open --
 	if (nil ~= myname) then -- not top-level / builtin module
-	
+
 		-- print the annotations
 		if nil ~=mydefn and nil ~= mydefn[_.QUALIFIERS] then
 			for i, annotation in ipairs(mydefn[_.QUALIFIERS]) do
@@ -1691,77 +1691,77 @@ function xutils.visit_model(instance, result, indent_string)
 		            string.format('%s%s', indent_string, tostring(annotation)))
 			end
 		end
-		
+
 		if xtypes.UNION == mytype then
-			table.insert(result, string.format('%s%s %s switch (%s) {', indent_string, 
+			table.insert(result, string.format('%s%s %s switch (%s) {', indent_string,
 						mytype(), myname, model[_.DEFN][xtypes.SWITCH][_.NAME]))
-						
+
 		elseif xtypes.STRUCT == mytype and model[_.DEFN][xtypes.BASE] then -- base
 			table.insert(result,
-			    string.format('%s%s %s : %s {', indent_string, mytype(), 
+			    string.format('%s%s %s : %s {', indent_string, mytype(),
 					myname, model[_.DEFN][xtypes.BASE][_.NAME]))
-		
+
 		else
-			table.insert(result, 
+			table.insert(result,
 			             string.format('%s%s %s {', indent_string, mytype(), myname))
 		end
 		content_indent_string = indent_string .. '   '
 	end
-		
-	if xtypes.MODULE == mytype then 
+
+	if xtypes.MODULE == mytype then
 		for i, role_template in ipairs(mydefn) do -- walk through module definition
 			result = xutils.visit_model(role_template, result, content_indent_string)
 		end
-		
+
 	elseif xtypes.STRUCT == mytype then
-	 
+
 		for i, defn_i in ipairs(mydefn) do -- walk through the model definition
 			  local role, role_defn = next(defn_i)
         table.insert(result, string.format('%s%s', content_indent_string,
                             xutils.tostring_role(role, role_defn, mymodule)))
 		end
 
-	elseif xtypes.UNION == mytype then 
+	elseif xtypes.UNION == mytype then
 		for i, defn_i in ipairs(mydefn) do -- walk through the model definition
 
 				local case = defn_i[1]
-				
+
 				-- case
 				if (nil == case) then
 				  table.insert(result,
 				               string.format("%sdefault :", content_indent_string))
-				elseif (xtypes.builtin.char == model[_.DEFN][xtypes.SWITCH] 
+				elseif (xtypes.builtin.char == model[_.DEFN][xtypes.SWITCH]
 				        and nil ~= case) then
-					table.insert(result, string.format("%scase '%s' :", 
+					table.insert(result, string.format("%scase '%s' :",
 						content_indent_string, tostring(case)))
 				else
-					table.insert(result, string.format("%scase %s :", 
+					table.insert(result, string.format("%scase %s :",
 						content_indent_string, tostring(case)))
 				end
-				
+
 				-- member element
 				local role, role_defn = next(defn_i, #defn_i > 0 and #defn_i or nil)
 				table.insert(result, string.format('%s%s', content_indent_string .. '   ',
 				                      xutils.tostring_role(role, role_defn, mymodule)))
 		end
-		
+
 	elseif xtypes.ENUM == mytype then
-		for i, defn_i in ipairs(mydefn) do -- walk through the model definition	
+		for i, defn_i in ipairs(mydefn) do -- walk through the model definition
 			local role, ordinal = next(defn_i)
 			if ordinal then
-				table.insert(result, string.format('%s%s = %s,', content_indent_string, role, 
+				table.insert(result, string.format('%s%s = %s,', content_indent_string, role,
 								    ordinal))
 			else
 				table.insert(result, string.format('%s%s,', content_indent_string, role))
 			end
 		end
 	end
-	
+
 	-- close --
 	if (nil ~= myname) then -- not top-level / builtin module
 		table.insert(result, string.format('%s};\n', indent_string))
 	end
-	
+
 	return result
 end
 
@@ -1770,12 +1770,12 @@ end
 -- @function tostring_role
 -- @param #string role role name
 -- @param #list role_defn the definition of the role in the following format:
---           { template, [collection,] [annotation1, annotation2, ...] } 
+--           { template, [collection,] [annotation1, annotation2, ...] }
 -- @param module the module to which the owner data model element belongs
 -- @return #string IDL string representation of the idl member
 function xutils.tostring_role(role, role_defn, module)
 
-  local template, seq 
+  local template, seq
   if role_defn then
     template = role_defn[1]
     for i = 2, #role_defn do
@@ -1786,45 +1786,45 @@ function xutils.tostring_role(role, role_defn, module)
     end
   end
 
-  local output_member = ''    
+  local output_member = ''
   if nil == template then return output_member end
 
   if seq == nil then -- not a sequence
     output_member = string.format('%s %s', _.nsname(template, module), role)
   elseif #seq == 0 then -- unbounded sequence
-    output_member = string.format('sequence<%s> %s', 
+    output_member = string.format('sequence<%s> %s',
                                   _.nsname(template, module), role)
   else -- bounded sequence
     for i = 1, #seq do
-      output_member = string.format('%ssequence<', output_member) 
+      output_member = string.format('%ssequence<', output_member)
     end
-    output_member = string.format('%s%s', output_member, 
+    output_member = string.format('%s%s', output_member,
                                   _.nsname(template, module))
     for i = 1, #seq do
-      output_member = string.format('%s,%s>', output_member, 
-                _.model_kind(seq[i]) and _.nsname(seq[i], module) or 
-                tostring(seq[i])) 
+      output_member = string.format('%s,%s>', output_member,
+                _.model_kind(seq[i]) and _.nsname(seq[i], module) or
+                tostring(seq[i]))
     end
     output_member = string.format('%s %s', output_member, role)
   end
 
-  -- member annotations:  
+  -- member annotations:
   local output_annotations = nil
   for j = 2, #role_defn do
-    
+
     local role_defn_j_model = _.model(role_defn[j])
     local name = role_defn_j_model[_.NAME]
-    
+
     if xtypes.ARRAY == role_defn_j_model then
       for i = 1, #role_defn[j] do
-        output_member = string.format('%s[%s]', output_member, 
-           _.model_kind(role_defn[j][i]) and 
-               _.nsname(role_defn[j][i], module) or tostring(role_defn[j][i]) ) 
+        output_member = string.format('%s[%s]', output_member,
+           _.model_kind(role_defn[j][i]) and
+               _.nsname(role_defn[j][i], module) or tostring(role_defn[j][i]) )
       end
     elseif xtypes.SEQUENCE ~= role_defn_j_model then
-      output_annotations = string.format('%s%s ', 
-                                          output_annotations or '', 
-                                          tostring(role_defn[j])) 
+      output_annotations = string.format('%s%s ',
+                                          output_annotations or '',
+                                          tostring(role_defn[j]))
     end
   end
 
@@ -1840,8 +1840,18 @@ end
 local interface = {
   -- empty initializer sentinel value
   EMPTY              = _.EMPTY,
-  
-  
+
+  -- kinds of xtypes
+  ANNOTATION = xtypes.ANNOTATION, -- user annotations and collections
+  ATOM       = xtypes.ATOM,
+  CONST      = xtypes.CONST,
+  ENUM       = xtypes.ENUM,
+  STRUCT     = xtypes.STRUCT,
+  UNION      = xtypes.UNION,
+  MODULE     = xtypes.MODULE,
+  TYPEDEF    = xtypes.TYPEDEF,
+
+
   -- accesors and mutators (meta-attributes for types)
   NS                 = _.NS,
   NAME               = _.NAME,
@@ -1849,7 +1859,8 @@ local interface = {
   QUALIFIERS         = _.QUALIFIERS,
   BASE               = xtypes.BASE,
   SWITCH             = xtypes.SWITCH,
-    
+
+
   -- qualifiers
   annotation         = xtypes.annotation,
   array              = xtypes.array,
@@ -1857,7 +1868,7 @@ local interface = {
 
 
   -- pre-defined annotations
-  Key                = xtypes.builtin.Key,   
+  Key                = xtypes.builtin.Key,
   Extensibility      = xtypes.builtin.Extensibility,
   ID                 = xtypes.builtin.ID,
   Optional           = xtypes.builtin.Optional,
@@ -1871,39 +1882,39 @@ local interface = {
 
   -- atomic types
   boolean            = xtypes.builtin.boolean,
-  
+
   octet              = xtypes.builtin.octet,
   char               = xtypes.builtin.char,
   wchar              = xtypes.builtin.wchar,
-  
+
   float              = xtypes.builtin.float,
   double             = xtypes.builtin.double,
   long_double        = xtypes.builtin.long_double,
-      
+
   short              = xtypes.builtin.short,
   long               = xtypes.builtin.long,
   long_long          = xtypes.builtin.long_long,
-      
+
   unsigned_short     = xtypes.builtin.unsigned_short,
   unsigned_long      = xtypes.builtin.unsigned_long,
   unsigned_long_long = xtypes.builtin.unsigned_long_long,
-  
+
   string             = xtypes.string,
   wstring            = xtypes.wstring,
 
-  
+
   -- composite types
   const              = xtypes.const,
   enum               = xtypes.enum,
   struct             = xtypes.struct,
   union              = xtypes.union,
   module             = xtypes.module,
-      
+
 
   -- typedefs (aliases)
   typedef            = xtypes.typedef,
-    
-  
+
+
   -- utilities --> model
   utils              = {
     nsname                  = _.nsname,
