@@ -58,8 +58,13 @@ DYLD_LIBRARY_PATH=${MY_HOME}/lib:${MY_LIB_ARCH}:${DYLD_LIBRARY_PATH}
 LUA_CMD=$1; shift
 if [ -r ${LUA_CMD}.lua ]; then
 	LUA_CMD_PATH=${LUA_CMD}.lua                # use it, if valid as specified
-else
+elif [ -r ${MY_HOME}/bin/${LUA_CMD}.lua ]; then
 	LUA_CMD_PATH=${MY_HOME}/bin/${LUA_CMD}.lua # get it from the bin directory
+elif [ -r ${MY_HOME}/lib//lua/${LUA_CMD}.lua ]; then
+	LUA_CMD_PATH=${MY_HOME}/lib//lua/${LUA_CMD}.lua # get it from  lib directory
+else
+	echo "${LUA_CMD}: Command not found"
+	exit 1
 fi
 
 # invoke the lua interpreter
