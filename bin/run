@@ -46,8 +46,13 @@ MY_BIN_ARCH=`echo ${MY_HOME}/bin/*$(uname)*`
 MY_LIB_ARCH=`echo ${MY_HOME}/lib/*$(uname)*`
 
 # ensure that we can find the lua scripts and their dependencies
-export LUA_PATH="${MY_HOME}/src/?.lua;${MY_HOME}/lib/lua/?.lua;;" #src overrides
+
+# src/ (dev tree) lua overrides the byte code in lib (for distribution)
+export LUA_PATH=\
+"${MY_HOME}/src/?.lua;${MY_LIB_ARCH}/?.lc;${MY_HOME}/lib/lua/?.lc;;"
+
 export LUA_CPATH="${MY_HOME}/lib/?.so;${MY_LIB_ARCH}/?.so;;"
+
 
 # use our lua interpreter, if any, in the bin directory:
 PATH=${MY_HOME}/bin:${MY_BIN_ARCH}:${PATH}
@@ -60,8 +65,10 @@ if [ -r ${LUA_CMD}.lua ]; then
 	LUA_CMD_PATH=${LUA_CMD}.lua                # use it, if valid as specified
 elif [ -r ${MY_HOME}/bin/${LUA_CMD}.lua ]; then
 	LUA_CMD_PATH=${MY_HOME}/bin/${LUA_CMD}.lua # get it from the bin directory
-elif [ -r ${MY_HOME}/lib//lua/${LUA_CMD}.lua ]; then
-	LUA_CMD_PATH=${MY_HOME}/lib//lua/${LUA_CMD}.lua # get it from  lib directory
+elif [ -r ${MY_LIB_ARCH}/${LUA_CMD}.lc ]; then
+	LUA_CMD_PATH=${MY_LIB_ARCH}/${LUA_CMD}.lc # get it from arch lib directory
+elif [ -r ${MY_HOME}/lib/lua/${LUA_CMD}.lc ]; then
+	LUA_CMD_PATH=${MY_HOME}/lib/lua/${LUA_CMD}.lc # get it from lib directory
 else
 	echo "${LUA_CMD}: Command not found"
 	exit 1
