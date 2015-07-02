@@ -1940,11 +1940,11 @@ function Tester:test_api()
   end
   
   -- members:
-  for i = 1, #ShapeType do
-    local role, role_definition = next(ShapeType[i])
-    print(table.concat{'role[', i, '] = '}, 
+  for i, member in ipairs(ShapeType) do
+    local role, role_definition = next(member)
+    print(table.concat{'member[', i, '] = '}, 
                   role,               -- member name
-                  role_definition[i]) -- member type
+                  role_definition[1]) -- member type
                   
     -- member qualifiers (annotations/collection)
     for j = 1, #role_definition do
@@ -1952,7 +1952,7 @@ function Tester:test_api()
             role_definition[j],
             'NAME = ', role_definition[j][xtypes.NAME],   -- member type name
             'KIND = ', role_definition[j][xtypes.KIND]()) -- member type kind
-      if 'annotation' == role_definition[j][xtypes.KIND]() and
+      if xtypes.ANNOTATION == role_definition[j][xtypes.KIND] and
          #role_definition[j] > 0 then 
             print('\t\t\t\t', table.concat(role_definition[j], ' '))--attributes
       end
@@ -1967,15 +1967,15 @@ function Tester:test_api()
   print('-- ordered ---')
   
   print('ShapeType:')
-  for i = 1, #ShapeType do
-    local role = next(ShapeType[i])
-    print('', role, '=', ShapeType[role]) -- default members values
+  for i, member in ipairs(ShapeType) do
+    local role = next(member)
+    print('', role, ' = ', ShapeType[role]) -- default members values
   end
 
   print('shape:')
-  for i = 1, #ShapeType do
-    local role = next(ShapeType[i])
-    print('', role, '=', shape[role])     -- shape instance members
+  for i, member in ipairs(ShapeType) do
+    local role = next(member)
+    print('', role, '=', shape[role])       -- shape instance members
   end
     
   print('-- unordered ---')
@@ -2009,9 +2009,9 @@ function Tester:test_api()
   shape.shapesize = 50
   assert(shape.shapesize == 50)
   print('shape (modified): ordered - added field shapesize')
-  for i = 1, #ShapeType do
-    local role = next(ShapeType[i])
-    print('', role, '=', shape[role])     -- shape instance members
+  for i, member in ipairs(ShapeType) do
+    local role = next(member)
+    print('', role, ' = ', shape[role])     -- shape instance members
   end
   print('shape (modified): unordered - added field shapesize')
   for role, value in pairs(shape) do
