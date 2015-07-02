@@ -437,9 +437,20 @@ local function xml2xtypes(xml)
   if tag_handler then -- process this node (and its child nodes)
     trace('\n-----\n', xml.label, xml.xarg.name or xml.xarg.file)
     local template = tag_handler(xml)
-    if template then 
-      table.insert(template_list, template)
+    
+    if template then
       trace(table.concat(xtypes.utils.visit_model(template, {'IDL:'}), '\n\t'))
+     
+      -- insert it in the template_list, if not already there:
+      local already_in_template_list = false
+      for i = 1, #template_list do
+        if template == template_list[i] then 
+          already_in_template_list=true break 
+        end
+      end
+      if not already_in_template_list then     
+        table.insert(template_list, template)
+      end
     end
   else -- don't recognize the label as an xtype, visit the child nodes  
     -- process the child nodes
