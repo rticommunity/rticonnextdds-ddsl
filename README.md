@@ -30,3 +30,10 @@ or, with tracing on:
     -- xml.is_trace_on = true -- OPTIONAL: turn on tracing
 
     local schemas = xml.files2xtypes( { 'xml-test-simple.xml' } ) -- array of files
+
+# Versioning
+
+Tags specify the release version numbers.
+
+The version numbering follows the rules of
+[semantic versioning](http://semver.org).

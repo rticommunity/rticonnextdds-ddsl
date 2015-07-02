@@ -1888,7 +1888,7 @@ function Tester:test_api()
     local role, role_definition = next(ShapeType[i])
     print(table.concat{'role[', i, '] = '}, 
                   role,               -- member name
-                  role_definition[1]) -- member type
+                  role_definition[i]) -- member type
                   
     -- member qualifiers (annotations/collection)
     for j = 1, #role_definition do
