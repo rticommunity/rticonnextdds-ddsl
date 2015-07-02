@@ -553,10 +553,10 @@ function xtypes.const(decl)
           end
           if nil ~= coercedvalue then
              print(table.concat{'INFO: converting to boolean: "', value,
-                                '" -> "', tostring(coercedvalue), '"'})
+                                '" -> ', tostring(coercedvalue)})
           else
              print(table.concat{'WARNING: converting to boolean: "', value,
-                                '" -> "nil"'})
+                                '" -> nil'})
           end
       end
   elseif xtypes.string() == atom or
@@ -569,7 +569,7 @@ function xtypes.const(decl)
                                 '" -> "', coercedvalue, '"'})
           else
              print(table.concat{'WARNING: converting to string: "', value,
-                                '" -> "nil"'})
+                                '" -> nil'})
           end
       end
   elseif xtypes.builtin.short == atom or
@@ -585,10 +585,10 @@ function xtypes.const(decl)
           coercedvalue = tonumber(value)
           if nil ~= coercedvalue then
              print(table.concat{'INFO: converting to number: "', value,
-                                '" -> "', coercedvalue, '"'})
+                                '" -> ', coercedvalue})
           else
              print(table.concat{'WARNING: converting to number: "', value,
-                                '" -> "nil"'})
+                                '" -> nil'})
           end
       end
   end
