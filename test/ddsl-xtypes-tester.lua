@@ -1166,12 +1166,15 @@ function Tester:test_arrays1()
 	-- ints
 	assert(#Test.MyArrays1.ints == 'ints#')
 	assert(Test.MyArrays1.ints[1] == 'ints[1]')
+  assert(Test.MyArrays1.ints() == 3) -- capacity	
 	
 	-- days
 	assert(#Test.MyArrays1.days == 'days#')
 	assert(#Test.MyArrays1.days[1] == 'days[1]#')
 	assert(Test.MyArrays1.days[1][1] == 'days[1][1]')
-	
+  assert(Test.MyArrays1.days() == 6) -- capacity
+  assert(Test.MyArrays1.days[1]() == 9) -- capacity
+  
 	-- names
 	assert(#Test.MyArrays1.names == 'names#')
 	assert(#Test.MyArrays1.names[1] == 'names[1]#')
@@ -1179,6 +1182,9 @@ function Tester:test_arrays1()
 	assert(Test.MyArrays1.names[1][1][1].first == 'names[1][1][1].first')
 	assert(#Test.MyArrays1.names[1][1][1].nicknames == 'names[1][1][1].nicknames#')
 	assert(Test.MyArrays1.names[1][1][1].nicknames[1] == 'names[1][1][1].nicknames[1]')
+  assert(Test.MyArrays1.names() == 12) -- capacity
+  assert(Test.MyArrays1.names[1]() == 15) -- capacity	
+  assert(Test.MyArrays1.names[1][1]() == 18) -- capacity 
 end
 
 Tester[#Tester+1] = 'test_arrays2'
@@ -1205,12 +1211,15 @@ function Tester:test_arrays2()
 	-- ints
 	assert(#Test.MyArrays2.ints == 'ints#')
 	assert(Test.MyArrays2.ints[1] == 'ints[1]')
-	
+  assert(Test.MyArrays1.ints() == 3) -- capacity  
+  	
 	-- days
 	assert(#Test.MyArrays2.days == 'days#')
 	assert(#Test.MyArrays2.days[1] == 'days[1]#')
 	assert(Test.MyArrays2.days[1][1] == 'days[1][1]')
-	
+  assert(Test.MyArrays1.days() == 6) -- capacity
+  assert(Test.MyArrays1.days[1]() == 9) -- capacity
+  	
 	-- names
 	assert(#Test.MyArrays2.names == 'names#')
 	assert(#Test.MyArrays2.names[1] == 'names[1]#')
@@ -1218,6 +1227,9 @@ function Tester:test_arrays2()
 	assert(Test.MyArrays2.names[1][1][1].first == 'names[1][1][1].first')
 	assert(#Test.MyArrays2.names[1][1][1].nicknames == 'names[1][1][1].nicknames#')
 	assert(Test.MyArrays2.names[1][1][1].nicknames[1] == 'names[1][1][1].nicknames[1]')
+  assert(Test.MyArrays1.names() == 12) -- capacity
+  assert(Test.MyArrays1.names[1]() == 15) -- capacity 
+  assert(Test.MyArrays1.names[1][1]() == 18) -- capacity
 end
 
 Tester[#Tester+1] = 'test_arrays3'
@@ -1226,7 +1238,7 @@ function Tester:test_arrays3()
 	   MyNameArray = { Test.Name, xtypes.array(10) }
 	}
 	Test.MyNameArray2 = xtypes.typedef{
-	   MyNameArray2 = {Test.MyNameArray, xtypes.array(10) }
+	   MyNameArray2 = {Test.MyNameArray, xtypes.array(8) }
 	}
 	Test.MyName2x2 = xtypes.typedef{
 	   MyName2x2 = {Test.Name, xtypes.array(2, 3) }
@@ -1238,13 +1250,13 @@ function Tester:test_arrays3()
   		{ myNames = { Test.MyNameArray } },
   
   		-- 2-D
-  		{ myNamesArray = { Test.MyNameArray, xtypes.array(10) } },
+  		{ myNamesArray = { Test.MyNameArray, xtypes.array(5) } },
   	
   		-- 2-D
   		{ myNames2 = { Test.MyNameArray2 } },
   				
   		-- 3-D
-  		{ myNames2Array = { Test.MyNameArray2, xtypes.array(10) } },
+  		{ myNames2Array = { Test.MyNameArray2, xtypes.array(7) } },
   
   		-- 4-D
   		{ myNames2Array2 = { Test.MyNameArray2, xtypes.array(10, 20) } },
@@ -1266,21 +1278,26 @@ function Tester:test_arrays3()
 	assert(Test.MyArrays3.myNames[1].first == 'myNames[1].first')
 	assert(#Test.MyArrays3.myNames[1].nicknames == 'myNames[1].nicknames#')
 	assert(Test.MyArrays3.myNames[1].nicknames[1] == 'myNames[1].nicknames[1]')
-	
+  assert(Test.MyArrays3.myNames() == 10) -- capacity  
+  	
 	-- myNamesArray
 	assert(#Test.MyArrays3.myNamesArray == 'myNamesArray#')
 	assert(#Test.MyArrays3.myNamesArray[1] == 'myNamesArray[1]#')
 	assert(Test.MyArrays3.myNamesArray[1][1].first == 'myNamesArray[1][1].first')
 	assert(#Test.MyArrays3.myNamesArray[1][1].nicknames == 'myNamesArray[1][1].nicknames#')
 	assert(Test.MyArrays3.myNamesArray[1][1].nicknames[1] == 'myNamesArray[1][1].nicknames[1]')
-	
+  assert(Test.MyArrays3.myNamesArray() == 5) -- capacity 
+  assert(Test.MyArrays3.myNamesArray[1]() == 10) -- capacity 
+    	
 	-- myNames2
 	assert(#Test.MyArrays3.myNames2 == 'myNames2#')
 	assert(#Test.MyArrays3.myNames2[1] == 'myNames2[1]#')
 	assert(Test.MyArrays3.myNames2[1][1].first == 'myNames2[1][1].first')
 	assert(#Test.MyArrays3.myNames2[1][1].nicknames == 'myNames2[1][1].nicknames#')
 	assert(Test.MyArrays3.myNames2[1][1].nicknames[1] == 'myNames2[1][1].nicknames[1]')
-
+  assert(Test.MyArrays3.myNames2() == 8) -- capacity 
+  assert(Test.MyArrays3.myNames2[1]() == 10) -- capacity 
+    
 	-- myNames2Array
 	assert(#Test.MyArrays3.myNames2Array == 'myNames2Array#')
 	assert(#Test.MyArrays3.myNames2Array[1] == 'myNames2Array[1]#')
@@ -1288,7 +1305,10 @@ function Tester:test_arrays3()
 	assert(Test.MyArrays3.myNames2Array[1][1][1].first == 'myNames2Array[1][1][1].first')
 	assert(#Test.MyArrays3.myNames2Array[1][1][1].nicknames == 'myNames2Array[1][1][1].nicknames#')
 	assert(Test.MyArrays3.myNames2Array[1][1][1].nicknames[1] == 'myNames2Array[1][1][1].nicknames[1]')
-
+  assert(Test.MyArrays3.myNames2Array() == 7) -- capacity 
+  assert(Test.MyArrays3.myNames2Array[1]() == 8) -- capacity 
+  assert(Test.MyArrays3.myNames2Array[1][1]() == 10) -- capacity 
+  
 	-- myNames2Array2
 	assert(#Test.MyArrays3.myNames2Array2 == 'myNames2Array2#')
 	assert(#Test.MyArrays3.myNames2Array2[1] == 'myNames2Array2[1]#')
@@ -1297,14 +1317,20 @@ function Tester:test_arrays3()
 	assert(Test.MyArrays3.myNames2Array2[1][1][1][1].first == 'myNames2Array2[1][1][1][1].first')
 	assert(#Test.MyArrays3.myNames2Array2[1][1][1][1].nicknames == 'myNames2Array2[1][1][1][1].nicknames#')
 	assert(Test.MyArrays3.myNames2Array2[1][1][1][1].nicknames[1] == 'myNames2Array2[1][1][1][1].nicknames[1]')
-
+  assert(Test.MyArrays3.myNames2Array2() == 10) -- capacity 
+  assert(Test.MyArrays3.myNames2Array2[1]() == 20) -- capacity 
+  assert(Test.MyArrays3.myNames2Array2[1][1]() == 8) -- capacity 
+  assert(Test.MyArrays3.myNames2Array2[1][1][1]() == 10) -- capacity 
+     
 	-- myName2x2
 	assert(#Test.MyArrays3.myName2x2 == 'myName2x2#')
 	assert(#Test.MyArrays3.myName2x2[1] == 'myName2x2[1]#')
 	assert(Test.MyArrays3.myName2x2[1][1].first == 'myName2x2[1][1].first')
 	assert(#Test.MyArrays3.myName2x2[1][1].nicknames == 'myName2x2[1][1].nicknames#')
 	assert(Test.MyArrays3.myName2x2[1][1].nicknames[1] == 'myName2x2[1][1].nicknames[1]')
-
+  assert(Test.MyArrays3.myName2x2() == 2) -- capacity 
+  assert(Test.MyArrays3.myName2x2[1]() == 3) -- capacity 
+  
 	-- myName2x2x2x2
 	assert(#Test.MyArrays3.myName2x2x2x2 == 'myName2x2x2x2#')
 	assert(#Test.MyArrays3.myName2x2x2x2[1] == 'myName2x2x2x2[1]#')
@@ -1313,6 +1339,10 @@ function Tester:test_arrays3()
 	assert(Test.MyArrays3.myName2x2x2x2[1][1][1][1].first == 'myName2x2x2x2[1][1][1][1].first')
 	assert(#Test.MyArrays3.myName2x2x2x2[1][1][1][1].nicknames == 'myName2x2x2x2[1][1][1][1].nicknames#')
 	assert(Test.MyArrays3.myName2x2x2x2[1][1][1][1].nicknames[1] == 'myName2x2x2x2[1][1][1][1].nicknames[1]')
+  assert(Test.MyArrays3.myName2x2x2x2() == 4) -- capacity 
+  assert(Test.MyArrays3.myName2x2x2x2[1]() == 5) -- capacity 
+  assert(Test.MyArrays3.myName2x2x2x2[1][1]() == 2) -- capacity 
+  assert(Test.MyArrays3.myName2x2x2x2[1][1][1]() == 3) -- capacity 
 end
 
 Tester[#Tester+1] = 'test_sequences_multi_dim'
@@ -1321,7 +1351,7 @@ function Tester:test_sequences_multi_dim()
 	   MyNameSeq1 = {Test.Name, xtypes.sequence(10) }
 	}
 	Test.MyNameSeq2 = xtypes.typedef{
-	   MyNameSeq2 = {Test.MyNameSeq, xtypes.sequence(10) }
+	   MyNameSeq2 = {Test.MyNameSeq, xtypes.sequence(8) }
 	}
 	Test.MyNameSeq2x2 = xtypes.typedef{
 	   MyNameSeq2x2 = {Test.Name, xtypes.sequence(2, 3) }
@@ -1333,13 +1363,13 @@ function Tester:test_sequences_multi_dim()
   		{ myNames = { Test.MyNameSeq } },
   
   		-- 2-D
-  		{ myNamesSeq = { Test.MyNameSeq1, xtypes.sequence(10) } },
+  		{ myNamesSeq = { Test.MyNameSeq1, xtypes.sequence(5) } },
   	
   		-- 2-D
   		{ myNames2 = { Test.MyNameSeq2 } },
   				
   		-- 3-D
-  		{ myNames2Seq = { Test.MyNameSeq2, xtypes.sequence(10) } },
+  		{ myNames2Seq = { Test.MyNameSeq2, xtypes.sequence(7) } },
   
   		-- 4-D
   		{ myNames2Seq2 = { Test.MyNameSeq2, xtypes.sequence(10, 20) } },
@@ -1361,21 +1391,26 @@ function Tester:test_sequences_multi_dim()
 	assert(Test.MySeqs3.myNames[1].first == 'myNames[1].first')
 	assert(#Test.MySeqs3.myNames[1].nicknames == 'myNames[1].nicknames#')
 	assert(Test.MySeqs3.myNames[1].nicknames[1] == 'myNames[1].nicknames[1]')
-	
+  assert(Test.MySeqs3.myNames() == 10) -- capacity  
+  	
 	-- myNamesSeq
 	assert(#Test.MySeqs3.myNamesSeq == 'myNamesSeq#')
 	assert(#Test.MySeqs3.myNamesSeq[1] == 'myNamesSeq[1]#')
 	assert(Test.MySeqs3.myNamesSeq[1][1].first == 'myNamesSeq[1][1].first')
 	assert(#Test.MySeqs3.myNamesSeq[1][1].nicknames == 'myNamesSeq[1][1].nicknames#')
 	assert(Test.MySeqs3.myNamesSeq[1][1].nicknames[1] == 'myNamesSeq[1][1].nicknames[1]')
-	
+  assert(Test.MySeqs3.myNamesSeq() == 5) -- capacity 
+  assert(Test.MySeqs3.myNamesSeq[1]() == 10) -- capacity 
+  
 	-- myNames2
 	assert(#Test.MySeqs3.myNames2 == 'myNames2#')
 	assert(#Test.MySeqs3.myNames2[1] == 'myNames2[1]#')
 	assert(Test.MySeqs3.myNames2[1][1].first == 'myNames2[1][1].first')
 	assert(#Test.MySeqs3.myNames2[1][1].nicknames == 'myNames2[1][1].nicknames#')
 	assert(Test.MySeqs3.myNames2[1][1].nicknames[1] == 'myNames2[1][1].nicknames[1]')
-
+  assert(Test.MySeqs3.myNames2() == 8) -- capacity 
+  assert(Test.MySeqs3.myNames2[1]() == 10) -- capacity 
+  
 	-- myNames2Seq
 	assert(#Test.MySeqs3.myNames2Seq == 'myNames2Seq#')
 	assert(#Test.MySeqs3.myNames2Seq[1] == 'myNames2Seq[1]#')
@@ -1383,7 +1418,10 @@ function Tester:test_sequences_multi_dim()
 	assert(Test.MySeqs3.myNames2Seq[1][1][1].first == 'myNames2Seq[1][1][1].first')
 	assert(#Test.MySeqs3.myNames2Seq[1][1][1].nicknames == 'myNames2Seq[1][1][1].nicknames#')
 	assert(Test.MySeqs3.myNames2Seq[1][1][1].nicknames[1] == 'myNames2Seq[1][1][1].nicknames[1]')
-
+  assert(Test.MySeqs3.myNames2Seq() == 7) -- capacity 
+  assert(Test.MySeqs3.myNames2Seq[1]() == 8) -- capacity 
+  assert(Test.MySeqs3.myNames2Seq[1][1]() == 10) -- capacity 
+  
 	-- myNames2Seq2
 	assert(#Test.MySeqs3.myNames2Seq2 == 'myNames2Seq2#')
 	assert(#Test.MySeqs3.myNames2Seq2[1] == 'myNames2Seq2[1]#')
@@ -1392,14 +1430,20 @@ function Tester:test_sequences_multi_dim()
 	assert(Test.MySeqs3.myNames2Seq2[1][1][1][1].first == 'myNames2Seq2[1][1][1][1].first')
 	assert(#Test.MySeqs3.myNames2Seq2[1][1][1][1].nicknames == 'myNames2Seq2[1][1][1][1].nicknames#')
 	assert(Test.MySeqs3.myNames2Seq2[1][1][1][1].nicknames[1] == 'myNames2Seq2[1][1][1][1].nicknames[1]')
-
+  assert(Test.MySeqs3.myNames2Seq2() == 10) -- capacity 
+  assert(Test.MySeqs3.myNames2Seq2[1]() == 20) -- capacity 
+  assert(Test.MySeqs3.myNames2Seq2[1][1]() == 8) -- capacity 
+  assert(Test.MySeqs3.myNames2Seq2[1][1][1]() == 10) -- capacity 
+  
 	-- myName2x2
 	assert(#Test.MySeqs3.myName2x2 == 'myName2x2#')
 	assert(#Test.MySeqs3.myName2x2[1] == 'myName2x2[1]#')
 	assert(Test.MySeqs3.myName2x2[1][1].first == 'myName2x2[1][1].first')
 	assert(#Test.MySeqs3.myName2x2[1][1].nicknames == 'myName2x2[1][1].nicknames#')
 	assert(Test.MySeqs3.myName2x2[1][1].nicknames[1] == 'myName2x2[1][1].nicknames[1]')
-
+  assert(Test.MySeqs3.myName2x2() == 2) -- capacity 
+  assert(Test.MySeqs3.myName2x2[1]() == 3) -- capacity 
+  
 	-- myName2x2x2x2
 	assert(#Test.MySeqs3.myName2x2x2x2 == 'myName2x2x2x2#')
 	assert(#Test.MySeqs3.myName2x2x2x2[1] == 'myName2x2x2x2[1]#')
@@ -1408,6 +1452,10 @@ function Tester:test_sequences_multi_dim()
 	assert(Test.MySeqs3.myName2x2x2x2[1][1][1][1].first == 'myName2x2x2x2[1][1][1][1].first')
 	assert(#Test.MySeqs3.myName2x2x2x2[1][1][1][1].nicknames == 'myName2x2x2x2[1][1][1][1].nicknames#')
 	assert(Test.MySeqs3.myName2x2x2x2[1][1][1][1].nicknames[1] == 'myName2x2x2x2[1][1][1][1].nicknames[1]')
+  assert(Test.MySeqs3.myName2x2x2x2() == 4) -- capacity 
+  assert(Test.MySeqs3.myName2x2x2x2[1]() == 5) -- capacity 
+  assert(Test.MySeqs3.myName2x2x2x2[1][1]() == 2) -- capacity 
+  assert(Test.MySeqs3.myName2x2x2x2[1][1][1]() == 3) -- capacity 
 end
 
 Tester[#Tester+1] = 'test_const'
@@ -1522,34 +1570,42 @@ function Tester:test_collection_bounds()
   assert(BoundsTest.long1SeqX[1] == 'long1SeqX[1]')
   assert(BoundsTest.long1SeqX[3] == 'long1SeqX[3]')
   assert(not print(pcall(function() return BoundsTest.long1SeqX[4] end)))
+  assert(BoundsTest.long1SeqX() == 3) -- capacity
   
  -- 1D Seq with X-Types defined constant
   assert(#BoundsTest.long2SeqX == 'long2SeqX#')
   assert(BoundsTest.long2SeqX[1] == 'long2SeqX[1]')
   assert(BoundsTest.long2SeqX[5] == 'long2SeqX[5]')
   assert(not print(pcall(function() return BoundsTest.long2SeqX[6] end)))
-
+  assert(BoundsTest.long2SeqX() == CAPACITY()) -- capacity
+  
  -- 1D Array with X-Types defined constant
   assert(#BoundsTest.long1ArrX == 'long1ArrX#')
   assert(BoundsTest.long1ArrX[1] == 'long1ArrX[1]')
   assert(BoundsTest.long1ArrX[5] == 'long1ArrX[5]')
   assert(not print(pcall(function() return BoundsTest.long1ArrX[6] end)))
+  assert(BoundsTest.long1ArrX() == CAPACITY()) -- capacity
   
  -- 2D Array with X-Types defined constant for one bound
   assert(#BoundsTest.long2ArrXX == 'long2ArrXX#')
   assert(#BoundsTest.long2ArrXX[1] == 'long2ArrXX[1]#')
   assert(#BoundsTest.long2ArrXX[3] == 'long2ArrXX[3]#')
   assert(not print(pcall(function() return #BoundsTest.long2ArrXX[4] end)))
-  
+  assert(BoundsTest.long2ArrXX() == 3) -- capacity
+  assert(BoundsTest.long2ArrXX[1]() == CAPACITY()) -- capacity
+    
   assert(BoundsTest.long2ArrXX[3][5] == 'long2ArrXX[3][5]')
+  assert(BoundsTest.long2ArrXX[3]() == CAPACITY()) -- capacity
   assert(not print(pcall(function() return BoundsTest.long2ArrXX[1][6] end)))
   assert(not print(pcall(function() return BoundsTest.long2ArrXX[4][1] end)))
   assert(not print(pcall(function() return BoundsTest.long2ArrXX[4][6] end)))
+  assert(not print(pcall(function() return BoundsTest.long2ArrXX[4]() end)))
   
  -- Unbounded sequence
   assert(#BoundsTest.longUSeqX == 'longUSeqX#')
   assert(BoundsTest.longUSeqX[1] == 'longUSeqX[1]')
   assert(BoundsTest.longUSeqX[999] == 'longUSeqX[999]')
+  assert(BoundsTest.longUSeqX() == nil) -- capacity
 end
 
 Tester[#Tester+1] = 'test_module_manipulation'
@@ -1785,7 +1841,7 @@ function Tester:test_assignment()
   
   
   -- 1D Bounded Seq
-  for i = 1, 3 do
+  for i = 1, myInstance.long1SeqX() do
     myInstance.long1SeqX[i] = i * 100
     print(MyTemplate.long1SeqX[i], myInstance.long1SeqX[i]) 
     assert(myInstance.long1SeqX[i] == i * 100)
@@ -1800,7 +1856,7 @@ function Tester:test_assignment()
   self:print(myInstance) 
      
   -- 1D Unbounded Seq
-  for i = 1, 17 do
+  for i = 1, myInstance.longUSeqX() or 17 do
     myInstance.longUSeqX[i] = 100 * i 
     print(MyTemplate.longUSeqX[i], myInstance.longUSeqX[i]) 
     assert(myInstance.longUSeqX[i] == 100 * i)
@@ -1818,8 +1874,8 @@ function Tester:test_assignment()
   self:print(myInstance) 
   
   -- 2D Array
-  for i = 1, 3 do
-    for j = 1, 5 do
+  for i = 1, myInstance.long2ArrXX() do
+    for j = 1, myInstance.long2ArrXX[1]() do
       myInstance.long2ArrXX[i][j] = i * 100 * j * 100
       print(MyTemplate.long2ArrXX[i][j], myInstance.long2ArrXX[i][j]) 
       assert(myInstance.long2ArrXX[i][j] == i * 100 * j * 100)

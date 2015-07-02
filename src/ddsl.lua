@@ -517,6 +517,13 @@ end
 _.collection_metatable = {    
   [_.KIND] = function() return 'collection' end,
 
+  -- return the capacity; a 'nil' value means that capacity is unbounded 
+  __call = function (collection)
+     local model = getmetatable(collection)
+     local capacity = model[_.DEFN][2] or nil
+     return capacity
+  end,
+  
   __len = function (collection)
       -- NOTE: defined for template instances (i.e. is_role_instance) only
       -- the accessor for collection length
