@@ -12,7 +12,7 @@ Created: Rajive Joshi, 2015 Jun 16
 -------------------------------------------------------------------------------
 --]]
 
-package.path = '../../../../src/?.lua;../../../../src/?/init.lua;' .. package.path
+package.path = '../../../?.lua;../../../?/init.lua;' .. package.path
 
 local xml = require('ddsl.xtypes.xml.parser')
 

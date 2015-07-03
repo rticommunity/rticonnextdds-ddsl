@@ -12,6 +12,8 @@ Created: Rajive Joshi, 2015 Jun 26
 -------------------------------------------------------------------------------
 --]]
 
+package.path = '?.lua;?/init.lua;' .. package.path
+
 local xtypes = require('ddsl.xtypes')
 local xml = require('ddsl.xtypes.xml')
 
