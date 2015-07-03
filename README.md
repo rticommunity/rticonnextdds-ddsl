@@ -6,6 +6,16 @@ Data Domain Specific Language
 - [Presentation](https://docs.google.com/presentation/d/1UYCS0KznOBapPTgaMkYoG4rC7DERpLhXtl0odkaGOSI/edit#slide=id.g4653da537_05)
 
 
+## Core Concepts
+
+Every DDSL data-object has two sides (like the faces of the coin):
+
+- the template which describes its blueprint (i.e. type or schema)
+
+- the instance which embodies the member fields and their values
+     
+
+
 ## Importing XML
 
 

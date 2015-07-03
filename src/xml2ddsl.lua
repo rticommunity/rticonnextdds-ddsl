@@ -16,6 +16,7 @@ package.path = '?.lua;?/init.lua;' .. package.path
 
 local xtypes = require('ddsl.xtypes')
 local xml = require('ddsl.xtypes.xml')
+local xutils = require('ddsl.xtypes.utils')
 
 local function main(arg)
   if #arg == 0 then
@@ -48,12 +49,8 @@ local function main(arg)
   print('\n********* DDSL: Global X-Types Namespace *********')
   for _, schema in ipairs(schemas) do
     -- print IDL
-    local idl = xtypes.utils.visit_model(schema, {'\t'})
+    local idl = xutils.visit_model(schema, {'\t'})
     print(table.concat(idl, '\n\t'))
-
-    -- print the result of visiting each field
-    --local fields = xtypes.utils.visit_instance(instance, {'instance:'})
-    --print(table.concat(fields, '\n\t'))
     
     -- TODO: print the DDSL representation
   end  

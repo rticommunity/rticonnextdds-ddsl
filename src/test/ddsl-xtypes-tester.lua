@@ -19,6 +19,8 @@
 package.path = '../?.lua;../?/init.lua;' .. package.path
 
 local xtypes = require('ddsl.xtypes')
+local xutils = require('ddsl.xtypes.utils')
+
 --------------------------------------------------------------------------------
 -- Tester - the unit tests
 --------------------------------------------------------------------------------
@@ -1809,7 +1811,7 @@ end
 Tester[#Tester+1] = 'test_idl'
 function Tester:test_xml_tester()  
     for _, template in pairs(Test) do
-      local idl = xtypes.utils.visit_model(template)
+      local idl = xutils.visit_model(template)
       print(table.concat(idl, '\n'))
     end
 end
@@ -2023,11 +2025,11 @@ end
 -- print - helper method to print the IDL and the index for data definition
 function Tester:print(instance)
     -- print IDL
-    local idl = xtypes.utils.visit_model(instance, {'model (IDL):'})
+    local idl = xutils.visit_model(instance, {'model (IDL):'})
     print(table.concat(idl, '\n\t'))
     
     -- print the result of visiting each field
-    local fields = xtypes.utils.visit_instance(instance, {'instance:'})
+    local fields = xutils.visit_instance(instance, {'instance:'})
     print(table.concat(fields, '\n\t'))
 end
 

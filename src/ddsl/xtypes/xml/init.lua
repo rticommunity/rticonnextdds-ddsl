@@ -12,6 +12,8 @@ Created: Rajive Joshi, 2015 Jun 16
 --]]
 
 local xtypes = require('ddsl.xtypes')
+local xutils = require('ddsl.xtypes.utils')
+
 local xmlstring2table = require('ddsl.xtypes.xml.parser').xmlstring2table
 
 --[[
@@ -439,7 +441,7 @@ local function xml2xtypes(xml)
     local template = tag_handler(xml)
     
     if template then
-      trace(table.concat(xtypes.utils.visit_model(template, {'IDL:'}), '\n\t'))
+      trace(table.concat(xutils.visit_model(template, {'IDL:'}), '\n\t'))
      
       -- insert it in the template_list, if not already there:
       local already_in_template_list = false
