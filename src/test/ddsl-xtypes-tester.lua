@@ -16,7 +16,7 @@
 -----------------------------------------------------------------------------
 --]]
 
-package.path = '../src/?.lua;../src/?/init.lua;' .. package.path
+package.path = '../?.lua;../?/init.lua;' .. package.path
 
 local xtypes = require('ddsl.xtypes')
 --------------------------------------------------------------------------------
