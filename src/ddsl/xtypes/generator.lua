@@ -1,4 +1,4 @@
-xtypes = require ("xtypes")
+xtypes = require ('ddsl.xtypes')
 
 -- The Generator<T> monad
 -- It's the prototype ("class") for all generator objects

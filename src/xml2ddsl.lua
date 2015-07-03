@@ -12,8 +12,8 @@ Created: Rajive Joshi, 2015 Jun 26
 -------------------------------------------------------------------------------
 --]]
 
-local xtypes = require('xtypes')
-local xml = require('xtypes-xml')
+local xtypes = require('ddsl.xtypes')
+local xml = require('ddsl.xtypes.xml')
 
 local function main(arg)
   if #arg == 0 then

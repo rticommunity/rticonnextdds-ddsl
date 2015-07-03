@@ -1,6 +1,6 @@
-local ReactGen = require("react-gen")
-local Gen      = require("generator")
-local xtypes   = require("xtypes")
+local ReactGen = require("dds.xtypes.react-gen")
+local Gen      = require("ddsl.xtypes.generator")
+local xtypes   = require("ddsl.xtypes")
 
 local Tester = {}
 

@@ -11,8 +11,8 @@ Created: Rajive Joshi, 2015 Jun 16
 ------------------------------------------------------------------------------
 --]]
 
-local xtypes = require('xtypes')
-local xmlstring2table = require('xml-parser').xmlstring2table
+local xtypes = require('ddsl.xtypes')
+local xmlstring2table = require('ddsl.xtypes.xml.parser').xmlstring2table
 
 --[[
 TRACE: turn tracing on/off to help debug XML import

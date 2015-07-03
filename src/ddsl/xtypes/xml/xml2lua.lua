@@ -12,7 +12,9 @@ Created: Rajive Joshi, 2015 Jun 16
 -------------------------------------------------------------------------------
 --]]
 
-local xml = require('xml-parser')
+package.path = '../../../../src/?.lua;../../../../src/?/init.lua;' .. package.path
+
+local xml = require('ddsl.xtypes.xml.parser')
 
 if #arg == 0 then
   print(table.concat{'Usage: ', arg[0], ' <xml-file>'})

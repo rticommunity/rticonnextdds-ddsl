@@ -16,9 +16,9 @@
 -----------------------------------------------------------------------------
 --]]
 
-package.path = table.concat{'../src/?.lua;', package.path}
+package.path = '../src/?.lua;../src/?/init.lua;' .. package.path
 
-local xtypes = require('xtypes')
+local xtypes = require('ddsl.xtypes')
 --------------------------------------------------------------------------------
 -- Tester - the unit tests
 --------------------------------------------------------------------------------
@@ -1773,7 +1773,7 @@ end
 
 Tester[#Tester+1] = 'test_xml'
 function Tester:test_xml()
-  local xml = require('xtypes-xml')
+  local xml = require('ddsl.xtypes.xml')
   
   -- xml.is_trace_on = true
   local schemas = xml.files2xtypes({'xml-test-simple.xml'})
@@ -1785,7 +1785,7 @@ end
 
 Tester[#Tester+1] = 'test_xml_advanced'
 function Tester:test_xml_advanced()  
-  local xml = require('xtypes-xml') 
+  local xml = require('ddsl.xtypes.xml')
    
   local testfiles = {
     'xml-test-connector.xml',

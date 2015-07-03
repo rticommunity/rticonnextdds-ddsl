@@ -49,7 +49,9 @@ MY_LIB_ARCH=`echo ${MY_HOME}/lib/*$(uname)*`
 
 # src/ (dev tree) lua overrides the byte code in lib (for distribution)
 export LUA_PATH=\
-"${MY_HOME}/src/?.lua;${MY_LIB_ARCH}/?.lc;${MY_HOME}/lib/lua/?.lc;;"
+"${MY_HOME}/src/?.lua;${MY_HOME}/src/?/init.lua;\
+${MY_LIB_ARCH}/?.lc;${MY_LIB_ARCH}/?/init.lc;\
+${MY_HOME}/lib/lua/?.lc;${MY_HOME}/lib/lua/?/init.lc;;"
 
 export LUA_CPATH="${MY_HOME}/lib/?.so;${MY_LIB_ARCH}/?.so;;"
 
@@ -63,6 +65,8 @@ DYLD_LIBRARY_PATH=${MY_HOME}/lib:${MY_LIB_ARCH}:${DYLD_LIBRARY_PATH}
 LUA_CMD=$1; shift
 if [ -r ${LUA_CMD}.lua ]; then
 	LUA_CMD_PATH=${LUA_CMD}.lua                # use it, if valid as specified
+elif [ -r ${MY_HOME}/src/${LUA_CMD}.lua ]; then
+	LUA_CMD_PATH=${MY_HOME}/src/${LUA_CMD}.lua # get it from the src directory
 elif [ -r ${MY_HOME}/bin/${LUA_CMD}.lua ]; then
 	LUA_CMD_PATH=${MY_HOME}/bin/${LUA_CMD}.lua # get it from the bin directory
 elif [ -r ${MY_LIB_ARCH}/${LUA_CMD}.lc ]; then

@@ -1,4 +1,4 @@
-local PullGen = require("generator")
+local PullGen = require("ddsl.xtypes.generator")
 
 -- Every reative generator accepts a continuation as a 
 -- argument to method named "listen". Every continuation 

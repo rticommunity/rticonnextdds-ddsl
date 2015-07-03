@@ -1,5 +1,5 @@
-local xtypes = require("xtypes")
-local Gen = require("generator")
+local xtypes = require("ddsl.xtypes")
+local Gen = require("ddsl.xtypes.generator")
 
 local Tester = {}
 
