@@ -1,4 +1,7 @@
-local ReactGen = require("dds.xtypes.react-gen")
+
+package.path = '../../?.lua;../../?/init.lua;' .. package.path
+
+local ReactGen = require("ddsl.xtypes.react-gen")
 local Gen      = require("ddsl.xtypes.generator")
 local xtypes   = require("ddsl.xtypes")
 

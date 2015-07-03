@@ -1,3 +1,5 @@
+package.path = '../../?.lua;../../?/init.lua;' .. package.path
+
 local xtypes = require("ddsl.xtypes")
 local Gen = require("ddsl.xtypes.generator")
 
