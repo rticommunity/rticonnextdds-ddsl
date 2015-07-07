@@ -1535,18 +1535,8 @@ local interface = {
   -- empty initializer sentinel value
   EMPTY              = _.EMPTY,
 
-  -- kinds of xtypes
-  ANNOTATION = xtypes.ANNOTATION, -- user annotations and collections
-  ATOM       = xtypes.ATOM,
-  CONST      = xtypes.CONST,
-  ENUM       = xtypes.ENUM,
-  STRUCT     = xtypes.STRUCT,
-  UNION      = xtypes.UNION,
-  MODULE     = xtypes.MODULE,
-  TYPEDEF    = xtypes.TYPEDEF,
 
-
-  -- accesors and mutators (meta-attributes for types)
+  -- accessors and mutators (meta-attributes for types)
   NS                 = _.NS,
   NAME               = _.NAME,
   KIND               = _.KIND,

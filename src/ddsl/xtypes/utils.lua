@@ -67,15 +67,15 @@ function xutils.visit_instance(instance, result, template, base)
   end
 
   -- struct or union
-  local mytype = instance[xtypes.KIND]
+  local mytype = instance[xtypes.KIND]()
 
   -- print('DEBUG index 1: ', mytype(), instance[xtypes.NAME])
 
   -- skip if not an indexable type:
-  if xtypes.STRUCT ~= mytype and xtypes.UNION ~= mytype then return result end
+  if 'struct' ~= mytype and 'union' ~= mytype then return result end
 
   -- union discriminator, if any
-  if xtypes.UNION == mytype then
+  if 'union' == mytype then
     table.insert(result, table.concat{template._d, ' = ', instance._d})
   end
 
@@ -93,9 +93,9 @@ function xutils.visit_instance(instance, result, template, base)
       -- walk through the elements in the order of definition:
 
       local role
-      if xtypes.STRUCT == mytype then
+      if 'struct' == mytype then
         role = next(member)
-      elseif xtypes.UNION == mytype then
+      elseif 'union' == mytype then
         role = next(member, #member > 0 and #member or nil)
       end
 
@@ -138,18 +138,18 @@ function xutils.visit_model(instance, result, indent_string)
 	local indent_string = indent_string or ''
 	local content_indent_string = indent_string
 	local myname = instance[xtypes.NAME]
-	local mytype = instance[xtypes.KIND]
+	local mytype = instance[xtypes.KIND]()
   local mymodule = instance[xtypes.NS]
 
 	-- print('DEBUG visit_model: ', Data, model, mytype(), myname)
 
 	-- skip: atomic types, annotations
-	if xtypes.ATOM == mytype or
-	   xtypes.ANNOTATION == mytype then
+	if 'atom' == mytype or
+	   'annotation' == mytype then
 	   return result
 	end
 
-  if xtypes.CONST == mytype then
+  if 'const' == mytype then
     local atom = instance[1] -- atom
     local value = instance()
     if xtypes.char == atom or xtypes.wchar == atom then
@@ -164,8 +164,8 @@ function xutils.visit_model(instance, result, indent_string)
      return result
   end
 
-	if xtypes.TYPEDEF == mytype then
-    table.insert(result, string.format('%s%s %s', indent_string,  mytype(),
+	if 'typedef' == mytype then
+    table.insert(result, string.format('%s%s %s', indent_string,  mytype,
                   xutils.tostring_role(myname, instance[1], mymodule)))
 		return result
 	end
@@ -181,28 +181,28 @@ function xutils.visit_model(instance, result, indent_string)
     	end
     end
     
-		if xtypes.UNION == mytype then
+		if 'union' == mytype then
 			table.insert(result, string.format('%s%s %s switch (%s) {', indent_string,
-						mytype(), myname, instance[xtypes.SWITCH][xtypes.NAME]))
+						mytype, myname, instance[xtypes.SWITCH][xtypes.NAME]))
 
-		elseif xtypes.STRUCT == mytype and instance[xtypes.BASE] then -- base
+		elseif 'struct' == mytype and instance[xtypes.BASE] then -- base
 			table.insert(result,
-			    string.format('%s%s %s : %s {', indent_string, mytype(),
+			    string.format('%s%s %s : %s {', indent_string, mytype,
 					myname, instance[xtypes.BASE][xtypes.NAME]))
 
 		else
 			table.insert(result,
-			             string.format('%s%s %s {', indent_string, mytype(), myname))
+			             string.format('%s%s %s {', indent_string, mytype, myname))
 		end
 		content_indent_string = indent_string .. '   '
 	end
 
-	if xtypes.MODULE == mytype then
+	if 'module' == mytype then
 		for i, role_template in ipairs(instance) do -- walk the module definition
 			result = xutils.visit_model(role_template, result, content_indent_string)
 		end
 
-	elseif xtypes.STRUCT == mytype then
+	elseif 'struct' == mytype then
 
 		for i, member in ipairs(instance) do -- walk through the model definition
 			  local role, role_defn = next(member)
@@ -210,7 +210,7 @@ function xutils.visit_model(instance, result, indent_string)
                             xutils.tostring_role(role, role_defn, mymodule)))
 		end
 
-	elseif xtypes.UNION == mytype then
+	elseif 'union' == mytype then
 		for i, member in ipairs(instance) do -- walk through the model definition
 
 				local case = member[1]
@@ -235,7 +235,7 @@ function xutils.visit_model(instance, result, indent_string)
 				                      xutils.tostring_role(role, role_defn, mymodule)))
 		end
 
-	elseif xtypes.ENUM == mytype then
+	elseif 'enum' == mytype then
 		for i, defn_i in ipairs(instance) do -- walk through the model definition
 			local role, ordinal = next(defn_i)
 			if ordinal then
