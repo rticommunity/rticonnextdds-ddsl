@@ -16,7 +16,7 @@
 -----------------------------------------------------------------------------
 --]]
 
-package.path = '../?.lua;../?/init.lua;' .. package.path
+package.path = '../src/?.lua;../src/?/init.lua;' .. package.path
 
 local xtypes = require('ddsl.xtypes')
 local xutils = require('ddsl.xtypes.utils')
@@ -1954,7 +1954,7 @@ function Tester:test_api()
             role_definition[j],
             'NAME = ', role_definition[j][xtypes.NAME],   -- member type name
             'KIND = ', role_definition[j][xtypes.KIND]()) -- member type kind
-      if xtypes.ANNOTATION == role_definition[j][xtypes.KIND] and
+      if 'annotation' == role_definition[j][xtypes.KIND]() and
          #role_definition[j] > 0 then 
             print('\t\t\t\t', table.concat(role_definition[j], ' '))--attributes
       end
