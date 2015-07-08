@@ -202,21 +202,21 @@ local function instances ()
   print_instance(ShapeTypeWithProperties)
     
   print('--- create a new instance ---')
-  local shape = xtypes.utils.new_instance(ShapeTypeWithProperties) 
-  shape[ShapeTypeWithProperties.x] = 50
-  shape[ShapeTypeWithProperties.y] = 30
-  shape[ShapeTypeWithProperties.shapesize] = 20
-  shape[ShapeTypeWithProperties.color] = 'GREEN'
-  for i = 1, shape.properties() do
-    shape[shape.properties[i].name]  = 'name' .. i
-    shape[shape.properties[i].value] = i
+  local shapeWithProperties = xtypes.utils.new_instance(ShapeTypeWithProperties) 
+  shapeWithProperties.x = 50
+  shapeWithProperties.y = 30
+  shapeWithProperties.shapesize = 20
+  shapeWithProperties.color = 'GREEN'
+  for i = 1, shapeWithProperties.properties() do
+    shapeWithProperties.properties[i].name  = 'name' .. i
+    shapeWithProperties.properties[i].value = i
   end
-  print('properties capacity', shape.properties(), -- or 
+  print('properties capacity', shapeWithProperties.properties(), -- or 
                                ShapeTypeWithProperties.properties())
-  print('properties length', #shape.properties)
-  print_instance(shape)
+  print('properties length', #shapeWithProperties.properties)
+  print_instance(shapeWithProperties)
     
-  return ShapeTypeWithProperties
+  return ShapeTypeWithProperties, shapeWithProperties
 end
 
 lessons[#lessons+1] = instances
