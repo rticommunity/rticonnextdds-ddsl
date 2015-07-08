@@ -37,28 +37,14 @@ local function print_instance(instance, description)
     print(table.concat(values, '\n\t'))
 end
 
-local function shapetype() 
-  local MAX_COLOR_LEN = xtypes.const{ MAX_COLOR_LEN = { xtypes.long, 128 } }
- 
-  local ShapeType = xtypes.struct{
-    ShapeType = {
-      { x = { xtypes.long } },
-      { y = { xtypes.long } },
-      { shapesize = { xtypes.long } },
-      { color = { xtypes.string(MAX_COLOR_LEN), xtypes.Key } },
-    }
-  }
-  return MAX_COLOR_LEN, ShapeType
-end
-
 --------------------------------------------------------------------------------
 -- Lessons 
 --------------------------------------------------------------------------------
 local lessons = {}
 
-local function intro ()
+local function shapetype ()
  
-  print('--- Define a datatype using declarative style ---')
+  print('--- define a datatype (template) using declarative style ---')
  
   local MAX_COLOR_LEN = xtypes.const{ MAX_COLOR_LEN = { xtypes.long, 128 } }
  
@@ -72,45 +58,15 @@ local function intro ()
   }
   print_datatype(ShapeType)
 
-  print('--- Create an instance from the datatype ---')
-  local shape = xtypes.utils.new_instance(ShapeType) 
-  
-  -- shape is equivalent to manually defining the following  --
-  local shape_manual = {
-      x          = 50,
-      y          = 30,
-      shapesize  = 20,
-      color      = 'GREEN',
-  }
-  
-  print("--- Iterate through instance members : unordered ---")
-  for role, _ in pairs(shape) do
-    shape[role] = shape_manual[role]
-    print('\t', role, shape[role])
-  end
-  
-  print("--- Use the helper to print the instance ---")
-  print_instance(shape, 'shape:')
-  
-  print("--- Iterate through instance members : ordered ---")
-  for i, member in ipairs(ShapeType) do
-    local role = next(member)
-    print('', role, '=', shape[role])
-  end
-  
-
-  print('--- Datatype is a special instance whose values are the accessor strings ---')
-  print_instance(ShapeType)
-  
-  return MAX_COLOR_LEN, ShapeType, shape
+  return MAX_COLOR_LEN, ShapeType
 end
-lessons[#lessons+1] = intro
+lessons[#lessons+1] = shapetype
 
 --------------------------------------------------------------------------------
 
-local function struct_ShapeType_imperative ()
+local function shapetype_imperative ()
 
-  print('--- Define the same datatype using imperative style ---')
+  print('--- define the same datatype (template) using imperative style ---')
   
   local MAX_COLOR_LEN = xtypes.const{ MAX_COLOR_LEN = { xtypes.long, 128 } }
   
@@ -124,25 +80,91 @@ local function struct_ShapeType_imperative ()
   
   return MAX_COLOR_LEN, ShapeType
 end
-lessons[#lessons+1] = struct_ShapeType_imperative
+lessons[#lessons+1] = shapetype_imperative
 
 --------------------------------------------------------------------------------
 
-local function xml2idl ()
+local function shapetype_xml2idl ()
 
   local xml = require('ddsl.xtypes.xml')
   
-  print('--- Import datatypes defined in XML ---')
+  print('--- import datatypes defined in XML ---')
   local datatypes = xml.files2xtypes({
         '../test/xml-test-simple.xml',
   })
     
-  print('--- Export datatypes to IDL ---')
+  print('--- export datatypes to IDL ---')
   for i = 1, #datatypes do
      print_datatype(datatypes[i], tostring(datatypes[i]) .. ':')
   end
+  
+  return table.unpack(datatypes)
 end
-lessons[#lessons+1] = xml2idl
+lessons[#lessons+1] = shapetype_xml2idl
+
+--------------------------------------------------------------------------------
+
+local function shape_instance ()
+
+  local MAX_COLOR_LEN, ShapeType = shapetype()
+  
+  print('--- create an instance from the datatype (template) ---')
+  local shape = xtypes.utils.new_instance(ShapeType) 
+  
+  -- shape is equivalent to manually defining the following  --
+  local shape_manual = {
+      x          = 50,
+      y          = 30,
+      shapesize  = 20,
+      color      = 'GREEN',
+  }
+ 
+  print('-- initialize the shape instance from shape_manual table ---')
+  for role, _ in pairs(shape_manual) do
+    shape[role] = shape_manual[role]
+    print('\t', role, shape[role])
+  end
+ 
+  print(shape)
+  
+  return shape
+end
+lessons[#lessons+1] = shape_instance
+
+--------------------------------------------------------------------------------
+
+local function shape_instance_iterators ()
+
+  local MAX_COLOR_LEN, ShapeType = shapetype()
+  local shape = shape_instance()
+
+  print("--- iterate through instance members : unordered ---")
+  for role, _ in pairs(shape) do
+    print('', role, '=', shape[role])
+  end
+  
+  print("--- iterate through instance members : ordered ---")
+  for i, member in ipairs(ShapeType) do
+    local role = next(member)
+    print('', role, '=', shape[role])
+  end
+ 
+  return shape
+end
+lessons[#lessons+1] = shape_instance_iterators
+
+--------------------------------------------------------------------------------
+
+local function shape_accessors ()
+
+  local MAX_COLOR_LEN, ShapeType = shapetype()
+
+  print('--- datatype (template) values are DDS DynamicData accessor strings ---')
+  print_instance(ShapeType)
+  
+  return ShapeType
+end
+lessons[#lessons+1] = shape_accessors
 
 --------------------------------------------------------------------------------
 
@@ -179,7 +201,7 @@ lessons[#lessons+1] = struct_model_operators
 
 --------------------------------------------------------------------------------
 
-local function instances ()
+local function ShapeTypeWithProperties ()
 
   local MAX_COLOR_LEN, ShapeType = shapetype()
 
@@ -219,7 +241,7 @@ local function instances ()
   return ShapeTypeWithProperties, shapeWithProperties
 end
 
-lessons[#lessons+1] = instances
+lessons[#lessons+1] = ShapeTypeWithProperties
 
 --------------------------------------------------------------------------------
 -- Execute the Lessons 
