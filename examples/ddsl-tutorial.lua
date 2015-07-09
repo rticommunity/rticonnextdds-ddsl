@@ -107,69 +107,22 @@ lessons = {
       return table.unpack(datatypes)
     end
   },
-
   ------------------------------------------------------------------------------
 
-  { shape_instance = function ()
+  { shapetype_model_iterators = function ()
 
       local MAX_COLOR_LEN, ShapeType = lessons[1].shapetype()
       
-      print('--- create an instance from the datatype (template) ---')
-      local shape = xtypes.utils.new_instance(ShapeType) 
-      
-      -- shape is equivalent to manually defining the following  --
-      local shape_manual = {
-          x          = 50,
-          y          = 30,
-          shapesize  = 20,
-          color      = 'GREEN',
-      }
-     
-      print('--- initialize the shape instance from shape_manual table ---')
-      for role, _ in pairs(shape_manual) do
-        shape[role] = shape_manual[role]
-        print('\t', role, shape[role])
-      end
-     
-      print_instance(shape)
-      
-      return MAX_COLOR_LEN, ShapeType, shape
-    end  
-  },
-  
-  ------------------------------------------------------------------------------
-
-  { shape_instance_iterators = function ()
-
-      local MAX_COLOR_LEN, ShapeType, shape = lessons[4].shape_instance()
-    
-      print("--- iterate through instance members : unordered ---")
-      for role, _ in pairs(shape) do
-        print('', role, '=', shape[role])
-      end
-      
-      print("--- iterate through instance members : ordered ---")
+      print("--- iterate through the model members ---")
       for i, member in ipairs(ShapeType) do
-        local role = next(member)
-        print('', role, '=', shape[role])
+        local role, roledef = next(member)
+        print('', role, roledef[1], roledef[2], roledef[3])
       end
      
-      return shape
+      return MAX_COLOR_LEN, ShapeType
     end
   },
   
-  ------------------------------------------------------------------------------
-
-  { shape_accessors = function ()
-
-      local MAX_COLOR_LEN, ShapeType = lessons[1].shapetype()
-    
-      print('--- template member values are DDS DynamicData accessor strings ---')
-      print_instance(ShapeType)
-      
-      return ShapeType
-    end
-  },
   
   ------------------------------------------------------------------------------
  
@@ -206,7 +159,70 @@ lessons = {
   
   ------------------------------------------------------------------------------
 
-  { shape_with_properties = function ()
+  { shape_instance = function ()
+
+      local MAX_COLOR_LEN, ShapeType = lessons[1].shapetype()
+      
+      print('--- create an instance from the datatype (template) ---')
+      local shape = xtypes.utils.new_instance(ShapeType) 
+      
+      -- shape is equivalent to manually defining the following  --
+      local shape_manual = {
+          x          = 50,
+          y          = 30,
+          shapesize  = 20,
+          color      = 'GREEN',
+      }
+     
+      print('--- initialize the shape instance from shape_manual table ---')
+      for role, _ in pairs(shape_manual) do
+        shape[role] = shape_manual[role]
+        print('\t', role, shape[role])
+      end
+     
+      print_instance(shape)
+      
+      return MAX_COLOR_LEN, ShapeType, shape
+    end  
+  },
+  
+  ------------------------------------------------------------------------------
+
+  { shape_instance_iterators = function ()
+
+      local MAX_COLOR_LEN, ShapeType, shape = lessons[6].shape_instance()
+    
+      print("--- iterate through instance members : unordered ---")
+      for role, _ in pairs(shape) do
+        print('', role, '=', shape[role])
+      end
+      
+      print("--- iterate through instance members : ordered ---")
+      for i, member in ipairs(ShapeType) do
+        local role = next(member)
+        print('', role, '=', shape[role])
+      end
+     
+      return shape
+    end
+  },
+  
+  ------------------------------------------------------------------------------
+
+  { shape_accessors = function ()
+
+      local MAX_COLOR_LEN, ShapeType = lessons[1].shapetype()
+    
+      print('--- template member values are DDS DynamicData accessor strings ---')
+      print_instance(ShapeType)
+      
+      return ShapeType
+    end
+  },
+
+  ------------------------------------------------------------------------------
+
+  { inheritance_and_nested_struct_seq = function ()
     
       local MAX_COLOR_LEN, ShapeType = lessons[1].shapetype()
     
@@ -277,11 +293,11 @@ print('starting at lesson', starting_lesson, ' of ', #lessons)
 for i = starting_lesson, #lessons do
   local title, lesson = next(lessons[i])
   
+  print('\n========== Lesson', i .. '/' .. #lessons, title)
+  lesson() -- run the lesson
+
   print('\nPress RETURN to go to the next lesson...')
   io.read()
-  
-  print('========== Lesson', i .. '/' .. #lessons, title, '==========')
-  lesson() -- run the lesson
 end
 print('\n========== Congratulations on completing the DDSL tutorial!! ==========')
 --------------------------------------------------------------------------------
