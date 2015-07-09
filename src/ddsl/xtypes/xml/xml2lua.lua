@@ -23,7 +23,7 @@ end
 
 local filename = arg[1]
 io.input(filename)
-local xmlstring = io.read("*all")  
+local xmlstring = io.read("*a")  
 local table = xml.xmlstring2table(xmlstring)
 local luastring = xml.table2luastring(table)
 print(luastring)

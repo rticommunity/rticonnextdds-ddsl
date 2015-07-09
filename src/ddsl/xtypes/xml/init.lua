@@ -489,9 +489,10 @@ Given an XML file, loads the xtype definitions, and return them
 --]]
 function xmlfile2xtypes(filename)
   if not files_loaded[filename] then
-    io.input(filename)
-    local xmlstring = io.read("*all")
+    local file = assert(io.open(filename, 'r'))
+    local xmlstring = file:read("*a")
     files_loaded[filename] = true
+    file:close()
     return xmlstring2xtypes(xmlstring)
   end
 end
@@ -506,9 +507,9 @@ local function xmlfiles2xtypes(files)
   local schemas
   for i = 1, #files do
     local file = files[i]
-    print('========= ', file, ' do =========')
+    trace('========= ', file, ' do =========')
     schemas = xmlfile2xtypes(file)
-    print('--------- ', file, ' end --------')
+    trace('--------- ', file, ' end --------')
   end
   return schemas
 end
