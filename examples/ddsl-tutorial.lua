@@ -19,39 +19,42 @@
 
 package.path = '../src/?.lua;../src/?/init.lua;' .. package.path
 
-local xtypes = require('ddsl.xtypes')
-local xutils = require('ddsl.xtypes.utils')
+local xtypes   = require('ddsl.xtypes')
+local xutils   = require('ddsl.xtypes.utils')
+
+local Tutorial = require('tutorial')
+local show     = Tutorial.show
 
 --------------------------------------------------------------------------------
--- Helpers 
+-- DDSL Helpers 
 --------------------------------------------------------------------------------
 
-local function print_datatype(datatype, description)
+local function show_datatype(datatype, description)
     description = description or (tostring(datatype) .. ' datatype:')
     local idl = xutils.visit_model(datatype, { description })
-    print(table.concat(idl, '\n\t'))
+    show(table.concat(idl, '\n\t'))
 end
 
-local function print_instance(instance, description)
+local function show_instance(instance, description)
     description = description or (tostring(instance) .. ' instance:')
     local values = xutils.visit_instance(instance, { description })
-    print(table.concat(values, '\n\t'))
+    show(table.concat(values, '\n\t'))
 end
 
 --------------------------------------------------------------------------------
--- Lessons 
+-- DDSL Lessons 
 --------------------------------------------------------------------------------
-local lessons
-lessons = {
+local tutorial
+tutorial = Tutorial:new{
 
   ------------------------------------------------------------------------------
 
   { shapetype = function () 
     
-      print('--- define a datatype (template) using declarative style ---')
+      show('--- define a datatype (template) using declarative style ---')
      
       local MAX_COLOR_LEN = xtypes.const{ MAX_COLOR_LEN = { xtypes.long, 128 } }
-      print_datatype(MAX_COLOR_LEN)
+      show_datatype(MAX_COLOR_LEN)
       
       local ShapeType = xtypes.struct{
         ShapeType = {
@@ -61,7 +64,7 @@ lessons = {
           { color = { xtypes.string(MAX_COLOR_LEN), xtypes.Key } },
         }
       }
-      print_datatype(ShapeType)
+      show_datatype(ShapeType)
     
       return MAX_COLOR_LEN, ShapeType
     end
@@ -71,10 +74,10 @@ lessons = {
 
   { shapetype_imperative = function ()
   
-      print('--- define the same datatype (template) using imperative style ---')
+      show('--- define the same datatype (template) using imperative style ---')
       
       local MAX_COLOR_LEN = xtypes.const{ MAX_COLOR_LEN = { xtypes.long, 128 } }
-      print_datatype(MAX_COLOR_LEN)
+      show_datatype(MAX_COLOR_LEN)
             
       local ShapeType = xtypes.struct{ShapeType=xtypes.EMPTY}
       ShapeType[1] = { x = { xtypes.long } }
@@ -82,7 +85,7 @@ lessons = {
       ShapeType[3] = { shapesize = { xtypes.long } }
       ShapeType[4] = { color = { xtypes.string(MAX_COLOR_LEN), xtypes.Key } }
       
-      print_datatype(ShapeType)
+      show_datatype(ShapeType)
       
       return MAX_COLOR_LEN, ShapeType
     end
@@ -94,55 +97,55 @@ lessons = {
 
       local xml = require('ddsl.xtypes.xml')
       
-      print('--- import datatypes defined in XML ---')
+      show('--- import datatypes defined in XML ---')
       local datatypes = xml.files2xtypes({
             '../test/xml-test-simple.xml',
       })
         
-      print('--- export datatypes to IDL ---')
+      show('--- export datatypes to IDL ---')
       for i = 1, #datatypes do
-         print_datatype(datatypes[i], tostring(datatypes[i]) .. ':')
+         show_datatype(datatypes[i], tostring(datatypes[i]) .. ':')
       end
       
       return table.unpack(datatypes)
     end
   },
+  
   ------------------------------------------------------------------------------
 
   { shapetype_model_iterators = function ()
 
-      local MAX_COLOR_LEN, ShapeType = lessons[1].shapetype()
-      
-      print("--- iterate through the model members ---")
+      local MAX_COLOR_LEN, ShapeType = tutorial:dolesson('shapetype')
+            
+      show("--- iterate through the model members ---")
       for i, member in ipairs(ShapeType) do
         local role, roledef = next(member)
-        print('', role, roledef[1], roledef[2], roledef[3])
+        show('', role, roledef[1], roledef[2], roledef[3])
       end
      
       return MAX_COLOR_LEN, ShapeType
     end
   },
   
-  
   ------------------------------------------------------------------------------
  
   { struct_model_operators = function ()
 
-      local MAX_COLOR_LEN, ShapeType = lessons[1].shapetype()
-    
-      print('--- add member z ---')
+      local MAX_COLOR_LEN, ShapeType = tutorial:dolesson('shapetype')
+          
+      show('--- add member z ---')
       ShapeType[#ShapeType+1] = { z = { xtypes.string() , xtypes.Key } }
-      print_datatype(ShapeType)
+      show_datatype(ShapeType)
       
-      print('--- remove member x ---')
+      show('--- remove member x ---')
       ShapeType[1] = nil
-      print_datatype(ShapeType)
+      show_datatype(ShapeType)
       
-      print('--- redefine member y ---')
+      show('--- redefine member y ---')
       ShapeType[1] = { y = { xtypes.double } }
-      print_datatype(ShapeType)  
+      show_datatype(ShapeType)  
       
-      print('--- add a base struct ---')
+      show('--- add a base struct ---')
       local Property = xtypes.struct{
         Property = {
           { name  = { xtypes.string(MAX_COLOR_LEN) } },
@@ -150,8 +153,8 @@ lessons = {
         }
       }
       ShapeType[xtypes.BASE] = Property
-      print_datatype(ShapeType) 
-      print_instance(ShapeType)
+      show_datatype(ShapeType) 
+      show_instance(ShapeType)
         
       return ShapeType
     end
@@ -161,9 +164,9 @@ lessons = {
 
   { shape_instance = function ()
 
-      local MAX_COLOR_LEN, ShapeType = lessons[1].shapetype()
+      local MAX_COLOR_LEN, ShapeType = tutorial:dolesson('shapetype')
       
-      print('--- create an instance from the datatype (template) ---')
+      show('--- create an instance from the datatype (template) ---')
       local shape = xtypes.utils.new_instance(ShapeType) 
       
       -- shape is equivalent to manually defining the following  --
@@ -174,13 +177,13 @@ lessons = {
           color      = 'GREEN',
       }
      
-      print('--- initialize the shape instance from shape_manual table ---')
+      show('--- initialize the shape instance from shape_manual table ---')
       for role, _ in pairs(shape_manual) do
         shape[role] = shape_manual[role]
-        print('\t', role, shape[role])
+        show('\t', role, shape[role])
       end
      
-      print_instance(shape)
+      show_instance(shape)
       
       return MAX_COLOR_LEN, ShapeType, shape
     end  
@@ -190,17 +193,17 @@ lessons = {
 
   { shape_instance_iterators = function ()
 
-      local MAX_COLOR_LEN, ShapeType, shape = lessons[6].shape_instance()
-    
-      print("--- iterate through instance members : unordered ---")
+      local MAX_COLOR_LEN, ShapeType, shape = tutorial:dolesson('shape_instance')
+      
+      show("--- iterate through instance members : unordered ---")
       for role, _ in pairs(shape) do
-        print('', role, '=', shape[role])
+        show('', role, '=', shape[role])
       end
       
-      print("--- iterate through instance members : ordered ---")
+      show("--- iterate through instance members : ordered ---")
       for i, member in ipairs(ShapeType) do
         local role = next(member)
-        print('', role, '=', shape[role])
+        show('', role, '=', shape[role])
       end
      
       return shape
@@ -211,10 +214,10 @@ lessons = {
 
   { shape_accessors = function ()
 
-      local MAX_COLOR_LEN, ShapeType = lessons[1].shapetype()
+      local MAX_COLOR_LEN, ShapeType = tutorial:dolesson('shapetype')
     
-      print('--- template member values are DDS DynamicData accessor strings ---')
-      print_instance(ShapeType)
+      show('--- template member values are DDS DynamicData accessor strings ---')
+      show_instance(ShapeType)
       
       return ShapeType
     end
@@ -224,31 +227,31 @@ lessons = {
 
   { inheritance_and_nested_struct_seq = function ()
     
-      local MAX_COLOR_LEN, ShapeType = lessons[1].shapetype()
+      local MAX_COLOR_LEN, ShapeType = tutorial:dolesson('shapetype')
     
-      print('--- define a property struct ---')
+      show('--- define a property struct ---')
       local Property = xtypes.struct{
         Property = {
           { name  = { xtypes.string(MAX_COLOR_LEN) } },
           { value = { xtypes.string(MAX_COLOR_LEN) } },
         }
       }
-      print_datatype(Property) 
+      show_datatype(Property) 
       
-      print('--- define a derived struct with a sequence of properties ---')
+      show('--- define a derived struct with a sequence of properties ---')
       local ShapeTypeWithProperties = xtypes.struct{
         ShapeTypeWithProperties = {
           ShapeType,
           { properties = { Property, xtypes.sequence(3) } },
         }
       }  
-      print_datatype(ShapeTypeWithProperties) 
+      show_datatype(ShapeTypeWithProperties) 
       
-      print('--- template member values are DDS DynamicData accessor strings ---')
-      print_instance(ShapeTypeWithProperties)
+      show('--- template member values are DDS DynamicData accessor strings ---')
+      show_instance(ShapeTypeWithProperties)
         
         
-      print('--- create a new instance ---')
+      show('--- create a new instance ---')
       local shapeWithProperties = xtypes.utils.new_instance(ShapeTypeWithProperties) 
       shapeWithProperties.x = 50
       shapeWithProperties.y = 30
@@ -258,11 +261,11 @@ lessons = {
         shapeWithProperties.properties[i].name  = 'name' .. i
         shapeWithProperties.properties[i].value = i
       end
-      print_instance(shapeWithProperties)
+      show_instance(shapeWithProperties)
         
-      print('properties capacity', shapeWithProperties.properties(), -- or 
+      show('properties capacity', shapeWithProperties.properties(), -- or 
                                    ShapeTypeWithProperties.properties())
-      print('properties length', #shapeWithProperties.properties)
+      show('properties length', #shapeWithProperties.properties)
       
       return ShapeTypeWithProperties, shapeWithProperties
     end
@@ -284,22 +287,7 @@ lessons = {
 --------------------------------------------------------------------------------
 -- main
 --------------------------------------------------------------------------------
-local starting_lesson = arg[1] or 1
-
-print('========== Welcome to the DDSL tutorial! ==========')
-print('--- Step though one lesson at a time. Look at the code side by side ---')
-print('starting at lesson', starting_lesson, ' of ', #lessons)
-
-for i = starting_lesson, #lessons do
-  local title, lesson = next(lessons[i])
-  
-  print('\n========== Lesson', i .. '/' .. #lessons, title)
-  lesson() -- run the lesson
-
-  print('\nPress RETURN to go to the next lesson...')
-  io.read()
-end
-print('\n========== Congratulations on completing the DDSL tutorial!! ==========')
+tutorial:run(arg[1] or 1)
 --------------------------------------------------------------------------------
 
 
