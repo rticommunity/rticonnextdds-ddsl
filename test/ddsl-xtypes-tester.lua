@@ -1008,6 +1008,7 @@ function Tester:test_typedef()
   assert(Test.MyTypedef.myAddress2.name.first == 'myAddress2.name.first')
   assert(#Test.MyTypedef.myAddress2.name.nicknames == 'myAddress2.name.nicknames#')  
   assert(Test.MyTypedef.myAddress2.name.nicknames[1] == 'myAddress2.name.nicknames[1]')
+  
 end
 
 Tester[#Tester+1] = 'test_resolve'
@@ -1027,6 +1028,7 @@ function Tester:test_resolve()
   assert(xtypes.utils.resolve(xtypes.boolean) == xtypes.boolean)
   assert(xtypes.utils.resolve(MyBooleanSeq) == xtypes.boolean)
   print('resolve(MyBooleanSeq) = ', xtypes.utils.resolve(MyBooleanSeq))
+  
 end
 
 Tester[#Tester+1] = 'test_typedef_seq'
@@ -1906,14 +1908,16 @@ function Tester:test_api()
   
   print('-- template --') 
   
-  local ShapeType = xtypes.struct{ShapeType = {
-    { x = { xtypes.long } },
-    { y = { xtypes.long } },
-    { shapesize = { xtypes.long } },
-    { color = { xtypes.string(128), xtypes.Key, xtypes.ID{10} } },
-    xtypes.Extensibility{'EXTENSIBLE_EXTENSIBILITY'},
-    xtypes.top_level{},
-  }}
+  local ShapeType = xtypes.struct{
+    ShapeType = {
+      { x = { xtypes.long } },
+      { y = { xtypes.long } },
+      { shapesize = { xtypes.long } },
+      { color = { xtypes.string(128), xtypes.Key, xtypes.ID{10} } },
+      xtypes.Extensibility{'EXTENSIBLE_EXTENSIBILITY'},
+      xtypes.top_level{},
+    }
+  }
 
   self:print(ShapeType)
 

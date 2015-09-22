@@ -272,6 +272,21 @@ tutorial = Tutorial:new{
   },
  
  
+   
+  { typedef_traversal = function ()
+                  
+          --- TODO: Add Typdef Traversal ---
+          print(MyBooleanTypedef,
+                MyBooleanTypedef[1],  -- boolean
+                MyBooleanTypedef[2])  -- nil
+          print(MyBooleanSeq,
+                MyBooleanSeq[1],  -- MyBooleanTypedef2
+                MyBooleanSeq[2])  -- sequence(3)
+    end 
+  },
+  
+
+ 
   --[[ Lesson Template: copy and paste the content to create the next lesson
 
   ------------------------------------------------------------------------------
@@ -285,8 +300,7 @@ tutorial = Tutorial:new{
 }
 
 --------------------------------------------------------------------------------
--- main
---------------------------------------------------------------------------------
+-- main --
 tutorial:run(arg[1] or 1)
 --------------------------------------------------------------------------------
 
