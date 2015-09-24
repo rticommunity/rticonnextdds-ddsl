@@ -112,7 +112,7 @@ local function lookup_type(name)
       if 'enum' == template[xtypes.KIND]() then
           template = w
       else
-          template = xtypes.utils.template(template[w])
+          template = xtypes.template(template[w])
       end
     end
     
@@ -121,7 +121,7 @@ local function lookup_type(name)
  
   if not template then
     trace(table.concat{'\tUnresolved name: "', name, 
-          '"  in ', ns and xtypes.utils.nsname(ns)})
+          '"  in ', ns and xtypes.nsname(ns)})
   end      
                          
   return template
@@ -379,7 +379,7 @@ tag2template = {
     -- set this module as the name-space context
     local prev_ns = ns        
     ns = template -- set the namespace context in which to load the children
-    trace('ns', ns and xtypes.utils.nsname(ns))
+    trace('ns', ns and xtypes.nsname(ns))
             
     -- child tags
     for i, child in ipairs(tag) do

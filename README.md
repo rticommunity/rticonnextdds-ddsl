@@ -31,7 +31,28 @@ Every DDSL data-object has two sides (like the faces of the coin):
 
 - the instance which embodies the member fields and their values
      
+     
+## Modifying Code
 
+- sub-modules 'extend' the parent module; thus new sub-modules can be added 
+  independently
+  
+- run the unit tests
+
+    cd test/
+    ./ddsl-xtypes-tester.lua 
+
+  all unit tests should pass before committing code
+  
+- run the utilities
+
+    cd test/
+    ../bin/run xml2ddsl
+    ../bin/run xml2ddsl xml-test-connector.xml
+    ../bin/run xml2ddsl xml-test-ddsc-types1.xml
+    
+   Should print out the IDL version of the XML files
+   
 
 ## Importing XML
 

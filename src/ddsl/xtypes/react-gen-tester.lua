@@ -4,6 +4,7 @@ package.path = '../../?.lua;../../?/init.lua;' .. package.path
 local ReactGen = require("ddsl.xtypes.react-gen")
 local Gen      = require("ddsl.xtypes.generator")
 local xtypes   = require("ddsl.xtypes")
+local xutils   = require("ddsl.xtypes.utils")
 
 local Tester = {}
 
@@ -112,11 +113,11 @@ end
 -- print - helper method to print the IDL and the index for data definition
 function Tester.print(instance)
     -- print IDL
-    local idl = xtypes.utils.visit_model(instance, {'idl:'})
+    local idl = xutils.visit_model(instance, {'idl:'})
     print(table.concat(idl, '\n\t'))
     
     -- print the result of visiting each field
-    local fields = xtypes.utils.visit_instance(instance, {'index:'})
+    local fields = xutils.visit_instance(instance, {'index:'})
     print(table.concat(fields, '\n\t'))
 end
 

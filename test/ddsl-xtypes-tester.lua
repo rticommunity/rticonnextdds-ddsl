@@ -1024,10 +1024,10 @@ function Tester:test_resolve()
     MyBooleanSeq = { MyBooleanTypedef2, xtypes.sequence(3) }
   }
   
-  assert(xtypes.utils.resolve(nil) == nil)
-  assert(xtypes.utils.resolve(xtypes.boolean) == xtypes.boolean)
-  assert(xtypes.utils.resolve(MyBooleanSeq) == xtypes.boolean)
-  print('resolve(MyBooleanSeq) = ', xtypes.utils.resolve(MyBooleanSeq))
+  assert(xtypes.resolve(nil) == nil)
+  assert(xtypes.resolve(xtypes.boolean) == xtypes.boolean)
+  assert(xtypes.resolve(MyBooleanSeq) == xtypes.boolean)
+  print('resolve(MyBooleanSeq) = ', xtypes.resolve(MyBooleanSeq))
   
 end
 
@@ -1835,7 +1835,7 @@ function Tester:test_assignment()
   print("---myInstance---")
   -- create an instance to store values
   -- NOTE: we don't want to clobber the template
-  local myInstance = xtypes.utils.new_instance(MyTemplate) --, "myInstance")
+  local myInstance = xtypes.new_instance(MyTemplate) --, "myInstance")
   self:print(myInstance)
   
   -- atomic member
@@ -1922,7 +1922,7 @@ function Tester:test_api()
   self:print(ShapeType)
 
   print('-- instance --') 
-  local shape = xtypes.utils.new_instance(ShapeType)
+  local shape = xtypes.new_instance(ShapeType)
   shape.x = 50
   shape.y = 150
   shape.shapesize = 20
@@ -1968,7 +1968,7 @@ function Tester:test_api()
   print('--- Instance API ---') 
 
   -- given an instance, retrieve the template from the instance
-  assert(xtypes.utils.template(shape) == ShapeType)
+  assert(xtypes.template(shape) == ShapeType)
 
   print('-- ordered ---')
   

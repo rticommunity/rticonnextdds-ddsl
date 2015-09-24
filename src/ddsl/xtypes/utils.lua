@@ -36,7 +36,7 @@ local xutils = {}
 --         visited is inserted into this table. This returned value table can be
 --         passed to another call to this method (to build it cumulatively).
 function xutils.visit_instance(instance, result, template, base)
-  template = template or xtypes.utils.template(instance)
+  template = template or xtypes.template(instance)
   
   -- print('DEBUG xutils.visit_instance 1: ', instance, template)
 
@@ -44,7 +44,7 @@ function xutils.visit_instance(instance, result, template, base)
   result = result or {}
 
   -- collection instance
-  if xtypes.utils.is_collection(instance) then
+  if xtypes.is_collection(instance) then
         -- ensure 1st element exists for illustration
       local _ = instance[1]
 
@@ -130,7 +130,7 @@ end
 --        can be passed to another call to this method (to build cumulatively).
 function xutils.visit_model(instance, result, indent_string)
 	-- pre-condition: ensure valid data-object
-	assert(xtypes.utils.template(instance), 'invalid data-object')
+	assert(xtypes.template(instance), 'invalid data-object')
 
 	-- initialize the result (or accumulate in the provided result)
   result = result or {}
@@ -284,20 +284,20 @@ function xutils.tostring_role(role, role_defn, module)
   -- sequences:
   if seq == nil then -- not a sequence
     output_member = string.format('%s %s', 
-                        xtypes.utils.nsname(template, module), role)
+                        xtypes.nsname(template, module), role)
   elseif #seq == 0 then -- unbounded sequence
     output_member = string.format('sequence<%s> %s',
-                                  xtypes.utils.nsname(template, module), role)
+                                  xtypes.nsname(template, module), role)
   else -- bounded sequence
     for i = 1, #seq do
       output_member = string.format('%ssequence<', output_member)
     end
     output_member = string.format('%s%s', output_member,
-                                  xtypes.utils.nsname(template, module))
+                                  xtypes.nsname(template, module))
     for i = 1, #seq do
       output_member = string.format('%s,%s>', output_member,
-             xtypes.utils.template(seq[i]) and 
-              xtypes.utils.nsname(seq[i], module) or
+             xtypes.template(seq[i]) and 
+              xtypes.nsname(seq[i], module) or
               tostring(seq[i]))
     end
     output_member = string.format('%s %s', output_member, role)
@@ -314,8 +314,8 @@ function xutils.tostring_role(role, role_defn, module)
       if 'array' == role_defn[j][xtypes.NAME] then   
         for i = 1, #role_defn[j] do
           output_member = string.format('%s[%s]', output_member,
-              xtypes.utils.template(role_defn[j][i]) and
-                 xtypes.utils.nsname(role_defn[j][i], module) or
+              xtypes.template(role_defn[j][i]) and
+                 xtypes.nsname(role_defn[j][i], module) or
                  tostring(role_defn[j][i]))
         end
       elseif 'sequence' ~= role_defn[j][xtypes.NAME] then  

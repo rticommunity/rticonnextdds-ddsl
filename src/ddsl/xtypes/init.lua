@@ -1532,9 +1532,19 @@ end
 --------------------------------------------------------------------------------
 --- Public Interface (of this module):
 local interface = {
-  -- empty initializer sentinel value
-  EMPTY              = _.EMPTY,
 
+  --- The XTypes Meta-Model ---- 
+
+  -- DDSL: empty initializer sentinel value
+  EMPTY                   = _.EMPTY,
+
+  -- DDSL: operators
+  nsname                  = _.nsname,
+  resolve                 = _.resolve,
+  template                = _.template,
+  new_instance            = _.new_instance,
+  new_collection          = _.new_collection,
+  is_collection           = _.is_collection,
 
   -- accessors and mutators (meta-attributes for types)
   NS                 = _.NS,
@@ -1545,6 +1555,8 @@ local interface = {
   SWITCH             = xtypes.SWITCH,
 
 
+  --- The XTypes Model ---- 
+ 
   -- qualifiers
   annotation         = xtypes.annotation,
   array              = xtypes.array,
@@ -1597,17 +1609,6 @@ local interface = {
 
   -- typedefs (aliases)
   typedef            = xtypes.typedef,
-
-
-  -- utilities --> model
-  utils              = {
-    nsname                  = _.nsname,
-    resolve                 = _.resolve,
-    template                = _.template,
-    new_instance            = _.new_instance,
-    new_collection          = _.new_collection,
-    is_collection           = _.is_collection,
-  }
 }
 
 return interface

@@ -167,7 +167,7 @@ tutorial = Tutorial:new{
       local MAX_COLOR_LEN, ShapeType = tutorial:dolesson('shapetype')
       
       show('--- create an instance from the datatype (template) ---')
-      local shape = xtypes.utils.new_instance(ShapeType) 
+      local shape = xtypes.new_instance(ShapeType) 
       
       -- shape is equivalent to manually defining the following  --
       local shape_manual = {
@@ -252,7 +252,7 @@ tutorial = Tutorial:new{
         
         
       show('--- create a new instance ---')
-      local shapeWithProperties = xtypes.utils.new_instance(ShapeTypeWithProperties) 
+      local shapeWithProperties = xtypes.new_instance(ShapeTypeWithProperties) 
       shapeWithProperties.x = 50
       shapeWithProperties.y = 30
       shapeWithProperties.shapesize = 20
