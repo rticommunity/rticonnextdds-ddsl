@@ -30,13 +30,13 @@ IMPLEMENTATION
 
   To illustrate, here are some role definitions:
     Unions:
-     { { case, role = { template, [collection,] [annotation1, ...] } } }
+     { { case, role = { template, [collection_qualifier,] [annotation1, ...] } } }
 
     Structs:
-     { { role = { template, [collection,] [annotation1, annotation2, ...] } } }
+     { { role = { template, [collection_qualifier,] [annotation1, annotation2, ...] } } }
 
     Typedefs:
-     { template, [collection,] [annotation1, annotation2, ...] }
+     { template, [collection_qualifier,] [annotation1, annotation2, ...] }
 
 -----------------------------------------------------------------------------
 --]]
@@ -533,6 +533,10 @@ xtypes.builtin.unsigned_long_long = xtypes.atom{['unsigned long long']=_.EMPTY}
 --       local MyStringSeq =  xtypes.typedef{
 --             MyStringSeq = { xtypes.string, xtypes.sequence(MY_CONST) }
 --       }
+--       
+--     Get the const value
+--          print( PI() ) -- 3.14  double
+--
 function xtypes.const(decl)
   local name, defn = xtypes.parse_decl(decl)
 
@@ -654,8 +658,8 @@ xtypes.API[xtypes.CONST] = {
       return model[_.KIND]
     elseif _.NS == key then
       return model[_.NS]
-    else -- delegate to the model definition
-       return model[_.DEFN]
+    else -- use the () operator to access the underlying value and datatype
+       return nil
     end
   end,
 
@@ -663,11 +667,11 @@ xtypes.API[xtypes.CONST] = {
     -- immutable: do-nothing
   end,
 
-  -- instance value is obtained by evaluating the table:
+  -- instance value and datatype is obtained by evaluating the table:
   -- eg: MY_CONST()
   __call = function(template)
     local model = _.model(template)
-    return model[_.INSTANCES]
+    return model[_.INSTANCES], model[_.DEFN] -- value, datatype
   end,
 }
 
@@ -1426,7 +1430,8 @@ xtypes.API[xtypes.MODULE] = {
 --
 -- Typedefs are aliases for underlying primitive or composite types
 -- @param decl  [in] a table containing a typedef declaration
---      { name = { template, [collection,] [annotation1, annotation2, ...] }  }
+--      { name = { template, [collection_qualifier,]
+--                           [annotation1, annotation2, ...] }  }
 -- i.e. the underlying type definition and optional multiplicity and annotations
 -- @return the typedef template
 -- @usage
@@ -1439,6 +1444,9 @@ xtypes.API[xtypes.MODULE] = {
 --  Lua: local MyStructArray = xtypes.typedef{
 --          MyStructArray = { xtypes.MyStruct, xtypes.array(10, 20) }
 --       }
+--       
+--  Show the underlying datatype
+--     print( MyStructSeq() )
 function xtypes.typedef(decl)
   local name, defn = xtypes.parse_decl(decl)
 
@@ -1448,7 +1456,7 @@ function xtypes.typedef(decl)
 
   -- pre-condition: ensure that the 2nd defn element if present
   -- is a 'collection' kind
-  local collection = defn[2]
+  local collection_qualifier = defn[2]
   if collection and not xtypes.info.is_collection_kind(collection) then
     error(table.concat{'expected sequence or array, got: ', tostring(value)},
           2)
@@ -1457,7 +1465,7 @@ function xtypes.typedef(decl)
   -- create the template
   local template, model = _.new_template(name, xtypes.TYPEDEF,
                                                xtypes.API[xtypes.TYPEDEF])
-  model[_.DEFN] = { alias, collection }
+  model[_.DEFN] = { alias, collection_qualifier }
   return template
 end
 
@@ -1479,8 +1487,8 @@ xtypes.API[xtypes.TYPEDEF] = {
       return model[_.KIND]
     elseif _.NS == key then
       return model[_.NS]
-    else -- delegate to the model definition
-       return model[_.DEFN]
+    else -- use the () operator to access the underlying value and datatype
+       return nil
     end
   end,
 
@@ -1488,12 +1496,12 @@ xtypes.API[xtypes.TYPEDEF] = {
     -- immutable: do-nothing
   end,
 
-  -- alias information is obtained by evaluating the table:
-  -- @return { alias, collection }
+  -- alias and collection information is obtained by evaluating the table:
+  -- @return alias, collection_qualifier
   -- eg: my_typedef()
   __call = function(template)
     local model = _.model(template)
-    return model[_.DEFN]
+    return model[_.DEFN][1], model[_.DEFN][2] -- datatype, collection_qualifier
   end,
 }
 

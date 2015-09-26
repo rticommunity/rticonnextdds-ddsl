@@ -116,7 +116,15 @@ tutorial = Tutorial:new{
   { shapetype_model_iterators = function ()
 
       local MAX_COLOR_LEN, ShapeType = tutorial:dolesson('shapetype')
-            
+         
+      show("--- show model attributes ---")
+      show('KIND', ShapeType[xtypes.KIND]())
+      show('NS', ShapeType[xtypes.NS])
+      show('NAME', ShapeType[xtypes.NAME])
+      show('QUALIFIERS', ShapeType[xtypes.QUALIFIERS])
+      show('BASE', ShapeType[xtypes.BASE])
+      show('SWITCH', ShapeType[xtypes.SWITCH])
+                     
       show("--- iterate through the model members ---")
       for i, member in ipairs(ShapeType) do
         local role, roledef = next(member)
@@ -273,15 +281,64 @@ tutorial = Tutorial:new{
  
  
    
-  { typedef_traversal = function ()
-                  
-          --- TODO: Add Typdef Traversal ---
-          print(MyBooleanTypedef,
-                MyBooleanTypedef[1],  -- boolean
-                MyBooleanTypedef[2])  -- nil
-          print(MyBooleanSeq,
-                MyBooleanSeq[1],  -- MyBooleanTypedef2
-                MyBooleanSeq[2])  -- sequence(3)
+  { typedefs = function ()
+    
+      local MAX_COLOR_LEN, ShapeType = tutorial:dolesson('shapetype')
+      local MyShape = xtypes.typedef{ 
+        MyShape = { ShapeType } 
+      }
+      local MyShapeSeq = xtypes.typedef{ 
+        MyShapeSeq = { MyShape, xtypes.sequence(7) } 
+      }
+      local MyShapeSeqArray = xtypes.typedef{ 
+        MyShapeSeqArray = { MyShapeSeq, xtypes.array(3,5) } 
+      }
+  
+      local alias, collection_qualifier
+
+      
+      show('--- MyShapeSeqArray ---')
+      show_datatype(MyShapeSeqArray)
+            
+      alias, collection_qualifier = MyShapeSeqArray()
+      
+      show('\talias    ',  alias)     
+      assert(alias == MyShapeSeq)
+      
+      show('\tqualifier', collection_qualifier, 
+                          collection_qualifier[xtypes.NAME], 
+                          collection_qualifier[1], collection_qualifier[2])
+      assert(collection_qualifier[xtypes.NAME] == 'array' and 
+             collection_qualifier[1] == 3, collection_qualifier[1] == 5)
+         
+         
+      show('--- MyShapeSeq ---')
+      show_datatype(MyShapeSeq) 
+            
+      alias, collection_qualifier = MyShapeSeq()
+      
+      show('\talias    ',  alias)     
+      assert(alias == MyShape)
+      
+      show('\tqualifier', collection_qualifier, 
+                          collection_qualifier[xtypes.NAME], 
+                          collection_qualifier[1])
+      assert(collection_qualifier[xtypes.NAME] == 'sequence' and 
+             collection_qualifier[1] == 7)
+             
+             
+      show('--- MyShape ---')
+      show_datatype(MyShape) 
+            
+      alias, collection_qualifier = MyShape()
+      
+      show('\talias    ',  alias)     
+      assert(alias == ShapeType)
+      
+      show('\tqualifier', collection_qualifier)
+      assert(collection_qualifier == nil)
+             
+      return MAX_COLOR_LEN, ShapeType, MyShape, MyShapeSeq, MyShapeSeqArray
     end 
   },
   

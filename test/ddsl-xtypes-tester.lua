@@ -558,6 +558,10 @@ function Tester:test_union1()
   assert(TestUnion1.y == 'y')
   assert(TestUnion1.z == 'z')
   
+  print("\n-- discriminator: short --")
+  self:print(TestUnion1[xtypes.SWITCH])
+  assert(TestUnion1[xtypes.SWITCH] == xtypes.short)
+  
   print("\n-- changed discriminator: short -> long --")
   TestUnion1[xtypes.SWITCH] = xtypes.long
   self:print(TestUnion1)
@@ -964,6 +968,9 @@ function Tester:test_typedef()
   
   Test.MyAddress = xtypes.typedef{MyAddress = { Test.Address } }
   Test.MyAddress2 = xtypes.typedef{MyAddress2 = { Test.MyAddress } }
+
+  local alias =  Test.MyAddress2()
+  assert(alias == Test.MyAddress)
   
   Test.MyTypedef = xtypes.struct{
     MyTypedef = {
@@ -1049,6 +1056,11 @@ function Tester:test_typedef_seq()
   Test.MyNameSeqSeq = xtypes.typedef{
     MyNameSeqSeq = {Test.MyNameSeq, xtypes.sequence(10) }}
   
+  local alias, collection_qualifier =  Test.MyNameSeqSeq()
+  assert(alias == Test.MyNameSeq)
+  assert(collection_qualifier[xtypes.NAME] == 'sequence' and 
+         collection_qualifier[1] == 10)
+    
   Test.MyTypedefSeq = xtypes.struct{
     MyTypedefSeq = {
       { myDoubleSeq = { Test.MyDouble, xtypes.sequence() } },

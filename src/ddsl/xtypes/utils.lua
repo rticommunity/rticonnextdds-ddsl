@@ -122,8 +122,9 @@ end
 --        The default implementation returns the stringified
 --        OMG IDL X-Types representation of each model definition element
 --
--- @param instance [in] an DDSL data-object
--- @param result [in] OPTIONAL the index table to which the results are appended
+-- @param instance [in] a DDSL instance
+-- @param result [in] OPTIONAL the previous results table to which the new 
+--               results from this visit are appended
 -- @param indent_string [in] the indentation for the string representation
 -- @return the cumulative result of visiting all the definition. Each definition
 --        that is visited is inserted into this table. This returned table
@@ -166,7 +167,7 @@ function xutils.visit_model(instance, result, indent_string)
 
 	if 'typedef' == mytype then
     table.insert(result, string.format('%s%s %s', indent_string,  mytype,
-                  xutils.tostring_role(myname, instance[1], mymodule)))
+                  xutils.tostring_role(myname, { instance() }, mymodule)))
 		return result
 	end
 
@@ -261,7 +262,7 @@ end
 -- @function tostring_role
 -- @param #string role role name
 -- @param #list role_defn the definition of the role in the following format:
---           { template, [collection,] [annotation1, annotation2, ...] }
+--        { template, [collection_qualifier,] [annotation1, annotation2, ...] }
 -- @param module the module to which the owner data model element belongs
 -- @return #string IDL string representation of the idl member
 function xutils.tostring_role(role, role_defn, module)
