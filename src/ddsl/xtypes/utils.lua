@@ -151,8 +151,7 @@ function xutils.visit_model(instance, result, indent_string)
 	end
 
   if 'const' == mytype then
-    local atom = instance[1] -- atom
-    local value = instance()
+    local value, atom = instance()
     if xtypes.char == atom or xtypes.wchar == atom then
       value = table.concat{"'", tostring(value), "'"}
     elseif xtypes.string() == atom or xtypes.wstring() == atom then

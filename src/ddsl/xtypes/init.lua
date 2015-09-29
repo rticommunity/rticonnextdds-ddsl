@@ -534,7 +534,7 @@ xtypes.builtin.unsigned_long_long = xtypes.atom{['unsigned long long']=_.EMPTY}
 --             MyStringSeq = { xtypes.string, xtypes.sequence(MY_CONST) }
 --       }
 --       
---     Get the const value
+--     Get the const value and the underlying atomic datatype
 --          print( PI() ) -- 3.14  double
 --
 function xtypes.const(decl)
@@ -635,8 +635,7 @@ function xtypes.const(decl)
   -- create the template
   local template, model =
                    _.new_template(name, xtypes.CONST, xtypes.API[xtypes.CONST])
-  model[_.DEFN] = atom
-  model[_.INSTANCES] = value
+  model[_.DEFN] = { atom, value } -- { atom, value [,expression] }
   return template
 end
 
@@ -671,7 +670,7 @@ xtypes.API[xtypes.CONST] = {
   -- eg: MY_CONST()
   __call = function(template)
     local model = _.model(template)
-    return model[_.INSTANCES], model[_.DEFN] -- value, datatype
+    return model[_.DEFN][2], model[_.DEFN][1] -- value, datatype
   end,
 }
 

@@ -1498,7 +1498,11 @@ function Tester:test_const()
   self:print(Test.SHORT)
   self:print(Test.WSTRING)
    
-  assert(Test.FLOAT() == 3.14)
+  local value, datatype 
+  
+  value, datatype = Test.FLOAT()
+  assert(value == 3.14 and datatype == xtypes.float)
+  
   assert(Test.DOUBLE() == 3.14 * 3.14)
   assert(Test.LDOUBLE() == 3.14 * 3.14 * 3.14)
   assert(Test.STRING() == "String Constant")
