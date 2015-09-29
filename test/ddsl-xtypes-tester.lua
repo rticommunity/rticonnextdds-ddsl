@@ -1031,9 +1031,18 @@ function Tester:test_resolve()
     MyBooleanSeq = { MyBooleanTypedef2, xtypes.sequence(3) }
   }
   
+  local alias, collection_qualifier = MyBooleanSeq()
+  assert(alias ==  MyBooleanTypedef2 and 
+         collection_qualifier[xtypes.NAME] == 'sequence' and 
+         collection_qualifier[1] == 3)
+    
   assert(xtypes.resolve(nil) == nil)
   assert(xtypes.resolve(xtypes.boolean) == xtypes.boolean)
-  assert(xtypes.resolve(MyBooleanSeq) == xtypes.boolean)
+  
+  local collection_qualifier, template = xtypes.resolve(MyBooleanSeq)
+  assert(collection_qualifier[xtypes.NAME] == 'sequence' and 
+         collection_qualifier[1] == 3 and
+         template == xtypes.boolean)
   print('resolve(MyBooleanSeq) = ', xtypes.resolve(MyBooleanSeq))
   
 end
@@ -1502,6 +1511,7 @@ function Tester:test_const()
   
   value, datatype = Test.FLOAT()
   assert(value == 3.14 and datatype == xtypes.float)
+  assert(#Test.FLOAT == 0)
   
   assert(Test.DOUBLE() == 3.14 * 3.14)
   assert(Test.LDOUBLE() == 3.14 * 3.14 * 3.14)

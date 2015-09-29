@@ -654,15 +654,19 @@ function _.template(instance)
 end
 
 --- Resolve the alias template to the underlying non-alias template
--- @param template [in] the data model element to resolve to the underlying
---                      non alias data model
--- @return the underlying non-alias data model template
+-- @param template [in] the data model element to resolve 
+-- @return the underlying non-alias data model template, unwrapping the 
+--         all the collection qualifiers
+--         [ [collection_qualifier] ... ] <Non-Alias Template>
 function _.resolve(template)
   local is_alias_kind = template and _.info.is_alias_kind(template)
-  local model = getmetatable(template)
-  local alias = model and model[_.DEFN][1]
   if is_alias_kind then
-    return _.resolve(alias)
+    local alias, collection_qualifier = template()
+    if collection_qualifier then
+      return collection_qualifier, _.resolve(alias)
+    else
+      return _.resolve(alias) 
+    end
   else 
     return template
   end

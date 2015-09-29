@@ -193,6 +193,17 @@ tutorial = Tutorial:new{
      
       show_instance(shape)
       
+      show("--- show model attributes ---")
+      show('KIND', shape[xtypes.KIND]())
+      show('NS', shape[xtypes.NS])
+      show('NAME', shape[xtypes.NAME])
+      show('QUALIFIERS', shape[xtypes.QUALIFIERS])
+      show('BASE', shape[xtypes.BASE])
+      show('SWITCH', shape[xtypes.SWITCH])
+      
+      show('template', xtypes.template(shape))
+      assert(xtypes.template(shape) == ShapeType)
+            
       return MAX_COLOR_LEN, ShapeType, shape
     end  
   },
@@ -250,7 +261,7 @@ tutorial = Tutorial:new{
       local ShapeTypeWithProperties = xtypes.struct{
         ShapeTypeWithProperties = {
           ShapeType,
-          { properties = { Property, xtypes.sequence(3) } },
+          { properties = { Property, xtypes.sequence(5) } },
         }
       }  
       show_datatype(ShapeTypeWithProperties) 
@@ -265,16 +276,22 @@ tutorial = Tutorial:new{
       shapeWithProperties.y = 30
       shapeWithProperties.shapesize = 20
       shapeWithProperties.color = 'GREEN'
-      for i = 1, shapeWithProperties.properties() - 1 do
+      for i = 1, shapeWithProperties.properties() - 2 do
         shapeWithProperties.properties[i].name  = 'name' .. i
         shapeWithProperties.properties[i].value = i
       end
       show_instance(shapeWithProperties)
         
+      show('properties is_collection ?',
+                          xtypes.is_collection(shapeWithProperties.properties))
+      assert(xtypes.is_collection(shapeWithProperties.properties) == true)
+      assert(shapeWithProperties.properties() == 5)
+        
       show('properties capacity', shapeWithProperties.properties(), -- or 
                                    ShapeTypeWithProperties.properties())
       show('properties length', #shapeWithProperties.properties)
-      
+      assert(#shapeWithProperties.properties == 3)
+       
       return ShapeTypeWithProperties, shapeWithProperties
     end
   },
@@ -338,6 +355,10 @@ tutorial = Tutorial:new{
       show('\tqualifier', collection_qualifier)
       assert(collection_qualifier == nil)
              
+             
+      show('--- resolve ---')
+      show('\tMyShapeSeqArray -> ', xtypes.resolve(MyShapeSeqArray)) 
+               
       return MAX_COLOR_LEN, ShapeType, MyShape, MyShapeSeq, MyShapeSeqArray
     end 
   },
