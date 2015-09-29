@@ -48,6 +48,29 @@ local tutorial
 tutorial = Tutorial:new{
 
   ------------------------------------------------------------------------------
+  
+  { const = function ()
+    
+      local MAX_COLOR_LEN = xtypes.const{ MAX_COLOR_LEN = { xtypes.long, 128 } }
+
+      local value, datatype
+      
+      show('--- MAX_COLOR_LEN ---')
+      show_datatype(MAX_COLOR_LEN)
+            
+      value, datatype = MAX_COLOR_LEN()
+      
+      show('\tvalue    ',  value)     
+      assert(value == 128)
+      
+      show('\tdatatype', datatype)
+      assert(datatype == xtypes.long)
+                
+      return MAX_COLOR_LEN
+    end 
+  },
+
+  ------------------------------------------------------------------------------
 
   { shapetype = function () 
     
@@ -296,7 +319,7 @@ tutorial = Tutorial:new{
     end
   },
  
- 
+  ------------------------------------------------------------------------------ 
    
   { typedefs = function ()
     
@@ -362,7 +385,6 @@ tutorial = Tutorial:new{
       return MAX_COLOR_LEN, ShapeType, MyShape, MyShapeSeq, MyShapeSeqArray
     end 
   },
-  
 
  
   --[[ Lesson Template: copy and paste the content to create the next lesson
