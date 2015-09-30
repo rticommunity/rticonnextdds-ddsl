@@ -1191,12 +1191,10 @@ xtypes.API[xtypes.UNION] = {
 
     elseif xtypes.SWITCH == key then -- switch definition
 
-      local discriminator, discriminator_type = value, _.model_kind(value)
-
-      -- pre-condition: ensure discriminator is an atom or enum
-      assert(xtypes.ATOM == discriminator_type or
-        xtypes.ENUM == discriminator_type,
-        'discriminator type must be an "atom" or an "enum"')
+      local discriminator = value
+  
+      -- pre-condition: ensure discriminator is of a valid type
+      xtypes.assert_case(discriminator, nil)-- nil => validate discriminator
 
       -- pre-condition: ensure that 'cases' are compatible with discriminator
       for i, v in ipairs(model_defn) do
@@ -1511,29 +1509,60 @@ xtypes.API[xtypes.TYPEDEF] = {
 --- Ensure that case is a valid discriminator value
 -- @return the case
 function xtypes.assert_case(discriminator, case)
-  if nil == case then return case end -- default case
+  local err_msg 
+  if nil == case then 
+    err_msg = table.concat{'invalid union discriminator: "', 
+                                              tostring(discriminator), '"' }
+  else
+    err_msg = table.concat{'invalid union case: "', tostring(case), '"'}
+  end
 
-  local err_msg = table.concat{'invalid case value: ', tostring(case)}
+  -- resolve the discriminator to the underlying type:
+  local discriminator = _.resolve(discriminator)
 
-  if xtypes.builtin.long == discriminator or -- integral type
-     xtypes.builtin.short == discriminator or
-     xtypes.builtin.octet == discriminator then
-      case = tonumber(case)
-      assert(case and math.floor(case) == case, err_msg)
-   elseif xtypes.builtin.char == discriminator then -- character
-      assert('string' == type(case) and 1 == string.len(case), err_msg)
-   elseif xtypes.builtin.boolean == discriminator then -- boolean
-      if 'false' == case or '0' == case then case = false
-      elseif 'true' == case or '1' == case then case = true
-      end
-      assert(true == case or false == case, err_msg)
-   elseif xtypes.ENUM == discriminator[_.KIND] then -- enum
-      assert(discriminator[case], err_msg)
-   else -- invalid
-      assert(false, err_msg)
-   end
+  -- enum
+  if xtypes.ENUM == discriminator[_.KIND] then -- enum
+    assert(nil == case or nil ~= discriminator[case], 
+      err_msg)
 
-   return case
+  -- boolean
+  elseif xtypes.builtin.boolean == discriminator then 
+    if 'false' == case or '0' == case then 
+      case = false
+    elseif 'true' == case or '1' == case then 
+      case = true
+    end
+    assert(nil == case or true == case or false == case, 
+      err_msg)
+
+  -- character
+  elseif xtypes.builtin.char == discriminator or 
+    xtypes.builtin.wchar == discriminator then 
+    assert(nil == case or 'string' == type(case) and 1 == string.len(case), 
+      err_msg)
+
+  -- integral signed
+  elseif xtypes.builtin.octet == discriminator or 
+    xtypes.builtin.short == discriminator or
+    xtypes.builtin.long == discriminator or
+    xtypes.builtin.long_long == discriminator then
+    case = tonumber(case)
+    assert(nil == case or math.floor(case) == case, 
+      err_msg)
+
+  -- integral unsigned
+  elseif xtypes.builtin.unsigned_short == discriminator or
+    xtypes.builtin.unsigned_long == discriminator or
+    xtypes.builtin.unsigned_long_long == discriminator then
+    case = tonumber(case)
+    assert(nil == case or math.floor(case) == case and case >= 0, 
+      err_msg)
+ 
+  else -- invalid
+    assert(false, err_msg)
+  end
+
+  return case
 end
 
 --------------------------------------------------------------------------------

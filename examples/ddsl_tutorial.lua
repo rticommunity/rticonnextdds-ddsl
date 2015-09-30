@@ -386,6 +386,36 @@ tutorial = Tutorial:new{
     end 
   },
 
+  ------------------------------------------------------------------------------
+
+  { enum_declarative = function ()
+      -- local Weekdays = {}
+      -- 
+    end
+  },
+  
+  ------------------------------------------------------------------------------
+
+  { enum_imperative = function ()
+      -- local Months = {}
+      -- 
+    end
+  },
+  
+  ------------------------------------------------------------------------------
+
+  { union_declarative = function ()
+      -- local MyDiscrim = typedef Weekdays
+    end
+  },
+ 
+   ------------------------------------------------------------------------------
+
+  { union_imperative = function ()
+      -- local MyDiscrim = typedef Months
+    end
+  },
+ 
  
   --[[ Lesson Template: copy and paste the content to create the next lesson
 

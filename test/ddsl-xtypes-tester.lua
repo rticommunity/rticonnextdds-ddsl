@@ -571,8 +571,11 @@ end
 Tester[#Tester+1] = 'test_union2'
 function Tester:test_union2()
 
+  -- discriminator could be a typedef:
+  Test.MyChar = xtypes.typedef{MyChar = { xtypes.char} }
+  
   Test.TestUnion2 = xtypes.union{
-    TestUnion2 = {xtypes.char,
+    TestUnion2 = {Test.MyChar,
       { 'c', 
         name = { Test.Name, xtypes.Key } },
       { 'a', 
@@ -603,8 +606,11 @@ end
 Tester[#Tester+1] = 'test_union3'
 function Tester:test_union3()
 
+  -- discriminator could be a typedef:
+  Test.MyDays = xtypes.typedef{MyDays = { Test.Days} }
+  
   Test.TestUnion3 = xtypes.union{
-    TestUnion3 = {Test.Days,
+    TestUnion3 = {Test.MyDays,
       { 'MON', 
         name = { Test.Name } },
       { 'TUE', 
