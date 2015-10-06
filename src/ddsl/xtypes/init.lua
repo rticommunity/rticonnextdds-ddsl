@@ -1538,7 +1538,9 @@ function xtypes.assert_case(discriminator, case)
   -- character
   elseif xtypes.builtin.char == discriminator or 
     xtypes.builtin.wchar == discriminator then 
-    assert(nil == case or 'string' == type(case) and 1 == string.len(case), 
+    assert(nil == case or 
+      'string' == type(case) and 1 == string.len(case) or
+      math.floor(tonumber(case)) == tonumber(case), -- ordinal value
       err_msg)
 
   -- integral signed
