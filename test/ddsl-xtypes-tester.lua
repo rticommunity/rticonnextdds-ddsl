@@ -1812,10 +1812,10 @@ function Tester:test_xml()
   local xml = require('ddsl.xtypes.xml')
   
   -- xml.is_trace_on = true
-  local schemas = xml.files2xtypes({'xml-test-simple.xml'})
+  local datatypes = xml.filelist2xtypes{'xml-test-simple.xml'}
 
-  for i = 1, #schemas do
-    self:print(schemas[i])
+  for i = 1, #datatypes do
+    self:print(datatypes[i])
   end
 end
 
@@ -1824,26 +1824,27 @@ function Tester:test_xml_advanced()
   local xml = require('ddsl.xtypes.xml')
    
   local testfiles = {
+    'xml-test-simple.xml',
     'xml-test-connector.xml',
     'xml-test-ddsc-types1.xml'
   }
   
   -- xml.is_trace_on = true
-  for i, file in ipairs(testfiles) do
-    print('========= ', file, ' do =========')
-    local schemas = xml.file2xtypes(file)
-    for i, schema in ipairs(schemas) do
-      self:print(schema)
-    end
+
+  for _, file in ipairs(testfiles) do
+  
+    xml.empty() -- empty the root module, to prevent collisions between files
+    
+    print('========= ', file, ' begin ======')
+    local ns = xml.file2xtypes(file)
+    self:print(ns)
     print('--------- ', file, ' end --------')
     
-    -- clear the loaded schema list to prevent collisions between files
-    xml.clear() 
   end
 end
 
 Tester[#Tester+1] = 'test_idl'
-function Tester:test_xml_tester()  
+function Tester:test_idl()  
     for _, template in pairs(Test) do
       local idl = xutils.visit_model(template)
       print(table.concat(idl, '\n'))

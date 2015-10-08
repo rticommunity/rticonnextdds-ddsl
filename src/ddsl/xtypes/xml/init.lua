@@ -24,27 +24,71 @@ local function trace(...)
   return interface.is_trace_on and print('TRACE: ', ...)
 end
 
---[[
-Current namespace (module) inside which the child elements are being defined
-NOTE: set when loading module elements; reset to nil when not loading a module
---]]
-local ns = nil
+--------------------------------------------------------------------------------
+-- (Lua) Module State
 
 --[[
-Templates created from XML. This list is built as the XML is processed.
+Top-level "root" module to which all the model elements belong
 --]]
-local template_list = {}
+local root_module = xtypes.module{['']=xtypes.EMPTY}
+
+--[[
+Cache of files that have been processed so far. If a file is encountered again,
+it is skipped. Worked much like the "package.loaded" mechanism used by require()
+--]]
+local files_loaded = {}
+
+--[[
+Get the top level "root" module. All the data-types are imported into 
+this builtin namespace
+--]]
+local function root()
+  return root_module 
+end
+
+--[[
+Empty the "root" module to which all the model elements belong
+@return the top level root module
+--]]
+local function empty() 
+
+  -- empty the root module
+  for i = #root_module, 1, -1 do
+    root_module[i] = nil
+  end
+  assert(#root_module == 0, tostring('#root_module=' .. #root_module))
+
+  -- clear the list of files loaded
+  for k, _ in pairs(files_loaded) do
+    files_loaded[k] = nil
+  end
+  assert(#files_loaded == 0, tostring('#files_loaded=' .. #files_loaded))
+  
+  return root_module
+end
+
+--------------------------------------------------------------------------------
 
 --[[
 Look up the template from a name. Searches in several places:
  - in  the pre-defined xtypes, 
- - in the user-defined template_list
- - in the user defined modules (for nested namespaces)
-@param name [in] name of the type to lookup
-@return the template referenced by name, or nil.
+ - recursively in the root module (root_module)
+  (includes the user defined modules for nested namespaces)
+@param name [in] name of the datatype to lookup
+@param ns [in] the namespace to lookup the name in
+@return the template referenced by name, or nil
+@return the template member, if any, identified by name (e.g. enum value)
 --]]
-local function lookup_type(name)
+local function lookup(name, ns)
 
+  assert(nil ~= ns)
+  local template = nil        -- template identified by name
+  local template_member = nil -- template member identified by name
+    
+  -----------------------------------------------------------------------------
+  -- lookup xtype builtins
+  -----------------------------------------------------------------------------
+ 
   -- deviations specific to XML representation  
   local xmlName2Model = {
     unsignedShort    = xtypes.unsigned_short,
@@ -59,79 +103,100 @@ local function lookup_type(name)
 
 
   -- lookup in the xtypes pre-defined templates
-  for i, template in pairs(xtypes) do
-    if 'table' == type(template) and
-       template[xtypes.KIND] and -- this is a valid X-Type
-       name == template[xtypes.NAME] then
-      return template
+  for i, datatype in pairs(xtypes) do
+    if 'table' == type(datatype) and
+       datatype[xtypes.KIND] and -- this is a valid X-Type
+       name == datatype[xtypes.NAME] then
+       template = datatype
+       break
     end
   end
-  
-
-  -- lookup in the template_list that we have defined so far
-  -- NOTE: for path names with a '::' name-space separator for each name-space
-  -- segment, lookup the path name in module name-spaces defined so far
-  local template_toplevel = nil
-  local template = nil
-  for w in string.gmatch(name, "[%w_]+") do     
-    trace('\t::' .. w .. '::')
     
-    -- retrieve the top-level template (for the first capture)
-    if not template_toplevel then -- always runs first!
+  -----------------------------------------------------------------------------
+  -- lookup in namespace 'ns'
+  -----------------------------------------------------------------------------
+
+  if not template and ns then 
+    -- split into path names with a '::' name-space separator for each namespace
+    -- each iteration of the loop resolves one segment (capture) of the name
+    for w in string.gmatch(name, "[%w_]+") do     
+      trace('\t"' .. w .. '"') -- segment|capture to resolve in this iteration
+      
+      -- retrieve the template for the 1st capture
+      if not template then -- 1st capture: always runs first!
+    
+        -- is w defined in the context of the current namespace?
+        local parent = ns
+        repeat
+          trace('\t\t ::', parent)
+          template = parent[w]
+          parent = parent[xtypes.NS]
+        until template or not parent
+
+      else -- 2nd capture onwards
+        
+        -- keep track of the namespace resolved so far
+        ns = template 
                 
-      -- is w defined as a top-level namespace so far?
-      if not template_toplevel then
-        for i, template in ipairs(template_list) do
-          if w == template[xtypes.NAME] then
-            template_toplevel = template
-            break
+        -- Found
+        if ns[w] then   
+          -- Lookup in the namespace resolved so far
+          trace('\t\t ..', ns[w])
+   
+          -- lookup the template identified by 'w'
+          template = xtypes.template(ns[w])  
+ 
+          -- alternatively: if 'w' is an enum member, accept it
+          -- NOTE: in this case, the value of template will be nil
+          if 'enum' == ns[xtypes.KIND]() then
+            template_member = w -- ENUM member
+          end
+            
+        -- Not Found
+        else
+          template = nil
+        end
+      end
+      
+      
+      -- For each capture, check for IDL scoping rules:
+      -- Does 'w' refer to an enum value within an enclosing scope?
+      if not template then
+        if 'module' == ns[xtypes.KIND]() then
+          -- IDL NOTE:
+          --   Enumeration value names are introduced into the enclosing scope
+          --   and then are treated like any other declaration in that scope
+          for _, datatype in ipairs(ns) do
+            if 'enum' == datatype[xtypes.KIND]() and datatype[w] then
+              template_member = w -- ENUM member
+              break -- resolved!
+            end
           end
         end
       end
       
-      -- is w defined in the context of the current namespace? (if any)
-      if not template_toplevel and ns then 
-        local parent = ns
-        repeat
-          trace('\t\t ::', parent)
-          template_toplevel = parent[w]
-          parent = parent[xtypes.NS]
-        until template_toplevel or not parent
-      end
-               
-      -- set the resolution of w: the first name segment 
-      template = template_toplevel
-      
-      -- could not resolve the first capture => skip the other capture segments
-      if not template then break end
-      
-    else
-      -- Now, lookup the template specified by the name segments within the
-      -- top-level template's (first w's) name space
-      trace('\t\t ..', template[w])
-      if 'enum' == template[xtypes.KIND]() then
-          template = w
-      else
-          template = xtypes.template(template[w])
-      end
+      trace('\t   ->', template or template_member) -- result of the resolution
+
+      -- could not resolve the capture => skip remaining capture segments
+      if nil == template or nil ~= template_member then break end  
     end
-    
-    trace('\t\t ->', template)
   end
- 
-  if not template then
-    trace(table.concat{'\tUnresolved name: "', name, 
-          '"  in ', ns and xtypes.nsname(ns)})
+  
+  -----------------------------------------------------------------------------
+  -- result
+
+  if nil == template and nil == template_member then
+    trace('\t=>', table.concat{'Unresolved name: "', name, '"'})
   end      
                          
-  return template
+  return template, template_member
 end
 
 --[[
 Map an xml attribute to an appropriate handler to generate X-Types
       xml attribute --> action to generate X-Type template (attribute handler)
-Each handler takes the attribute list as an argument, and returns an 
-appropriate X-Types model element.
+Each handler takes the attribute list and a namespace module as an argument, 
+and returns an appropriate X-Types model element.
 --]]
 local xmlattr2xtype   -- forward declaration
 xmlattr2xtype = {
@@ -142,12 +207,12 @@ xmlattr2xtype = {
   baseType         = xtypes.EMPTY,
   
   -- role_template
-  type = function(xarg)
+  type = function(xarg, ns)
     -- determine the stringMaxLength 
     local stringMaxLength -- NOTE: "-1" means unbounded
     if xarg.stringMaxLength and '-1' ~= xarg.stringMaxLength then -- bounded
       stringMaxLength = tonumber(xarg.stringMaxLength) or
-                        lookup_type(xarg.stringMaxLength)
+                        lookup(xarg.stringMaxLength, ns)
                         
     end
     
@@ -157,28 +222,28 @@ xmlattr2xtype = {
       return xtypes.wstring(stringMaxLength)
     else
       return xarg.nonBasicTypeName -- NOTE: use nonBasic if defined
-                        and lookup_type(xarg.nonBasicTypeName)
-                        or  lookup_type(xarg.type)
+                        and lookup(xarg.nonBasicTypeName, ns)
+                        or  lookup(xarg.type, ns)
     end
   end,
   
   -- collection: sequence
-  sequenceMaxLength = function(xarg)
+  sequenceMaxLength = function(xarg, ns)
     -- determine the stringMaxLength 
     local sequenceMaxLength -- NOTE: "-1" means unbounded
     if '-1' ~= xarg.sequenceMaxLength then -- bounded
       sequenceMaxLength = tonumber(xarg.sequenceMaxLength) or 
-                          lookup_type(xarg.sequenceMaxLength) 
+                          lookup(xarg.sequenceMaxLength, ns) 
                           
     end
     return xtypes.sequence(sequenceMaxLength)
   end,
      
   -- collection: array
-  arrayDimensions = function(xarg)
+  arrayDimensions = function(xarg, ns)
     local dim = {}
     for w in string.gmatch(xarg.arrayDimensions, "[%w_::]+") do
-      local dim_i = tonumber(w) or lookup_type(w)
+      local dim_i = tonumber(w) or lookup(w, ns)
       table.insert(dim, dim_i)       
       trace('\tdim = ', dim_i)
     end
@@ -213,7 +278,8 @@ local function xarg2annotations(xarg)
       if xmlattr2xtype.annotations[k] then 
         table.insert(annotations, xmlattr2xtype.annotations[k](xarg))  
       elseif not xmlattr2xtype[k] then
-        print(table.concat{'WARNING: Skipping unrecognized XML attribute: ',
+        trace(xarg.name, table.concat{
+                            ' : WARNING: Skipping unrecognized XML attribute: ',
                             k, ' = ', v})      
       end
     end
@@ -223,21 +289,21 @@ end
 --[[
 Return the role definition specified by the given xml attribute list
 --]]
-local function xarg2roledefn(xarg)
+local function xarg2roledefn(xarg, ns)
 
     -- annotations
     local role_defn = xarg2annotations(xarg)
     
     -- collection
     if xarg.arrayDimensions then 
-      table.insert(role_defn, 1, xmlattr2xtype.arrayDimensions(xarg))
+      table.insert(role_defn, 1, xmlattr2xtype.arrayDimensions(xarg, ns))
     end
     if xarg.sequenceMaxLength then
-      table.insert(role_defn, 1, xmlattr2xtype.sequenceMaxLength(xarg))
+      table.insert(role_defn, 1, xmlattr2xtype.sequenceMaxLength(xarg, ns))
     end
         
     -- role template
-    table.insert(role_defn, 1, xmlattr2xtype.type(xarg))
+    table.insert(role_defn, 1, xmlattr2xtype.type(xarg, ns))
     
     return role_defn
 end
@@ -245,42 +311,51 @@ end
 --[[
 Map an xml tag to an appropriate X-Types template creation function (handler):
       tag --> action to create X-Type template (tag handler)
-Each handler takes the xml tag as an argument, and returns a newly 
-created X-Types template or nil
+Each handler takes the xml tag and a namespace module as an argument, and 
+returns a newly created X-Types template or nil
 --]]
 local tag2template   -- forward declaration
-local xmlfile2xtypes -- forward declaration
+local file2xtypes -- forward declaration
 tag2template = {
 
-  typedef = function(tag)  
+  typedef = function(tag, ns)  
     local template = xtypes.typedef{
-      [tag.xarg.name] = xarg2roledefn(tag.xarg)
+      [tag.xarg.name] = xarg2roledefn(tag.xarg, ns)
     }
 
+    -- add to the module namespace, so we can lookup by name
+    if ns then ns[#ns+1] = template end
+          
     -- annotations
     template[xtypes.QUALIFIERS] = xarg2annotations(tag.xarg)
 
     return template
   end,
   
-  const = function(tag)
+  const = function(tag, ns)
     local template = xtypes.const{
       [tag.xarg.name] = { 
-        xmlattr2xtype.type(tag.xarg), xmlattr2xtype.value(tag.xarg) 
+        xmlattr2xtype.type(tag.xarg, ns), xmlattr2xtype.value(tag.xarg, ns) 
       }
     }
-    
+
+    -- add to the module namespace, so we can lookup by name
+    if ns then ns[#ns+1] = template end
+              
     -- annotations
     template[xtypes.QUALIFIERS] = xarg2annotations(tag.xarg)
     
     return template
   end,
     
-  enum = function(tag)
+  enum = function(tag, ns)
     local template = xtypes.enum{
       [tag.xarg.name] = xtypes.EMPTY
     }
-    
+
+    -- add to the module namespace, so we can lookup by name
+    if ns then ns[#ns+1] = template end
+              
     -- child tags
     for i, child in ipairs(tag) do
       if 'table' == type(child) then -- skip comments
@@ -300,19 +375,23 @@ tag2template = {
     return template
   end,
   
-  struct = function (tag)
+  struct = function (tag, ns)
     local template = xtypes.struct{[tag.xarg.name]=xtypes.EMPTY}
-         
+    
+    -- add to the module namespace, so we can lookup by name
+    if ns then ns[#ns+1] = template end
+                   
     -- base type    
     if tag.xarg.baseType then
-      template[xtypes.BASE] = lookup_type(tag.xarg.baseType)
+      template[xtypes.BASE] = lookup(tag.xarg.baseType, ns)
     end
   
     -- child tags
     for i, child in ipairs(tag) do
       if 'table' == type(child) and 'member' == child.label then-- skip comments
         trace(tag.label, child.label, child.xarg.name)
-        template[#template+1] = { [child.xarg.name] = xarg2roledefn(child.xarg) }
+        template[#template+1] = 
+                        { [child.xarg.name] = xarg2roledefn(child.xarg, ns) }
       end
     end
     
@@ -322,20 +401,24 @@ tag2template = {
     return template
   end,
   
-  union = function (tag)
+  union = function (tag, ns)
     
     local template
-
+    local disc
+    
     -- child tags
     for i, child in ipairs(tag) do
       if 'table' == type(child) then -- skip comments
       
         if 'discriminator' == child.label then
-          local disc = xmlattr2xtype.type(child.xarg)
-          template=xtypes.union{[tag.xarg.name]={
-                xmlattr2xtype.type(child.xarg)
-          }}
-        
+          trace(tag.label, child.label, 
+                           child.xarg.nonBasicTypeName or child.xarg.type)
+          disc = xmlattr2xtype.type(child.xarg, ns)
+          template=xtypes.union{[tag.xarg.name]={disc}}
+          
+          -- add to the module namespace, so we can lookup by name
+          if ns then ns[#ns+1] = template end
+      
         elseif 'case' == child.label then
           local case = nil -- default
           for j, grandchild in ipairs(child) do
@@ -344,13 +427,20 @@ tag2template = {
             if 'table' == type(grandchild) then -- skip comments
               if 'caseDiscriminator' == grandchild.label then
                  if 'default' ~= grandchild.xarg.value then
-                   case = lookup_type(grandchild.xarg.value) or 
-                          grandchild.xarg.value
+                 
+                   if 'enum' == disc[xtypes.KIND]() then
+                     local _
+                     _, case = lookup(grandchild.xarg.value, ns)
+                     assert(case, 'invalid case: ' .. grandchild.xarg.value)
+                   else 
+                     case = lookup(grandchild.xarg.value, ns) or 
+                            grandchild.xarg.value
+                   end
                  end
               elseif 'member' == grandchild.label then
                 template[#template+1] = { 
                   case, 
-                      [grandchild.xarg.name] = xarg2roledefn(grandchild.xarg)
+                    [grandchild.xarg.name] = xarg2roledefn(grandchild.xarg, ns)
                 }
               end
             end
@@ -365,35 +455,24 @@ tag2template = {
     return template
   end,
   
-  module = function (tag)
+  module = function (tag, ns)
     -- create a new module only if it is not yet defined:
-    local template = lookup_type(tag.xarg.name) 
+    local template = lookup(tag.xarg.name, ns) 
     if not template then
       template = xtypes.module{[tag.xarg.name]=xtypes.EMPTY}
-      
-      -- add to paremt ns upon creation, so that child nodes can navigate 
-      -- to the parent namespace to lookup names:
-      if ns then ns[#ns+1] = template  end
+
+      -- add to the module namespace, so we can lookup by name
+      if ns then ns[#ns+1] = template end
     end
-            
-    -- set this module as the name-space context
-    local prev_ns = ns        
-    ns = template -- set the namespace context in which to load the children
-    trace('ns', ns and xtypes.nsname(ns))
-            
+                        
     -- child tags
     for i, child in ipairs(tag) do
       if 'table' == type(child) then -- skip comments
         trace(tag.label, child.label, child.xarg.name)
-        local tag_handler = tag2template[child.label]
-
-        if tag_handler then
-          local xtype = tag_handler(child)
         
-          -- add to this module if not already so
-          -- NOTE: a 'module' child would have already been added by the
-          -- module tag handler (this function)
-          if 'module' ~= child.label then template[#template+1] = xtype end
+        local tag_handler = tag2template[child.label]
+        if tag_handler then
+          local xtype = tag_handler(child, template) -- change ns to this module
         end
       end
     end
@@ -401,128 +480,135 @@ tag2template = {
     -- annotations
     template[xtypes.QUALIFIERS] = xarg2annotations(tag.xarg)
 
-    ns = prev_ns-- done with loading name-space: reset context to previous state
     return template
   end,
   
-  include = function (tag)
-    local file = tag.xarg.file
+  include = function (tag, ns)
+    local file, template = tag.xarg.file, nil
     if file then 
-      xmlfile2xtypes(file) 
-      trace(tag.label, tag.xarg.file, 'DONE!')
+      template = file2xtypes(file, ns) 
     end
-    return nil
+    return template
   end,
   
   -- Legacy tags
-  valuetype = function (tag)
-      print('WARNING: Importing valuetype as a struct')
-      return tag2template.struct(tag)
+  valuetype = function (tag, ns)
+      trace(tag.xarg.name, ' : WARNING: Importing valuetype as a struct')
+      return tag2template.struct(tag, ns)
   end,
 
-  sparse_valuetype = function (tag)
-      print('WARNING: Importing sparse_valuetype as a struct')
-      return tag2template.struct(tag)
+  sparse_valuetype = function (tag, ns)
+      trace(tag.xarg.name, ' : WARNING: Importing sparse_valuetype as a struct')
+      return tag2template.struct(tag, ns)
   end,
 }
 
     
 --[[
-Visit all the nodes in the xml table, and a return a table containing the 
-xtype definitions
+Visit all the nodes in the xml table, and a return the root module 
+containing the corresponding xtype definitions
 @param xml [in] a table generated from XML
-@return an array of xtypes, equivalent to those defined in the xml table
+@param ns [in] module namespace into which to import datatypes
+@return the 'ns' namespace populated with the datatypes defined in the xml table
 --]]
-local function xml2xtypes(xml)
+local function xml2xtypes(xml, ns)
 
-  local tag_handler = tag2template[xml.label]
+  local tag_handler, template = tag2template[xml.label], nil
   if tag_handler then -- process this node (and its child nodes)
-    trace('\n-----\n', xml.label, xml.xarg.name or xml.xarg.file)
-    local template = tag_handler(xml)
-    
+  
+    trace('\n-----\n', xml.label, xml.xarg.name or xml.xarg.file, 'BEGIN')
+    template = tag_handler(xml, ns)       
     if template then
       trace(table.concat(xutils.visit_model(template, {'IDL:'}), '\n\t'))
-     
-      -- insert it in the template_list, if not already there:
-      local already_in_template_list = false
-      for i = 1, #template_list do
-        if template == template_list[i] then 
-          already_in_template_list=true break 
-        end
-      end
-      if not already_in_template_list then     
-        table.insert(template_list, template)
-      end
     end
+    trace(xml.label, xml.xarg.name or xml.xarg.file, 'END')
+      
   else -- don't recognize the label as an xtype, visit the child nodes  
-    -- process the child nodes
+
     for i, child in ipairs(xml) do
       if 'table' == type(child) then -- skip comments
-        xml2xtypes(child)
+        template = xml2xtypes(child, ns) -- recursively process the child nodes
       end
     end
   end
-  
-  return template_list
+   
+  return ns
 end
 
 --[[
-Given an XML string, loads the xtype definitions, and return them
-@param xmlstring [in] xml string containing XML type definitions
-@return an array of xtypes, equivalent to those defined in the xml table
+Given an XML string, loads the xtype definitions, and returns the  
+root module populated with the datatypes defined in the XML string
+@param xmlstring [in] xml string containing XML datatype definitions
+@param ns [in] module namespace into which to import datatypes
+@return the root module populated with the datatypes defined in the xml string
 --]]
-local function xmlstring2xtypes(xmlstring)
+local function string2xtypes(xmlstring, ns)
   local xml = xmlstring2table(xmlstring)
-  return xml2xtypes(xml)
+  assert(xml)
+  
+  local template = xml2xtypes(xml, ns or root())
+  
+  return template
 end
 
---[[
-Cache of files that have been processed so far. If a file is encountered again,
-it is skipped. Worked much like the package.loaded mechanism used by require()
---]]
-local files_loaded = {}
 
 --[[
-Given an XML file, loads the xtype definitions, and return them
-@param filename [in] xml file containing XML type definitions
-@return an array of xtypes, equivalent to those defined in the xml file
+Given an XML file, loads the xtype definitions, and returns the  
+root module populated with the datatypes defined in the XML file
+@param filename [in] xml file containing XML datatype definitions
+@param ns [in] module namespace into which to import datatypes
+@return the root module populated with the datatypes defined in the xml string
 --]]
-function xmlfile2xtypes(filename)
+function file2xtypes(filename, ns)
+  
+  trace('***', filename, files_loaded[filename])
+  local template 
   if not files_loaded[filename] then
+    
+    -- load the file into a string
     local file = assert(io.open(filename, 'r'))
     local xmlstring = file:read("*a")
     files_loaded[filename] = true
     file:close()
-    return xmlstring2xtypes(xmlstring)
+    
+    -- process the string
+    ns = ns or root()
+    trace('***', filename, ns)
+    template = string2xtypes(xmlstring, ns)
   end
+  
+  return template -- nil, if the file has been already loaded
 end
 
+
 --[[
-Given an array of XML files, loads the xtype definitions in a single global 
-X-Types namespaces, and returns the list of loaded DDSL schemas
-@param filenames [in] array of xml file names containing XML type definitions
-@return an array of xtypes, equivalent to those defined in the xml files
+Given an array of XML files, loads the xtype definitions, and returns the  
+root module populated with the datatypes defined in the XML files. 
+Note: Clears the root_module of any definitions, previously imported
+
+@param filenames [in] array of xml filenames containing XML datatype definitions
+@return the root module populated with the datatypes defined in the xml files
 --]]
-local function xmlfiles2xtypes(files)
-  local schemas
-  for i = 1, #files do
-    local file = files[i]
+local function filelist2xtypes(files)
+  empty() -- empty the top-level root module
+  for _, file in ipairs(files) do
     trace('========= ', file, ' do =========')
-    schemas = xmlfile2xtypes(file)
+    file2xtypes(file, root()) -- import each file into the root ns
     trace('--------- ', file, ' end --------')
   end
-  return schemas
+  return root() -- the fully populated root module
 end
 
 -------------------------------------------------------------------------------
 interface = {
-    string2xtypes = xmlstring2xtypes,
-    file2xtypes   = xmlfile2xtypes,
-    files2xtypes  = xmlfiles2xtypes,
-    is_trace_on   = false, -- turn on tracing?
+    root          = root,
+    empty         = empty,
     
-    -- clear the list of templates
-    clear         = function() template_list = {} end,
+    filelist2xtypes  = filelist2xtypes,
+    file2xtypes   = file2xtypes,
+    string2xtypes = string2xtypes,
+    
+    is_trace_on   = false, -- turn on tracing?
 }
 
 return interface

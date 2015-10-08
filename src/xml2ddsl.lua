@@ -43,18 +43,18 @@ local function main(arg)
   end
 
   -- import XML files
-  local schemas = xml.files2xtypes(arg)
+  local ns = xml.filelist2xtypes(arg)
 
   -- print on stdout
   print('\n********* DDSL: Global X-Types Namespace *********')
-  for _, schema in ipairs(schemas) do
+  for _, datatype in ipairs(ns) do
     -- print IDL
-    local idl = xutils.visit_model(schema, {'\t'})
+    local idl = xutils.visit_model(ns, {'\t'})
     print(table.concat(idl, '\n\t'))
     
     -- TODO: print the DDSL representation
   end  
-  print('\n********* DDSL: ' .. #schemas .. ' elements *********')
+  print('\n********* DDSL: ' .. #ns .. ' elements *********')
 end
 
 main(arg)
