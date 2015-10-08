@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<types xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:noNamespaceSchemaLocation="/Applications/rti_connext_dds-5.2.0/bin/../resource/app/app_support/rtiddsgen/schema/rti_dds_topic_types.xsd">
+
+	<module name="DDS_xxxx_vvvvManagement">
+        <typedef name="xxxx_vvvvTrigger_Parentvvvv" type="double" />
+        
+		<enum name="xxxx_aa_bb_vvvvTrigger_UE">
+			<enumerator name="ENUM_ELEMENT_A" value="0" />
+			<enumerator name="ENUM_ELEMENT_B" value="1" />
+			<enumerator name="ENUM_ELEMENT_C" value="2" />
+		</enum>
+		
+		<union name="XXXX_vvvvTrigger">
+			<discriminator type="nonBasic"
+				nonBasicTypeName="DDS_xxxx_vvvvManagement::xxxx_aa_bb_vvvvTrigger_UE" />
+			<case>
+				<caseDiscriminator
+					value="(DDS_xxxx_vvvvManagement::ENUM_ELEMENT_A)" />
+				<member name="parentvvvv" type="nonBasic"
+					nonBasicTypeName="DDS_xxxx_vvvvManagement::xxxx_vvvvTrigger_Parentvvvv" />
+			</case>
+            <case>
+                <caseDiscriminator
+                    value="(DDS_xxxx_vvvvManagement::ENUM_ELEMENT_B)" />
+                <member name="parentvvvv2" type="nonBasic"
+                    nonBasicTypeName="DDS_xxxx_vvvvManagement::xxxx_vvvvTrigger_Parentvvvv" />
+            </case>
+		</union>
+	</module>
+
+</types>

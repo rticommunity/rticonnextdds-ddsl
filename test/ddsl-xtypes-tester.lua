@@ -1826,7 +1826,8 @@ function Tester:test_xml_advanced()
   local testfiles = {
     'xml-test-simple.xml',
     'xml-test-connector.xml',
-    'xml-test-ddsc-types1.xml'
+    'xml-test-ddsc-types1.xml',
+    'xml-test-union-enum.xml',
   }
   
   -- xml.is_trace_on = true
