@@ -45,16 +45,10 @@ local function main(arg)
   -- import XML files
   local ns = xml.filelist2xtypes(arg)
 
-  -- print on stdout
-  print('\n********* DDSL: Global X-Types Namespace *********')
-  for _, datatype in ipairs(ns) do
-    -- print IDL
-    local idl = xutils.visit_model(ns, {'\t'})
-    print(table.concat(idl, '\n\t'))
-    
-    -- TODO: print the DDSL representation
-  end  
-  print('\n********* DDSL: ' .. #ns .. ' elements *********')
+  -- print as IDL on stdout
+  print(table.concat(xutils.visit_model(ns), '\n'))
+  
+  -- TODO: print the DDSL representation  
 end
 
 main(arg)
