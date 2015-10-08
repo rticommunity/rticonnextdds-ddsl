@@ -82,7 +82,8 @@ function xutils.visit_instance(instance, result, template, base)
   -- struct base type, if any
   local mybase = (base or template)[xtypes.BASE]
   if mybase then
-    result = xutils.visit_instance(instance, result, template, mybase)
+    result = xutils.visit_instance(instance, result, template, 
+                                   xtypes.resolve(mybase))
   end
 
   -- preserve the order of model definition

@@ -254,13 +254,16 @@ function Tester:test_struct_basechange()
       { y = { xtypes.long } },
   }}
   
+  Test.BaseStructTypedef = xtypes.typedef{BaseStructTypedef = {Test.BaseStruct}}
+  
   Test.DerivedStruct = xtypes.struct{
-    DerivedStruct = {Test.BaseStruct,
+    DerivedStruct = {Test.BaseStructTypedef,
       { speed = { xtypes.double } }
     }
   }
   print("\n-- DerivedStruct --\n")
   self:print(Test.BaseStruct)
+  self:print(Test.BaseStructTypedef)
   self:print(Test.DerivedStruct)
 
   assert(Test.DerivedStruct.x == 'x')

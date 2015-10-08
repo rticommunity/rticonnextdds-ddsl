@@ -908,7 +908,7 @@ function xtypes.struct(decl)
 
   -- OPTIONAL base: pop the next element if it is a base model element
   local base
-  if xtypes.STRUCT == _.model_kind(defn[1]) then
+  if xtypes.STRUCT == _.model_kind(_.resolve(defn[1])) then
     base = defn[1]   table.remove(defn, 1)
 
     -- insert the base class:
@@ -976,40 +976,40 @@ xtypes.API[xtypes.STRUCT] = {
         if old_role then
           _.update_instances(model, old_role, nil) -- clear the role
         end
-    end
+      end
+  
+      -- set the new member definition
+      if nil == value then
+        -- nil => remove the key-th member definition
+        table.remove(model_defn, key) -- do not want holes in array
+  
+      else
+        -- get the new role and role_defn
+        local role, role_defn = next(value)
 
-    -- set the new member definition
-    if nil == value then
-      -- nil => remove the key-th member definition
-      table.remove(model_defn, key) -- do not want holes in array
-
-    else
-      -- get the new role and role_defn
-      local role, role_defn = next(value)
-
-      -- is the role already defined?
-      assert(nil == rawget(template, role),-- check template
-        table.concat{template[_.NAME], 
-                     ' : member name already defined: "', role, '"'})
-
-      -- create role instance (checks for pre-conditions, may fail!)
-      local role_instance = _.create_role_instance(role, role_defn)
-
-      -- update instances: add the new role_instance
-      _.update_instances(model, role, role_instance)
-
-      -- insert the new member definition
-      local role_defn_copy = {} -- make our own local copy
-      for i, v in ipairs(role_defn) do role_defn_copy[i] = v end
-      model_defn[key] = {
-        [role] = role_defn_copy   -- map with one entry
-      }
-    end
+        -- is the role already defined?
+        assert(nil == rawget(template, role),-- check template
+          table.concat{template[_.NAME], 
+                       ' : member name already defined: "', role, '"'})
+  
+        -- create role instance (checks for pre-conditions, may fail!)
+        local role_instance = _.create_role_instance(role, role_defn)
+  
+        -- update instances: add the new role_instance
+        _.update_instances(model, role, role_instance)
+  
+        -- insert the new member definition
+        local role_defn_copy = {} -- make our own local copy
+        for i, v in ipairs(role_defn) do role_defn_copy[i] = v end
+        model_defn[key] = {
+          [role] = role_defn_copy   -- map with one entry
+        }
+      end
 
     elseif xtypes.BASE == key then -- inherits from 'base' struct
 
       -- clear the instance fields from the old base struct (if any)
-      local old_base = model_defn[xtypes.BASE]
+      local old_base = _.resolve(model_defn[xtypes.BASE])
       while old_base do
         for k, v in pairs(old_base) do
           if 'string' == type(k) then -- copy only the base instance fields
@@ -1023,19 +1023,20 @@ xtypes.API[xtypes.STRUCT] = {
         old_base_model[_.INSTANCES][template] = nil
 
         -- visit up the base model inheritance hierarchy
-        old_base = old_base[xtypes.BASE] -- parent base
+        old_base = _.resolve(old_base[xtypes.BASE]) -- parent base
       end
 
       -- get the base model, if any:
       local new_base
-      if nil ~= value then
-        new_base = _.assert_model_kind(xtypes.STRUCT, value)
+      if nil ~=value and 
+         _.assert_model_kind(xtypes.STRUCT, _.resolve(value)) then
+        new_base = value
       end
 
       -- populate the instance fields from the base model struct
       local base = new_base
       while base do
-        local base_model = _.model(base)
+        local base_model = _.model(_.resolve(base)) -- base may be a typedef
         for i = 1, #base_model[_.DEFN] do
           local base_role, base_role_defn = next(base_model[_.DEFN][i])
 
@@ -1063,7 +1064,7 @@ xtypes.API[xtypes.STRUCT] = {
       -- template is an instance of the base structs (inheritance hierarchy)
       base = new_base
       while base do
-        local base_model = _.model(base)
+        local base_model = _.model(_.resolve(base)) -- base may be a typedef
 
         -- NOTE: Use empty string as the 'instance' name of the base struct
         base_model[_.INSTANCES][template] = '' -- empty instance name

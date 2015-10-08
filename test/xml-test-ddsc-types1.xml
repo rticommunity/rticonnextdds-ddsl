@@ -284,8 +284,7 @@ modification history
 
     <typedef name="MutableStructure1Typedef" type="nonBasic" nonBasicTypeName="MutableStructure1"/>
 
-   	<Xstruct name="MutableStructure2" baseType="MutableStructure1Typedef" extensibility="mutable"/>
-    <struct name="MutableStructure2" baseType="MutableStructure1" extensibility="mutable">
+   	<struct name="MutableStructure2" baseType="MutableStructure1Typedef" extensibility="mutable">
         <member name="m4" type="long"/>
         <member name="m5" type="short" id="200000"/>
         <member name="m6" type="string" stringMaxLength="125" id="200002"/>               

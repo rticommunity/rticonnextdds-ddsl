@@ -704,7 +704,7 @@ end
 --- Ensure that the value is a model element
 -- @param kind   [in] expected model element kind
 -- @param value  [in] table to check if it is a model element of "kind"
--- @return the model table if the kind matches, or nil
+-- @return the value if the kind matches, or nil
 function _.assert_model_kind(kind, value)
     local model = getmetatable(value)
     assert(model and kind == model[_.KIND],
