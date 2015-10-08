@@ -456,8 +456,8 @@ tag2template = {
   end,
   
   module = function (tag, ns)
-    -- create a new module only if it is not yet defined:
-    local template = lookup(tag.xarg.name, ns) 
+    -- create a new module only if it is not yet defined in the current ns:
+    local template = ns[tag.xarg.name]
     if not template then
       template = xtypes.module{[tag.xarg.name]=xtypes.EMPTY}
 

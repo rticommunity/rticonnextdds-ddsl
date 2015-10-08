@@ -28,5 +28,26 @@
             </case>
 		</union>
 	</module>
-
+	
+    <module name="DDS_xxxx_bbbbbbManagement">
+        <module name="DDS_xxxx_vvvvManagement">
+            <typedef name="xxxx_vvvvTrigger_Parentvvvv" type="double" />
+            <enum name="xxxx_aa_bb_vvvvTrigger_UE">
+                <enumerator name="ENUM_ELEMENT_A" value="0" />
+                <enumerator name="ENUM_ELEMENT_B" value="1" />
+                <enumerator name="ENUM_ELEMENT_C" value="2" />
+            </enum>
+            <union name="XXXX_vvvvTrigger">
+                <discriminator type="nonBasic"
+                    nonBasicTypeName="DDS_xxxx_bbbbbbManagement::DDS_xxxx_vvvvManagement::xxxx_aa_bb_vvvvTrigger_UE" />
+                <case>
+                    <caseDiscriminator
+                        value="(DDS_xxxx_bbbbbbManagement::DDS_xxxx_vvvvManagement::ENUM_ELEMENT_A)" />
+                    <member name="parentvvvv" type="nonBasic"
+                        nonBasicTypeName="DDS_xxxx_bbbbbbManagement::DDS_xxxx_vvvvManagement::xxxx_vvvvTrigger_Parentvvvv" />
+                </case>
+            </union>
+        </module>
+    </module>
+	
 </types>
