@@ -131,7 +131,7 @@ end
 --        can be passed to another call to this method (to build cumulatively).
 function xutils.visit_model(instance, result, indent_string)
 	-- pre-condition: ensure valid data-object
-	assert(xtypes.template(instance), 'invalid data-object')
+	assert(xtypes.template(instance), 'visit_model() requires a DDSL instance!')
 
 	-- initialize the result (or accumulate in the provided result)
   result = result or {}

@@ -546,7 +546,8 @@ function xtypes.const(decl)
   -- pre-condition: ensure that the 2nd defn declaration is a valid value
   local value = defn[2]
   assert(nil ~= value,
-         table.concat{'const value must be non-nil: ', tostring(value)})
+         table.concat{name, ' : const value must be non-nil: ',
+                      tostring(value)})
 
   -- convert value to the correct type:
   local coercedvalue = nil
@@ -557,10 +558,12 @@ function xtypes.const(decl)
           else coercedvalue = not not value -- toboolean
           end
           if nil ~= coercedvalue then
-             print(table.concat{'INFO: converting to boolean: "', value,
+             print(table.concat{name, 
+                                ' : INFO: converting to boolean: "', value,
                                 '" -> ', tostring(coercedvalue)})
           else
-             print(table.concat{'WARNING: converting to boolean: "', value,
+             print(table.concat{name, 
+                                ' : WARNING: converting to boolean: "', value,
                                 '" -> nil'})
           end
       end
@@ -570,10 +573,11 @@ function xtypes.const(decl)
       if 'string' ~= type(value) then
           coercedvalue = tostring(value)
           if nil ~= coercedvalue then
-             print(table.concat{'INFO: converting to string: "', value,
+             print(table.concat{name, ' : INFO: converting to string: "', value,
                                 '" -> "', coercedvalue, '"'})
           else
-             print(table.concat{'WARNING: converting to string: "', value,
+             print(table.concat{name, 
+                                ' : WARNING: converting to string: "', value,
                                 '" -> nil'})
           end
       end
@@ -589,10 +593,11 @@ function xtypes.const(decl)
       if 'number' ~= type(value) then
           coercedvalue = tonumber(value)
           if nil ~= coercedvalue then
-             print(table.concat{'INFO: converting to number: "', value,
+             print(table.concat{name, ' : INFO: converting to number: "', value,
                                 '" -> ', coercedvalue})
           else
-             print(table.concat{'WARNING: converting to number: "', value,
+             print(table.concat{name, 
+                                ' : WARNING: converting to number: "', value,
                                 '" -> nil'})
           end
       end
@@ -604,7 +609,7 @@ function xtypes.const(decl)
      xtypes.builtin.unsigned_long == atom or
      xtypes.builtin.unsigned_long_long == atom then
      if value < 0 then
-       print(table.concat{'INFO: const value of "', value, ' of type "',
+       print(table.concat{name, ' : INFO: const value of "', value, ' of type "',
                         type(value),
                         '" must be non-negative and of the type: ',
                         model[_.NAME] })
@@ -615,7 +620,7 @@ function xtypes.const(decl)
   if (xtypes.builtin.char == atom or xtypes.builtin.wchar == atom) and
       #value > 1 then
     value = string.sub(value, 1, 1)
-    print(table.concat{'WARNING: truncating string value for ',
+    print(table.concat{name, ' : WARNING: truncating string value for ',
                        model[_.NAME],
                        ' constant to: ', value})
   end
@@ -628,8 +633,9 @@ function xtypes.const(decl)
       'number' == type(value) and
       value - math.floor(value) ~= 0 then
     value = math.floor(value)
-    print(table.concat{'WARNING: truncating decimal value for integer constant',
-                       ' to: ', value})
+    print(table.concat{name, 
+                   ' : WARNING: truncating decimal value for integer constant',
+                   ' to: ', value})
   end
 
   -- create the template
@@ -814,17 +820,20 @@ xtypes.API[xtypes.ENUM] = {
 
         -- role must be a string
         assert(type(role) == 'string',
-          table.concat{'invalid member name: ', tostring(role)})
+          table.concat{template[_.NAME], 
+                       ' : invalid member name: ', tostring(role)})
 
         -- ensure the definition is an ordinal value
         assert('number' == type(role_defn) and
                math.floor(role_defn) == role_defn, -- integer
-        table.concat{'invalid definition: ',
+        table.concat{template[_.NAME], 
+                      ' : invalid definition: ',
                       tostring(role), ' = ', tostring(role_defn) })
 
         -- is the role already defined?
         assert(nil == rawget(template, role),-- check template
-          table.concat{'member name already defined: "', role, '"'})
+          table.concat{template[_.NAME], 
+                       ' : member name already defined: "', role, '"'})
 
         -- insert the new role
         rawset(template, role, role_defn)
@@ -980,7 +989,8 @@ xtypes.API[xtypes.STRUCT] = {
 
       -- is the role already defined?
       assert(nil == rawget(template, role),-- check template
-        table.concat{'member name already defined: "', role, '"'})
+        table.concat{template[_.NAME], 
+                     ' : member name already defined: "', role, '"'})
 
       -- create role instance (checks for pre-conditions, may fail!)
       local role_instance = _.create_role_instance(role, role_defn)
@@ -1031,7 +1041,8 @@ xtypes.API[xtypes.STRUCT] = {
 
           -- is the base_role already defined?
           assert(nil == rawget(template, base_role),-- check template
-            table.concat{'member name already defined: "', base_role, '"'})
+            table.concat{template[_.NAME], 
+                         ' : member name already defined: "', base_role, '"'})
 
           -- create base role instance (checks for pre-conditions, may fail)
           local base_role_instance =
@@ -1231,7 +1242,8 @@ xtypes.API[xtypes.UNION] = {
         -- is the case already defined?
         for i, defn_i in ipairs(model_defn) do
           assert(case ~= defn_i[1],
-            table.concat{'case exists: "', tostring(case), '"'})
+            table.concat{template[_.NAME], 
+                         ' : case exists: "', tostring(case), '"'})
         end
 
         -- get the role and definition
@@ -1242,7 +1254,8 @@ xtypes.API[xtypes.UNION] = {
 
           -- is the role already defined?
           assert(nil == rawget(template, role),-- check template
-            table.concat{'member name already defined: "', role, '"'})
+            table.concat{template[_.NAME], 
+                        ' : member name already defined: "', role, '"'})
 
           local role_instance = _.create_role_instance(role, role_defn)
 
@@ -1398,14 +1411,16 @@ xtypes.API[xtypes.MODULE] = {
 
         -- pre-condition: value must be a model instance (template)
         assert(nil ~= _.model_kind(value),
-               table.concat{'invalid template: ', tostring(value)})
+               table.concat{template[_.NAME], 
+                      ' : invalid template: ', tostring(value)})
 
         local role_template = value
         local role = role_template[_.NAME]
 
         -- is the role already defined?
         assert(nil == rawget(template, role),
-          table.concat{'member name already defined: "', role, '"'})
+          table.concat{template[_.NAME], 
+                       ' : member name already defined: "', role, '"'})
 
 				-- update the module definition
         model_defn[key] = role_template
