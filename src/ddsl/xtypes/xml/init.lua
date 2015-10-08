@@ -205,7 +205,11 @@ xmlattr2xtype = {
   nonBasicTypeName = xtypes.EMPTY,
   stringMaxLength  = xtypes.EMPTY,
   baseType         = xtypes.EMPTY,
-  
+  baseClass        = xtypes.EMPTY,
+  visibility       = xtypes.EMPTY,
+  typeModifier     = xtypes.EMPTY,
+  required         = xtypes.EMPTY,
+            
   -- role_template
   type = function(xarg, ns)
     -- determine the stringMaxLength 
@@ -279,8 +283,8 @@ local function xarg2annotations(xarg)
         table.insert(annotations, xmlattr2xtype.annotations[k](xarg))  
       elseif not xmlattr2xtype[k] then
         trace(xarg.name, table.concat{
-                            ' : WARNING: Skipping unrecognized XML attribute: ',
-                            k, ' = ', v})      
+                        ' : WARNING: Skipping unrecognized XML attribute: ',
+                        k, ' = ', v})      
       end
     end
     return annotations
@@ -382,8 +386,9 @@ tag2template = {
     if ns then ns[#ns+1] = template end
                    
     -- base type    
-    if tag.xarg.baseType then
-      template[xtypes.BASE] = lookup(tag.xarg.baseType, ns)
+    if tag.xarg.baseType or tag.xarg.baseClass then
+      template[xtypes.BASE] = lookup(tag.xarg.baseType or tag.xarg.baseClass, 
+                                     ns)
     end
   
     -- child tags

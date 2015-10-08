@@ -178,7 +178,7 @@ modification history
     </valuetype>
 
     <valuetype name="MyDerivedValue" baseClass="::MyBaseValue" typeModifier="abstract">
-        <member name="m1" type="boolean" visibility="public"/>
+        <member name="m11" type="boolean" visibility="public"/>
         <member name="m2" type="boolean" visibility="public"/>
     </valuetype>
 
@@ -187,7 +187,7 @@ modification history
     </sparse_valuetype>
 
     <sparse_valuetype name="MyDerivedSparseValue" baseClass="::MyBaseSparseValue" typeModifier="abstract">
-        <member name="m1" type="boolean" visibility="public" key="true" id="2"/>
+        <member name="m11" type="boolean" visibility="public" key="true" id="2"/>
         <member name="m2" type="boolean" visibility="public" required="true" id="3"/>
         <member name="m3" type="boolean" visibility="private" id="4"/>
     </sparse_valuetype>
