@@ -20,10 +20,10 @@ local xutils = require('ddsl.xtypes.utils')
 
 local function main(arg)
   if #arg == 0 then
-    print('Usage: ' .. arg[0] .. [[' [-t] <xml-file> [ <xml-files> ...]
+    print('Usage: ' .. arg[0] .. [[' [-d] <xml-file> [ <xml-files> ...]
     
     where:
-      -t            turn tracing ON
+      -d            turn debugging ON
       <xml-file>    is an XML file
     
     Imports all the XML files into a single X-Types global namespace. 
@@ -37,9 +37,9 @@ local function main(arg)
   end
 
   -- turn on tracing?
-  if '-t' == arg[1] then 
+  if '-d' == arg[1] then 
     table.remove(arg, 1) -- pop the argument
-    xml.log.verbosity(xml.log.TRACE)
+    xml.log.verbosity(xml.log.DEBUG)
   end
 
   -- import XML files

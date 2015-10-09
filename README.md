@@ -75,7 +75,7 @@ or, with tracing on:
 
     local xml = require('ddsl.xtypes.xml')
 
-    -- xml.log.verbosity(xml.log.TRACE) -- OPTIONAL: turn on tracing
+    -- xml.log.verbosity(xml.log.DEBUG) -- OPTIONAL: turn on debugging
 
     local schemas = xml.filelist2xtypes{'xml-test-simple.xml'} -- file list
 
