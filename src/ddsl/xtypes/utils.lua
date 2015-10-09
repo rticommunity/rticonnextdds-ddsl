@@ -172,7 +172,7 @@ function xutils.visit_model(instance, result, indent_string)
 	end
 
 	-- open --
-	if (nil ~= myname) then -- not top-level / builtin module 
+	if (nil ~= myname) then -- not a 'root' namespace / outermost enclosing scope
 
 		-- print the annotations
 		if instance[xtypes.QUALIFIERS] then
@@ -239,13 +239,19 @@ function xutils.visit_model(instance, result, indent_string)
 	elseif 'enum' == mytype then
 		for i, defn_i in ipairs(instance) do -- walk through the model definition
 			local role, ordinal = next(defn_i)
+			
+			local seperator, enumerator = '', nil
+      if i < #instance then -- not the last one
+         seperator = ','
+      end
 			if ordinal then
-				table.insert(result, string.format('%s%s = %s,', 
-				                     content_indent_string, role,
-								             ordinal))
+				enumerator = string.format('%s%s = %s%s', 
+      				                content_indent_string, role, ordinal, seperator)
 			else
-				table.insert(result, string.format('%s%s,', content_indent_string,role))
+				enumerator = string.format('%s%s%s', 
+				                      content_indent_string, role, seperator)
 			end
+			table.insert(result, enumerator)
 		end
 	end
 
