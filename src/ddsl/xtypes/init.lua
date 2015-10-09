@@ -71,6 +71,8 @@ local xtypes = {
 -- Instantiate the DDSL core, using the 'info' interface defined here:
 local _ = require('ddsl')(xtypes.info)
 
+local log = _.log
+
 --- Is the given model element a qualifier?
 -- NOTE: collections are qualifiers
 -- @param value [in] the model element to check
@@ -558,12 +560,12 @@ function xtypes.const(decl)
           else coercedvalue = not not value -- toboolean
           end
           if nil ~= coercedvalue then
-             print(table.concat{name, 
-                                ' : INFO: converting to boolean: "', value,
+             log.info(table.concat{name, 
+                                ' : converting to boolean: "', value,
                                 '" -> ', tostring(coercedvalue)})
           else
-             print(table.concat{name, 
-                                ' : WARNING: converting to boolean: "', value,
+             log.notice(table.concat{name, 
+                                ' : converting to boolean: "', value,
                                 '" -> nil'})
           end
       end
@@ -573,11 +575,11 @@ function xtypes.const(decl)
       if 'string' ~= type(value) then
           coercedvalue = tostring(value)
           if nil ~= coercedvalue then
-             print(table.concat{name, ' : INFO: converting to string: "', value,
+             log.info(table.concat{name, ' : converting to string: "', value,
                                 '" -> "', coercedvalue, '"'})
           else
-             print(table.concat{name, 
-                                ' : WARNING: converting to string: "', value,
+             log.notice(table.concat{name, 
+                                ' : converting to string: "', value,
                                 '" -> nil'})
           end
       end
@@ -593,11 +595,11 @@ function xtypes.const(decl)
       if 'number' ~= type(value) then
           coercedvalue = tonumber(value)
           if nil ~= coercedvalue then
-             print(table.concat{name, ' : INFO: converting to number: "', value,
+             log.info(table.concat{name, ' : converting to number: "', value,
                                 '" -> ', coercedvalue})
           else
-             print(table.concat{name, 
-                                ' : WARNING: converting to number: "', value,
+             log.notice(table.concat{name, 
+                                ' : converting to number: "', value,
                                 '" -> nil'})
           end
       end
@@ -609,7 +611,8 @@ function xtypes.const(decl)
      xtypes.builtin.unsigned_long == atom or
      xtypes.builtin.unsigned_long_long == atom then
      if value < 0 then
-       print(table.concat{name, ' : INFO: const value of "', value, ' of type "',
+       log.notice(table.concat{name, 
+                        ' : const value of "', value, ' of type "',
                         type(value),
                         '" must be non-negative and of the type: ',
                         model[_.NAME] })
@@ -620,9 +623,9 @@ function xtypes.const(decl)
   if (xtypes.builtin.char == atom or xtypes.builtin.wchar == atom) and
       #value > 1 then
     value = string.sub(value, 1, 1)
-    print(table.concat{name, ' : WARNING: truncating string value for ',
-                       model[_.NAME],
-                       ' constant to: ', value})
+    log.notice(table.concat{name, ' : truncating string value for ',
+                                  model[_.NAME],
+                                  ' constant to: ', value})
   end
 
   -- integer: truncate value to integer; warn if truncated
@@ -633,8 +636,8 @@ function xtypes.const(decl)
       'number' == type(value) and
       value - math.floor(value) ~= 0 then
     value = math.floor(value)
-    print(table.concat{name, 
-                   ' : WARNING: truncating decimal value for integer constant',
+    log.notice(table.concat{name, 
+                   ' : truncating decimal value for integer constant',
                    ' to: ', value})
   end
 
@@ -1586,7 +1589,8 @@ end
 --------------------------------------------------------------------------------
 --- Public Interface (of this module):
 local interface = {
-
+  log                     = log, -- the verbosity logger
+  
   --- The XTypes Meta-Model ---- 
 
   -- DDSL: empty initializer sentinel value

@@ -15,9 +15,7 @@ local xtypes = require('ddsl.xtypes')
 local xutils = require('ddsl.xtypes.utils')
 local xmlstring2table = require('ddsl.xtypes.xml.parser').xmlstring2table
 
-local logger = require('logger')
-
-local log = logger.new()
+local log = xtypes.log
 
 --------------------------------------------------------------------------------
 -- (Lua) Module State
@@ -115,7 +113,7 @@ local function lookup(name, ns)
     -- split into path names with a '::' name-space separator for each namespace
     -- each iteration of the loop resolves one segment (capture) of the name
     for w in string.gmatch(name, "[%w_]+") do     
-      log.trace('\t"' .. w .. '"') -- capture to resolve in this iteration
+      log.debug('\t"' .. w .. '"') -- capture to resolve in this iteration
       
       -- retrieve the template for the 1st capture
       if not template then -- 1st capture: always runs first!
@@ -123,7 +121,7 @@ local function lookup(name, ns)
         -- is w defined in the context of the current namespace?
         local parent = ns
         repeat
-          log.trace('\t\t ::', parent)
+          log.debug('\t\t ::', parent)
           template = parent[w]
           parent = parent[xtypes.NS]
         until template or not parent
@@ -136,7 +134,7 @@ local function lookup(name, ns)
         -- Found
         if ns[w] then   
           -- Lookup in the namespace resolved so far
-          log.trace('\t\t ..', ns[w])
+          log.debug('\t\t ..', ns[w])
    
           -- lookup the template identified by 'w'
           template = xtypes.template(ns[w])  
@@ -170,7 +168,7 @@ local function lookup(name, ns)
         end
       end
       
-      log.trace('\t   ->', template or template_member) -- result of resolution
+      log.debug('\t   ->', template or template_member) -- result of resolution
 
       -- could not resolve the capture => skip remaining capture segments
       if nil == template or nil ~= template_member then break end  
@@ -244,7 +242,7 @@ xmlattr2xtype = {
     for w in string.gmatch(xarg.arrayDimensions, "[%w_::]+") do
       local dim_i = tonumber(w) or lookup(w, ns)
       table.insert(dim, dim_i)       
-      log.trace('\tdim = ', dim_i)
+      log.debug('\tdim = ', dim_i)
     end
     return xtypes.array(table.unpack(dim))          
   end,
@@ -389,7 +387,7 @@ tag2template = {
     -- child tags
     for i, child in ipairs(tag) do
       if 'table' == type(child) and 'member' == child.label then-- skip comments
-        log.trace(tag.label, child.label, child.xarg.name)
+        log.debug(tag.label, child.label, child.xarg.name)
         template[#template+1] = 
                         { [child.xarg.name] = xarg2roledefn(child.xarg, ns) }
       end
@@ -411,7 +409,7 @@ tag2template = {
       if 'table' == type(child) then -- skip comments
       
         if 'discriminator' == child.label then
-          log.trace(tag.label, child.label, 
+          log.debug(tag.label, child.label, 
                            child.xarg.nonBasicTypeName or child.xarg.type)
           disc = xmlattr2xtype.type(child.xarg, ns)
           template=xtypes.union{[tag.xarg.name]={disc}}
@@ -422,7 +420,7 @@ tag2template = {
         elseif 'case' == child.label then
           local case = nil -- default
           for j, grandchild in ipairs(child) do
-            log.trace(tag.label, child.label, grandchild.label, 
+            log.debug(tag.label, child.label, grandchild.label, 
                   grandchild.xarg.name or grandchild.xarg.value)
             if 'table' == type(grandchild) then -- skip comments
               if 'caseDiscriminator' == grandchild.label then
@@ -468,7 +466,7 @@ tag2template = {
     -- child tags
     for i, child in ipairs(tag) do
       if 'table' == type(child) then -- skip comments
-        log.trace(tag.label, child.label, child.xarg.name)
+        log.debug(tag.label, child.label, child.xarg.name)
         
         local tag_handler = tag2template[child.label]
         if tag_handler then
@@ -516,12 +514,12 @@ local function xml2xtypes(xml, ns)
   local tag_handler, template = tag2template[xml.label], nil
   if tag_handler then -- process this node (and its child nodes)
   
-    log.trace('\n-----\n', xml.label, xml.xarg.name or xml.xarg.file, 'BEGIN')
+    log.debug('\n-----\n', xml.label, xml.xarg.name or xml.xarg.file, 'BEGIN')
     template = tag_handler(xml, ns)       
     if template then
-      log.trace(table.concat(xutils.visit_model(template, {'IDL:'}), '\n\t'))
+      log.debug(table.concat(xutils.visit_model(template, {'IDL:'}), '\n\t'))
     end
-    log.trace(xml.label, xml.xarg.name or xml.xarg.file, 'END')
+    log.debug(xml.label, xml.xarg.name or xml.xarg.file, 'END')
       
   else -- don't recognize the label as an xtype, visit the child nodes  
 
@@ -561,7 +559,7 @@ root module populated with the datatypes defined in the XML file
 --]]
 function file2xtypes(filename, ns)
   
-  log.trace('***', filename, files_loaded[filename])
+  log.debug('***', filename, files_loaded[filename])
   local template 
   if not files_loaded[filename] then
     
@@ -573,7 +571,7 @@ function file2xtypes(filename, ns)
     
     -- process the string
     ns = ns or root()
-    log.trace('***', filename, ns)
+    log.debug('***', filename, ns)
     template = string2xtypes(xmlstring, ns)
   end
   
@@ -592,9 +590,9 @@ Note: Clears the root_module of any definitions, previously imported
 local function filelist2xtypes(files)
   empty() -- empty the top-level root module
   for _, file in ipairs(files) do
-    log.trace('========= ', file, ' do =========')
+    log.debug('========= ', file, ' do =========')
     file2xtypes(file, root()) -- import each file into the root ns
-    log.trace('--------- ', file, ' end --------')
+    log.debug('--------- ', file, ' end --------')
   end
   return root() -- the fully populated root module
 end

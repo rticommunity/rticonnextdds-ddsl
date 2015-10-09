@@ -126,6 +126,9 @@ CAVEATS
 -----------------------------------------------------------------------------
 --]]
 
+local logger = require('logger')
+local log = logger.new()
+
 --------------------------------------------------------------------------------
 --- Core Attributes and Abstractions ---
 --------------------------------------------------------------------------------
@@ -306,7 +309,7 @@ end
 --    
 function _.new_instance(template, name, is_role_instance) 
   local model = getmetatable(template)
-  -- print('DEBUG new_instance 1: ', model[_.NAME], name)
+  log.trace('new_instance 1: ', model[_.NAME], name)
 
   if nil ~= name then _.assert_role(name) end
   _.assert_template_kind(template)
@@ -326,7 +329,7 @@ function _.new_instance(template, name, is_role_instance)
     for j = 2, #defn do
       alias_collection = _.info.is_collection_kind(defn[j])
       if alias_collection then
-        -- print('DEBUG new_instance 2: ', alias_collection, name)
+        log.trace('new_instance 2: ', alias_collection, name)
         break -- 1st 'collection' is used
       end
     end
@@ -427,7 +430,7 @@ end
 --    end  
 --    print(#myInstance.mySeq) -- the actual number of elements
 function _.new_collection(content_template, capacity, name, is_role_instance) 
-  -- print('DEBUG new_collection',content_template,capacity,name)
+  log.trace('new_collection',content_template,capacity,name)
 
   if nil ~= name then _.assert_role(name) end
   assert(_.is_collection(content_template) or
@@ -464,7 +467,7 @@ function _.new_collection(content_template, capacity, name, is_role_instance)
       -- metamethod. Thus the rawleng would be invoked, returning the actual 
       -- length (and this is the fast!)
   
-      --print('DEBUG new_collection',model.__len,name,content_template,capacity)
+      log.trace('new_collection',model.__len,name,content_template,capacity)
       model.__len = nil
   end            
 
@@ -532,9 +535,9 @@ _.collection_metatable = {
   end,
 
   __index = function (collection, i)
-      -- print('DEBUG collection __index', collection, i)
+      log.trace('collection __index', collection, i)
       if 'number' ~= type(i) then
-        -- print('DEBUG collection __index.1', collection, i)
+        log.trace('collection __index.1', collection, i)
         return nil 
       end 
       
@@ -557,7 +560,7 @@ _.collection_metatable = {
   end,
   
   __newindex = function (collection, i, v)
-      -- print('DEBUG collection __newindex', collection, i, v)
+      log.trace('collection __newindex', collection, i, v)
       local element_i = collection[i]
       if 'table' ~= type(element_i) then -- replace with the new value
         element_i = v
@@ -770,6 +773,8 @@ end
 --- Public Interface (of this module):
 -- 
 local interface = {
+  log                     = log, -- the verbosity logger
+  
   -- empty initializer sentinel value
   EMPTY                   = EMPTY,
 
