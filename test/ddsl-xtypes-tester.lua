@@ -1814,7 +1814,7 @@ Tester[#Tester+1] = 'test_xml'
 function Tester:test_xml()
   local xml = require('ddsl.xtypes.xml')
   
-  -- xml.is_trace_on = true
+  -- xml.log.verbosity(xml.log.TRACE)
   local datatypes = xml.filelist2xtypes{'xml-test-simple.xml'}
 
   for i = 1, #datatypes do
@@ -1833,7 +1833,7 @@ function Tester:test_xml_advanced()
     'xml-test-union-enum.xml',
   }
   
-  -- xml.is_trace_on = true
+  -- xml.log.verbosity(xml.log.TRACE)
 
   for _, file in ipairs(testfiles) do
   

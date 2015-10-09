@@ -39,7 +39,7 @@ local function main(arg)
   -- turn on tracing?
   if '-t' == arg[1] then 
     table.remove(arg, 1) -- pop the argument
-    xml.is_trace_on = true
+    xml.log.verbosity(xml.log.TRACE)
   end
 
   -- import XML files
