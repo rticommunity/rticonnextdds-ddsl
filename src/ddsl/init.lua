@@ -531,7 +531,7 @@ _.collection_metatable = {
       -- NOTE: defined for template instances (i.e. is_role_instance) only
       -- the accessor for collection length
       local model = getmetatable(collection)
-      return string.format('%s#', model[_.NAME])
+      return string.format('%s#', model[_.NAME] or '')
   end,
 
   __index = function (collection, i)
@@ -551,7 +551,7 @@ _.collection_metatable = {
       end
           
       -- NOTE: we got called because collection[i] does not exist
-      local name_i = string.format('%s[%d]',model[_.NAME], i)
+      local name_i = string.format('%s[%d]',model[_.NAME] or '', i)
       local element_i = _.clone(model[_.DEFN][1], name_i, 
                                 collection == model[_.TEMPLATE])
       
@@ -583,7 +583,8 @@ _.collection_metatable = {
   __tostring = function (collection)
       local model = getmetatable(collection)
       local capacity = model[_.DEFN][2] or ''
-      return string.format('%s{%s}<%s',model[_.NAME],model[_.DEFN][1],capacity)
+      return string.format('%s{%s}<%s', model[_.NAME] or '',
+                                        model[_.DEFN][1],capacity)
   end,
 }
 
@@ -675,7 +676,9 @@ function _.resolve(template)
   end
 end
 
---- Name of a model element relative to a namespace
+--- Qualified name of a model element relative to a namespace. Note that a 
+-- namespace without a parent namespace and without a name is regarded 
+-- as a 'root' namespace (i.e the outermost enclosing scope)
 -- @param template [in] the data model element whose name is desired in 
 --        the context of the namespace
 -- @param namespace [in] the namespace model element; if nil, finds the full 
@@ -690,9 +693,12 @@ function _.nsname(template, namespace)
   -- traverse up the template namespaces, until 'module' is found
   local model = getmetatable(template)
   if namespace == model[_.NS] or nil == model[_.NS] then
-    return model[_.NAME]
+    return model[_.NAME] -- may be nil
   else
-    return table.concat{_.nsname(model[_.NS], namespace), '::', model[_.NAME]}
+    local scopename = _.nsname(model[_.NS], namespace)
+    return scopename 
+           and table.concat{scopename, '::', model[_.NAME]}
+           or  model[_.NAME] 
   end
 end
 

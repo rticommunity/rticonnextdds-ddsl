@@ -241,9 +241,9 @@ xtypes.API[xtypes.ANNOTATION] = {
 
     local model = _.model(annotation)
     if output then
-      output = string.format('@%s(%s)', model[_.NAME], output)
+      output = string.format('@%s(%s)', model[_.NAME] or '', output)
     else
-      output = string.format('@%s', model[_.NAME])
+      output = string.format('@%s', model[_.NAME] or '')
     end
 
     return output
@@ -615,7 +615,7 @@ function xtypes.const(decl)
                         ' : const value of "', value, ' of type "',
                         type(value),
                         '" must be non-negative and of the type: ',
-                        model[_.NAME] })
+                        model[_.NAME] or ''})
      end
   end
 
@@ -624,7 +624,7 @@ function xtypes.const(decl)
       #value > 1 then
     value = string.sub(value, 1, 1)
     log.notice(table.concat{name, ' : truncating string value for ',
-                                  model[_.NAME],
+                                  model[_.NAME] or '',
                                   ' constant to: ', value})
   end
 
@@ -823,19 +823,19 @@ xtypes.API[xtypes.ENUM] = {
 
         -- role must be a string
         assert(type(role) == 'string',
-          table.concat{template[_.NAME], 
+          table.concat{template[_.NAME] or '', 
                        ' : invalid member name: ', tostring(role)})
 
         -- ensure the definition is an ordinal value
         assert('number' == type(role_defn) and
                math.floor(role_defn) == role_defn, -- integer
-        table.concat{template[_.NAME], 
+        table.concat{template[_.NAME] or '', 
                       ' : invalid definition: ',
                       tostring(role), ' = ', tostring(role_defn) })
 
         -- is the role already defined?
         assert(nil == rawget(template, role),-- check template
-          table.concat{template[_.NAME], 
+          table.concat{template[_.NAME] or '', 
                        ' : member name already defined: "', role, '"'})
 
         -- insert the new role
@@ -992,7 +992,7 @@ xtypes.API[xtypes.STRUCT] = {
 
         -- is the role already defined?
         assert(nil == rawget(template, role),-- check template
-          table.concat{template[_.NAME], 
+          table.concat{template[_.NAME] or '', 
                        ' : member name already defined: "', role, '"'})
   
         -- create role instance (checks for pre-conditions, may fail!)
@@ -1045,7 +1045,7 @@ xtypes.API[xtypes.STRUCT] = {
 
           -- is the base_role already defined?
           assert(nil == rawget(template, base_role),-- check template
-            table.concat{template[_.NAME], 
+            table.concat{template[_.NAME] or '', 
                          ' : member name already defined: "', base_role, '"'})
 
           -- create base role instance (checks for pre-conditions, may fail)
@@ -1246,7 +1246,7 @@ xtypes.API[xtypes.UNION] = {
         -- is the case already defined?
         for i, defn_i in ipairs(model_defn) do
           assert(case ~= defn_i[1],
-            table.concat{template[_.NAME], 
+            table.concat{template[_.NAME] or '', 
                          ' : case exists: "', tostring(case), '"'})
         end
 
@@ -1258,7 +1258,7 @@ xtypes.API[xtypes.UNION] = {
 
           -- is the role already defined?
           assert(nil == rawget(template, role),-- check template
-            table.concat{template[_.NAME], 
+            table.concat{template[_.NAME] or '', 
                         ' : member name already defined: "', role, '"'})
 
           local role_instance = _.create_role_instance(role, role_defn)
@@ -1415,7 +1415,7 @@ xtypes.API[xtypes.MODULE] = {
 
         -- pre-condition: value must be a model instance (template)
         assert(nil ~= _.model_kind(value),
-               table.concat{template[_.NAME], 
+               table.concat{template[_.NAME] or '', 
                       ' : invalid template: ', tostring(value)})
 
         local role_template = value
@@ -1423,7 +1423,7 @@ xtypes.API[xtypes.MODULE] = {
 
         -- is the role already defined?
         assert(nil == rawget(template, role),
-          table.concat{template[_.NAME], 
+          table.concat{template[_.NAME] or '', 
                        ' : member name already defined: "', role, '"'})
 
 				-- update the module definition

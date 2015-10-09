@@ -24,6 +24,7 @@ local log = xtypes.log
 Top-level "root" module to which all the model elements belong
 --]]
 local root_module = xtypes.module{['']=xtypes.EMPTY}
+root_module[xtypes.NAME] = nil --  make this a 'root' namespace
 
 --[[
 Cache of files that have been processed so far. If a file is encountered again,
