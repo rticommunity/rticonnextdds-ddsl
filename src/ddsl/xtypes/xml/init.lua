@@ -115,7 +115,7 @@ local function lookup(name, ns)
     -- split into path names with a '::' name-space separator for each namespace
     -- each iteration of the loop resolves one segment (capture) of the name
     for w in string.gmatch(name, "[%w_]+") do     
-      log.trace('\t"' .. w .. '"') -- segment|capture to resolve in this iteration
+      log.trace('\t"' .. w .. '"') -- capture to resolve in this iteration
       
       -- retrieve the template for the 1st capture
       if not template then -- 1st capture: always runs first!
@@ -170,7 +170,7 @@ local function lookup(name, ns)
         end
       end
       
-      log.trace('\t   ->', template or template_member) -- result of the resolution
+      log.trace('\t   ->', template or template_member) -- result of resolution
 
       -- could not resolve the capture => skip remaining capture segments
       if nil == template or nil ~= template_member then break end  
@@ -181,7 +181,7 @@ local function lookup(name, ns)
   -- result
 
   if nil == template and nil == template_member then
-    log.trace('\t=>', table.concat{'Unresolved name: "', name, '"'})
+    log.notice('\t=>', table.concat{'Unresolved name: "', name, '"'})
   end      
                          
   return template, template_member
@@ -277,8 +277,8 @@ local function xarg2annotations(xarg)
       if xmlattr2xtype.annotations[k] then 
         table.insert(annotations, xmlattr2xtype.annotations[k](xarg))  
       elseif not xmlattr2xtype[k] then
-        log.trace(xarg.name, table.concat{
-                        ' : WARNING: Skipping unrecognized XML attribute: ',
+        log.info(xarg.name, table.concat{
+                        ' : Skipping unrecognized XML attribute: ',
                         k, ' = ', v})      
       end
     end
@@ -493,12 +493,12 @@ tag2template = {
   
   -- Legacy tags
   valuetype = function (tag, ns)
-      log.trace(tag.xarg.name, ' : WARNING: Importing valuetype as a struct')
+      log.info(tag.xarg.name, ' : Importing valuetype as a struct')
       return tag2template.struct(tag, ns)
   end,
 
   sparse_valuetype = function (tag, ns)
-      log.trace(tag.xarg.name, ' : WARNING: Importing sparse_valuetype as a struct')
+      log.info(tag.xarg.name, ' : Importing sparse_valuetype as a struct')
       return tag2template.struct(tag, ns)
   end,
 }
