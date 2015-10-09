@@ -60,7 +60,7 @@ Every DDSL data-object has two sides (like the faces of the coin):
 ### Command Line
 
 
-    bin/run xml2ddsl [-t] <xml-file> [ <xml-files> ...]
+    bin/run xml2ddsl [-d] <xml-file> [ <xml-files> ...]
 
 e.g.:
 
@@ -69,7 +69,7 @@ e.g.:
 
 or, with tracing on:
 
-    ../bin/run xml2ddsl -t xml-test-simple.xml
+    ../bin/run xml2ddsl -d xml-test-simple.xml
 
 ### API
 
