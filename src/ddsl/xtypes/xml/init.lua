@@ -65,10 +65,9 @@ end
 --[[
 Look up the template from a name. Searches in several places:
  - in  the pre-defined xtypes, 
- - recursively in the root module (root_module)
-  (includes the user defined modules for nested namespaces)
-@param name [in] name of the datatype to lookup
-@param ns [in] the namespace to lookup the name in
+ - in the enclosing or global scope
+@param name [in] qualifed (i.e. scoped) name of the datatype to lookup
+@param ns [in] the scope (or namespace) to lookup the name in
 @return the template referenced by name, or nil
 @return the template member, if any, identified by name (e.g. enum value)
 --]]
@@ -106,20 +105,24 @@ local function lookup(name, ns)
   end
     
   -----------------------------------------------------------------------------
-  -- lookup in namespace 'ns'
+  -- lookup in scope 'ns'
   -----------------------------------------------------------------------------
 
   if not template and ns then 
-    -- split into path names with a '::' name-space separator for each namespace
-    -- each iteration of the loop resolves one segment (capture) of the name
+    -- split into identifiers with a '::' separator for each identifier
+    -- each iteration of the loop resolves one identifier of the qualified name
     for w in string.gmatch(name, "[%w_]+") do     
       log.debug('\t"' .. w .. '"') -- capture to resolve in this iteration
       
       -- retrieve the template for the 1st capture
       if not template then -- 1st capture: always runs first!
     
-        -- is w defined in the context of the current namespace?
-        local parent = ns
+        -- determine the enclosing scope to start searching from:
+        local parent = '::' == name:sub(1,2) 
+                       and root() -- file|global scope 
+                       or ns      -- relative scope
+
+        -- is w defined in the context of the specified scope?
         repeat
           log.debug('\t\t ::', parent)
           template = parent[w]
@@ -128,12 +131,12 @@ local function lookup(name, ns)
 
       else -- 2nd capture onwards
         
-        -- keep track of the namespace resolved so far
+        -- keep track of the scope resolved so far
         ns = template 
                 
         -- Found
         if ns[w] then   
-          -- Lookup in the namespace resolved so far
+          -- Lookup in the scope resolved so far
           log.debug('\t\t ..', ns[w])
    
           -- lookup the template identified by 'w'
