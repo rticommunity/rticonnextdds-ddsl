@@ -676,14 +676,18 @@ function _.resolve(template)
   end
 end
 
---- Qualified name of a model element relative to a namespace. Note that a 
--- namespace without a parent namespace and without a name is regarded 
--- as a 'root' namespace (i.e the outermost enclosing scope)
--- @param template [in] the data model element whose name is desired in 
---        the context of the namespace
--- @param namespace [in] the namespace model element; if nil, finds the full 
---                absolute fully qualified name of the model element
--- @return the name of the template relative to the namespace
+--- Qualified (scoped) name of a model element relative to a namespace. 
+-- Computes the shortest 'distance' (scoped name) to navigate to template 
+-- from namespace.
+-- 
+-- Note that a namespace without an enclosing (NS) namespace and without 
+-- a name is a 'root' namespace (i.e the outermost enclosing scope).  
+-- @param template [in] the data model element whose qualified name is 
+--        desired in the context of the namespace
+-- @param namespace [in] the namespace model element; if nil, defaults to the 
+--        outermost enclosing scope
+-- @return the name of the template relative to the namespace; may be nil
+--         (for example when template == namespace) 
 function _.nsname(template, namespace)
   -- pre-conditions:
   assert(nil ~= _.model_kind(template), "nsname(): not a valid template")
@@ -692,7 +696,9 @@ function _.nsname(template, namespace)
                            
   -- traverse up the template namespaces, until 'module' is found
   local model = getmetatable(template)
-  if namespace == model[_.NS] or nil == model[_.NS] then
+  if template == namespace then
+    return nil 
+  elseif namespace == model[_.NS] or nil == model[_.NS] then
     return model[_.NAME] -- may be nil
   else
     local scopename = _.nsname(model[_.NS], namespace)

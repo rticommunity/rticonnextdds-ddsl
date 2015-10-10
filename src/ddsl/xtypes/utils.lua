@@ -183,8 +183,10 @@ function xutils.visit_model(instance, result, indent_string)
     end
     
 		if 'union' == mytype then
+	
 			table.insert(result, string.format('%s%s %s switch (%s) {', indent_string,
-						mytype, myname, instance[xtypes.SWITCH][xtypes.NAME]))
+						mytype, myname, 
+						xtypes.nsname(instance[xtypes.SWITCH], instance[xtypes.NS])))
 
 		elseif 'struct' == mytype and instance[xtypes.BASE] then -- base
 			table.insert(result,
@@ -220,8 +222,18 @@ function xutils.visit_model(instance, result, indent_string)
 				if (nil == case) then
 				  table.insert(result,
 				               string.format("%sdefault :", content_indent_string))
-				elseif (xtypes.char == instance[xtypes.SWITCH]
-				        and nil ~= case) then
+        elseif ('enum' == instance[xtypes.SWITCH][xtypes.KIND]()) then
+          local scopename
+          if instance[xtypes.SWITCH][xtypes.NS] then
+            scopename = xtypes.nsname(instance[xtypes.SWITCH][xtypes.NS],
+                                     instance[xtypes.NS])
+          end
+          if scopename then
+             case = scopename .. '::' .. case
+          end
+          table.insert(result, string.format("%scase %s :",
+            content_indent_string, tostring(case)))
+        elseif (xtypes.char == instance[xtypes.SWITCH]) then
 					table.insert(result, string.format("%scase '%s' :",
 						content_indent_string, tostring(case)))
 				else
