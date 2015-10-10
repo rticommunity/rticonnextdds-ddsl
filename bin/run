@@ -51,6 +51,7 @@ MY_LIB_ARCH=`echo ${MY_HOME}/lib/*$(uname)*`
 export LUA_PATH=\
 "${MY_HOME}/src/?.lua;${MY_HOME}/src/?/init.lua;\
 ${MY_LIB_ARCH}/?.lc;${MY_LIB_ARCH}/?/init.lc;\
+${MY_HOME}/lib/lua/?.lua;${MY_HOME}/lib/lua/?/init.lua;;\
 ${MY_HOME}/lib/lua/?.lc;${MY_HOME}/lib/lua/?/init.lc;;"
 
 export LUA_CPATH="${MY_HOME}/lib/?.so;${MY_LIB_ARCH}/?.so;;"
