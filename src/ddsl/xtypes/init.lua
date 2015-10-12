@@ -251,13 +251,7 @@ xtypes.API[xtypes.ANNOTATION] = {
 
   __index = function (template, key)
     local model = _.model(template)
-    if _.NAME == key then
-      return model[_.NAME]
-    elseif _.KIND == key then
-      return model[_.KIND]
-    elseif _.NS == key then
-      return model[_.NS]
-    end
+    return model[key]
   end,
 
   __newindex = function (template, key, value)
@@ -448,13 +442,7 @@ xtypes.API[xtypes.ATOM] = {
 
   __index = function (template, key)
     local model = _.model(template)
-    if _.NAME == key then
-      return model[_.NAME]
-    elseif _.KIND == key then
-      return model[_.KIND]
-    elseif _.NS == key then
-      return model[_.NS]
-    end
+    return model[key]
   end,
 
   __newindex = function (template, key, value)
@@ -660,15 +648,7 @@ xtypes.API[xtypes.CONST] = {
 
   __index = function (template, key)
     local model = _.model(template)
-    if _.NAME == key then
-      return model[_.NAME]
-    elseif _.KIND == key then
-      return model[_.KIND]
-    elseif _.NS == key then
-      return model[_.NS]
-    else -- use the () operator to access the underlying value and datatype
-       return nil
-    end
+    return model[key]
   end,
 
   __newindex = function (template, key, value)
@@ -773,13 +753,14 @@ xtypes.API[xtypes.ENUM] = {
   __index = function (template, key)
     local model = _.model(template)
       
-    if 'number' == type(key) then -- delegate to the model definition
+    local value = model[key]
+    if value then -- does the model have it? (KIND, NAME, NS)
+      return value
+      
+    elseif 'number' == type(key) then -- get from the model definition and pack
        -- enumerator, ordinal_value
        local enumerator, ordinal = next(model[_.DEFN][key]) 
        return table.pack(enumerator, ordinal)
-    
-    elseif model[key] then -- does the model have it? (KIND, NAME, NS)
-      return model[key]
  
     else -- delegate to the model definition
       return model[_.DEFN][key]
@@ -948,14 +929,15 @@ xtypes.API[xtypes.STRUCT] = {
   __index = function (template, key)
     local model = _.model(template)
     
-    if 'number' == type(key) then -- delegate to the model definition
+    local value = model[key]
+    if value then -- does the model have it? (KIND, NAME, NS)
+      return value
+      
+    elseif 'number' == type(key) then -- get from the model definition and pack
       local role, roledef = next(model[_.DEFN][key])
       
       -- role, template, [collection,] [annotation1, annotation2, ...]
       return table.pack(role, table.unpack(roledef))
-    
-    elseif model[key] then -- does the model have it? (KIND, NAME, NS)
-      return model[key]
  
     else -- delegate to the model definition
       return model[_.DEFN][key]
@@ -1189,18 +1171,21 @@ xtypes.API[xtypes.UNION] = {
   __index = function (template, key)
     local model = _.model(template)
     
-    if 'number' == type(key) then -- delegate to the model definition
+    local value = model[key]
+    if value then -- does the model have it? (KIND, NAME, NS)
+      return value
+      
+    elseif 'number' == type(key) then -- get from the model definition and pack
       local case = model[_.DEFN][key][1]
-      local role, roledef = next(model[_.DEFN][key], 1)
+      local role, roledef = next(model[_.DEFN][key], 1) -- case and 1 or nil)
+                         -- next(member, #member > 0 and #member or nil)
       
        -- case, role, template, [collection,] [annotation1, annotation2, ...]
       if roledef then 
         return table.pack(case, role, table.unpack(roledef))
       else
-        return table.pack(case)
+        return table.pack(case) -- just the case, no member
       end
-    elseif model[key] then -- does the model have it? (KIND, NAME, NS)
-      return model[key]
  
     else -- delegate to the model definition
       return model[_.DEFN][key]
@@ -1386,12 +1371,11 @@ xtypes.API[xtypes.MODULE] = {
 
   __index = function (template, key)
     local model = _.model(template)
-    if _.NAME == key then
-      return model[_.NAME]
-    elseif _.KIND == key then
-      return model[_.KIND]
-    elseif _.NS == key then
-      return model[_.NS]
+    
+    local value = model[key]
+    if value then -- does the model have it? (KIND, NAME, NS)
+      return value
+      
     else -- delegate to the model definition
       return model[_.DEFN][key]
     end
@@ -1511,16 +1495,8 @@ xtypes.API[xtypes.TYPEDEF] = {
   end,
 
   __index = function (template, key)
-    local model = _.model(template)
-    if _.NAME == key then
-      return model[_.NAME]
-    elseif _.KIND == key then
-      return model[_.KIND]
-    elseif _.NS == key then
-      return model[_.NS]
-    else -- use the () operator to access the underlying value and datatype
-       return nil
-    end
+    local model = _.model(template)    
+    return model[key]
   end,
 
   __newindex = function (template, key, value)
