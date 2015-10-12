@@ -714,8 +714,7 @@ xtypes.API[xtypes.CONST] = {
 --
 --
 --  -- Iterate over the model definition (ordered):
---    for i, v in ipairs(MyEnum) do print(next(v)) end
---    for i = 1, #MyEnum do print(next(MyEnum[i])) end
+--    for i = 1, #MyEnum do print(table.unpack(MyEnum[i])) end
 --
 --  -- Iterate over enum and ordinal values (unordered):
 --    for k, v in pairs(MyEnum) do print(k, v) end
@@ -743,11 +742,6 @@ xtypes.API[xtypes.ENUM] = {
   __len = function (template)
     local model = _.model(template)
     return #model[_.DEFN]
-  end,
-
-  __ipairs = function(template)
-    local model = _.model(template)
-    return ipairs(model[_.DEFN])
   end,
 
   __index = function (template, key)
@@ -879,8 +873,7 @@ xtypes.API[xtypes.ENUM] = {
 --
 --
 --  -- Iterate over the model definition (ordered):
---    for i, v in ipairs(MyStruct) do print(next(v)) end
---    for i = 1, #MyStruct do print(next(MyStruct[i])) end
+--    for i = 1, #MyStruct do print(table.unpack(MyStruct[i])) end
 --
 --  -- Iterate over instance members and the indexes (unordered):
 --    for k, v in pairs(MyStruct) do print(k, v) end
@@ -919,11 +912,6 @@ xtypes.API[xtypes.STRUCT] = {
   __len = function (template)
     local model = _.model(template)
     return #model[_.DEFN]
-  end,
-
-  __ipairs = function(template)
-    local model = _.model(template)
-    return ipairs(model[_.DEFN])
   end,
 
   __index = function (template, key)
@@ -1126,8 +1114,7 @@ xtypes.API[xtypes.STRUCT] = {
 --
 --
 --  -- Iterate over the model definition (ordered):
---    for i, v in ipairs(MyUnion) do print(v[1], ':', next(v, 1)) end
---    for i = 1, #MyUnion do print(t[i][1], ':', next(MyUnion[i], 1)) end
+--    for i = 1, #MyUnion do print(table.unpack(MyUnion[i])) end
 --
 --  -- Iterate over instance members and the indexes (unordered):
 --    for k, v in pairs(MyUnion) do print(k, v) end
@@ -1161,11 +1148,6 @@ xtypes.API[xtypes.UNION] = {
   __len = function (template)
     local model = _.model(template)
     return #model[_.DEFN]
-  end,
-
-  __ipairs = function(template)
-    local model = _.model(template)
-    return ipairs(model[_.DEFN])
   end,
 
   __index = function (template, key)
@@ -1332,7 +1314,6 @@ xtypes.API[xtypes.UNION] = {
 --  module name (i.e. nested within the module namespace hierarchy).
 --
 --  -- Iterate over the module definition (ordered):
---   for i, v in ipairs(MyModule) do print(v) end
 --   for i = 1, #MyModule do print(MyModule[i]) end
 --
 --  -- Iterate over module namespace (unordered):
@@ -1362,11 +1343,6 @@ xtypes.API[xtypes.MODULE] = {
   __len = function (template)
     local model = _.model(template)
     return #model[_.DEFN]
-  end,
-
-  __ipairs = function(template)
-    local model = _.model(template)
-    return ipairs(model[_.DEFN])
   end,
 
   __index = function (template, key)
