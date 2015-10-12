@@ -32,7 +32,9 @@ local Test = {}   -- table to hold the types created by the tests
 Tester[#Tester+1] = 'test_builtin'
 function Tester:test_builtin()
   for k, v in pairs(xtypes) do
-      print('*** builtin: ', k, v)
+      if 'table' == type(v) and v[xtypes.KIND] then
+        print('*** builtin: ', k, v)
+      end
   end
 end
 
