@@ -46,6 +46,23 @@ end
 --------------------------------------------------------------------------------
 local tutorial
 tutorial = Tutorial:new{
+  ------------------------------------------------------------------------------
+
+  { intro = function ()
+      show([[
+      
+                      Welcome to the DDSL Tutorial!
+                      
+        Please open this lua tutorial source file in a code viewer/editor,
+        and follow along the lessons, one at a time, at your own pace. 
+        
+        You can rerun the tutorial, or jump to a specific  lesson simply by
+        running this lua script with the lesson number, thus:
+            ddsl_tutorial <n>
+        where n is the lesson number to jump to or restart from.
+      ]]) 
+    end 
+  },
 
   ------------------------------------------------------------------------------
   
@@ -121,7 +138,7 @@ tutorial = Tutorial:new{
       local xml = require('ddsl.xtypes.xml')
       
       show('--- import datatypes defined in XML ---')
-      local datatypes = xml.files2xtypes({
+      local datatypes = xml.filelist2xtypes({
             '../test/xml-test-simple.xml',
       })
         
@@ -235,7 +252,7 @@ tutorial = Tutorial:new{
 
   { shape_instance_iterators = function ()
 
-      local MAX_COLOR_LEN, ShapeType, shape = tutorial:dolesson('shape_instance')
+      local MAX_COLOR_LEN,ShapeType,shape = tutorial:dolesson('shape_instance')
       
       show("--- iterate through instance members : unordered ---")
       for role, _ in pairs(shape) do
@@ -289,7 +306,7 @@ tutorial = Tutorial:new{
       }  
       show_datatype(ShapeTypeWithProperties) 
       
-      show('--- template member values are DDS DynamicData accessor strings ---')
+      show('--- template member values are DDSDynamicData accessor strings ---')
       show_instance(ShapeTypeWithProperties)
         
         

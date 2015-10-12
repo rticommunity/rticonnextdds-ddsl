@@ -31,11 +31,6 @@
 			<locationURI>PARENT-2-PROJECT_LOC/doc</locationURI>
 		</link>
 		<link>
-			<name>examples</name>
-			<type>2</type>
-			<locationURI>PARENT-2-PROJECT_LOC/examples</locationURI>
-		</link>
-		<link>
 			<name>src</name>
 			<type>2</type>
 			<locationURI>PARENT-2-PROJECT_LOC/src</locationURI>
@@ -44,6 +39,11 @@
 			<name>test</name>
 			<type>2</type>
 			<locationURI>PARENT-2-PROJECT_LOC/test</locationURI>
+		</link>
+		<link>
+			<name>tutorial</name>
+			<type>2</type>
+			<locationURI>PARENT-2-PROJECT_LOC/tutorial</locationURI>
 		</link>
 	</linkedResources>
 </projectDescription>
