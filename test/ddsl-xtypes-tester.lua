@@ -241,8 +241,8 @@ function Tester:test_struct_imperative()
     -- iterate over the struct definition
     print("\n-- struct definition iteration --", DynamicShapeType)
     print(DynamicShapeType[xtypes.KIND](), DynamicShapeType[xtypes.NAME], #DynamicShapeType)
-    for i, v in ipairs(DynamicShapeType) do
-      print(next(v))
+    for i = 1, #DynamicShapeType do
+      print(table.unpack(DynamicShapeType[i]))
     end
     assert(4 == #DynamicShapeType)
 end
@@ -282,7 +282,7 @@ function Tester:test_struct_basechange()
    -- change base class and add it
   Test.BaseStruct[1] = { w = { xtypes.string() } }
   Test.DerivedStruct[xtypes.BASE] = Test.BaseStruct
-  assert(Test.BaseStruct[1].w[1] == xtypes.string())
+  assert(Test.BaseStruct[1][2] == xtypes.string())
   
   print("\n-- DerivedStruct added modified base class --\n")
   self:print(Test.BaseStruct)
@@ -293,7 +293,7 @@ function Tester:test_struct_basechange()
 
   -- modify a filed in the base class 
   Test.BaseStruct[2] = { z = { xtypes.string() } }
-  assert(Test.BaseStruct[2].z[1] == xtypes.string())
+  assert(Test.BaseStruct[2][2] == xtypes.string())
   
   print("\n-- DerivedStruct base changed from y : long -> z : string --\n")
   self:print(Test.BaseStruct)
@@ -457,7 +457,7 @@ function Tester:test_union_imperative()
     -- check the accessor syntax - returned value must be assignable
     -- add the previously saved case1 at the end, under a new value
     case[1] = 'S'
-    DynamicUnion[#DynamicUnion+1] = case 
+    DynamicUnion[#DynamicUnion+1] = { case[1], [case[2]] = { case[3] } }
     print("\n-- re-inserted modified case for m_str at the end --\n")
     self:print(DynamicUnion)
     assert(DynamicUnion.m_str == 'm_str')
@@ -492,7 +492,9 @@ function Tester:test_union_imperative()
     -- iterate over the union definition
     print("\n-- union definition iteration --", DynamicUnion)
     print(DynamicUnion[xtypes.KIND](), DynamicUnion[xtypes.NAME], #DynamicUnion)
-    for i, v in ipairs(DynamicUnion) do print(v[1], ':', next(v, 1)) end
+    for i = 1, #DynamicUnion do 
+      print(table.unpack(DynamicUnion[i])) 
+    end
     assert(5 == #DynamicUnion)
 end
 
@@ -1752,7 +1754,7 @@ function Tester:test_module_manipulation()
    
   print("\n-- module definition iteration (ordered) --")
   print(MyModule[xtypes.KIND](), MyModule[xtypes.NAME], #MyModule)
-  for i, v in ipairs(MyModule) do print(v) end
+  for i = 1, #MyModule do print(MyModule[i]) end
   assert(3 == #MyModule)
   
   print("\n-- module namespace iteration (unordered) --")
@@ -1975,7 +1977,10 @@ function Tester:test_api()
   print('NAME = ', ShapeType[xtypes.NAME], 
         'KIND = ', ShapeType[xtypes.KIND](), -- evaluate to convert to string
         'BASE = ', ShapeType[xtypes.BASE])
-  for i, qualifier in ipairs(ShapeType[xtypes.QUALIFIERS]) do
+ 
+  print('QUALIFIERS = ', table.unpack(ShapeType[xtypes.QUALIFIERS]))
+  for i = 1, #ShapeType[xtypes.QUALIFIERS] do
+     local qualifier = ShapeType[xtypes.QUALIFIERS][i]
      print(table.concat{'qualifier[', i, '] = '}, qualifier)  -- use tostring
      print('\t',                          -- OR construct ourselves     
             qualifier[xtypes.NAME],       --    annotation/collection name
@@ -1983,21 +1988,19 @@ function Tester:test_api()
   end
   
   -- members:
-  for i, member in ipairs(ShapeType) do
-    local role, role_definition = next(member)
-    print(table.concat{'member[', i, '] = '}, 
-                  role,               -- member name
-                  role_definition[1]) -- member type
+  for i = 1, #ShapeType do
+    local member = ShapeType[i]
+    print(table.concat{'member[', i, '] = '}, table.unpack(member))
                   
     -- member qualifiers (annotations/collection)
-    for j = 1, #role_definition do
+    for j = 2, #member do
       print('\t\t',
-            role_definition[j],
-            'NAME = ', role_definition[j][xtypes.NAME],   -- member type name
-            'KIND = ', role_definition[j][xtypes.KIND]()) -- member type kind
-      if 'annotation' == role_definition[j][xtypes.KIND]() and
-         #role_definition[j] > 0 then 
-            print('\t\t\t\t', table.concat(role_definition[j], ' '))--attributes
+            member[j],
+            'NAME = ', member[j][xtypes.NAME],   -- member type name
+            'KIND = ', member[j][xtypes.KIND]()) -- member type kind
+      if 'annotation' == member[j][xtypes.KIND]() and
+         #member[j] > 0 then 
+            print('\t\t\t\t', table.concat(member[j], ' '))--attributes
       end
     end
   end
@@ -2010,14 +2013,14 @@ function Tester:test_api()
   print('-- ordered ---')
   
   print('ShapeType:')
-  for i, member in ipairs(ShapeType) do
-    local role = next(member)
+  for i = 1, #ShapeType do
+    local role = ShapeType[i][1]
     print('', role, ' = ', ShapeType[role]) -- default members values
   end
 
   print('shape:')
-  for i, member in ipairs(ShapeType) do
-    local role = next(member)
+  for i = 1, #ShapeType do
+    local role = ShapeType[i][1]
     print('', role, '=', shape[role])       -- shape instance members
   end
     
@@ -2040,7 +2043,7 @@ function Tester:test_api()
   
   print('shape (modified): ordered - removed field shapesize')
   for i = 1, #ShapeType do
-    local role = next(ShapeType[i])
+    local role = ShapeType[i][1]
     print('', role, '=', shape[role])     -- shape instance members
   end
   print('shape (modified): unordered - removed field shapesize')
@@ -2052,8 +2055,8 @@ function Tester:test_api()
   shape.shapesize = 50
   assert(shape.shapesize == 50)
   print('shape (modified): ordered - added field shapesize')
-  for i, member in ipairs(ShapeType) do
-    local role = next(member)
+  for i = 1, #ShapeType do
+    local role = ShapeType[i][1]
     print('', role, ' = ', shape[role])     -- shape instance members
   end
   print('shape (modified): unordered - added field shapesize')

@@ -138,7 +138,7 @@ local EMPTY = {}  -- initializer/sentinel value to indicate an empty definition
 local _ = {
   -- model attributes
   -- every 'model' meta-data table has these keys defined 
-  NS        = function() return '' end,      -- namespace
+  NS        = function() return '::' end,      -- namespace
   NAME      = function() return 'NAME' end,  -- table key for 'model name'  
   KIND      = function() return 'KIND' end,  -- table key for 'model kind name' 
   DEFN      = function() return 'DEFN' end,  -- table key for element meta-data
@@ -146,7 +146,7 @@ local _ = {
   TEMPLATE  = function() return 'TEMPLATE' end,--table key for template instance
 
   -- model definition attributes
-  QUALIFIERS = function() return '' end,        -- table key for qualifiers
+  QUALIFIERS = function() return '@' end,      -- table key for qualifiers
   
   -- model info interface
   -- abstract interface that defines the categories of model element (kinds):

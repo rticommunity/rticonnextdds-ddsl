@@ -249,9 +249,9 @@ function xutils.visit_model(instance, result, indent_string)
 		end
 
 	elseif 'enum' == mytype then
-		for i, defn_i in ipairs(instance) do -- walk through the model definition
-			local role, ordinal = next(defn_i)
-			
+		for i = 1, #instance do -- walk through the model definition
+			local role, ordinal = table.unpack(instance[i])
+						
 			local seperator, enumerator = '', nil
       if i < #instance then -- not the last one
          seperator = ','

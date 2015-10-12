@@ -102,6 +102,8 @@ tutorial = Tutorial:new{
           { y = { xtypes.long } },
           { shapesize = { xtypes.long } },
           { color = { xtypes.string(MAX_COLOR_LEN), xtypes.Key } },
+          xtypes.Extensibility{'EXTENSIBLE_EXTENSIBILITY'},
+          xtypes.top_level{},
         }
       }
       show_datatype(ShapeType)
@@ -124,7 +126,11 @@ tutorial = Tutorial:new{
       ShapeType[2] = { y = { xtypes.long } }
       ShapeType[3] = { shapesize = { xtypes.long } }
       ShapeType[4] = { color = { xtypes.string(MAX_COLOR_LEN), xtypes.Key } }
-      
+      ShapeType[xtypes.QUALIFIERS] = {  
+          xtypes.Extensibility{'EXTENSIBLE_EXTENSIBILITY'},
+          xtypes.top_level{},
+      }
+           
       show_datatype(ShapeType)
       
       return MAX_COLOR_LEN, ShapeType
@@ -161,14 +167,21 @@ tutorial = Tutorial:new{
       show('KIND', ShapeType[xtypes.KIND]())
       show('NS', ShapeType[xtypes.NS])
       show('NAME', ShapeType[xtypes.NAME])
-      show('QUALIFIERS', ShapeType[xtypes.QUALIFIERS])
       show('BASE', ShapeType[xtypes.BASE])
-      show('SWITCH', ShapeType[xtypes.SWITCH])
-                     
+
+      show('QUALIFIERS = ', table.unpack(ShapeType[xtypes.QUALIFIERS]))
+      for i = 1, #ShapeType[xtypes.QUALIFIERS] do
+         local qualifier = ShapeType[xtypes.QUALIFIERS][i]
+         show(table.concat{'qualifier[', i, '] = '}, qualifier)  -- use tostring
+         show('\t',                          -- OR construct ourselves     
+                qualifier[xtypes.NAME],       --annotation/collection name
+                table.concat(qualifier, ' ')) --annotation/collection attributes
+      end      
+      
       show("--- iterate through the model members ---")
-      for i, member in ipairs(ShapeType) do
-        local role, roledef = next(member)
-        show('', role, roledef[1], roledef[2], roledef[3])
+      for i = 1, #ShapeType do
+        local member = ShapeType[i]
+        show('', table.unpack(member))
       end
      
       return MAX_COLOR_LEN, ShapeType
@@ -233,13 +246,12 @@ tutorial = Tutorial:new{
      
       show_instance(shape)
       
-      show("--- show model attributes ---")
+      show("--- show instance 'model' attributes ---")
       show('KIND', shape[xtypes.KIND]())
       show('NS', shape[xtypes.NS])
       show('NAME', shape[xtypes.NAME])
-      show('QUALIFIERS', shape[xtypes.QUALIFIERS])
+      show('QUALIFIERS', table.unpack(shape[xtypes.QUALIFIERS]))
       show('BASE', shape[xtypes.BASE])
-      show('SWITCH', shape[xtypes.SWITCH])
       
       show('template', xtypes.template(shape))
       assert(xtypes.template(shape) == ShapeType)
@@ -260,8 +272,8 @@ tutorial = Tutorial:new{
       end
       
       show("--- iterate through instance members : ordered ---")
-      for i, member in ipairs(ShapeType) do
-        local role = next(member)
+      for i = 1, #ShapeType do
+        local role = ShapeType[i][1]
         show('', role, '=', shape[role])
       end
      
@@ -275,7 +287,7 @@ tutorial = Tutorial:new{
 
       local MAX_COLOR_LEN, ShapeType = tutorial:dolesson('shapetype')
     
-      show('--- template member values are DDS DynamicData accessor strings ---')
+      show('--- template member values are DDSDynamicData accessor strings ---')
       show_instance(ShapeType)
       
       return ShapeType

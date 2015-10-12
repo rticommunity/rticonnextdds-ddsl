@@ -772,14 +772,17 @@ xtypes.API[xtypes.ENUM] = {
 
   __index = function (template, key)
     local model = _.model(template)
-    if _.NAME == key then
-      return model[_.NAME]
-    elseif _.KIND == key then
-      return model[_.KIND]
-    elseif _.NS == key then
-      return model[_.NS]
+      
+    if 'number' == type(key) then -- delegate to the model definition
+       -- enumerator, ordinal_value
+       local enumerator, ordinal = next(model[_.DEFN][key]) 
+       return table.pack(enumerator, ordinal)
+    
+    elseif model[key] then -- does the model have it? (KIND, NAME, NS)
+      return model[key]
+ 
     else -- delegate to the model definition
-       return model[_.DEFN][key]
+      return model[_.DEFN][key]
     end
   end,
 
@@ -944,12 +947,16 @@ xtypes.API[xtypes.STRUCT] = {
 
   __index = function (template, key)
     local model = _.model(template)
-    if _.NAME == key then
-      return model[_.NAME]
-    elseif _.KIND == key then
-      return model[_.KIND]
-    elseif _.NS == key then
-      return model[_.NS]
+    
+    if 'number' == type(key) then -- delegate to the model definition
+      local role, roledef = next(model[_.DEFN][key])
+      
+      -- role, template, [collection,] [annotation1, annotation2, ...]
+      return table.pack(role, table.unpack(roledef))
+    
+    elseif model[key] then -- does the model have it? (KIND, NAME, NS)
+      return model[key]
+ 
     else -- delegate to the model definition
       return model[_.DEFN][key]
     end
@@ -1181,14 +1188,22 @@ xtypes.API[xtypes.UNION] = {
 
   __index = function (template, key)
     local model = _.model(template)
-    if _.NAME == key then
-      return model[_.NAME]
-    elseif _.KIND == key then
-      return model[_.KIND]
-    elseif _.NS == key then
-      return model[_.NS]
+    
+    if 'number' == type(key) then -- delegate to the model definition
+      local case = model[_.DEFN][key][1]
+      local role, roledef = next(model[_.DEFN][key], 1)
+      
+       -- case, role, template, [collection,] [annotation1, annotation2, ...]
+      if roledef then 
+        return table.pack(case, role, table.unpack(roledef))
+      else
+        return table.pack(case)
+      end
+    elseif model[key] then -- does the model have it? (KIND, NAME, NS)
+      return model[key]
+ 
     else -- delegate to the model definition
-       return model[_.DEFN][key]
+      return model[_.DEFN][key]
     end
   end,
 
