@@ -163,7 +163,8 @@ local function lookup(name, ns)
           -- IDL NOTE:
           --   Enumeration value names are introduced into the enclosing scope
           --   and then are treated like any other declaration in that scope
-          for _, datatype in ipairs(ns) do
+          for i = 1, #ns do
+            local datatype = ns[i]
             if 'enum' == datatype[xtypes.KIND]() and datatype[w] then
               template_member = w -- ENUM member
               break -- resolved!

@@ -89,15 +89,15 @@ function xutils.visit_instance(instance, result, template, base)
   -- preserve the order of model definition
   -- walk through the body of the model definition
   -- NOTE: typedefs don't have an array of members
-  for i, member in ipairs(base or template) do
+  for i = 1, #(base or template) do
     -- skip annotations
       -- walk through the elements in the order of definition:
-
+      local member = (base or template)[i]
       local role
       if 'struct' == mytype then
-        role = next(member)
+        role = member[1]
       elseif 'union' == mytype then
-        role = next(member, #member > 0 and #member or nil)
+        role = member[2]
       end
 
       local role_instance = instance[role]
@@ -167,7 +167,7 @@ function xutils.visit_model(instance, result, indent_string)
 
 	if 'typedef' == mytype then
     table.insert(result, string.format('%s%s %s', indent_string,  mytype,
-                  xutils.tostring_role(myname, { instance() }, mymodule)))
+                  xutils.tostring_role({ myname,  instance() }, mymodule)))
 		return result
 	end
 
@@ -176,7 +176,8 @@ function xutils.visit_model(instance, result, indent_string)
 
 		-- print the annotations
 		if instance[xtypes.QUALIFIERS] then
-    	for i, annotation in ipairs(instance[xtypes.QUALIFIERS]) do
+      for i = 1, #instance[xtypes.QUALIFIERS] do
+    	    local annotation = instance[xtypes.QUALIFIERS][i]
           table.insert(result,
                 string.format('%s%s', indent_string, tostring(annotation)))
     	end
@@ -201,24 +202,24 @@ function xutils.visit_model(instance, result, indent_string)
 	end
 
 	if 'module' == mytype then
-		for i, role_template in ipairs(instance) do -- walk the module definition
-			result = xutils.visit_model(role_template, result, content_indent_string)
+		for i = 1, #instance do -- walk the module definition
+			result = xutils.visit_model(instance[i], result, content_indent_string)
 		end
 
 	elseif 'struct' == mytype then
 
-		for i, member in ipairs(instance) do -- walk through the model definition
-			  local role, role_defn = next(member)
+		for i = 1, #instance do -- walk through the model definition
+		    local member = instance[i]
         table.insert(result, string.format('%s%s', content_indent_string,
-                            xutils.tostring_role(role, role_defn, mymodule)))
+                            xutils.tostring_role(member, mymodule)))
 		end
 
 	elseif 'union' == mytype then
-		for i, member in ipairs(instance) do -- walk through the model definition
-
-				local case = member[1]
-
+		for i = 1, #instance do -- walk through the model definition
+        local member = instance[i]
+        	
 				-- case
+			 local case = member[1]
 				if (nil == case) then
 				  table.insert(result,
 				               string.format("%sdefault :", content_indent_string))
@@ -242,10 +243,10 @@ function xutils.visit_model(instance, result, indent_string)
 				end
 
 				-- member element
-				local role, role_defn = next(member, #member > 0 and #member or nil)
+				table.remove(member, 1) -- pop the 1st element (case)
 				table.insert(result, string.format('%s%s', 
 				                      content_indent_string .. '   ',
-				                      xutils.tostring_role(role, role_defn, mymodule)))
+				                      xutils.tostring_role(member, mymodule)))
 		end
 
 	elseif 'enum' == mytype then
@@ -278,14 +279,17 @@ end
 
 --- IDL string representation of a role
 -- @function tostring_role
--- @param #string role role name
--- @param #list role_defn the definition of the role in the following format:
---        { template, [collection_qualifier,] [annotation1, annotation2, ...] }
+-- @param member[in] a member definition in the following format:
+--  { role, template, [collection_qualifier,] [annotation1, annotation2, ...] }
 -- @param module the module to which the owner data model element belongs
--- @return #string IDL string representation of the idl member
-function xutils.tostring_role(role, role_defn, module)
+-- @return IDL string representation of the idl member
+function xutils.tostring_role(member, module)
 
+  local role = member[1]    table.remove(member, 1) -- pop off the role
+  local role_defn = member
+    
   local template, seq
+
   if role_defn then
     template = role_defn[1]
     for i = 2, #role_defn do
