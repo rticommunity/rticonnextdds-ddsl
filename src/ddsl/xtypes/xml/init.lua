@@ -16,6 +16,7 @@ local xutils = require('ddsl.xtypes.utils')
 local xmlstring2table = require('ddsl.xtypes.xml.parser').xmlstring2table
 
 local log = xtypes.log
+local nslookup = xutils.nslookup
 
 --------------------------------------------------------------------------------
 -- (Lua) Module State
@@ -64,133 +65,6 @@ end
 --------------------------------------------------------------------------------
 
 --[[
-Look up the template from a name. Searches in several places:
- - in  the pre-defined xtypes, 
- - in the enclosing or global scope
-@param name [in] qualifed (i.e. scoped) name of the datatype to lookup
-@param ns [in] the scope (or namespace) to lookup the name in
-@return the template referenced by name, or nil
-@return the template member, if any, identified by name (e.g. enum value)
---]]
-local function lookup(name, ns)
-
-  assert(nil ~= ns)
-  local template = nil        -- template identified by name
-  local template_member = nil -- template member identified by name
-    
-  -----------------------------------------------------------------------------
-  -- lookup xtype builtins
-  -----------------------------------------------------------------------------
- 
-  -- deviations specific to XML representation  
-  local xmlName2Model = {
-    unsignedShort    = xtypes.unsigned_short,
-    unsignedLong     = xtypes.unsigned_long,
-    longLong         = xtypes.long_long,
-    unsignedLongLong = xtypes.unsigned_long_long,
-    longDouble       = xtypes.long_double,
-  }
-  -- lookup in the deviations table
-  local template = xmlName2Model[name] 
-  if nil ~= template then return template end
-
-
-  -- lookup in the xtypes pre-defined templates
-  for i, datatype in pairs(xtypes) do
-    if 'table' == type(datatype) and
-       datatype[xtypes.KIND] and -- this is a valid X-Type
-       name == datatype[xtypes.NAME] then
-       template = datatype
-       break
-    end
-  end
-    
-  -----------------------------------------------------------------------------
-  -- lookup in scope 'ns'
-  -----------------------------------------------------------------------------
-
-  if not template and ns then 
-    -- split into identifiers with a '::' separator for each identifier
-    -- each iteration of the loop resolves one identifier of the qualified name
-    for w in string.gmatch(name, "[%w_]+") do     
-      log.debug('\t"' .. w .. '"') -- capture to resolve in this iteration
-      
-      -- retrieve the template for the 1st capture
-      if not template then -- 1st capture: always runs first!
-    
-        -- determine the enclosing scope to start searching from:
-        local parent = '::' == name:sub(1,2) 
-                       and root() -- file|global scope 
-                       or ns      -- relative scope
-
-        -- is w defined in the context of the specified scope?
-        repeat
-          log.debug('\t\t ::', parent)
-          template = parent[w]
-          parent = parent[xtypes.NS]
-        until template or not parent
-
-      else -- 2nd capture onwards
-        
-        -- keep track of the scope resolved so far
-        ns = template 
-                
-        -- Found
-        if ns[w] then   
-          -- Lookup in the scope resolved so far
-          log.debug('\t\t ..', ns[w])
-   
-          -- lookup the template identified by 'w'
-          template = xtypes.template(ns[w])  
- 
-          -- alternatively: if 'w' is an enum member, accept it
-          -- NOTE: in this case, the value of template will be nil
-          if 'enum' == ns[xtypes.KIND]() then
-            template_member = w -- ENUM member
-          end
-            
-        -- Not Found
-        else
-          template = nil
-        end
-      end
-      
-      
-      -- For each capture, check for IDL scoping rules:
-      -- Does 'w' refer to an enum value within an enclosing scope?
-      if not template then
-        if 'module' == ns[xtypes.KIND]() then
-          -- IDL NOTE:
-          --   Enumeration value names are introduced into the enclosing scope
-          --   and then are treated like any other declaration in that scope
-          for i = 1, #ns do
-            local datatype = ns[i]
-            if 'enum' == datatype[xtypes.KIND]() and datatype[w] then
-              template_member = w -- ENUM member
-              break -- resolved!
-            end
-          end
-        end
-      end
-      
-      log.debug('\t   ->', template or template_member) -- result of resolution
-
-      -- could not resolve the capture => skip remaining capture segments
-      if nil == template or nil ~= template_member then break end  
-    end
-  end
-  
-  -----------------------------------------------------------------------------
-  -- result
-
-  if nil == template and nil == template_member then
-    log.notice('\t=>', table.concat{'Unresolved name: "', name, '"'})
-  end      
-                         
-  return template, template_member
-end
-
---[[
 Map an xml attribute to an appropriate handler to generate X-Types
       xml attribute --> action to generate X-Type template (attribute handler)
 Each handler takes the attribute list and a namespace module as an argument, 
@@ -214,7 +88,7 @@ xmlattr2xtype = {
     local stringMaxLength -- NOTE: "-1" means unbounded
     if xarg.stringMaxLength and '-1' ~= xarg.stringMaxLength then -- bounded
       stringMaxLength = tonumber(xarg.stringMaxLength) or
-                        lookup(xarg.stringMaxLength, ns)
+                        nslookup(xarg.stringMaxLength, ns)
                         
     end
     
@@ -224,8 +98,8 @@ xmlattr2xtype = {
       return xtypes.wstring(stringMaxLength)
     else
       return xarg.nonBasicTypeName -- NOTE: use nonBasic if defined
-                        and lookup(xarg.nonBasicTypeName, ns)
-                        or  lookup(xarg.type, ns)
+                        and nslookup(xarg.nonBasicTypeName, ns)
+                        or  nslookup(xarg.type, ns)
     end
   end,
   
@@ -235,7 +109,7 @@ xmlattr2xtype = {
     local sequenceMaxLength -- NOTE: "-1" means unbounded
     if '-1' ~= xarg.sequenceMaxLength then -- bounded
       sequenceMaxLength = tonumber(xarg.sequenceMaxLength) or 
-                          lookup(xarg.sequenceMaxLength, ns) 
+                          nslookup(xarg.sequenceMaxLength, ns) 
                           
     end
     return xtypes.sequence(sequenceMaxLength)
@@ -245,7 +119,7 @@ xmlattr2xtype = {
   arrayDimensions = function(xarg, ns)
     local dim = {}
     for w in string.gmatch(xarg.arrayDimensions, "[%w_::]+") do
-      local dim_i = tonumber(w) or lookup(w, ns)
+      local dim_i = tonumber(w) or nslookup(w, ns)
       table.insert(dim, dim_i)       
       log.debug('\tdim = ', dim_i)
     end
@@ -385,7 +259,7 @@ tag2template = {
                    
     -- base type    
     if tag.xarg.baseType or tag.xarg.baseClass then
-      template[xtypes.BASE] = lookup(tag.xarg.baseType or tag.xarg.baseClass, 
+      template[xtypes.BASE] = nslookup(tag.xarg.baseType or tag.xarg.baseClass, 
                                      ns)
     end
   
@@ -433,10 +307,10 @@ tag2template = {
                  
                    if 'enum' == disc[xtypes.KIND]() then
                      local _
-                     _, case = lookup(grandchild.xarg.value, ns)
+                     _, case = nslookup(grandchild.xarg.value, ns)
                      assert(case, 'invalid case: ' .. grandchild.xarg.value)
                    else 
-                     case = lookup(grandchild.xarg.value, ns) or 
+                     case = nslookup(grandchild.xarg.value, ns) or 
                             grandchild.xarg.value
                    end
                  end
