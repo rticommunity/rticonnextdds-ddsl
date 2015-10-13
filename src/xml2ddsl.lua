@@ -46,7 +46,7 @@ local function main(arg)
   local ns = xml.filelist2xtypes(arg)
 
   -- print as IDL on stdout
-  print(table.concat(xutils.visit_model(ns), '\n'))
+  print(table.concat(xutils.to_idl_string_table(ns), '\n'))
   
   -- TODO: print the DDSL representation  
 end

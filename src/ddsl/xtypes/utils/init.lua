@@ -23,9 +23,9 @@ SUMMARY
 local interface = {
   nslookup                = require 'ddsl.xtypes.utils.nslookup',
   
-  visit_model             = require 'ddsl.xtypes.utils.to_idl_string_table',
+  to_idl_string_table     = require 'ddsl.xtypes.utils.to_idl_string_table',
   
-  visit_instance          = require 'ddsl.xtypes.utils.to_instance_string_table',
+  to_instance_string_table=require 'ddsl.xtypes.utils.to_instance_string_table',
 }
 
 return interface

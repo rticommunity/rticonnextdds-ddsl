@@ -31,13 +31,13 @@ local show     = Tutorial.show
 
 local function show_datatype(datatype, description)
     description = description or (tostring(datatype) .. ' datatype:')
-    local idl = xutils.visit_model(datatype, { description })
+    local idl = xutils.to_idl_string_table(datatype, { description })
     show(table.concat(idl, '\n\t'))
 end
 
 local function show_instance(instance, description)
     description = description or (tostring(instance) .. ' instance:')
-    local values = xutils.visit_instance(instance, { description })
+    local values = xutils.to_instance_string_table(instance, { description })
     show(table.concat(values, '\n\t'))
 end
 

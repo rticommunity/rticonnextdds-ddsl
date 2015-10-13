@@ -396,7 +396,7 @@ local function xml2xtypes(xml, ns)
     log.debug('\n-----\n', xml.label, xml.xarg.name or xml.xarg.file, 'BEGIN')
     template = tag_handler(xml, ns)       
     if template then
-      log.debug(table.concat(xutils.visit_model(template, {'IDL:'}), '\n\t'))
+      log.debug(table.concat(xutils.to_idl_string_table(template, {'IDL:'}), '\n\t'))
     end
     log.debug(xml.label, xml.xarg.name or xml.xarg.file, 'END')
       

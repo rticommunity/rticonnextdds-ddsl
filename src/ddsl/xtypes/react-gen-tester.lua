@@ -113,11 +113,11 @@ end
 -- print - helper method to print the IDL and the index for data definition
 function Tester.print(instance)
     -- print IDL
-    local idl = xutils.visit_model(instance, {'idl:'})
+    local idl = xutils.to_idl_string_table(instance, {'idl:'})
     print(table.concat(idl, '\n\t'))
     
     -- print the result of visiting each field
-    local fields = xutils.visit_instance(instance, {'index:'})
+    local fields = xutils.to_instance_string_table(instance, {'index:'})
     print(table.concat(fields, '\n\t'))
 end
 
