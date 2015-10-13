@@ -694,7 +694,7 @@ function _.nsname(template, namespace)
   assert(nil == namespace or nil ~= _.model_kind(namespace), 
                                         "nsname(): not a valid namespace")
                            
-  -- traverse up the template namespaces, until 'module' is found
+  -- traverse up the template namespaces, until 'namespace' is found
   local model = getmetatable(template)
   if template == namespace then
     return nil 
@@ -706,6 +706,22 @@ function _.nsname(template, namespace)
            and table.concat{scopename, '::', model[_.NAME]}
            or  model[_.NAME] 
   end
+end
+
+--- Get the root namespace i.e. the outermost enclosing scope for an instance.
+-- @param template[in] the instance (or template) whose root is to be determined
+-- @return the root namespace ie. the outermost enclosing scope (maybe template)
+function _.nsroot(template)
+  -- pre-conditions:
+  assert(nil ~= _.model_kind(template), "nsroot(): not a valid template")
+
+  -- traverse up the instance namespace, until 'namespace' is found
+  local model = getmetatable(template)
+  if model[_.NS] then
+    return _.nsroot(model[_.NS])
+  else 
+    return template -- template is the outermost enclosing scope
+  end 
 end
 
 --- Get the model type of any arbitrary value
@@ -819,6 +835,7 @@ local interface = {
   template                = _.template,
   resolve                 = _.resolve,
   nsname                  = _.nsname,
+  nsroot                  = _.nsroot,
 }
 
 -- enforce that the user provides a function to binds the 

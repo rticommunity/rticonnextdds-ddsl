@@ -1565,6 +1565,7 @@ local interface = {
 
   -- DDSL: operators
   nsname                  = _.nsname,
+  nsroot                  = _.nsroot,
   resolve                 = _.resolve,
   template                = _.template,
   new_instance            = _.new_instance,
