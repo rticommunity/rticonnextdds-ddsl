@@ -31,6 +31,11 @@
 			<locationURI>PARENT-2-PROJECT_LOC/doc</locationURI>
 		</link>
 		<link>
+			<name>githooks</name>
+			<type>2</type>
+			<locationURI>PARENT-1-PROJECT_LOC/githooks</locationURI>
+		</link>
+		<link>
 			<name>src</name>
 			<type>2</type>
 			<locationURI>PARENT-2-PROJECT_LOC/src</locationURI>

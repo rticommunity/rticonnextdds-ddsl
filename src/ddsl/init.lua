@@ -129,6 +129,9 @@ CAVEATS
 local logger = require('logger')
 local log = logger.new()
 
+-- extend logger: add a function to get the version:
+log.version = require('ddsl.version')
+
 --------------------------------------------------------------------------------
 --- Core Attributes and Abstractions ---
 --------------------------------------------------------------------------------

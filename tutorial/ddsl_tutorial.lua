@@ -49,7 +49,11 @@ tutorial = Tutorial:new{
   ------------------------------------------------------------------------------
 
   { intro = function ()
-      show([[
+        
+      show( 
+      -- Show the welcome message:
+      [[
+      
       
                       Welcome to the DDSL Tutorial!
                       
@@ -60,7 +64,11 @@ tutorial = Tutorial:new{
         running this lua script with the lesson number, thus:
             ddsl_tutorial <n>
         where n is the lesson number to jump to or restart from.
-      ]]) 
+        
+        Version:  ]],
+      
+      -- Show the current DDSL version
+      xtypes.log.version) 
     end 
   },
 

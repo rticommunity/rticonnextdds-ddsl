@@ -28,6 +28,10 @@ local xutils = require('ddsl.xtypes.utils')
 local Tester = {} -- array of test functions
 local Test = {}   -- table to hold the types created by the tests
 
+Tester[#Tester+1] = 'test_version'
+function Tester:test_version()
+  print('DDSL Version', xtypes.log.version)
+end
 
 Tester[#Tester+1] = 'test_builtin'
 function Tester:test_builtin()
