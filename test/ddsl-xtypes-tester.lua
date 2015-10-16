@@ -441,8 +441,8 @@ function Tester:test_struct_nested()
     assert(Test.Address.city == 'city')
 end
 
-Tester[#Tester+1] = 'test_union_imperative'
-function Tester:test_union_imperative()
+Tester[#Tester+1] = 'test_union_char_imperative'
+function Tester:test_union_char_imperative()
 
     local DynamicUnion = xtypes.union{DynamicUnion={xtypes.char}} -- switch
     DynamicUnion[1] = { 's', m_str = { xtypes.string() } }
@@ -530,8 +530,8 @@ function Tester:test_union_imperative()
     assert(5 == #DynamicUnion)
 end
 
-Tester[#Tester+1] = 'test_union_imperative2'
-function Tester:test_union_imperative2()
+Tester[#Tester+1] = 'test_union_char_imperative2'
+function Tester:test_union_char_imperative2()
     local DynamicUnion2 = xtypes.union{DynamicUnion2={xtypes.char}} -- switch
     DynamicUnion2[1] = { 's', m_str = { xtypes.string() } }
     DynamicUnion2[2] = { 'i', m_int = { xtypes.short } }  
@@ -573,8 +573,8 @@ function Tester:test_union_imperative2()
     assert(DynamicUnion2.m_str == nil) 
 end
 
-Tester[#Tester+1] = 'test_union1'
-function Tester:test_union1()
+Tester[#Tester+1] = 'test_union_short'
+function Tester:test_union_short()
 
   local TestUnion1 = xtypes.union{
     TestUnion1 = {xtypes.short,
@@ -605,8 +605,8 @@ function Tester:test_union1()
   assert(TestUnion1._d == '#')
 end
 
-Tester[#Tester+1] = 'test_union2'
-function Tester:test_union2()
+Tester[#Tester+1] = 'test_union_typedefchar'
+function Tester:test_union_typedefchar()
 
   -- discriminator could be a typedef:
   Test.MyChar = xtypes.typedef{MyChar = { xtypes.char} }
@@ -640,8 +640,8 @@ function Tester:test_union2()
   assert(Test.TestUnion2.x == 'x')
 end
 
-Tester[#Tester+1] = 'test_union3'
-function Tester:test_union3()
+Tester[#Tester+1] = 'test_union_enum'
+function Tester:test_union_enum()
 
   -- discriminator could be a typedef:
   Test.MyDays = xtypes.typedef{MyDays = { Test.Days} }
@@ -679,8 +679,8 @@ function Tester:test_union3()
   assert(Test.TestUnion3[xtypes.QUALIFIERS][1] ~= nil)
 end
 
-Tester[#Tester+1] = 'test_union4'
-function Tester:test_union4()
+Tester[#Tester+1] = 'test_union_boolean'
+function Tester:test_union_boolean()
 
   Test.NameOrAddress = xtypes.union{
     NameOrAddress = {xtypes.boolean,
