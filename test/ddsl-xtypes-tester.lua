@@ -143,6 +143,32 @@ function Tester:test_enum_submodule()
   assert(Test.Submodule.Colors.PINK == 3)
 end
 
+Tester[#Tester+1] = 'test_enum_ordinal_lookup'
+function Tester:test_enum_ordinal_lookup()
+
+  local MyEnum = xtypes.enum{
+    MyEnum = {
+      'BLACK',
+      'WHITE',
+      { RED =  -2 },
+      { YELLOW = -1 },
+      { GREEN = 3 },
+      'PINK',
+    },
+  }
+
+  print('ordinal', ' => ', 'enumerator')
+  for i = -5, 5 do
+    print(i, ' => ', MyEnum(i))
+  end
+  assert('BLACK'  == MyEnum(0) and 
+         'WHITE'  == MyEnum(1) and 
+         'RED'    == MyEnum(-2) and
+         'YELLOW' == MyEnum(-1) and
+         'GREEN'  == MyEnum(3)  and
+         'PINK'   == MyEnum(5))
+end
+
 Tester[#Tester+1] = 'test_struct_imperative'
 function Tester:test_struct_imperative()
 

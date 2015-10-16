@@ -718,7 +718,10 @@ xtypes.API[xtypes.CONST] = {
 --
 --  -- Iterate over enum and ordinal values (unordered):
 --    for k, v in pairs(MyEnum) do print(k, v) end
---
+--  
+--  -- Lookup the enumerator name for an ordinal value:
+--     print(MyEmum(i))
+--     
 function xtypes.enum(decl)
   local name, defn = xtypes.parse_decl(decl)
 
@@ -825,7 +828,17 @@ xtypes.API[xtypes.ENUM] = {
         }
       end
     end
-  end
+  end,
+  
+  -- Lookup the enumerator string, given an ordinal value
+  -- @param ordinal[in] the ordinal value
+  -- @param the enumerator string or 'nil' if it is not a valid ordinal value
+  __call = function(template, ordinal)
+    for k, v in pairs(template) do
+      if v == ordinal then return k end
+    end
+    return nil 
+  end,
 }
 
 --------------------------------------------------------------------------------
