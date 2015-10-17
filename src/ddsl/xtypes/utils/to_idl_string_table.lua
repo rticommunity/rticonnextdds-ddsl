@@ -205,6 +205,7 @@ local function to_idl_string_table(instance, result, indent_string)
 				  table.insert(result,
 				               string.format("%sdefault :", content_indent_string))
         elseif ('enum' == instance[xtypes.SWITCH][xtypes.KIND]()) then
+          case = instance[xtypes.SWITCH](case) -- lookup the enumerator name
           local scopename
           if instance[xtypes.SWITCH][xtypes.NS] then
             scopename = xtypes.nsname(instance[xtypes.SWITCH][xtypes.NS],

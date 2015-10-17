@@ -648,9 +648,9 @@ function Tester:test_union_enum()
   
   Test.TestUnion3 = xtypes.union{
     TestUnion3 = {Test.MyDays,
-      { 'MON', 
+      { Test.Days.MON, -- TODO: Try Test.MyDays.MON
         name = { Test.Name } },
-      { 'TUE', 
+      { Test.Days.TUE, 
         address = { Test.Address } },
       { nil, -- default
          x = { xtypes.double } },    
@@ -713,10 +713,10 @@ function Tester:test_union_instance()
   
   local MyUnion = xtypes.union{
     MyUnion = {MyEnum, -- xtypes.short, -- TODO: try short and understand error 
-      { 'RED', 
+      { MyEnum.RED, 
           red = { xtypes.long } },
-      { 'GREEN', 
-          green = { xtypes.string() } },          
+      { MyEnum.GREEN, 
+          green = { xtypes.float } },          
       { nil, -- default 
           default = { xtypes.boolean } },
     }
@@ -736,19 +736,19 @@ function Tester:test_union_instance()
   assert(myUnion() == nil) -- accessor string is NOT a valid discriminator
   
   myUnion._d = nil
-  myUnion.default = -100
+  myUnion.default = false
   print('--- instance: after default ---')
   for k, v in pairs(myUnion) do print('\t', k, v) end
   assert(myUnion() == myUnion.default)
   
-  myUnion._d = 'RED' -- MyEnum.RED
+  myUnion._d = MyEnum.RED
   myUnion.red = 1000
   print('--- instance: after red ---')
   for k, v in pairs(myUnion) do print('\t', k, v) end
   assert(myUnion() == myUnion.red)
   
-  myUnion._d = 'GREEN' -- MyEnum.GREEN
-  myUnion.green = 2000
+  myUnion._d = MyEnum.GREEN
+  myUnion.green = 2000.0002
   print('--- instance: after green ---')
   for k, v in pairs(myUnion) do print('\t', k, v) end
   assert(myUnion() == myUnion.green)
@@ -1312,11 +1312,11 @@ function Tester:test_arrays2()
     Test.MyArrays2 = xtypes.union{
       MyArrays2 = {Test.Days,
         -- 1-D
-        { 'MON',
+        { Test.Days.MON,
           ints = { xtypes.double, xtypes.array(3) }},
       
         -- 2-D
-        { 'TUE',
+        { Test.Days.TUE,
           days = { Test.Days, xtypes.array(6, 9) }},
         
         -- 3-D

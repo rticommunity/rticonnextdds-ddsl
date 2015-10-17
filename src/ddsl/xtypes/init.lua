@@ -1542,7 +1542,7 @@ function xtypes.assert_case(discriminator, case)
 
   -- enum
   if xtypes.ENUM == discriminator[_.KIND] then -- enum
-    assert(nil == case or nil ~= discriminator[case], 
+    assert(nil == case or nil ~= discriminator(case), 
       err_msg)
 
   -- boolean

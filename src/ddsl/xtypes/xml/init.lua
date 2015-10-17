@@ -306,9 +306,13 @@ tag2template = {
                  if 'default' ~= grandchild.xarg.value then
                  
                    if 'enum' == disc[xtypes.KIND]() then
-                     local _
-                     _, case = nslookup(grandchild.xarg.value, ns)
-                     assert(case, 'invalid case: ' .. grandchild.xarg.value)
+                     local _, enumerator
+                     _, enumerator = nslookup(grandchild.xarg.value, ns)
+                     assert(enumerator, 'invalid case enumerator: ' ..
+                                         grandchild.xarg.value)
+                     case = disc[enumerator]
+                     assert(case, 'invalid case value: ' ..
+                                   grandchild.xarg.value)
                    else 
                      case = nslookup(grandchild.xarg.value, ns) or 
                             grandchild.xarg.value
