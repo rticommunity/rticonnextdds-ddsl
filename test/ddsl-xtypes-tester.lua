@@ -712,7 +712,7 @@ function Tester:test_union_instance()
   self:print(MyEnum)
   
   local MyUnion = xtypes.union{
-    MyUnion = {MyEnum, -- xtypes.short, -- TODO: try short and understand error 
+    MyUnion = {MyEnum,
       { MyEnum.RED, 
           red = { xtypes.long } },
       { MyEnum.GREEN, 

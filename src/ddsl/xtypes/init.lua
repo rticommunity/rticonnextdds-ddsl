@@ -1529,7 +1529,7 @@ xtypes.API[xtypes.TYPEDEF] = {
 --- Ensure that case is a valid discriminator value
 -- @return the case
 function xtypes.assert_case(discriminator, case)
-  local err_msg 
+  local err_msg
   if nil == case then 
     err_msg = table.concat{'invalid union discriminator: "', 
                                               tostring(discriminator), '"' }
@@ -1568,18 +1568,23 @@ function xtypes.assert_case(discriminator, case)
     xtypes.builtin.short == discriminator or
     xtypes.builtin.long == discriminator or
     xtypes.builtin.long_long == discriminator then
-    case = tonumber(case)
-    assert(nil == case or math.floor(case) == case, 
-      err_msg)
-
+    local int_case = tonumber(case)
+    assert(nil == case or 
+           nil ~= int_case and math.floor(int_case) == int_case, 
+          err_msg)
+    case = int_case
+    
   -- integral unsigned
   elseif xtypes.builtin.unsigned_short == discriminator or
     xtypes.builtin.unsigned_long == discriminator or
     xtypes.builtin.unsigned_long_long == discriminator then
-    case = tonumber(case)
-    assert(nil == case or math.floor(case) == case and case >= 0, 
+    local uint_case = tonumber(case)
+    assert(nil == case or
+           nil ~= uint_case and math.floor(uint_case) == uint_case
+           and uint_case >= 0, 
       err_msg)
- 
+    case = uint_case
+    
   else -- invalid
     assert(false, err_msg)
   end
