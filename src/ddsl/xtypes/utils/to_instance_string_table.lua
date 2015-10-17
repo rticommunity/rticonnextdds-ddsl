@@ -67,7 +67,7 @@ local function to_instance_string_table(instance, result, template, base)
 
   -- union discriminator, if any
   if 'union' == mytype then
-    table.insert(result, table.concat{template._d, ' = ', instance._d})
+    table.insert(result, table.concat{'_d', ' = ', instance._d})
   end
 
   -- struct base type, if any

@@ -1276,15 +1276,36 @@ xtypes.API[xtypes.UNION] = {
       end
 
     else
+        -- accept the key if it is a discriminator value:
+        if '_d' == key then 
+          rawset(template, key, value) 
+          
         -- accept the key if it is defined in the model definition
         -- e.g. could have been an optional member that was removed
-        for i = 1, #model_defn do
-          if key == next(model_defn[i]) then
-              rawset(template, key, value)
+        else
+          for i = 1, #model_defn do
+            if key == next(model_defn[i]) then
+                rawset(template, key, value)
+            end
           end
         end
     end
-  end
+  end,
+  
+  -- Get the selected member
+  -- @param the selected member, based on the current discriminator value _d,
+  --        or 'nil' if the discriminator does not match any case
+  __call = function(template)
+    local model = _.model(template)
+    
+    for i, v in ipairs(model[_.DEFN]) do
+      if template._d == v[1] then 
+        local role = next(v, 1)
+        return template[role]
+      end
+    end
+    return nil -- no match 
+  end,
 }
 
 --------------------------------------------------------------------------------

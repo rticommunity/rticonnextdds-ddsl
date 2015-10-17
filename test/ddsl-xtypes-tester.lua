@@ -706,6 +706,57 @@ function Tester:test_union_boolean()
   assert(Test.NameOrAddress.address.name.nicknames[1] == 'address.name.nicknames[1]')
 end
 
+Tester[#Tester+1] = 'test_union_instance'
+function Tester:test_union_instance()
+  local MyEnum = xtypes.enum{MyEnum = {'RED', 'GREEN', 'BLUE'}}
+  self:print(MyEnum)
+  
+  local MyUnion = xtypes.union{
+    MyUnion = {MyEnum, -- xtypes.short, -- TODO: try short and understand error 
+      { 'RED', 
+          red = { xtypes.long } },
+      { 'GREEN', 
+          green = { xtypes.string() } },          
+      { nil, -- default 
+          default = { xtypes.boolean } },
+    }
+  }
+  self:print(MyUnion)
+  
+  -- datatype
+  assert(MyUnion._d == '#')
+  assert(MyUnion() == nil)
+
+  
+  -- instance
+  local myUnion = xtypes.new_instance(MyUnion)  
+  
+  print('--- instance: initial ---')
+  for k, v in pairs(myUnion) do print('\t', k, v) end
+  assert(myUnion() == nil) -- accessor string is NOT a valid discriminator
+  
+  myUnion._d = nil
+  myUnion.default = -100
+  print('--- instance: after default ---')
+  for k, v in pairs(myUnion) do print('\t', k, v) end
+  assert(myUnion() == myUnion.default)
+  
+  myUnion._d = 'RED' -- MyEnum.RED
+  myUnion.red = 1000
+  print('--- instance: after red ---')
+  for k, v in pairs(myUnion) do print('\t', k, v) end
+  assert(myUnion() == myUnion.red)
+  
+  myUnion._d = 'GREEN' -- MyEnum.GREEN
+  myUnion.green = 2000
+  print('--- instance: after green ---')
+  for k, v in pairs(myUnion) do print('\t', k, v) end
+  assert(myUnion() == myUnion.green)
+  
+  print('--- instance: finally ---')
+  for k, v in pairs(myUnion) do print('\t', k, v) end
+end
+
 Tester[#Tester+1] = 'test_struct_complex1'
 function Tester:test_struct_complex1()
 
