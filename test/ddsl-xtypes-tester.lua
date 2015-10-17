@@ -648,7 +648,7 @@ function Tester:test_union_enum()
   
   Test.TestUnion3 = xtypes.union{
     TestUnion3 = {Test.MyDays,
-      { Test.Days.MON, -- TODO: Try Test.MyDays.MON
+      { Test.Days.MON,
         name = { Test.Name } },
       { Test.Days.TUE, 
         address = { Test.Address } },
@@ -731,30 +731,32 @@ function Tester:test_union_instance()
   -- instance
   local myUnion = xtypes.new_instance(MyUnion)  
   
-  print('--- instance: initial ---')
+  print('--- instance: initial ---', myUnion())
   for k, v in pairs(myUnion) do print('\t', k, v) end
   assert(myUnion() == nil) -- accessor string is NOT a valid discriminator
   
   myUnion._d = nil
   myUnion.default = false
-  print('--- instance: after default ---')
+  print('--- instance: after default ---', myUnion())
   for k, v in pairs(myUnion) do print('\t', k, v) end
   assert(myUnion() == myUnion.default)
   
   myUnion._d = MyEnum.RED
   myUnion.red = 1000
-  print('--- instance: after red ---')
+  print('--- instance: after red ---', myUnion())
   for k, v in pairs(myUnion) do print('\t', k, v) end
   assert(myUnion() == myUnion.red)
   
   myUnion._d = MyEnum.GREEN
   myUnion.green = 2000.0002
-  print('--- instance: after green ---')
+  print('--- instance: after green ---', myUnion())
   for k, v in pairs(myUnion) do print('\t', k, v) end
   assert(myUnion() == myUnion.green)
   
-  print('--- instance: finally ---')
+  myUnion._d = MyEnum.BLUE
+  print('--- instance: after blue ---', myUnion())
   for k, v in pairs(myUnion) do print('\t', k, v) end
+  assert(myUnion() == nil)
 end
 
 Tester[#Tester+1] = 'test_struct_complex1'
