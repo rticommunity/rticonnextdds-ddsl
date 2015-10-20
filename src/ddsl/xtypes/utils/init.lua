@@ -3,24 +3,19 @@
 
  Permission to modify and use for internal purposes granted.
  This software is provided "as is", without warranty, express or implied.
---]]
---[[
+ 
 -----------------------------------------------------------------------------
- Purpose: DDSL X-Types Utilities
- Created: Rajive Joshi, 2014 Feb 14
------------------------------------------------------------------------------
-@module ddsl.xtypes.utils
-
-SUMMARY
-
-    X-Types Utilities
-
+ Purpose: DDSL Utilities
+ Created: Rajive Joshi, 2015 Oct 12
 -----------------------------------------------------------------------------
 --]]
 
---------------------------------------------------------------------------------
---- Public Interface (of this module):
-local interface = {
+--- DDSL Utilities.
+-- @module ddsl.xtypes.utils
+-- @author Rajive Joshi
+
+local _M = {
+
   nslookup                = require 'ddsl.xtypes.utils.nslookup',
   
   to_idl_string_table     = require 'ddsl.xtypes.utils.to_idl_string_table',
@@ -28,5 +23,5 @@ local interface = {
   to_instance_string_table=require 'ddsl.xtypes.utils.to_instance_string_table',
 }
 
-return interface
+return _M
 --------------------------------------------------------------------------------

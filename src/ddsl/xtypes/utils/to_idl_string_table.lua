@@ -3,25 +3,25 @@
 
  Permission to modify and use for internal purposes granted.
  This software is provided "as is", without warranty, express or implied.
---]]
---[[
 -----------------------------------------------------------------------------
  Purpose: DDSL X-Types Utilities: to_idl_string_table()
  Created: Rajive Joshi, 2014 Feb 14
 -----------------------------------------------------------------------------
 --]]
 
+--- @module ddsl.xtypes.utils
+
 local xtypes = require('ddsl.xtypes')
 local log = xtypes.log
 
 --------------------------------------------------------------------------------
 
---- IDL string representation of a role
--- @function tostring_role
--- @param member[in] a member definition in the following format:
---  { role, template, [collection_qualifier,] [annotation1, annotation2, ...] }
--- @param module the module to which the owner data model element belongs
--- @return IDL string representation of the idl member
+--- IDL string representation of a member role.
+-- 
+-- @tab member a member definition in the following format
+--    {role, template, [collection_qualifier,] [annotation1, annotation2, ...]}
+-- @xtemplate module the module to which the owner data model element belongs
+-- @treturn string IDL string representation of the idl member
 local function tostring_member(member, module)
 
   local role = member[1]    table.remove(member, 1) -- pop off the role
@@ -97,23 +97,23 @@ end
 
 --------------------------------------------------------------------------------
 
---- to_idl_string_table() - Visit all elements (depth-first) of
---       the given model definition and return their values as a linear
---       (flattened) list.
+--- Visit all elements (depth-first) of the datatype definition underlying an
+--  instance, and return the OMG IDL string representation of each member as 
+--  a flattened array of strings.
 --
---        The default implementation returns the stringified
---        OMG IDL X-Types representation of each model definition element
---
--- @param instance [in] a DDSL instance
--- @param result [in] OPTIONAL the previous results table to which the new 
---               results from this visit are appended
--- @param indent_string [in] the indentation for the string representation
--- @return the cumulative result of visiting all the definition. Each definition
---        that is visited is inserted into this table. This returned table
---        can be passed to another call to this method (to build cumulatively).
+-- @xinstance instance a DDSL instance
+-- @tparam[opt=nil] {string,...} result the previous results table, to which 
+--  the new results from this visit are appended
+-- @tparam[opt=''] string indent_string indentation for string representation
+-- @treturn {string,...} the cumulative result of visiting all the members of  
+--  datatype behind `instance`. The string representation of each member visited 
+--  is inserted into this table. This returned table can be passed to another 
+--  call to this method, to build a cumulative table of strings.
+-- @function to_idl_string_table
 local function to_idl_string_table(instance, result, indent_string)
 	-- pre-condition: ensure valid data-object
-	assert(xtypes.template(instance), 'to_idl_string_table() requires a DDSL instance!')
+	assert(xtypes.template(instance), 
+	      'to_idl_string_table() requires a DDSL instance!')
 
 	-- initialize the result (or accumulate in the provided result)
   result = result or {}

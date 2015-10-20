@@ -3,29 +3,35 @@
 
  Permission to modify and use for internal purposes granted.
  This software is provided "as is", without warranty, express or implied.
---]]
---[[
 -----------------------------------------------------------------------------
  Purpose: DDSL X-Types Utilities: to_instance_string_table()
  Created: Rajive Joshi, 2014 Feb 14
 -----------------------------------------------------------------------------
 --]]
 
+--- @module ddsl.xtypes.utils
+
 local xtypes = require('ddsl.xtypes')
 local log = xtypes.log
 
 --------------------------------------------------------------------------------
 
---- @function to_instance_string_table() - Visit all fields (depth-first) in
---       the given instance and return their values as a linear (flattened)
---       list. For instance collections, the 1st element is visited.
--- @param instance [in] the instance to visit
--- @param result [in] OPTIONAL the index table to which the results are appended
--- @param template [in] OPTIONAL nil means use the instance's template;
--- @param base [in] OPTIONAL the base template (if any) to visit those members
--- @return the cumulative result of visiting all the fields. Each field that is
---         visited is inserted into this table. This returned value table can be
---         passed to another call to this method (to build it cumulatively).
+--- Visit all fields (depth-first) in the given instance and return their string
+--  representation as a flattened array of strings.
+--  
+-- For instance collections, only the 1st element is visited. 
+-- @xinstance instance the instance to visit
+-- @tparam[opt=nil] {string,...} result the previous results table, to which 
+--  the new results from this visit are appended
+-- @xtemplate[opt=nil] template template to use to visit the instance; nil means
+--  use the instance's template
+-- @xtemplate[opt=nil] base the base 'struct' template (if any) to visit the
+--  members of the the base 'struct' template
+-- @treturn {string,...} the cumulative result of visiting all the fields. Each 
+-- field that is visited is inserted into this table. This returned table can 
+-- be passed to another call to this method, to build a cumulative table of 
+-- instance strings.
+-- @function to_instance_string_table
 local function to_instance_string_table(instance, result, template, base)
   template = template or xtypes.template(instance)
   

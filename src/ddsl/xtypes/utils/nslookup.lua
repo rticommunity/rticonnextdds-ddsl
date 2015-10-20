@@ -2,26 +2,32 @@
   (c) 2005-2015 Copyright, Real-Time Innovations, All rights reserved.
 
  Permission to modify and use for internal purposes granted.
- This software is provided "as is", without warranty, express or implied.
---]]
---[[
+ This software is provided "as is", without warranty, express or implied. 
 -----------------------------------------------------------------------------
- Purpose: DDSL X-Types Utility Function: nslookup
- Created: Rajive Joshi, 2015 Oct 12
+ Purpose: DDSL X-Types Utilities: to_idl_string_table()
+ Created: Rajive Joshi, 2014 Feb 14
 -----------------------------------------------------------------------------
 --]]
+
+--- @module ddsl.xtypes.utils
 
 local xtypes = require('ddsl.xtypes')
 local log = xtypes.log
     
---- Look up the xtypes template referenced by a qualified name
--- Searches in several places:
---    - in  the pre-defined xtypes, 
---    - in the enclosing or global scope
--- @param name [in] qualifed (i.e. scoped) name of the datatype to lookup
--- @param ns [in] the scope (or namespace) to lookup the name in
--- @return the template referenced by name, or nil
--- @return the template member, if any, identified by name (e.g. enum value)
+--- Look up the xtypes template referenced by a qualified name.
+-- 
+--  Searches in several places:
+--  
+--   - in  the pre-defined xtypes, 
+--   - in the enclosing or global scope
+--   
+-- @string name qualifed name (i.e. optionally scoped with `::`) of the 
+--   datatype to lookup
+-- @xtemplate ns the scope (or namespace) to lookup the name in
+-- @treturn xtemplate the template referenced by name, or nil
+-- @treturn ?string the template member, if any, identified by name 
+--  (e.g. enum value)
+-- @function nslookup
 local function nslookup(name, ns)
 
   assert(nil ~= ns)
