@@ -4,12 +4,15 @@
  Permission to modify and use for internal purposes granted.               
  This software is provided "as is", without warranty, express or implied.
 --]]
+--[[--
+DDSL: Data type definition Domain Specific Language (DSL) in Lua.
+@author Created: Rajive Joshi, 2014 Feb 14
+]]
+
 --[[
------------------------------------------------------------------------------
- Purpose: DDSL: Data type definition Domain Specific Language (DSL) in Lua
- Created: Rajive Joshi, 2014 Feb 14
------------------------------------------------------------------------------
-@module ddsl
+
+DDSL: Data type definition Domain Specific Language (DSL) in Lua.
+@author Created: Rajive Joshi, 2014 Feb 14
 
 SUMMARY
 
@@ -122,9 +125,7 @@ CAVEATS
     
     Note that all the meta-data attributes are functions, so it is 
     straightforward to skip them, when traversing a model table.
-
------------------------------------------------------------------------------
---]]
+]]
 
 local logger = require('logger')
 local log = logger.new()

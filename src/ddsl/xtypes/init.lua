@@ -4,7 +4,7 @@
  Permission to modify and use for internal purposes granted.
  This software is provided "as is", without warranty, express or implied.
 --]]
---[[
+--[[--
 -----------------------------------------------------------------------------
  Purpose: Define X-Types in Lua using the DDSL (Data type definition Domain
            Specific Language)
@@ -37,9 +37,7 @@ IMPLEMENTATION
 
     Typedefs:
      { template, [collection_qualifier,] [annotation1, annotation2, ...] }
-
------------------------------------------------------------------------------
---]]
+]]
 
 --------------------------------------------------------------------------------
 --- X-Types data model defined using the DDSL ---
