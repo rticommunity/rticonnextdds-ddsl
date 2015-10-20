@@ -5,12 +5,10 @@
  Permission to modify and use for internal purposes granted.               
  This software is provided "as is", without warranty, express or implied.
 --]]
---[[
--------------------------------------------------------------------------------
-Purpose: Utility to read an XML file as DDSL, and print the equivalent IDL
-Created: Rajive Joshi, 2015 Jun 26
--------------------------------------------------------------------------------
---]]
+
+--- Load XML files and output the equivalent IDL for types contained therein.
+-- @script xml2idl
+-- @author Rajive Joshi
 
 package.path = '../src/?.lua;../src/?/init.lua;' .. package.path
 
@@ -18,10 +16,8 @@ local xtypes = require('ddsl.xtypes')
 local xml = require('ddsl.xtypes.xml')
 local xutils = require('ddsl.xtypes.utils')
 
-local function main(arg)
-  if #arg == 0 then
-    print('Usage: ' .. arg[0] .. [[' [-d] <xml-file> [ <xml-files> ...]
-    
+--- @usage
+local usage = [[xml2idl [-d] <xml-file> [ <xml-files> ...]
     where:
       -d            turn debugging ON
       <xml-file>    is an XML file
@@ -32,7 +28,11 @@ local function main(arg)
     
     If there could be duplicates (ie multiple global namespaces), those files 
     should be processed in separate command line invocations of this utility.
-    ]])
+]]
+    
+local function main(arg)
+  if #arg == 0 then
+    print(usage)
     return
   end
 
