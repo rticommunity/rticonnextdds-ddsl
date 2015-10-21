@@ -3,11 +3,6 @@
 
  Permission to modify and use for internal purposes granted.
  This software is provided "as is", without warranty, express or implied.
- 
------------------------------------------------------------------------------
- Purpose: DDSL Utilities
- Created: Rajive Joshi, 2015 Oct 12
------------------------------------------------------------------------------
 --]]
 
 --- DDSL Utilities.

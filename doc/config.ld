@@ -20,7 +20,11 @@ dir='../out/html'
 
 file = { 
     '../src/ddsl/xtypes/utils', 
+    '../src/ddsl/xtypes/xml', 
     '../bin',
+    exclude = {
+      '../src/ddsl/xtypes/xml/xml2lua.lua', 
+    } 
 }
 topics = { 
     '../README.md',

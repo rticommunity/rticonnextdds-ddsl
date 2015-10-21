@@ -3,10 +3,6 @@
 
  Permission to modify and use for internal purposes granted.
  This software is provided "as is", without warranty, express or implied. 
------------------------------------------------------------------------------
- Purpose: DDSL X-Types Utilities: to_idl_string_table()
- Created: Rajive Joshi, 2014 Feb 14
------------------------------------------------------------------------------
 --]]
 
 --- @module ddsl.xtypes.utils

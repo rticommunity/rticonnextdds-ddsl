@@ -4,47 +4,42 @@
  Permission to modify and use for internal purposes granted.               
  This software is provided "as is", without warranty, express or implied.
 --]]
---[[
--------------------------------------------------------------------------------
-Purpose: Load X-Types in Lua from an XML file
-Created: Rajive Joshi, 2015 Jun 16
-------------------------------------------------------------------------------
---]]
+
+--- DDSL XML Import.
+-- Load X-Types in Lua from XML.
+-- @module ddsl.xtypes.xml
+-- @author Rajive Joshi
 
 local xtypes = require('ddsl.xtypes')
 local xutils = require('ddsl.xtypes.utils')
 local xmlstring2table = require('ddsl.xtypes.xml.parser').xmlstring2table
 
-local log = xtypes.log
 local nslookup = xutils.nslookup
 
---------------------------------------------------------------------------------
--- (Lua) Module State
+--- `Logger` to change the verbosity levels
+local log = xtypes.log
 
---[[
-Top-level "root" module to which all the model elements belong
---]]
+---------- State ---------- 
+
+-- Top-level "root" module to which all the model elements belong
 local root_module = xtypes.module{['']=xtypes.EMPTY}
 root_module[xtypes.NAME] = nil --  make this a 'root' namespace
 
---[[
-Cache of files that have been processed so far. If a file is encountered again,
-it is skipped. Worked much like the "package.loaded" mechanism used by require()
---]]
+-- Cache of files that have been processed so far. If a file is encountered 
+-- again, it is skipped. Worked much like the "package.loaded" mechanism 
+-- used by require()
 local files_loaded = {}
 
---[[
-Get the top level "root" module. All the data-types are imported into 
-this builtin namespace
---]]
+--- Get the top level "root" builtin module namespace. 
+-- All the data-types are imported from XML files into this builtin namespace.
+-- @treturn xtemplate the root `xtypes.module` namespace for xml import
 local function root()
   return root_module 
 end
 
---[[
-Empty the "root" module to which all the model elements belong
-@return the top level root module
---]]
+--- Empty the `root` builtin module namespace.
+-- Deletes all the entries in the `root` module.
+-- @treturn xtemplate the root `xtypes.module` namespace for xml import
 local function empty() 
 
   -- empty the root module
@@ -62,14 +57,12 @@ local function empty()
   return root_module
 end
 
---------------------------------------------------------------------------------
+---------- Operations ---------- 
 
---[[
-Map an xml attribute to an appropriate handler to generate X-Types
-      xml attribute --> action to generate X-Type template (attribute handler)
-Each handler takes the attribute list and a namespace module as an argument, 
-and returns an appropriate X-Types model element.
---]]
+-- Map an xml attribute to an appropriate handler to generate X-Types
+--      xml attribute --> action to generate X-Type template (attribute handler)
+-- Each handler takes the attribute list and a namespace module as an argument, 
+-- and returns an appropriate X-Types model element.
 local xmlattr2xtype   -- forward declaration
 xmlattr2xtype = {
   -- skip these:
@@ -143,10 +136,8 @@ xmlattr2xtype = {
   }
 }
 
---[[
-Return the array of annotations by the given xml attribute list. Also output
-a warning if there are any unrecognized xml attributes
---]]
+-- Return the array of annotations by the given xml attribute list. Also output
+-- a warning if there are any unrecognized xml attributes
 local function xarg2annotations(xarg)
     -- annotations
     local annotations = {}
@@ -162,9 +153,7 @@ local function xarg2annotations(xarg)
     return annotations
 end
 
---[[
-Return the role definition specified by the given xml attribute list
---]]
+-- Return the role definition specified by the given xml attribute list
 local function xarg2roledefn(xarg, ns)
 
     -- annotations
@@ -184,12 +173,10 @@ local function xarg2roledefn(xarg, ns)
     return role_defn
 end
 
---[[
-Map an xml tag to an appropriate X-Types template creation function (handler):
-      tag --> action to create X-Type template (tag handler)
-Each handler takes the xml tag and a namespace module as an argument, and 
-returns a newly created X-Types template or nil
---]]
+-- Map an xml tag to an appropriate X-Types template creation function (handler)
+--      tag --> action to create X-Type template (tag handler)
+-- Each handler takes the xml tag and a namespace module as an argument, and 
+-- returns a newly created X-Types template or nil
 local tag2template   -- forward declaration
 local file2xtypes -- forward declaration
 tag2template = {
@@ -384,14 +371,12 @@ tag2template = {
   end,
 }
 
-    
---[[
-Visit all the nodes in the xml table, and a return the root module 
-containing the corresponding xtype definitions
-@param xml [in] a table generated from XML
-@param ns [in] module namespace into which to import datatypes
-@return the 'ns' namespace populated with the datatypes defined in the xml table
---]]
+-- Visit all the nodes in the xml table, and a return the root module 
+-- containing the corresponding xtype definitions
+-- @tab xml a table generated from XML
+-- @xtemplate ns module namespace into which to import datatypes
+-- @treturn xtemplate the 'ns' namespace populated with the datatypes defined 
+--   in the xml table
 local function xml2xtypes(xml, ns)
 
   local tag_handler, template = tag2template[xml.label], nil
@@ -416,13 +401,12 @@ local function xml2xtypes(xml, ns)
   return ns
 end
 
---[[
-Given an XML string, loads the xtype definitions, and returns the  
-root module populated with the datatypes defined in the XML string
-@param xmlstring [in] xml string containing XML datatype definitions
-@param ns [in] module namespace into which to import datatypes
-@return the root module populated with the datatypes defined in the xml string
---]]
+--- Given an XML string, imports the xtype definitions, and returns the 
+-- root module populated with the datatypes defined in the XML string.
+-- @string xmlstring xml string containing XML datatype definitions
+-- @xtemplate[opt=root] ns module namespace into which to import the datatypes
+-- @treturn the module namespace populated with the datatypes defined 
+--   in the `xmlstring`
 local function string2xtypes(xmlstring, ns)
   local xml = xmlstring2table(xmlstring)
   assert(xml)
@@ -432,14 +416,12 @@ local function string2xtypes(xmlstring, ns)
   return template
 end
 
-
---[[
-Given an XML file, loads the xtype definitions, and returns the  
-root module populated with the datatypes defined in the XML file
-@param filename [in] xml file containing XML datatype definitions
-@param ns [in] module namespace into which to import datatypes
-@return the root module populated with the datatypes defined in the xml string
---]]
+--- Given an XML file, imports the xtype definitions, and returns the  
+-- root module populated with the datatypes defined in the XML file.
+-- @string filename xml file path containing XML datatype definitions
+-- @xtemplate[opt=root] ns module namespace into which to import the datatypes
+-- @treturn the namespace populated with the datatypes defined in 
+--   the XML file `filename`
 function file2xtypes(filename, ns)
   
   log.debug('***', filename, files_loaded[filename])
@@ -461,15 +443,14 @@ function file2xtypes(filename, ns)
   return template -- nil, if the file has been already loaded
 end
 
-
---[[
-Given an array of XML files, loads the xtype definitions, and returns the  
-root module populated with the datatypes defined in the XML files. 
-Note: Clears the root_module of any definitions, previously imported
-
-@param filenames [in] array of xml filenames containing XML datatype definitions
-@return the root module populated with the datatypes defined in the xml files
---]]
+--- Given an array of XML files, imports the xtype definitions and returns the  
+-- root module populated with the datatypes defined in the XML files. 
+-- Clears the root_module of any definitions, previously imported 
+-- by calling `empty`.
+-- @tparam {string,...} files array of file paths to XML files containing 
+--   datatype definitions
+-- @treturn the `root` module namespace populated with the datatypes defined
+--  in the xml files given by `files`
 local function filelist2xtypes(files)
   empty() -- empty the top-level root module
   for _, file in ipairs(files) do
@@ -481,7 +462,9 @@ local function filelist2xtypes(files)
 end
 
 -------------------------------------------------------------------------------
-interface = {
+
+--- @export
+return {
     root          = root,
     empty         = empty,
     
@@ -489,7 +472,6 @@ interface = {
     file2xtypes   = file2xtypes,
     string2xtypes = string2xtypes,
     
-    log           = log, -- logger object to change the verbosity levels
+    log           = log,
 }
 
-return interface

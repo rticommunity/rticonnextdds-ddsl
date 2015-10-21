@@ -4,12 +4,11 @@
  Permission to modify and use for internal purposes granted.               
  This software is provided "as is", without warranty, express or implied.
 --]]
---[[
--------------------------------------------------------------------------------
-Purpose: Load an XML file and construct a Lua table
--------------------------------------------------------------------------------
 
-Given an XML string, return a Lua table, as follows:
+--- @module ddsl.xtypes.xml
+
+--[[--
+`Given an XML string, return a Lua table, as follows:
 
 XML String:
     <tag attr1=value1 attr2=value2>
@@ -33,6 +32,7 @@ Lua:
       label = "tag",
       [empty=1,] -- iff there are no child tags
     }
+`
 --]]
 
 local table2string
@@ -122,13 +122,10 @@ local function collect(s)
   return stack[1]
 end
 
--------------------------------------------------------------------------------
--- Public interface
-local interface = {
+---------- Public interface ----------
+return {
   xmlstring2table   = collect,
   table2luastring   = table2string,
 }
-
-return interface
 
 
