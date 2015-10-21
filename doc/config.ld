@@ -9,7 +9,8 @@ description=[[Data Domain Specific Language]]
 full_description = [[
 Documentation Conventions:
 
- - `xtemplate`: a datatype defined via the `ddsl.xtypes` API
+ - `xtemplate`: a cannonical instance returned by the `ddsl.xtypes` 
+                datatype constructors
  - `xinstance`: an instance of a datatype created via `ddsl.xtypes.new_instance`
 ]]
 
@@ -20,10 +21,15 @@ dir='../out/html'
 
 file = { 
     '../src/logger.lua',
+    
+    '../src/ddsl/xtypes/init.lua', 
     '../src/ddsl/xtypes/utils', 
     '../src/ddsl/xtypes/xml', 
+    
     '../bin',
+    
     exclude = {
+      '../src/ddsl/version.lua', 
       '../src/ddsl/xtypes/xml/xml2lua.lua', 
     } 
 }
