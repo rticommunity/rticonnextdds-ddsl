@@ -19,6 +19,7 @@ tparam_alias('xinstance','xinstance')
 dir='../out/html'
 
 file = { 
+    '../src/logger.lua',
     '../src/ddsl/xtypes/utils', 
     '../src/ddsl/xtypes/xml', 
     '../bin',
