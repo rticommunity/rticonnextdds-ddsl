@@ -4,156 +4,140 @@
  Permission to modify and use for internal purposes granted.               
  This software is provided "as is", without warranty, express or implied.
 --]]
---[[--
-DDSL: Data type definition Domain Specific Language (DSL) in Lua.
-@author Created: Rajive Joshi, 2014 Feb 14
-]]
 
---[[
+--- DDSL Core Abstraction; see `ddsl.xtypes` for a concrete implementation.
+-- 
+-- Core primitives for the Datatype definition Domain Specific Language 
+-- (DDSL). Defines and implements the DDSL meta-model. The core primitive
+-- abstractions are:
+-- 
+--   - datatype (a.k.a. datamodel or model)
+--   - instance
+--   - collection
+--   - alias
+--   - qualifier
+-- 
+-- These primitives can be used to define datatypes according to a set of 
+-- datatype construction rules (for example, `ddsl.xtypes`). Thus, DDSL can be 
+-- thought of as a meta-model class implementing the semantic data 
+-- definition model underlying OMG X-Types.
+-- 
+-- The DDSL core engine provides the infrastructure to create instances and 
+-- instance collections backed by datatypes, to manipulate the underlying 
+-- datatypes, keep all the instances in sync with the underlying datatypes.
+-- 
+-- A datatype is a blueprint for a data structure. Any
+-- number of data-objects or instances (a.k.a. `xinstance`) can be created 
+-- from a datatype. Every instance is backed by an underlying datatype. The 
+-- underlying datatype is never exposed directly; it is always manipulated 
+-- through any one of its instances. Thus, any instance can used as a handle 
+-- to manipulate the underlying datatype. Any changes made to the underlying
+-- datatype are propagated to all its instances---thus keeping all the 
+-- instances in "sync" with the underlying datatype.
+-- 
+-- Any instance can be used as a constructor for new instances of the underlying
+-- datatype---when used in this manner, an instance can be thought of as a
+-- *template* for creating new instances. More specifically, we refer
+-- to the instance returned by a datatype constructor as the *template instance* 
+-- (a.k.a. `xtemplate`) for that datatytpe. It is used as the 
+-- *cannonical* template instance for creating other instances of the datatype,
+-- and as the handle for manipulating the datatype. Its fields should not be 
+-- altered, as they are used to initialize the fields of new instances 
+-- created from it.
+-- 
+-- The 
+-- [diagram](https://docs.google.com/presentation/d/1UYCS0KznOBapPTgaMkYoG4rC7DERpLhXtl0odkaGOSI/edit#slide=id.ga31862cc3_0_22)
+-- shows the DDSl meta-model.
+-- 
+-- **Nomenclature**
+-- 
+-- This documentation uses the following nomenclature to refer to parts 
+-- of a datatype. Below, the nomenclature is illustrated using an IDL example.
+--     // @AnnotationX (annotations are 'qualifiers')
+--     struct Model {              //  Datatype
+--        Element1 role1;          //  @AnnotationY (a 'qualifier')
+--        Element2 role2;          //
+--        sequence<Element3> role3;// a one-dimensional 'collection'
+--        Element4 role4[7][9]     // a multi-dimensional 'collection'
+--     }   
+--  where `ElementX` may be recursively defined as another Model (i.e. datatype)
+--  composed of other elements.
+--   
+--  To create an instance (`xinstance`) named `i1` from a datatytype
+--  named `Model`:
+--        local i1 = `new_instance`(Model, 'i1')
+--  Now, one can use all the fields of the resulting table, `i1`. Furthermore, 
+--  the fields are properly initialized for indexing into a storage scheme based
+--  on flattening out the field names.
+--        i1.role1 == 'i1.role1'
+--
+--  More precisely, a newly created `xinstance` (and, therefore also the 
+--  `xtemplate`) will have the fields initialized as follows.
+--
+--   - For a primitive (i.e. atomic) member role:
+--        role = 'role'
+--   - For a composite member role:
+--        roleX = `new_instance`(ElementX, 'roleX')
+--   - For a collection member role (sequences or arrays):
+--        roleY = `new_collection`(ElementY, capacity, 'roleY')
+--          
+-- @module ddsl
+-- @alias _
+-- @author Rajive Joshi
 
-DDSL: Data type definition Domain Specific Language (DSL) in Lua.
-@author Created: Rajive Joshi, 2014 Feb 14
-
-SUMMARY
-
-  DDSL is meta-model class implementing the semantic data definition 
-  model underlying OMG X-Types. Thus, it can be used to implement 
-  OMG X-Types.
-
-USE CASES
- 	DDSL serves multiple use-cases:
-     - Provides a way of defining OMG IDL equivalent data types (aka models). 
-     - Provides for error checking to ensure well-formed type definitions.   
-     - Provides a natural way of indexing into a dynamic data sample 
-     - Provides a way of creating instances of a data type, for example 
-       to stimulate an interface
-     - Provides the foundation for automated type (model) reasoning & mapping 
-     - Supports multiple styles to specify a type: imperative and declarative
-     - Can easily add new (meta-data) types and annotations in the meta-model
-     - Extensible: new annotations and atomic types can be easily added, thus
-       providing a playground for experimenting with new X-Types features
-     - Could be used to automatically serialize and de-serialize a sample
-     - Could be used for custom code generation
-     - Could be used to generate TypeObject/TypeCode on the wire
-
- 
-  Note that in OMG X-Types, referenced data types need to be defined first
-    - Forward declarations not allowed
-    - Forward references not allowed
-  
-USAGE
- 
-    The nomenclature is used to refer to parts of a data type is 
-    illustrated using the example below:
-    
-       // @AnnotationX (qualifier) 
-       struct Model {            
-          Element1 role1;       // field1  @AnnotationY (qualifier)
-          Element2 role2;       // field2
-          seq<Element3> role3;  // field3, a collection
-          Element4 role4[7][9]  // field4, a multi-dimensional collection
-       }   
-    where ElementX may be recursively defined as a Model with other parts.
-
-    To create an instance named 'i1' from a model element, Model:
-          local i1 = new_instance(Model, 'i1')
-    Now, one can use all the fields of the resulting table, i1. Furthermore, 
-    the fields are properly initialized for indexing into DDS dynamic data. 
-          i1.role1 = 'i1.role1'
-
-    The leaf elements of the table give a fully qualified string to address a
-    field in a dynamic data sample in Lua. 
-    
-    The [diagram](https://docs.google.com/presentation/d/1UYCS0KznOBapPTgaMkYoG4rC7DERpLhXtl0odkaGOSI/edit#slide=id.g4653da537_05)
-    show the DDSL meta-model pictorially.
-  
-    See xtypes.lua for how to use the DDSL abstraction to define the syntax for
-    X-Types in Lua.
-    
-    See the examples in ddsl-xtypes-tester.lua for user defined X-Types in Lua.
-
-IMPLEMENTATION
-
-    The meta-model pre-defines the following meta-data 
-    attributes for a model element (MODEL):
-
-       _.KIND
-          Every model represented as a table with a non-nil key
-             model[_.KIND] = one of the type definitions
-          DDSL meta-model recognizes the following element categories: 
-            qualifiers, collections, aliases, leaf, template
-          The 'info' interface is used to classify the model elements into one 
-          of these categories.
-          
-       _.NAME
-          The name of the model element
-   
-       _.DEFN
-          For storing the child element info
-              model[_.DEFN][role] = role model element 
-
-       _.INSTANCES
-          For storing instances of this model element, keyed by the instance 
-          table. The value is the instance name. The instance name may be ''.
-       
-       _.TEMPLATE
-          The user's 'handle' to the model element.
-                 
-          It is a special instance used to manipulate the model definition, and 
-          create additional instances. Its fields should not be modified. It 
-          should be used for accessing a dynamic data sample. New instances 
-          should be created from it for storing/caching data samples in Lua.
-          
-       _.NS
-          The namespace model element, to which this model element belongs.
-          
-   
-    An newly created instance (and, therefore also the template instance) will 
-    have the following structure:
-    <role i.e user_field>
-      Either a primitive field
-          model.role = 'role'
-      Or a composite field 
-          model.role = _.new_instance(RoleModel, 'role')
-      or a sequence
-          model.role = _.new_collection(RoleModel, [capacity], 'role')
-   
-CAVEATS
-
-    Note that if a role definition already exists, it should be cleared before 
-    replacing it with a new one.
-    
-    Note that all the meta-data attributes are functions, so it is 
-    straightforward to skip them, when traversing a model table.
-]]
-
-local logger = require('logger')
-local log = logger.new()
-
--- extend logger: add a function to get the version:
-log.version = require('ddsl.version')
-
---------------------------------------------------------------------------------
---- Core Attributes and Abstractions ---
---------------------------------------------------------------------------------
-
-local EMPTY = {}  -- initializer/sentinel value to indicate an empty definition
+--============================================================================--
+-- Core Attributes and Abstractions
 
 local _ = {
-  -- model attributes
-  -- every 'model' meta-data table has these keys defined 
-  NS        = function() return '::' end,      -- namespace
-  NAME      = function() return 'NAME' end,  -- table key for 'model name'  
-  KIND      = function() return 'KIND' end,  -- table key for 'model kind name' 
-  DEFN      = function() return 'DEFN' end,  -- table key for element meta-data
-  INSTANCES = function() return 'INSTANCES' end,-- table key for instances
-  TEMPLATE  = function() return 'TEMPLATE' end,--table key for template instance
+  --- Initializer/sentinel value to indicate an empty datatype definition.
+  EMPTY = {},
 
-  -- model definition attributes
-  QUALIFIERS = function() return '@' end,      -- table key for qualifiers
+  --- Attributes.
+  -- Every `xinstance` has a metatable that implements the following attributes.
+  -- @section Attributes
+
+  --- The namespace model element, to which this model element belongs.
+  NS        = function() return '::' end,      -- namespace
   
-  -- model info interface
-  -- abstract interface that defines the categories of model element (kinds):
+  --- The name of the model element
+  NAME      = function() return 'NAME' end,  -- table key for 'model name'  
+
+  --- Every model represented as a table with a non-nil key
+  --     model[KIND] = one of the type definitions
+  --  DDSL meta-model recognizes the following element categories: 
+  --  qualifiers, collections, aliases, leaf, template
+  --  The 'info' interface is used to classify the model elements into one 
+  --  of these categories.
+  KIND      = function() return 'KIND' end,  -- table key for 'model kind name' 
+
+  --- model definition attributes
+  QUALIFIERS = function() return '@' end,      -- table key for qualifiers
+     
+  --- For storing the child element info
+  --     model[_.DEFN][role] = role model element 
+  DEFN      = function() return 'DEFN' end,  -- table key for element meta-data
+
+  --- For storing instances of this model element, keyed by the instance 
+  --  table. The value is the instance name. The instance name may be ''.
+  INSTANCES = function() return 'INSTANCES' end,-- table key for instances
+ 
+  --- The user's 'handle' to the model element.                
+  --  It is a special instance used to manipulate the model definition, and 
+  --  create additional instances. Its fields should not be modified. It 
+  --  should be used for accessing a dynamic data sample. New instances 
+  --  should be created from it for storing/caching data samples in Lua. 
+  TEMPLATE  = function() return 'TEMPLATE' end,--table key for template instance
+  
+  --- @section end
+  
+  --============================== ===========================================--
+  
+  --- Model info **abstract** interface.
+  -- Abstract interface that defines the categories of model element (kinds).
+  -- Concerete implementation of a typesystem spply the concrete functions.
+  -- 
+  -- Each function takes an `xinstance` and returns it if the kind matches, 
+  -- otherwise, returns `nil`.
   info = {
     is_qualifier_kind = function (v) error('define abstract function!') end,
     is_collection_kind = function (v) error('define abstract function!') end,
@@ -163,14 +147,25 @@ local _ = {
   }
 }
 
---------------------------------------------------------------------------------
--- Models  ---
---------------------------------------------------------------------------------
- 
+--============================================================================--
+-- logger
+
+local logger = require('logger')
+
+--- `logger` to log messages and get/set the verbosity levels
+_.log = logger.new()
+
+-- extend logger: add a function to get the version:
+_.log.version = require('ddsl.version')
+
+--============================================================================--
+-- Models 
+
 --- Create a new 'empty' template
 -- @param name  [in] the name of the underlying model
 -- @param api   [in] a meta-table to control access to this template
 -- @return template, model: a new template and its model
+-- @within Constructors
 function _.new_template(name, kind, api)
 
   local model = {           -- meta-data
@@ -194,6 +189,7 @@ end
 -- @param template  <<in>> a template, generally empty
 -- @param defn      <<in>> template model definition
 -- @return populated template 
+-- @within Constructors
 function _.populate_template(template, defn)
   -- populate the role definitions
   local qualifiers
@@ -228,6 +224,7 @@ end
 --           ...      - optional list of annotations including whether the 
 --                      member is an array or sequence    
 -- @return the role (member) instance and the role_defn
+-- @within Constructors
 function _.create_role_instance(role, role_defn)
   
   _.assert_role(role)
@@ -271,6 +268,7 @@ end
 -- @param role [in] the role to propagate
 -- @param role_template [in] template role instance created 
 --                           using create_role_instance()
+-- @within Modifiers                          
 function _.update_instances(model, role, role_template)
 
    -- update template first
@@ -288,10 +286,9 @@ function _.update_instances(model, role, role_template)
    end
 end
 
---------------------------------------------------------------------------------
--- Model Instances  ---
---------------------------------------------------------------------------------
-       
+--============================================================================--
+-- Instances
+      
 --- Create an instance, using another instance as a template
 --  Defines a table that can be used to index into an instance of a model
 -- 
@@ -310,19 +307,20 @@ end
 --    -- As a sample itself
 --    local myInstance = _.new_instance(MyType)
 --    myInstance.member = "value"
---    
+--
+-- @within Constructors       
 function _.new_instance(template, name, is_role_instance) 
   local model = getmetatable(template)
-  log.trace('new_instance 1: ', model[_.NAME], name)
+  _.log.trace('new_instance 1: ', model[_.NAME], name)
 
   if nil ~= name then _.assert_role(name) end
   _.assert_template_kind(template)
  
   local instance = nil
   
-  ---------------------------------------------------------------------------
+  --========================================================================--
   -- alias? switch the template to the underlying alias
-  ---------------------------------------------------------------------------
+  
   local is_alias_kind = _.info.is_alias_kind(template)
   local alias, alias_collection
   
@@ -333,7 +331,7 @@ function _.new_instance(template, name, is_role_instance)
     for j = 2, #defn do
       alias_collection = _.info.is_collection_kind(defn[j])
       if alias_collection then
-        log.trace('new_instance 2: ', alias_collection, name)
+        _.log.trace('new_instance 2: ', alias_collection, name)
         break -- 1st 'collection' is used
       end
     end
@@ -342,10 +340,9 @@ function _.new_instance(template, name, is_role_instance)
   -- switch template to the underlying alias
   if alias then template = alias end
    
-  ---------------------------------------------------------------------------
+  --========================================================================--
   -- alias is a collection:
-  ---------------------------------------------------------------------------
-  
+ 
   -- collection of underlying types (which is not an alias)
   if alias_collection then
     local iterator = template
@@ -358,28 +355,25 @@ function _.new_instance(template, name, is_role_instance)
     return instance
   end
   
-  ---------------------------------------------------------------------------
+  --========================================================================--
   -- alias is recursive:
-  ---------------------------------------------------------------------------
 
   if is_alias_kind and _.info.is_alias_kind(alias) then
     instance = _.new_instance(template, name, is_role_instance) -- recursive
     return instance
   end
 
-  ---------------------------------------------------------------------------
+  --========================================================================--
   -- leaf instances
-  ---------------------------------------------------------------------------
- 
+
   if _.info.is_leaf_kind(template) then
     instance = name 
     return instance
   end
   
-  ---------------------------------------------------------------------------
+  --========================================================================--
   -- composite instances 
-  ---------------------------------------------------------------------------
-  
+ 
   -- Establish the underlying model definition to create an instance
   -- NOTE: aliases do not hold any instances; the instances are held by the
   --       underlying concrete (non-alias) alias type
@@ -403,7 +397,7 @@ function _.new_instance(template, name, is_role_instance)
   return instance
 end
 
--- Creates a collection template comprising of elements specified by the 
+--- Creates a collection template comprising of elements specified by the 
 -- given template or the collection (previously created via this call)
 -- 
 -- Purpose:
@@ -433,8 +427,9 @@ end
 --        myInstance.mySeq[i] = element_i -- access the i-th element
 --    end  
 --    print(#myInstance.mySeq) -- the actual number of elements
+-- @within Constructors
 function _.new_collection(content_template, capacity, name, is_role_instance) 
-  log.trace('new_collection',content_template,capacity,name)
+  _.log.trace('new_collection',content_template,capacity,name)
 
   if nil ~= name then _.assert_role(name) end
   assert(_.is_collection(content_template) or
@@ -471,7 +466,7 @@ function _.new_collection(content_template, capacity, name, is_role_instance)
       -- metamethod. Thus the rawleng would be invoked, returning the actual 
       -- length (and this is the fast!)
   
-      log.trace('new_collection',model.__len,name,content_template,capacity)
+      _.log.trace('new_collection',model.__len,name,content_template,capacity)
       model.__len = nil
   end            
 
@@ -480,7 +475,7 @@ function _.new_collection(content_template, capacity, name, is_role_instance)
 end
 
 
--- Create new named collection of instances based on another collection 
+--- Create new named collection of instances based on another collection 
 -- Parameters:
 -- @param collection  <<in>>  - the template collection 
 -- @param name <<in>> the template role name; maybe nil
@@ -488,6 +483,7 @@ end
 --                   does this instance belong to a template? (default: nil)
 -- @return the newly created collection with the given name, and the given
 --         collection as the "collection template"
+-- @within Constructors
 function _.new_collection_instance(collection, name, is_role_instance) 
 
   local model = getmetatable(collection)   
@@ -539,9 +535,9 @@ _.collection_metatable = {
   end,
 
   __index = function (collection, i)
-      log.trace('collection __index', collection, i)
+      _.log.trace('collection __index', collection, i)
       if 'number' ~= type(i) then
-        log.trace('collection __index.1', collection, i)
+        _.log.trace('collection __index.1', collection, i)
         return nil 
       end 
       
@@ -564,7 +560,7 @@ _.collection_metatable = {
   end,
   
   __newindex = function (collection, i, v)
-      log.trace('collection __newindex', collection, i, v)
+      _.log.trace('collection __newindex', collection, i, v)
       local element_i = collection[i]
       if 'table' ~= type(element_i) then -- replace with the new value
         element_i = v
@@ -600,6 +596,7 @@ _.collection_metatable = {
 -- @param is_role_instance <<in>> is this part of a role instance, i.e.
 --                   does this instance belong to a template? (default: nil)
 -- @return new instance with fields properly initialized for 'prefix'
+-- @within Constructors
 function _.clone(v, prefix, is_role_instance) 
 
     local type_v = type(v)
@@ -634,17 +631,17 @@ function _.clone(v, prefix, is_role_instance)
     return result
 end
 
---------------------------------------------------------------------------------
--- Helpers
---------------------------------------------------------------------------------
+--============================================================================--
+-- Retrievers
 
--- Retrieve the model definition underlying an instance
+--- Retrieve the model definition underlying an instance
 -- The instance would have been created previously using 
---      _.new_instance() or 
---      _.new_collection() or 
---      _._new_template() for a "template" instance
+--    `new_instance`() or 
+--    `new_collection`() or 
+--    `new_template`() for a "template" instance
 -- @param instance [in] the instance whose model we want to retrieve
 -- @return the underlying data model
+-- @within Retrievers
 function _.model(instance)
   return getmetatable(instance)
 end
@@ -656,6 +653,7 @@ end
 --      _._new_template() for a "template" instance
 -- @param instance [in] the instance whose template we want to retrieve
 -- @return the underlying template
+-- @within Retrievers
 function _.template(instance)
   local model = getmetatable(instance)
   return model and model[_.TEMPLATE]
@@ -666,6 +664,7 @@ end
 -- @return the underlying non-alias data model template, unwrapping the 
 --         all the collection qualifiers
 --         [ [collection_qualifier] ... ] <Non-Alias Template>
+-- @within Retrievers
 function _.resolve(template)
   local is_alias_kind = template and _.info.is_alias_kind(template)
   if is_alias_kind then
@@ -692,6 +691,7 @@ end
 --        outermost enclosing scope
 -- @return the name of the template relative to the namespace; may be nil
 --         (for example when template == namespace) 
+-- @within Retrievers
 function _.nsname(template, namespace)
   -- pre-conditions:
   assert(nil ~= _.model_kind(template), "nsname(): not a valid template")
@@ -715,6 +715,7 @@ end
 --- Get the root namespace i.e. the outermost enclosing scope for an instance.
 -- @param template[in] the instance (or template) whose root is to be determined
 -- @return the root namespace ie. the outermost enclosing scope (maybe template)
+-- @within Retrievers
 function _.nsroot(template)
   -- pre-conditions:
   assert(nil ~= _.model_kind(template), "nsroot(): not a valid template")
@@ -728,9 +729,14 @@ function _.nsroot(template)
   end 
 end
 
+
+--============================================================================--
+-- Helpers
+
 --- Get the model type of any arbitrary value
 -- @param value  [in] the value for which to retrieve the model type
 -- @return the model type or nil (if 'value' does not have a MODEL)
+-- @within Helpers
 function _.model_kind(value)
   local model = getmetatable(value)
   return model and model[_.KIND]
@@ -740,6 +746,7 @@ end
 -- @param kind   [in] expected model element kind
 -- @param value  [in] table to check if it is a model element of "kind"
 -- @return the value if the kind matches, or nil
+-- @within Helpers
 function _.assert_model_kind(kind, value)
     local model = getmetatable(value)
     assert(model and kind == model[_.KIND],
@@ -751,6 +758,7 @@ end
 --- Ensure that value is a qualifier
 -- @param qualifier [in] the potential qualifier to check
 -- @return the qualifier or nil
+-- @within Helpers
 function _.assert_qualifier(qualifier)
     assert(_.info.is_qualifier_kind(qualifier), 
            table.concat{'expected qualifier \"', tostring(qualifier), '"'})
@@ -760,6 +768,7 @@ end
 --- Ensure all elements in the 'value' array are qualifiers
 -- @param value [in] the potential qualifier array to check
 -- @return the qualifier array or nil
+-- @within Helpers
 function _.assert_qualifier_array(value)
     -- establish valid qualifiers, if any
     if nil == value then return nil end
@@ -786,6 +795,7 @@ end
 --- Ensure that the role name is valid
 -- @param role [in] the role name
 -- @return role if valid; nil otherwise
+-- @within Helpers
 function _.assert_role(role)
   assert('string' == type(role), 
       table.concat{'invalid role name: ', tostring(role)})
@@ -795,28 +805,30 @@ end
 --- Ensure that value is a template
 -- @param template [in] the potential template to check
 -- @return the template or nil
+-- @within Helpers
 function _.assert_template_kind(template)
     assert(_.info.is_template_kind(template), 
            table.concat{'unexpected template kind \"', tostring(template), '"'})
     return template
 end
 
---------------------------------------------------------------------------------
---- Public Interface (of this module):
--- 
+--============================================================================--
+-- Public Interface (of this module):
+
 local interface = {
-  log                     = log, -- the verbosity logger
+  log                     = _.log, -- the verbosity logger
   
   -- empty initializer sentinel value
-  EMPTY                   = EMPTY,
+  EMPTY                   = _.EMPTY,
 
   -- accessors and mutators (meta-attributes for types)
   NS                      = _.NS,
   NAME                    = _.NAME,
   KIND                    = _.KIND,
+  QUALIFIERS              = _.QUALIFIERS,
   DEFN                    = _.DEFN,
   INSTANCES               = _.INSTANCES,
-  QUALIFIERS              = _.QUALIFIERS,
+  
   
   -- ddsl operations: for building an ontology of models
   new_template            = _.new_template,
@@ -845,4 +857,4 @@ local interface = {
 -- enforce that the user provides a function to binds the 
 -- abstract info interface to an implementation
 return function (info_impl) _.info = info_impl return interface end
---------------------------------------------------------------------------------
+--============================================================================--

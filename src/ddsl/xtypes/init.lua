@@ -41,37 +41,24 @@
 -- [RTI Connext DDS Prototyper Getting Started Guide](
 -- https://community.rti.com/static/documentation/connext-dds/5.2.0/doc/manuals/connext_dds/prototyper/RTI_ConnextDDS_CoreLibraries_Prototyper_GettingStarted.pdf)).
 -- 
+-- 
+-- **General Syntax**
+--
+-- Since `ddsl` does not impose any specific syntax on how datatypes are
+-- expressed in Lua, this module defines the syntax. The general pattern is:
+--
+--    local xtypes = require 'ddsl.xtypes'
+--  
+--    -- create a datatype of kind 'kind' with the name 'MyType'
+--    local mytype = xtypes.<kind>{
+--       MyType = { <definition_syntax_for_kind> }
+--    }
+--
+-- The datatypes constructors provide more detail with usage examples.
+--
 -- @module ddsl.xtypes
 -- @alias xtypes.builtin
 -- @author Rajive Joshi
-
---============================================================================--
---[[
-                X-Types data model defined using the DDSL
-
-UNIT TESTS
-  See ddsl-xtypes-tester.lua for unit tests and examples.
-
-IMPLEMENTATION
-
-  Note that DDSL does not impose any specific syntax on how the types are
-  expressed in Lua. This module defines the syntax. The general pattern is:
-
-     { <name> = { <definition> } }
-
-  Each X-Type constructor is documented in detail, with examples.
-
-  To illustrate, here are some role definitions:
-  
-  Unions:
-  { { case, role = { template, [collection_qualifier,] [annotation1, ...] } } }
-
-  Structs:
-  { { role = { template, [collection_qualifier,] [annotation1, ...] } } }
-
-  Typedefs:
-     { template, [collection_qualifier,] [annotation1, annotation2, ...] }
-]]
 
 local xtypes = {
 
@@ -963,6 +950,9 @@ xtypes.API[xtypes.ENUM] = {
 -- The table fields contain the string index to de-reference the struct's
 -- value in a top-level DDS Dynamic Data Type
 -- @usage
+--   Structs:
+--   { { role = { template, [collection_qualifier,] [annotation1, ...] } } }
+-- 
 --    -- Create struct: Declarative style
 --    local MyStruct = xtypes.struct{
 --      MyStruct = {OptionalBaseStruct,
@@ -1202,6 +1192,9 @@ xtypes.API[xtypes.STRUCT] = {
 -- The table fields contain the string index to de-reference the union's value
 -- in a top-level DDS Dynamic Data Type
 -- @usage
+--   Unions:
+--    { { case, role = { template, [collection_qualifier,] [annotation1, ...] } } }
+-- 
 --    -- Create union: Declarative style
 --    local MyUnion = xtypes.union{
 --      MyUnion = {discriminator,
@@ -1650,6 +1643,9 @@ xtypes.API[xtypes.MODULE] = {
 -- i.e. the underlying type definition and optional multiplicity and annotations
 -- @return the typedef template
 -- @usage
+--   Typedefs:
+--  { template, [collection_qualifier,] [annotation1, annotation2, ...] }
+-- 
 --  IDL: typedef sequence<MyStruct> MyStructSeq
 --  Lua: local MyStructSeq = xtypes.typedef{
 --            MyStructSeq = { xtypes.MyStruct, xtypes.sequence() }
@@ -1733,7 +1729,7 @@ return {
   --  mytype[NAME] = 'MyTypeNewName' 
   -- @section DatatypeAttributes
   
-  --- `ddsl.NS`: Datatype enclosing namespace (i.e.enclosing scope).
+  --- `ddsl.NS`: Datatype enclosing namespace (enclosing scope).
   NS                 = NS,
   
   --- `ddsl.NAME`: Datatype name.
@@ -1742,7 +1738,7 @@ return {
   --- `ddsl.KIND`: Datatype kind. 
   KIND               = KIND,
   
-  --- 'ddsl.QUALIFIERS': Datatype qualifiers (i.e. annotations)
+  --- `ddsl.QUALIFIERS`: Datatype qualifiers (annotations).
   QUALIFIERS         = QUALIFIERS,
   
   --- Datatype of the base `struct` (inheritance)
