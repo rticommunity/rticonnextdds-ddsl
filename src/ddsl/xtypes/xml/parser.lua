@@ -5,35 +5,33 @@
  This software is provided "as is", without warranty, express or implied.
 --]]
 
---- @module ddsl.xtypes.xml
-
---[[--
-`Given an XML string, return a Lua table, as follows:
-
-XML String:
-    <tag attr1=value1 attr2=value2>
-      <child1> ... </child1>
-      <child2> ... </child2>
-      <!--comment -->
-    </tag>
-
-Lua:
-    tag = {
-      -- array: children: tag[i] --
-      { -- child1: recursive },
-      { -- child2: recursive },  
-      "<!--comment ",
-    
-      -- map: tag name and attributes: tag.label, tag.xarg --
-      xarg  = { -- may be empty
-        attr1 = value1
-        attr2 = value2
-      }
-      label = "tag",
-      [empty=1,] -- iff there are no child tags
-    }
-`
---]]
+--- Given an XML string, return a Lua table.
+-- 
+-- The Lua table is connstructed as follows.
+--
+--  - XML String:
+--        <tag attr1=value1 attr2=value2>
+--          <child1> ... </child1>
+--          <child2> ... </child2>
+--          <!--comment -->
+--        </tag>
+--    
+--  - Lua Table:
+--        tag = {
+--          -- array: children: tag[i] --
+--          { -- child1: recursive },
+--          { -- child2: recursive },  
+--          "<!--comment ",
+--        
+--          -- map: tag name and attributes: tag.label, tag.xarg --
+--          xarg  = { -- may be empty
+--            attr1 = value1
+--            attr2 = value2
+--          }
+--          label = "tag",
+--          [empty=1,] -- iff there are no child tags
+--        }
+-- @module ddsl.xtypes.xml.parser
 
 local table2string
 
@@ -58,6 +56,11 @@ local function key_to_str ( k )
   end
 end
 
+--- Convert a Lua table to an equivalent string representation.
+-- The string can be is a dump the table contents in Lua syntax.
+-- @tparam table tbl a Lua table
+-- @treturn string the contents of the table as a string
+-- @function table2luastring
 table2string = function ( tbl )
   local result, done = {}, {}
   for k, v in ipairs( tbl ) do
@@ -80,7 +83,11 @@ local function parseargs(s)
   end)
   return arg
 end
-    
+
+--- Convert an XML string to a Lua table.
+-- @string s XML string
+-- @treturn table table containing the equivalent Lua table representation
+-- @function xmlstring2table
 local function collect(s)
   local stack = {}
   local top = {}
@@ -122,7 +129,10 @@ local function collect(s)
   return stack[1]
 end
 
----------- Public interface ----------
+--============================================================================--
+-- Public interface
+
+--- @export
 return {
   xmlstring2table   = collect,
   table2luastring   = table2string,
