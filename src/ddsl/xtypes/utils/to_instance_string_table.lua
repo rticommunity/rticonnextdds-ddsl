@@ -10,7 +10,7 @@
 local xtypes = require('ddsl.xtypes')
 local log = xtypes.log
 
---------------------------------------------------------------------------------
+--============================================================================--
 
 --- Visit all fields (depth-first) in the given instance and return their string
 --  representation as a flattened array of strings.
@@ -109,6 +109,5 @@ local function to_instance_string_table(instance, result, template, base)
   return result
 end
 
---------------------------------------------------------------------------------
+--============================================================================--
 return to_instance_string_table
---------------------------------------------------------------------------------

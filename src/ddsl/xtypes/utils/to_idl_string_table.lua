@@ -10,7 +10,7 @@
 local xtypes = require('ddsl.xtypes')
 local log = xtypes.log
 
---------------------------------------------------------------------------------
+--============================================================================--
 
 --- IDL string representation of a member role.
 -- 
@@ -91,7 +91,7 @@ local function tostring_member(member, module)
   end
 end
 
---------------------------------------------------------------------------------
+--============================================================================--
 
 --- Visit all elements (depth-first) of the datatype definition underlying an
 --  instance, and return the OMG IDL string representation of each member as 
@@ -254,6 +254,5 @@ local function to_idl_string_table(instance, result, indent_string)
 	return result
 end
 
---------------------------------------------------------------------------------
+--============================================================================--
 return to_idl_string_table
---------------------------------------------------------------------------------

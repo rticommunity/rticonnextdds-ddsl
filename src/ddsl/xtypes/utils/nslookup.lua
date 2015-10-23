@@ -30,10 +30,9 @@ local function nslookup(name, ns)
   local template = nil        -- template identified by name
   local template_member = nil -- template member identified by name
     
-  -----------------------------------------------------------------------------
+  --==========================================================================--
   -- lookup xtype builtins
-  -----------------------------------------------------------------------------
- 
+   
   -- deviations specific to XML representation  
   local xmlName2Model = {
     unsignedShort    = xtypes.unsigned_short,
@@ -57,9 +56,8 @@ local function nslookup(name, ns)
     end
   end
     
-  -----------------------------------------------------------------------------
+  --==========================================================================--
   -- lookup in scope 'ns'
-  -----------------------------------------------------------------------------
 
   if not template and ns then 
     -- split into identifiers with a '::' separator for each identifier
@@ -132,7 +130,7 @@ local function nslookup(name, ns)
     end
   end
   
-  -----------------------------------------------------------------------------
+  --==========================================================================--
   -- result
 
   if nil == template and nil == template_member then
@@ -142,6 +140,5 @@ local function nslookup(name, ns)
   return template, template_member
 end
 
---------------------------------------------------------------------------------
+--============================================================================--
 return nslookup
---------------------------------------------------------------------------------

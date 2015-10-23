@@ -19,7 +19,8 @@ local nslookup = xutils.nslookup
 --- `logger` to log messages and get/set the verbosity levels
 local log = xtypes.log
 
----------- State ---------- 
+--============================================================================--
+-- State
 
 -- Top-level "root" module to which all the model elements belong
 local root_module = xtypes.module{['']=xtypes.EMPTY}
@@ -57,7 +58,8 @@ local function empty()
   return root_module
 end
 
----------- Operations ---------- 
+--============================================================================--
+-- Operations
 
 -- Map an xml attribute to an appropriate handler to generate X-Types
 --      xml attribute --> action to generate X-Type template (attribute handler)
@@ -462,7 +464,7 @@ local function filelist2xtypes(files)
   return root() -- the fully populated root module
 end
 
--------------------------------------------------------------------------------
+--============================================================================--
 
 --- @export
 return {
