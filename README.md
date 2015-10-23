@@ -1,8 +1,40 @@
                                                                                                                                                     
 # rticonnextdds-ddsl
 
+New Outline
 
+ Brief Intro: Why? & What?
+ Link to the presentation
+ 
+ - Getting Started
+   - Step through the tutorial
+   - Read the through the ddsl.xtypes module overview
+   - Browse the ddsl.xtypes API and usage examples
+   - Write your apps using DDSL
+     - create datatype directly in DDSL
+     - create datatypes in XML and import
+     - output IDL
+   - Try out the scripts: xml2idl
+   - Look at the the unit tests for more advanced examples
+          
+ - Contributing Code
+   - Ensure dependencies: lua5.2, ldoc
+   - Setup client side (local githooks)
+   - Build doc
+      -all option
+   - Modify and Update Code
+     - Add unit tests
+   - Pass all unit tests
+   - Update Changelog
+   - Merge upstream
+   - Create a release
+
+  - Versioning
+  
+  - License
+   
 ## Data Domain Specific Language (DDSL)
+
 
 The purpose of DDSL is to slice and dice data-types.
 

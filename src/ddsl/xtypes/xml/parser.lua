@@ -5,7 +5,7 @@
  This software is provided "as is", without warranty, express or implied.
 --]]
 
---- Given an XML string, return a Lua table.
+--- Parse a well formed XML string, and generate an equivalent Lua table.
 -- 
 -- The Lua table is connstructed as follows.
 --

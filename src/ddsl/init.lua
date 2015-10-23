@@ -45,10 +45,6 @@
 -- altered, as they are used to initialize the fields of new instances 
 -- created from it.
 -- 
--- The 
--- [diagram](https://docs.google.com/presentation/d/1UYCS0KznOBapPTgaMkYoG4rC7DERpLhXtl0odkaGOSI/edit#slide=id.ga31862cc3_0_22)
--- shows the DDSl meta-model.
--- 
 -- **Nomenclature**
 -- 
 -- This documentation uses the following nomenclature to refer to parts 
@@ -94,56 +90,84 @@ local _ = {
 
   --- Attributes.
   -- Every `xinstance` has a metatable that implements the following attributes.
+  -- For example, if the metatable, `model` defines the datatype
+  -- model, then the `KIND` table key specifies the kind of datatype model.
+  --     model[KIND] = <the datatype model kind>
   -- @section Attributes
 
-  --- The namespace model element, to which this model element belongs.
-  NS        = function() return '::' end,      -- namespace
+  --- Immutable data(type) model kind.  Cannot be changed after a datatype 
+  -- model is constructed.
+  KIND      = function() return 'KIND' end, 
+
+  --- Name of the data(type) model.
+  NAME      = function() return 'NAME' end, 
+
+  --- Namespace a data(type) model belongs to.
+  NS        = function() return '::' end,
   
-  --- The name of the model element
-  NAME      = function() return 'NAME' end,  -- table key for 'model name'  
-
-  --- Every model represented as a table with a non-nil key
-  --     model[KIND] = one of the type definitions
-  --  DDSL meta-model recognizes the following element categories: 
-  --  qualifiers, collections, aliases, leaf, template
-  --  The 'info' interface is used to classify the model elements into one 
-  --  of these categories.
-  KIND      = function() return 'KIND' end,  -- table key for 'model kind name' 
-
-  --- model definition attributes
-  QUALIFIERS = function() return '@' end,      -- table key for qualifiers
+  --- Qualifiers associated with a data(type) model.
+  QUALIFIERS = function() return '@' end,
      
-  --- For storing the child element info
-  --     model[_.DEFN][role] = role model element 
-  DEFN      = function() return 'DEFN' end,  -- table key for element meta-data
+  --- Data(type) model definition. 
+  -- @local
+  DEFN      = function() return 'DEFN' end,
 
-  --- For storing instances of this model element, keyed by the instance 
-  --  table. The value is the instance name. The instance name may be ''.
+  --- Data(type) model instances. For storing instances of a model, keyed 
+  -- by a `xinstance` (table). The value is the instance `NAME`. 
+  -- The instance `NAME` may be empty: ''.
+  -- @local
   INSTANCES = function() return 'INSTANCES' end,-- table key for instances
  
-  --- The user's 'handle' to the model element.                
-  --  It is a special instance used to manipulate the model definition, and 
-  --  create additional instances. Its fields should not be modified. It 
-  --  should be used for accessing a dynamic data sample. New instances 
-  --  should be created from it for storing/caching data samples in Lua. 
+  --- Data(type) model *cannonical* instance: the user's *handle* to the
+  -- datatype.                
+  -- 
+  -- It is a special instance used to manipulate the data(type) model and 
+  -- create additional instances. Its fields should not be modified. It 
+  -- field values are flattened out strings that can be used to access the 
+  -- field values in some storage system. 
+  -- 
+  -- New data(type) instances should be created from the template instance.
+  -- @local
   TEMPLATE  = function() return 'TEMPLATE' end,--table key for template instance
   
   --- @section end
   
   --============================== ===========================================--
   
-  --- Model info **abstract** interface.
-  -- Abstract interface that defines the categories of model element (kinds).
-  -- Concerete implementation of a typesystem spply the concrete functions.
+  --- Data(type) Model info **abstract** interface that defines the categories 
+  -- of model element (kinds).
   -- 
-  -- Each function takes an `xinstance` and returns it if the kind matches, 
-  -- otherwise, returns `nil`.
+  -- The DDSL meta-model recognizes the following element categories: 
+  -- qualifiers, collections, aliases, leaf, template.
+  -- Concrete implementations of a type system (e.g. `ddsl.xtypes`) supply 
+  -- the concrete implementation functions to classify the data(type) model 
+  -- elements into one of these categories.
+  -- 
+  -- Each function below takes an `xinstance` and returns:
+  -- 
+  --   - the `xinstance` itself, if it is of the kind, 
+  --   - otherwise, returns `nil`
+  --   
+  --  Note that a model element may satisfy several of these categories. For 
+  --  example a leaf model element could act as a template for instances.
+  --  @local
   info = {
     is_qualifier_kind = function (v) error('define abstract function!') end,
+    -- is this a qualifier model element?
+    
     is_collection_kind = function (v) error('define abstract function!') end,
+    -- is this a collection model element?
+    
     is_alias_kind = function (v) error('define abstract function!') end,
+    -- is this an alias for another model element or a collection 
+    -- of model elements?
+    
     is_leaf_kind = function (v) error('define abstract function!') end,
+    -- is this a leaf model element, that cannot be further composed of 
+    -- other model elements?
+    
     is_template_kind = function (v) error('define abstract function!') end,
+    -- is this a model element that acts as a template for creating instances?
   }
 }
 
@@ -152,20 +176,27 @@ local _ = {
 
 local logger = require('logger')
 
---- `logger` to log messages and get/set the verbosity levels
+--- `logger` to log messages and get/set the verbosity levels.
+-- This module extends the logger to add a `version` field.
+-- @usage
+--  -- show version
+--  print(`ddsl.log`.version)
 _.log = logger.new()
 
--- extend logger: add a function to get the version:
 _.log.version = require('ddsl.version')
 
 --============================================================================--
 -- Models 
 
---- Create a new 'empty' template
--- @param name  [in] the name of the underlying model
--- @param api   [in] a meta-table to control access to this template
--- @return template, model: a new template and its model
+--- Create a new 'empty' template.
+-- @string name the name of the underlying datatype model
+-- @param kind the kind of the underlying datatype model
+-- @tparam table api a meta-table to control access to this template, 
+--   encapsulating the rules and constraints for the datatype model
+-- @treturn table a new (empty) template backed by an underlying 
+--   data(type) model
 -- @within Constructors
+-- @local
 function _.new_template(name, kind, api)
 
   local model = {           -- meta-data
@@ -185,11 +216,12 @@ function _.new_template(name, kind, api)
   return template, model
 end
  
---- Populate a template
--- @param template  <<in>> a template, generally empty
--- @param defn      <<in>> template model definition
--- @return populated template 
+--- Populate a template.
+-- @tparam table template a template, generally empty
+-- @tparam table defn an array of definition elements for the template `KIND`
+-- @treturn table template populated with the definition elements
 -- @within Constructors
+-- @local
 function _.populate_template(template, defn)
   -- populate the role definitions
   local qualifiers
@@ -214,17 +246,19 @@ function _.populate_template(template, defn)
   return template
 end
 
---- Define a role (member) instance
--- @param #string role - the member name to instantiate (may be '')
--- @param #list<#table> role_defn - array consists of entries in the 
---           { template, [collection,] [annotation1, annotation2, ...] }
---      following order:
---           template - the kind of member to instantiate (previously defined)
---           collection - collection annotation (if any)
---           ...      - optional list of annotations including whether the 
---                      member is an array or sequence    
--- @return the role (member) instance and the role_defn
+--- Create a role (member) instance.
+-- @string role the member role name to instantiate (may be empty i.e. ' ')
+-- @tparam {table,...} role_defn array of entries in the format
+--    { xtemplate, [collection_qualifier,] [annotation_1, annotation_2, ...] }
+-- where:
+-- 
+--  - `xtemplate` is the the template instance for the member's datatype
+--  - `collection_qualifier` is a collection qualifier annotation (if any)
+--  - `annotation_i` are optional annotations (if any)
+-- @treturn table role_instance (member) instance 
+-- @treturn table `role_defn` (that was passed in)
 -- @within Constructors
+-- @local
 function _.create_role_instance(role, role_defn)
   
   _.assert_role(role)
@@ -263,12 +297,13 @@ function _.create_role_instance(role, role_defn)
 end
 
 
---- Propagate member 'role' update to all instances of a model
--- @param model [in] the model 
--- @param role [in] the role to propagate
--- @param role_template [in] template role instance created 
---                           using create_role_instance()
--- @within Modifiers                          
+--- Propagate member 'role' update to all instances of the model.
+-- @tparam table model the datatype model 
+-- @string role the role to propagate
+-- @xtemplate role_template the new template role instance (already 
+--  created using `create_role_instance`) to propagate; may be nil
+-- @within Modifiers
+-- @local                    
 function _.update_instances(model, role, role_template)
 
    -- update template first
@@ -289,26 +324,24 @@ end
 --============================================================================--
 -- Instances
       
---- Create an instance, using another instance as a template
---  Defines a table that can be used to index into an instance of a model
+--- Create an instance, using another instance as a template.
+-- @xtemplate  template the template to use for creating an instance
+-- @string[opt=nil] name the template role name; maybe nil
 -- 
--- @param template  <<in>> the template to use for creating an instance
--- @param name      <<in>> the template role name; maybe nil
---                         non-nil => creating a template instance 
---                         nil => creating an instance for holding data
--- @param is_role_instance <<in>> is this part of a role instance, i.e.
---                   does this instance belong to a template? (default: nil)
--- @return the newly created instance that supports indexing by 'name'
+--   - non-nil => creating a cannonical template instance 
+--   - nil => creating an instance for holding data
+-- @bool[opt=nil] is_role_instance is the new instance going to be a part of 
+--   a role instance, i.e. will the new instance belong to a `xtemplate`?
+-- @treturn xinstance newly created instance that supports indexing by `name`
 -- @usage
---    -- As an index into DDS dynamic data: sample[]
---    -- MyType.member = _.new_instance(Member, "member")
---    local member = sample[MyType.member] 
+--  -- As an index into some storage system: sample[]
+--  local myInstance = ddsl.`new_instance`(MyType, "myInstance")
+--  local member = sample[myInstance.member] -- = sample["myInstance.member"]
 --
---    -- As a sample itself
---    local myInstance = _.new_instance(MyType)
---    myInstance.member = "value"
---
--- @within Constructors       
+--  -- As storage for data itself
+--  local myInstance = ddsl.`new_instance`(MyType)
+-- myInstance.member = "value"
+-- @within Constructors
 function _.new_instance(template, name, is_role_instance) 
   local model = getmetatable(template)
   _.log.trace('new_instance 1: ', model[_.NAME], name)
@@ -397,36 +430,43 @@ function _.new_instance(template, name, is_role_instance)
   return instance
 end
 
---- Creates a collection template comprising of elements specified by the 
--- given template or the collection (previously created via this call)
+--- Creates a new named collection of instances based on an element template. 
+-- The collection is comprised of elements specified by the given template 
+-- or collection (previously created via a call to this function).
+-- @xtemplate content_template the collection element element datatype template
+--  
+--   - may be a template i.e. `xtemplate` (i.e. a non-collection) OR
+--   - may be a collection (i.e. creating a collection of collections)
+-- @param[opt=nil] capacity the capacity, i.e. the maximum number of instances;
+--   nil => unbounded
+-- @string[opt=nil] name role name, if the new instance will be a member of 
+--   another instance.
 -- 
--- Purpose:
---    Define new named collection of instances
--- Parameters:
--- @param content_template <<in>> - the template describing collection elements 
---               may be an instance table i.e. non-collection type OR
---               may be a collection table i.e. a collection of collections
--- @param capacity - the capacity, ie the maximum number of instances
---                      maybe nil (=> unbounded)
--- @param name <<in>> the template role name; maybe nil
---                         non-nil => creating a template instance 
---                         nil => creating an instance for holding data
--- @param is_role_instance <<in>> is this part of a role instance, i.e.
---                   does this instance belong to a template? (default: nil)
--- @return returns the newly created collection
--- Usage:
---    -- As an index into DDS dynamic data: sample[]
---    -- MyType.mySeq = _.new_collection(MySeq, "mySeq")
---    for i = 1, sample[#MyType.mySeq] do -- length accessor for the collection
---       local element_i = sample[MyType.mySeq[i]] -- access the i-th element
---    end    
---
---    -- As a sample itself
---    local myInstance = _.new_collection(MyType)
---    for i = 1, 10 do
---        myInstance.mySeq[i] = element_i -- access the i-th element
---    end  
---    print(#myInstance.mySeq) -- the actual number of elements
+--  - non-nil => creating a template instance 
+--  - nil => creating an instance for holding data
+-- @bool[opt=nil] is_role_instance is the new collection going to be part of 
+--   a role instance, i.e. will it belong to a template?
+-- @treturn xinstance returns the newly created collection instance
+-- @usage
+--  -- As an index into DDS dynamic data: sample[]
+--  local myInstance = ddsl.`new_collection`(MyType, 10, "myInstance")
+--  for i = 1, sample[#myInstance] do     -- = sample['myInstance#']
+--    -- access the i-th element
+--    print(sample[myInstance[i].member])  -- = sample["myInstance[i].member"]
+--  end    
+-- 
+--  -- As a storage for data itself
+--  local myInstance = ddsl.`new_collection`(MyType, 10)
+--  for i = 1, 5 do
+--    print(myInstance[i].member) -- get the i-th element = "member"
+--    myInstance[i].member = i    -- set the i-th element
+--  end  
+--  
+--  -- the actual number of elements
+--  print(#myInstance)  -- 5
+--  
+--  -- the collection capacity
+--  print(myInstance()) -- 10
 -- @within Constructors
 function _.new_collection(content_template, capacity, name, is_role_instance) 
   _.log.trace('new_collection',content_template,capacity,name)
@@ -475,15 +515,16 @@ function _.new_collection(content_template, capacity, name, is_role_instance)
 end
 
 
---- Create new named collection of instances based on another collection 
--- Parameters:
--- @param collection  <<in>>  - the template collection 
--- @param name <<in>> the template role name; maybe nil
--- @param is_role_instance <<in>> is this part of a role instance, i.e.
---                   does this instance belong to a template? (default: nil)
--- @return the newly created collection with the given name, and the given
---         collection as the "collection template"
+--- Create new named collection of instances based on another collection. Wraps
+-- `new_collection`.
+-- @xinstance collection the template for the new collection
+-- @string[opt=nil] name the template role name; maybe nil
+-- @bool[opt=nil] is_role_instance is the new collection to be created going to 
+--  be part of a role instance, i.e. will it belong to a template?
+-- @treturn xinstance a newly created collection with the given name, and the 
+--  given collection as the *collection template*
 -- @within Constructors
+-- @local
 function _.new_collection_instance(collection, name, is_role_instance) 
 
   local model = getmetatable(collection)   
@@ -511,21 +552,28 @@ function _.new_collection_instance(collection, name, is_role_instance)
   return new_collection_instance                              
 end             
                         
--- Is the given value a collection of instances:
+--- Is the given object a collection of instances?
+-- @xinstance v the object to check
+-- @treturn boolean|nil true if v is a collection, false or nil otherwise 
+-- @within Helpers
 function _.is_collection(v) 
   local model = getmetatable(v)
   return model and model[_.KIND] == _.collection_metatable[_.KIND]
 end
 
-_.collection_metatable = {    
-  [_.KIND] = function() return 'collection' end,
+--- Collection meta-model.
+-- @local
+_.collection_metatable = {
 
-  -- return the capacity; a 'nil' value means that capacity is unbounded 
+  [_.KIND] = function() return 'collection' end,
+  -- the datatype `KIND`
+
   __call = function (collection)
      local model = getmetatable(collection)
      local capacity = model[_.DEFN][2] or nil
      return capacity
   end,
+  -- return the capacity; a 'nil' value means that capacity is unbounded 
   
   __len = function (collection)
       -- NOTE: defined for template instances (i.e. is_role_instance) only
@@ -533,7 +581,8 @@ _.collection_metatable = {
       local model = getmetatable(collection)
       return string.format('%s#', model[_.NAME] or '')
   end,
-
+  -- get the length
+  
   __index = function (collection, i)
       _.log.trace('collection __index', collection, i)
       if 'number' ~= type(i) then
@@ -558,6 +607,7 @@ _.collection_metatable = {
       rawset(collection, i, element_i)
       return element_i
   end,
+  -- get the i-th element
   
   __newindex = function (collection, i, v)
       _.log.trace('collection __newindex', collection, i, v)
@@ -579,24 +629,29 @@ _.collection_metatable = {
       end
       return element_i
   end,
-
+  -- set the i-th element
+  
   __tostring = function (collection)
       local model = getmetatable(collection)
       local capacity = model[_.DEFN][2] or ''
       return string.format('%s{%s}<%s', model[_.NAME] or '',
                                         model[_.DEFN][1],capacity)
   end,
+  -- show the datatype as a string
 }
 
---- Clone a new instance from another instance using the given 'name' prefix
--- @param v [in] an instance (maybe collection) with properly initialized fields
--- @param prefix [in] the name to prefix the instance fields with (maybe nil)
---                    non-nil => creating a template instance
---                    nil     => creating a user instance for holding data
--- @param is_role_instance <<in>> is this part of a role instance, i.e.
---                   does this instance belong to a template? (default: nil)
--- @return new instance with fields properly initialized for 'prefix'
+--- Clone a new instance from another instance using the given `name` prefix.
+-- @xinstance v an instance (maybe collection) with properly initialized fields
+-- @string[opt=nil] prefix the name to prefix the instance fields with
+-- 
+--   - non-nil => creating a template instance
+--   - nil     => creating a user instance for holding data
+-- @bool[opt=nil] is_role_instance is the new instance going to be part of a 
+--   role instance, i.e. will it belong to a template?
+-- @treturn xinstance a new instance with fields properly initialized 
+--   for `prefix`
 -- @within Constructors
+-- @local
 function _.clone(v, prefix, is_role_instance) 
 
     local type_v = type(v)
@@ -634,36 +689,34 @@ end
 --============================================================================--
 -- Retrievers
 
---- Retrieve the model definition underlying an instance
--- The instance would have been created previously using 
---    `new_instance`() or 
---    `new_collection`() or 
---    `new_template`() for a "template" instance
--- @param instance [in] the instance whose model we want to retrieve
--- @return the underlying data model
+--- Retrieve the datatype model underlying an instance.
+-- The instance would have been created previously using `new_instance`() or 
+-- `new_collection`() or `new_template`().
+-- @xinstance instance the instance whose model we want to retrieve
+-- @treturn table the underlying datatype model
 -- @within Retrievers
+-- @local
 function _.model(instance)
   return getmetatable(instance)
 end
 
---- Retrieve the template instance for the given instance
--- The instance would have been created previously using 
---      _.new_instance() or 
---      _.new_collection() or 
---      _._new_template() for a "template" instance
--- @param instance [in] the instance whose template we want to retrieve
--- @return the underlying template
+--- Retrieve the (*cannonical*) template instance.
+-- The instance would have been created previously using `new_instance`() or 
+-- `new_collection`() or `new_template`().
+-- @xinstance instance the instance whose template we want to retrieve
+-- @treturn xtemplate the underlying template (*cannonical*) instance
 -- @within Retrievers
 function _.template(instance)
   local model = getmetatable(instance)
   return model and model[_.TEMPLATE]
 end
 
---- Resolve the alias template to the underlying non-alias template
--- @param template [in] the data model element to resolve 
--- @return the underlying non-alias data model template, unwrapping the 
---         all the collection qualifiers
---         [ [collection_qualifier] ... ] <Non-Alias Template>
+--- Resolve an alias template to the underlying non-alias template and the 
+-- collection qualifiers that wrap that non-alias template.
+-- @xinstance template the alias datatype template to resolve 
+-- @treturn ... variadic number of return values consisting of the underlying 
+--  non-alias datatype template, and the collection qualifiers wrapping it
+--    [ [collection_qualifier,] ... ] <Non-Alias Template>
 -- @within Retrievers
 function _.resolve(template)
   local is_alias_kind = template and _.info.is_alias_kind(template)
@@ -679,18 +732,15 @@ function _.resolve(template)
   end
 end
 
---- Qualified (scoped) name of a model element relative to a namespace. 
--- Computes the shortest 'distance' (scoped name) to navigate to template 
--- from namespace.
--- 
--- Note that a namespace without an enclosing (NS) namespace and without 
--- a name is a 'root' namespace (i.e the outermost enclosing scope).  
--- @param template [in] the data model element whose qualified name is 
---        desired in the context of the namespace
--- @param namespace [in] the namespace model element; if nil, defaults to the 
---        outermost enclosing scope
--- @return the name of the template relative to the namespace; may be nil
---         (for example when template == namespace) 
+--- Qualified (scoped) name of a datatype model relative to a namespace. 
+-- Computes the shortest *distance* (scoped name) to navigate to the datatype 
+-- template from namespace. Each name segment is separated by '::'.
+-- @xinstance template the datatype whose qualified name is 
+--  desired in the context of the namespace
+-- @xtemplate[opt=nil] namespace the namespace datatype; if nil, defaults to 
+--  template's outermost enclosing scope (`root` namespace)
+-- @treturn string the qualified name of the datatype relative to the 
+--   namespace; may be nil (for example when template == namespace). 
 -- @within Retrievers
 function _.nsname(template, namespace)
   -- pre-conditions:
@@ -712,9 +762,12 @@ function _.nsname(template, namespace)
   end
 end
 
---- Get the root namespace i.e. the outermost enclosing scope for an instance.
--- @param template[in] the instance (or template) whose root is to be determined
--- @return the root namespace ie. the outermost enclosing scope (maybe template)
+--- Get the root namespace (the outermost enclosing scope) for an instance.
+-- Note that a namespace without an enclosing namespace is the outermost 
+-- enclosing scope.  
+-- @xinstance template the instance (or template) whose root is to be determined
+-- @treturn xtemplate the root namespace ie. the outermost enclosing scope 
+--   (NOTE: maybe template itself)
 -- @within Retrievers
 function _.nsroot(template)
   -- pre-conditions:
@@ -733,19 +786,19 @@ end
 --============================================================================--
 -- Helpers
 
---- Get the model type of any arbitrary value
--- @param value  [in] the value for which to retrieve the model type
--- @return the model type or nil (if 'value' does not have a MODEL)
--- @within Helpers
+--- Get the datatype kind for any arbitrary object.
+-- @xinstance value the object for which to retrieve the model type
+-- @return the datatype `KIND` or nil (if 'value' is not a valid datatype)
+-- @within Retrievers
 function _.model_kind(value)
   local model = getmetatable(value)
   return model and model[_.KIND]
 end
 
---- Ensure that the value is a model element
--- @param kind   [in] expected model element kind
--- @param value  [in] table to check if it is a model element of "kind"
--- @return the value if the kind matches, or nil
+--- Ensure that an object is a valid datatype of the given kind.
+-- @param kind   the expected model element `KIND`
+-- @xinstance value  the object to check if it is a datatype model of `kind`
+-- @treturn xinstance|nil the value if the kind matches, or nil otherwise
 -- @within Helpers
 function _.assert_model_kind(kind, value)
     local model = getmetatable(value)
@@ -755,19 +808,21 @@ function _.assert_model_kind(kind, value)
     return value
 end
 
---- Ensure that value is a qualifier
--- @param qualifier [in] the potential qualifier to check
--- @return the qualifier or nil
+--- Ensure that a given object is a datatype qualifier.
+-- @xinstance qualifier the object to check if it is a qualifier
+-- @treturn xinstance|nil the qualifier or nil otherwise (not a qualifier) 
 -- @within Helpers
+-- @local
 function _.assert_qualifier(qualifier)
     assert(_.info.is_qualifier_kind(qualifier), 
            table.concat{'expected qualifier \"', tostring(qualifier), '"'})
     return qualifier
 end
 
---- Ensure all elements in the 'value' array are qualifiers
--- @param value [in] the potential qualifier array to check
--- @return the qualifier array or nil
+--- Ensure that all elements in the given array are datatype qualifiers.
+-- @tparam {xinstance,...} value the potential qualifier array to check
+-- @treturn {xinstance,...}|nil the `value` qualifier array or nil 
+--   otherwise (not a qualifier array)
 -- @within Helpers
 function _.assert_qualifier_array(value)
     -- establish valid qualifiers, if any
@@ -792,19 +847,20 @@ function _.assert_qualifier_array(value)
     return value
 end
 
---- Ensure that the role name is valid
--- @param role [in] the role name
--- @return role if valid; nil otherwise
+--- Ensure that a given role name is valid.
+-- @string role the role name to check
+-- @treturn role|nil the role if valid; nil otherwise
 -- @within Helpers
+-- @local
 function _.assert_role(role)
   assert('string' == type(role), 
       table.concat{'invalid role name: ', tostring(role)})
   return role
 end
 
---- Ensure that value is a template
--- @param template [in] the potential template to check
--- @return the template or nil
+--- Ensure that a given object is a datatype template.
+-- @xinstance template the potential object to check if it is a datatype template
+-- @treturn xtemplate|nil the template or nil (not a valid template)
 -- @within Helpers
 function _.assert_template_kind(template)
     assert(_.info.is_template_kind(template), 
@@ -822,9 +878,9 @@ local interface = {
   EMPTY                   = _.EMPTY,
 
   -- accessors and mutators (meta-attributes for types)
-  NS                      = _.NS,
-  NAME                    = _.NAME,
   KIND                    = _.KIND,
+  NAME                    = _.NAME,
+  NS                      = _.NS,
   QUALIFIERS              = _.QUALIFIERS,
   DEFN                    = _.DEFN,
   INSTANCES               = _.INSTANCES,

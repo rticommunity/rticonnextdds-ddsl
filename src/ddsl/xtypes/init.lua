@@ -45,16 +45,65 @@
 -- **General Syntax**
 --
 -- Since `ddsl` does not impose any specific syntax on how datatypes are
--- expressed in Lua, this module defines the syntax. The general pattern is:
+-- expressed in Lua, this module defines the syntax. The general syntax and 
+-- patterns common to all datatypes are illsurated below.
 --
 --    local xtypes = require 'ddsl.xtypes'
 --  
 --    -- create a datatype of kind 'kind' with the name 'MyType'
+--    -- NOTE: `mytype` is the template instance for `MyType` (i.e. `xtemplate`)
 --    local mytype = xtypes.<kind>{
 --       MyType = { <definition_syntax_for_kind> }
 --    }
+--    
 --
--- The datatypes constructors provide more detail with usage examples.
+--    -- create an instance to use in user application code
+--    local myinstance = xtypes.`new_instance`(mytype)
+--    
+--    -- print the datatype underlying an instance
+--    print(tostring(myinstance)) -- or simply
+--    print(myinstance) 
+--    
+--    
+--    -- get the template instance
+--    assert(xtypes.`template`(myinstance) == mytype)
+--    
+--    
+--    -- print the kind of a datatype
+--    -- NOTE: the kind is immutable, i.e. cannot be changed after creation
+--    print(mytype[xtypes.`KIND`]())
+--
+--  
+--    -- get the name of a datatype
+--    print(mytype[xtypes.`NAME`])
+--
+--    -- set the name of a datatype
+--    mytype[xtypes.`NAME`] = 'MyTypeNewName'
+--
+--
+--    -- get the enclosing namespace of a datatype
+--    print(mytype[xtypes.`NS`])
+--
+--    -- set the enclosing namespace of a datatype
+--    mytype[xtypes.`NS`] = `YourType` -- defined elsewhere; maybe `nil`
+--    
+--    
+--    -- get the qualifiers associated with a datatype
+--    print(mytype[xtypes.`QUALIFIERS`])
+--
+--    -- set the qualifiers associated with a datatype
+--    mytype[xtypes.`QUALIFIERS`] = { 
+--      xtypes.`Nested`, 
+--      xtypes.`Extensibility`{'FINAL_EXTENSIBILITY'},
+--    }
+--    
+--    -- Get the qualified name (i.e. scoped name) of a datatype:
+--    print(xtypes.`nsname`(mytype)
+--  
+--    -- Get the outermost enclosing scope of a datatype:
+--    print(xtypes.`nsroot`(mytype)
+--  
+-- The datatype constructors provide more usage examples, specific to each type.
 --
 -- @module ddsl.xtypes
 -- @alias xtypes.builtin
@@ -75,7 +124,6 @@ local xtypes = {
   --  else
   --    ...
   --  end
-  -- 
   -- @section Kind
   
   --- Annotation kind.
@@ -85,10 +133,6 @@ local xtypes = {
   --- Atom kind.
   -- @treturn string 'atom'
   ATOM       = function() return 'atom' end,
-  
-  --- Constant kind.
-  -- @treturn string 'const'
-  CONST      = function() return 'const' end,
   
   --- Ennumeration kind.
   -- @treturn string 'enum'
@@ -101,14 +145,18 @@ local xtypes = {
   --- Union kind.
   -- @treturn string 'union'
   UNION      = function() return 'union' end,
+
+  --- Typedef kind.
+  -- @treturn string 'typedef'
+  TYPEDEF    = function() return 'typedef' end,
+  
+  --- Constant kind.
+  -- @treturn string 'const'
+  CONST      = function() return 'const' end,
   
   --- Module kind.
   -- @treturn string 'module'
   MODULE     = function() return 'module' end,
-  
-  --- Typedef kind.
-  -- @treturn string 'typedef'
-  TYPEDEF    = function() return 'typedef' end,
   
   --- @section end
   
@@ -124,6 +172,7 @@ local xtypes = {
   API = {},
   
   --- Builtins.
+  -- @local
   builtin = {},
 }
 
@@ -158,17 +207,17 @@ local EMPTY             = _.EMPTY
 --  mytype[NAME] = 'MyTypeNewName' 
 -- @section DatatypeAttributes
 
---- `ddsl.NS`: Datatype enclosing namespace (enclosing scope).
--- @function NS
-local NS                 = _.NS
+--- `ddsl.KIND`: Datatype kind. 
+-- @function KIND
+local KIND               = _.KIND
 
 --- `ddsl.NAME`: Datatype name.
 -- @function NAME
 local NAME               = _.NAME
 
---- `ddsl.KIND`: Datatype kind. 
--- @function KIND
-local KIND               = _.KIND
+--- `ddsl.NS`: Datatype enclosing namespace (enclosing scope).
+-- @function NS
+local NS                 = _.NS
 
 --- `ddsl.QUALIFIERS`: Datatype qualifiers (annotations).
 -- @function QUALIFIERS
@@ -292,22 +341,26 @@ end
 -- Annotations --
 
 --- Create an annotation.
--- Annotations attributes are not interpreted; they are kept intact in the 
--- annotation datatype for retrieval later.
--- @tparam {[string]=...} decl a table containing an annotation declaration
---              { name = {...}  }
---  where ...  are the optional 'default' attributes of the annotation.
--- @treturn table an annotation datatype
+-- Annotations qualify a datatype or a member of the datatype. Except for 
+-- `array` and `sequence` qualifiers, annotation contents are opaque to 
+-- DDSL; they are kept intact and may be interpreted in the user's context.
+-- @tparam {[string]=...} decl a table containing an annotation name and 
+--  definition, where ...  are the optional *default* attributes 
+--  of the annotation.
+-- @treturn table an annotation datatype template (`xtemplate`)
 -- @usage
---  local xtypes = require 'ddsl.xtypes'
---  
 --  -- Create user defined annotation @MyAnnotation(value1 = 42, value2 = 42.0)
---  local MyAnnotation = xtypes.annotation{
+--  local MyAnnotation = xtypes.`annotation`{
 --     MyAnnotation = {value1 = 42, value2 = 9.0} -- default attributes
 --  }
 --
 --  -- Use user defined annotation with custom attributes
 --  MyAnnotation{value1 = 942, value2 = 999.0}
+--  
+--  -- Print the annotation contents (value1, value2)
+--  for k, v in pairs(MyAnnotation) do
+--    print(k, v)
+--  end
 --  
 --  -- Use builtin annotation `Key`
 --  xtypes.Key
@@ -410,9 +463,10 @@ xtypes.ARRAY = _.model(array)
 --- Create an array qualifier with the specified dimensions.
 -- Ensures that a valid set of dimension values is passed in. Returns the
 -- array datatype qualifier, initialized with the specified dimensions.
+-- An array qualifier is interpreted by DDSL as a *collection* qualifier.
 -- @int n the first dimension
 -- @param ... the remaining dimensions
--- @treturn table the array qualifier instance
+-- @treturn table the array qualifier instance (`xtemplate`)
 function xtypes.array(n, ...)
   return xtypes.make_collection_qualifier(array, n, ...)
 end
@@ -427,12 +481,15 @@ xtypes.SEQUENCE = _.model(sequence)
 --- Create a sequence qualifier with the specified dimensions.
 -- Ensures that a valid set of dimension values is passed in. Returns the
 -- sequence datatype qualifier, initialized with the specified dimensions.
+-- A sequence qualifier is interpreted by DDSL as a *collection* qualifier.
 -- @int n the first dimension
 -- @param ... the remaining dimensions
--- @treturn table the sequence qualifier instance
+-- @treturn table the sequence qualifier instance (`xtemplate`)
 function xtypes.sequence(n, ...)
   return xtypes.make_collection_qualifier(sequence, n, ...)
 end
+
+--- @section end
 
 --- Make a collection qualifier instance.
 -- Ensures that a valid set of dimension values is passed in. Returns the
@@ -473,34 +530,32 @@ function xtypes.make_collection_qualifier(annotation, n, ...)
   return annotation(dimensions)
 end
 
---- @section end
-
 --============================================================================--
 -- Atoms --
 
---- Create an atomic type.
+--- Create an atomic datatype.
 -- There are two kinds of atomic types:
+-- 
 --   - un-dimensioned
---   - dimensioned, e.g. bounded size/length (eg string)
---
--- @param decl  [in] a table with a name assigned to an empty table or
---              a table containing a size/length/dimension value
---                 un-dimensioned:
---                           { name = EMPTY }
---                 dimensioned:
---                         { name = {n} }
---                         { name = {const_defined_previously} }
---                   where n a dimension, e.g. max length
---        and 'name' specifies the underlying atom
---              e.g.: string | wstring
--- @return the atom template (an immutable table)
+--   - dimensioned, e.g. bounded size/length (e.g. `string`<n>)
+--   
+-- @tparam {[string]=EMPTY|{int}|const} decl a table containing an atom name
+--  mapped to and `EMPTY` initializer (for undimensioned atoms) or a a table 
+--  containing an integral *dimension* (for dimensioned atoms). The dimension 
+--  could also be an integral `const` datatype.
+-- @treturn table an atom datatype template (`xtemplate`)
 -- @usage
---  -- Create an un-dimensioned atomic type:
---  local MyAtom = xtypes.atom{MyAtom=EMPTY}
+--  -- Create an un-dimensioned atomic datatype named 'MyAtom':
+--  local MyAtom = xtypes.atom{
+--    MyAtom = EMPTY
+--  }
 --
 --  -- Create a dimensioned atomic type:
---  local string10 = xtypes.atom{string={10}}    -- bounded length string
---  local wstring10 = xtypes.atom{wstring={10}}  -- bounded length wstring
+--  local string10 = xtypes.atom{string={10}}        -- bounded length string
+--  local wstring10 = xtypes.atom{wstring={10}}      -- bounded length wstring
+-- 
+--  -- Create a dimensioned atomic type, where 'MAXLEN' is a `const`:
+--  local StringMaxlen = xtypes.atom{string=MAXLEN} -- bounded length string
 -- @within Datatypes
 function xtypes.atom(decl)
   local name, defn = xtypes.parse_decl(decl)
@@ -560,195 +615,29 @@ xtypes.API[xtypes.ATOM] = {
   end
 }
 
---============================================================================--
--- Constants --
-
---- Create a constant.
--- @param decl  [in] a table containing a constant declaration
---                   { name = { xtypes.atom, const_value_of_atom_type } }
---        NOTE: this method will try to convert the value to the correct type,
---              if not so already
--- @return the const template (an immutable table)
--- @usage
---  -- Create a constant type
---       local MY_CONST = xtypes.const{
---          MY_CONST = { xtypes.<atom>, <const_value> }
---       }
---
---  -- Examples
---       local PI = xtypes.const{
---          PI = { xtypes.double, 3.14 }
---       }
---
---       local MY_SHORT = xtypes.const{
---            MY_SHORT = { xtypes.short, 10 }
---       }
---
---       local MY_STRING = xtypes.const{
---          MY_STRING = { xtypes.string(), "String Constant" }
---       }
---
---       local MyStringSeq =  xtypes.typedef{
---             MyStringSeq = { xtypes.string, xtypes.sequence(MY_CONST) }
---       }
---       
---     Get the const value and the underlying atomic datatype
---          print( PI() ) -- 3.14  double
--- @within Datatypes
-function xtypes.const(decl)
-  local name, defn = xtypes.parse_decl(decl)
-
-  -- pre-condition: ensure that the 1st defn declaration is a valid type
-  local atom = _.assert_model_kind(xtypes.ATOM, _.resolve(defn[1]))
-
-  -- pre-condition: ensure that the 2nd defn declaration is a valid value
-  local value = defn[2]
-  assert(nil ~= value,
-         table.concat{name, ' : const value must be non-nil: ',
-                      tostring(value)})
-
-  -- convert value to the correct type:
-  local coercedvalue = nil
-  if xtypes.builtin.boolean == atom then
-      if 'boolean' ~= type(value) then
-          if 'false' == value or '0' == value then coercedvalue = false
-          elseif 'true' == value or '1' == value then coercedvalue = true
-          else coercedvalue = not not value -- toboolean
-          end
-          if nil ~= coercedvalue then
-             log.info(table.concat{name, 
-                                ' : converting to boolean: "', value,
-                                '" -> ', tostring(coercedvalue)})
-          else
-             log.notice(table.concat{name, 
-                                ' : converting to boolean: "', value,
-                                '" -> nil'})
-          end
-      end
-  elseif xtypes.string() == atom or
-         xtypes.wstring() == atom or
-         xtypes.builtin.char == atom then
-      if 'string' ~= type(value) then
-          coercedvalue = tostring(value)
-          if nil ~= coercedvalue then
-             log.info(table.concat{name, ' : converting to string: "', value,
-                                '" -> "', coercedvalue, '"'})
-          else
-             log.notice(table.concat{name, 
-                                ' : converting to string: "', value,
-                                '" -> nil'})
-          end
-      end
-  elseif xtypes.builtin.short == atom or
-         xtypes.builtin.unsigned_short == atom or
-         xtypes.builtin.long == atom or
-         xtypes.builtin.unsigned_long == atom or
-         xtypes.builtin.long_long == atom or
-         xtypes.builtin.unsigned_long_long == atom or
-         xtypes.builtin.float == atom or
-         xtypes.builtin.double == atom or
-         xtypes.builtin.long_double == atom then
-      if 'number' ~= type(value) then
-          coercedvalue = tonumber(value)
-          if nil ~= coercedvalue then
-             log.info(table.concat{name, ' : converting to number: "', value,
-                                '" -> ', coercedvalue})
-          else
-             log.notice(table.concat{name, 
-                                ' : converting to number: "', value,
-                                '" -> nil'})
-          end
-      end
-  end
-  if nil ~= coercedvalue then value = coercedvalue end
-
-  local model = _.model(atom)
-  if xtypes.builtin.unsigned_short == atom or
-     xtypes.builtin.unsigned_long == atom or
-     xtypes.builtin.unsigned_long_long == atom then
-     if value < 0 then
-       log.notice(table.concat{name, 
-                        ' : const value of "', value, ' of type "',
-                        type(value),
-                        '" must be non-negative and of the type: ',
-                        model[NAME] or ''})
-     end
-  end
-
-  -- char: truncate value to 1st char; warn if truncated
-  if (xtypes.builtin.char == atom or xtypes.builtin.wchar == atom) and
-      #value > 1 then
-    value = string.sub(value, 1, 1)
-    log.notice(table.concat{name, ' : truncating string value for ',
-                                  model[NAME] or '',
-                                  ' constant to: ', value})
-  end
-
-  -- integer: truncate value to integer; warn if truncated
-  if (xtypes.builtin.short == atom or xtypes.builtin.unsigned_short == atom or
-      xtypes.builtin.long == atom or xtypes.builtin.unsigned_long == atom or
-      xtypes.builtin.long_long == atom or
-      xtypes.builtin.unsigned_long_long == atom) and
-      'number' == type(value) and
-      value - math.floor(value) ~= 0 then
-    value = math.floor(value)
-    log.notice(table.concat{name, 
-                   ' : truncating decimal value for integer constant',
-                   ' to: ', value})
-  end
-
-  -- create the template
-  local template, model =
-                   _.new_template(name, xtypes.CONST, xtypes.API[xtypes.CONST])
-  model[_.DEFN] = { atom, value } -- { atom, value [,expression] }
-  return template
-end
-
-
--- Const API meta-table
-xtypes.API[xtypes.CONST] = {
-
-  __tostring = function(template)
-    local model = _.model(template)
-    return model[NAME] or
-           model[KIND]() -- evaluate the function
-  end,
-
-  __index = function (template, key)
-    local model = _.model(template)
-    return model[key]
-  end,
-
-  __newindex = function (template, key, value)
-    -- immutable: do-nothing
-  end,
-
-  -- instance value and datatype is obtained by evaluating the table:
-  -- eg: MY_CONST()
-  __call = function(template)
-    local model = _.model(template)
-    return model[_.DEFN][2], model[_.DEFN][1] -- value, datatype
-  end,
-}
 
 --============================================================================--
 -- Enums --
 
---- Create an enum type
--- @param decl  [in] a table containing an enum declaration
---        { EnumName = { { str1 = ord1 }, { str2 = ord2 }, ... } }
---    or  { EnumName = { str1, str2, ... } }
---    or a mix of the above
--- @return The enum template. A table representing the enum data model.
--- The table fields  contain the string index to de-reference the enum's
--- constants in a top-level DDS Dynamic Data Type
+--- Create an enum datatype.
+-- @tparam {[string]={string,string,[string]=int,[string]=int,...} decl a 
+--  table containing an enum name mapped to a table (which is an array of 
+--  strings or a map of strings to ordinal values, or a mix of both). 
+--  For example,
+--     { MyEnum = { { str1 = ord1 }, { str2 = ord2 }, ... } }
+--  or  
+--     { MyEnum = { str1, str2, ... } }
+--  or a mix of the above
+--     { MyEnum = { strA, strB, { str1 = ord1 }, { str2 = ord2 }, ... } }
+-- @treturn table an enum datatype template  (`xtemplate`)
+--   The table is a map of enumerator strings to their ordinal values.
 -- @usage
---    -- Create enum: Declarative style
---    local MyEnum = xtypes.enum{
---      MyEnum = {
---          { role_1 = ordinal_value },
+--  -- Create enum: declarative style
+--  local MyEnum = xtypes.`enum`{
+--    MyEnum = {
+--          { role_1 = ordinal_1 },
 --          :
---          { role_M = ordinal_value },
+--          { role_M = ordinal_M },
 --
 --          -- OR --
 --
@@ -757,39 +646,45 @@ xtypes.API[xtypes.CONST] = {
 --          role_Z,
 --
 --          -- OPTIONAL --
---          annotation?,
+--          `annotation`_x,
 --          :
---          annotation?,
---      }
+--          `annotation`_z,
 --    }
---
--- -- Create enum: Declarative style
---   MyEnum = xtypes.enum{MyEnum=EMPTY}
---
---  -- Get | Set an annotation:
---   print(MyEnum[QUALIFIERS])
---   MyEnum[QUALIFIERS] = {
---        xtypes.Extensibility{'EXTENSIBLE_EXTENSIBILITY'},
---      }
---
---  -- Get | Set a member:
---   print(next(MyEnum[i]))
---   MyEnum[i] = { role = ordinal_value },
---   -- OR --
---   MyEnum[i] = role -- ordinal value = #MyEnum
---
---  -- After either of the above definition, the following post-condition holds:
---    MyEnum.role == ordinal_value
+--  }
+--  
+--  -- Create enum: imperative style (start with `EMPTY`)
+--  MyEnum = xtypes.`enum`{
+--    MyEnum = xtypes.`EMPTY`
+--  }  
 --
 --
+--  -- Get the i-th member:
+--  print(table.unpack{MyEnum[i]}) -- role_i, ordinal_i
+--   
+--  -- Set the i-th member:
+--  MyEnum[i] = { new_role_i = new_ordinal_i }
+--  -- OR --
+--  MyEnum[i] = role -- `ordinal` value = #MyEnum
+--
+--  -- After setting the i-th member, the following post-conditions hold:
+--  MyEnum.role_i     == ordinal_i
+--  MyEnum(ordinal_i) == role_i
+--
+--  -- Delete the i-th member:
+--  MyEnum[i] = nil
+--  
+--  
+--  -- Get the number of enumerators in the enum:
+--  print(#MyEnum)
+-- 
 --  -- Iterate over the model definition (ordered):
---    for i = 1, #MyEnum do print(table.unpack(MyEnum[i])) end
+--  for i = 1, #MyEnum do print(table.unpack(MyEnum[i])) end
 --
 --  -- Iterate over enum and ordinal values (unordered):
---    for k, v in pairs(MyEnum) do print(k, v) end
+--  for k, v in pairs(MyEnum) do print(k, v) end
 --  
 --  -- Lookup the enumerator name for an ordinal value:
---     print(MyEmum(i))
+--  print(MyEnum(ordinal)) -- role
 -- @within Datatypes
 function xtypes.enum(decl)
   local name, defn = xtypes.parse_decl(decl)
@@ -913,57 +808,74 @@ xtypes.API[xtypes.ENUM] = {
 --============================================================================--
 -- Structs --
 
---- Create a struct type
--- @param decl  [in] a table containing a struct declaration
---      { Name = { { role1 = {...}, { role2 = {...} }, ... } }
--- @return The struct template. A table representing the struct data model.
--- The table fields contain the string index to de-reference the struct's
--- value in a top-level DDS Dynamic Data Type
+--- Create a struct datatype.
+-- @tparam {[string]={[string]={...},{[string]={...},...} decl a table 
+--  containing a struct name mapped  to a table (which is an array of strings
+--  mapped to member definitions). For example,
+--    { MyStruct = { { role1 = {...}, { role2 = {...} }, ... } }
+--  where the member definition for a role is,
+--    { role = { xtemplate, [array | sequence,] [annotation, ...] } }
+-- @treturn table a struct datatype template (`xtemplate`).  
+--   The table is a map of the role names to flattened out strings that 
+--   represent the path from the enclosing top-level struct scope to the role. 
+--   The string values may be be used to retrieve the field values from 
+--   some storage system.
 -- @usage
---   Structs:
---   { { role = { template, [collection_qualifier,] [annotation1, ...] } } }
--- 
---    -- Create struct: Declarative style
---    local MyStruct = xtypes.struct{
---      MyStruct = {OptionalBaseStruct,
---        { role_1 = { type, multiplicity?, annotation? } },
+--  -- Create struct: declarative style
+--  local MyStruct = xtypes.`struct`{
+--    MyStruct = { 
+--      [<optional base `struct`>], -- base `struct` must be the 1st item
+--    
+--      {role_1={xtemplate_1, [`array`_1|`sequence`_1,] [`annotation`_1,...]}},
 --        :
---        { role_M = { type, multiplicity?, annotation? } },
---        annotation?,
---         :
---        annotation?,
---      }
+--      {role_M={xtemplate_M, [`array`_M|`sequence`_M,] [`annotation`_M,...]}},
+--      
+--      -- OPTIONAL --
+--      `annotation`_x,
+--       :
+--      `annotation`_z,
 --    }
+--  }
 --
---  -- Create struct: Imperative style
---   local MyStruct = xtypes.struct{MyStruct={OptionalBaseStruct}|xtypes.EMPTY}
+--  -- OR Create struct: imperative style (start with base `struct` or `EMPTY`)
+--  local MyStruct = xtypes.`struct`{
+--    MyStruct = { <optional base `struct`> } | xtypes.`EMPTY`
+--  }
+--  
+--  
+--  -- Get the i-th member:
+--  print(table.unpack(MyStruct[i])) -- role_i, value_i
+-- 
+--  -- Set the i-th member:
+--  MyStruct[i] = { new_role = { new_xtemplate, 
+--                                [new_`array` | new_`sequence`,] 
+--                                [new_`annotation`, ...] } }
+--  
+--  -- After setting the i-th member, the following post-condition holds:
+--  -- NOTE: also holds for roles defined in the base `struct` datatype
+--  MyStruct.role == 'prefix.enclosing.scope.path.to.role'
+--  
+--  -- Delete the i-th member:
+--  MyStruct[i] = nil
 --
---  -- Get | Set an annotation:
---   print(MyStruct[QUALIFIERS])
---   MyStruct[QUALIFIERS] = {
---        xtypes.Extensibility{'EXTENSIBLE_EXTENSIBILITY'},
---        xtypes.Nested{'FALSE'},
---      }
 --
---  -- Get | Set a member:
---   print(next(MyStruct[i]))
---   MyStruct[i] = { role = { type, multiplicity?, annotation? } },
---
---  -- Get | Set base class:
---   print(MyStruct[BASE])
---   MyStruct[BASE] = BaseStruct, -- optional
+--  -- Get the base class:
+--   print(MyStruct[xtypes.`BASE`])
+--   
+--  -- Set base class:
+--   MyStruct[xtypes.`BASE`] = `YourStruct` -- defined elsewhere
 --
 --
---  -- After either of the above definition, the following post-condition holds:
---    MyStruct.role == 'container.prefix.upto.role'
---
---
+--  -- Get the number of members in the struct (not including base struct):
+--  print(#MyStruct)
+--  
 --  -- Iterate over the model definition (ordered):
---    for i = 1, #MyStruct do print(table.unpack(MyStruct[i])) end
+--  -- NOTE: does NOT show the roles defined in the base `struct` datatype
+--  for i = 1, #MyStruct do print(table.unpack(MyStruct[i])) end
 --
 --  -- Iterate over instance members and the indexes (unordered):
---    for k, v in pairs(MyStruct) do print(k, v) end
---    
+--  -- NOTE: shows roles defined in the base `struct` datatype
+--  for k, v in pairs(MyStruct) do print(k, v) end
 -- @within Datatypes
 function xtypes.struct(decl)
   local name, defn = xtypes.parse_decl(decl)
@@ -1155,60 +1067,91 @@ xtypes.API[xtypes.STRUCT] = {
 --============================================================================--
 -- Unions --
 
---- Create a union type
--- @param decl  [in] a table containing a union declaration
---      { Name = {discriminator, { case, role = {...} }, ... } }
--- @return The union template. A table representing the union data model.
--- The table fields contain the string index to de-reference the union's value
--- in a top-level DDS Dynamic Data Type
--- @usage
---   Unions:
---    { { case, role = { template, [collection_qualifier,] [annotation1, ...] } } }
--- 
---    -- Create union: Declarative style
---    local MyUnion = xtypes.union{
---      MyUnion = {discriminator,
---        { case,
---         [ { role_1 = { type, multiplicity?, annotation? } } ] },
---        :
---        { case,
---         [ { role_M = { type, multiplicity?, annotation? } } ] },
---        { nil,
---         [ { role_Default = { type, multiplicity?, annotation? } } ] },
---        annotation?,
---         :
---       annotation?,
+--- Create a union datatype.
+-- @tparam {[string]={xtemplate,{case,[string]={...}},...} decl a table 
+--  containing a union name mapped to a table as follows.
+--    { 
+--      MyUnion = { 
+--          xtemplate,
+--          { case1, [ role1 = {...} ] }, 
+--          { case2, [ role2 = {...} ] }, 
+--          ... 
+--          { nil,   [ role2 = {...} ] } -- default
 --      }
 --    }
+--  where the member definition for a role is,
+--    { role = { xtemplate, [array | sequence,] [annotation, ...] } }
+-- @treturn table an union datatype template (`xtemplate`).
+--   The table is a map of the role names to flattened out strings that 
+--   represent the path from the enclosing top-level union scope to the role.
+--   The string values may be be used to retrieve the field values from 
+--   some storage system.
+-- @usage
+--  -- Create union: declarative style
+--  local MyUnion = xtypes.`union`{
+--    MyUnion = {
+--      <discriminator `atom` or `enum`>,  -- must be the 1st item
 --
--- -- Create union: Imperative style
---   local MyUnion = xtypes.union{MyUnion={discriminator}}
+--      { case1,
+--        [{role_1={xtemplate_1,[`array`_1|`sequence`_1,][`annotation`_1,...]}}]
+--      },
+--        :
+--      { caseM,
+--        [{role_M={xtemplate_M,[`array`_M|`sequence`_M,][`annotation`_M,...]}}]
+--      },
 --
---  -- Get | Set an annotation:
---   print(MyUnion[QUALIFIERS])
---   MyUnion[QUALIFIERS] = {
---        xtypes.Extensibility{'EXTENSIBLE_EXTENSIBILITY'},
---      }
+--      { nil, -- default
+--        [{role={xtemplate,[`array`|`sequence`,][`annotation`,...]}}]
 --
---  -- Get | Set a member:
---   print(next(MyUnion[i]))
---   MyUnion[i] = { case, [ { role = { type, multiplicity?, annotation? } } ] },
+--      -- OPTIONAL --
+--      `annotation`_x,
+--       :
+--      `annotation`_z,
+--    }
+--  }
+--  
+--  -- OR Create union: imperative style (start with `EMPTY`)
+--  local MyUnion = xtypes.`union`{
+--    MyUnion = { <discriminator `atom` or `enum`> }
+--  }
 --
---  -- Get | Set discriminator:
---   print(MyUnion[SWITCH])
---   MyUnion[SWITCH] = discriminator
+--  -- Get the i-th member:
+--  print(table.unpack(MyUnion[i])) -- role_i, value_i
+-- 
+--  -- Set the i-th member:
+--   MyUnion[i] = { case, [ { role = { xtemplate, 
+--                                      [`array` | `sequence`,] 
+--                                      [`annotation`, ...] } } ] },
+--                                      
+--  -- After setting the i-th member, the following post-condition holds:
+--  MyStruct.role == 'prefix.enclosing.scope.path.to.role'
 --
+--  -- Delete the i-th member:
+--  MyUnion[i] = nil  
 --
---  -- After either of the above definition, the following post-condition holds:
---    MyUnion._d == '#'
---    MyUnion.role == 'container.prefix.upto.role'
+--  
+--  -- Get the discriminator:
+--   print(MyUnion[xtypes.`SWITCH`])
 --
+--  -- Set the discriminator:
+--   MyUnion[xtypes.`SWITCH`] = <discriminator `atom` or `enum`>
 --
+-- -- After setting the discriminator, the following post-condition holds:
+--  MyUnion._d == '#'
+--
+--  
+-- -- Get the number of members in the union:
+--  print(#MyUnion)
+--  
 --  -- Iterate over the model definition (ordered):
---    for i = 1, #MyUnion do print(table.unpack(MyUnion[i])) end
+--  for i = 1, #MyUnion do print(table.unpack(MyUnion[i])) end
 --
 --  -- Iterate over instance members and the indexes (unordered):
---    for k, v in pairs(MyUnion) do print(k, v) end
+--  for k, v in pairs(MyUnion) do print(k, v) end
+--  
+-- -- Retrieve the currectly selected member
+-- NOTE: i.e. the member selected by current discriminator value, `MyUnion._d`
+-- print(MyUnion()) -- may be `nil`
 -- @within Datatypes
 function xtypes.union(decl)
   local name, defn = xtypes.parse_decl(decl)
@@ -1389,11 +1332,12 @@ xtypes.API[xtypes.UNION] = {
 --- Ensure that case and discriminator are valid and compatible, and if so, 
 -- return the case value to use.
 -- The input case value may be converted to the correct type required 
--- the discriminator.
+-- by the discriminator.
 -- @xinstance discriminator a discriminator datatype
 -- @param case a case value
 -- @return nil if the discriminator or the case is not valid or if the case is
---   not compatible with the discriminator; otherwise the case value to use.
+--   not compatible with the discriminator; otherwise the (coverted) case 
+--   value to use.
 -- @local  
 function xtypes.assert_case(discriminator, case)
   local err_msg
@@ -1460,50 +1404,328 @@ function xtypes.assert_case(discriminator, case)
 end
 
 --============================================================================--
+-- Typedefs --
+
+--- Create a typedef `alias` datatype.
+-- Typedefs are aliases for underlying datatypes.
+-- @tparam {[string]={xtemplate,[array|sequence,][annotation,...]}} decl a table
+-- containing a typedef mapped to an array as follows.
+--    { MyTypedef = { xtemplate, [array | sequence,] [annotation, ...] } }
+-- where `xtemplate` is the underlying type definition, optionally followed by
+-- and `array` or `sequence` qualifiers to specify the multiplicity, 
+-- optionally followed by annotations.
+-- @treturn table an typedef datatype template (`xtemplate`).
+-- @usage
+--  -- Create a typedef datatype:
+--  local MyTypedef = xtypes.`typedef`{
+--    MyTypedef = { `xtemplate`, [`array` | `sequence`,] [`annotation`, ...] }
+--  } 
+-- 
+--  -- Retreive the typedef definition
+--  print(MyTypedef()) -- `xtemplate`, [`array` | `sequence`]
+-- 
+--  -- Resolve a typedef to the underlying non-typedef datatype and a list 
+--  -- of collection qualifiers
+--  print(xtypes.`resolve`(MyTypedef)) 
+-- 
+-- 
+--  -- Example: typedef sequence<MyStruct> MyStructSeq
+--  local MyStructSeq = xtypes.`typedef`{
+--    MyStructSeq = { xtypes.MyStruct, xtypes.`sequence`() }
+--  }
+--  
+--  print(MyStructSeq()) --     MyStruct     @sequence(10)
+--
+--
+--  -- Example: typedef MyStruct MyStructArray[10][20]
+--  local MyStructArray = xtypes.`typedef`{
+--    MyStructArray = { xtypes.MyStruct, xtypes.`array`(10, 20) }
+--  }
+--  
+--  print(MyStructArray()) --   MyStruct     @array(10, 20)
+-- @within Datatypes
+function xtypes.typedef(decl)
+  local name, defn = xtypes.parse_decl(decl)
+
+  -- pre-condition: ensure that the 1st defn element is a valid type
+  local alias = defn[1]
+  _.assert_template_kind(alias)
+
+  -- pre-condition: ensure that the 2nd defn element if present
+  -- is a 'collection' kind
+  local collection_qualifier = defn[2]
+  if collection and not xtypes.info.is_collection_kind(collection) then
+    error(table.concat{'expected sequence or array, got: ', tostring(value)},
+          2)
+  end
+
+  -- create the template
+  local template, model = _.new_template(name, xtypes.TYPEDEF,
+                                               xtypes.API[xtypes.TYPEDEF])
+  model[_.DEFN] = { alias, collection_qualifier }
+  return template
+end
+
+-- Atom API meta-table
+xtypes.API[xtypes.TYPEDEF] = {
+
+  __tostring = function(template)
+    -- the name or the kind (if no name has been assigned)
+    local model = _.model(template)
+    return model[NAME] or
+           model[KIND]() -- evaluate the function
+  end,
+
+  __index = function (template, key)
+    local model = _.model(template)    
+    return model[key]
+  end,
+
+  __newindex = function (template, key, value)
+    -- immutable: do-nothing
+  end,
+
+  -- alias and collection information is obtained by evaluating the table:
+  -- @return alias, collection_qualifier
+  -- eg: my_typedef()
+  __call = function(template)
+    local model = _.model(template)
+    return model[_.DEFN][1], model[_.DEFN][2] -- datatype, collection_qualifier
+  end,
+}
+
+--============================================================================--
+-- Constants --
+
+--- Create a constant.
+-- @tparam {[string]={atom,value}} decl a table containing a constant name
+--   mapped to an array containing an `atom` and a value of the atom datatype.
+--   NOTE: this method will try to convert the value to the correct type,
+--   if not already so (for example, if the value is a string).
+-- @treturn table a constant.
+-- @usage
+--  -- Create a constant datatype
+--  local MY_CONST = xtypes.`const`{
+--    MY_CONST = { `atom`, <const_value> }
+--  }
+--
+--  -- Get the const value and the underlying atomic datatype
+--  print(MY_CONST()) --    value      `atom`
+--
+--
+--  -- Examples:
+--  local MAXLEN = xtypes.`const`{
+--    MAXLEN = { xtypes.short, 128 }
+--  }
+--  print(MAXLEN()) -- 128  short
+-- 
+--  local PI = xtypes.`const`{
+--    PI = { xtypes.`double`, 3.14 }
+--  }
+--  print(PI()) -- 3.14  double
+-- 
+--  local MY_STRING = xtypes.`const`{
+--    MY_STRING = { xtypes.`string`(128), "My String Constant" }
+--  }
+--  print(MY_STRING()) -- My String Constant      string<128>
+-- 
+-- 
+--  -- Use a const datatype
+--  local MyStringSeq =  xtypes.`typedef`{
+--    MyStringSeq = { xtypes.`string`, xtypes.`sequence`(MAXLEN) }
+--  }
+-- @within Datatypes
+function xtypes.const(decl)
+  local name, defn = xtypes.parse_decl(decl)
+
+  -- pre-condition: ensure that the 1st defn declaration is a valid type
+  local atom = _.assert_model_kind(xtypes.ATOM, _.resolve(defn[1]))
+
+  -- pre-condition: ensure that the 2nd defn declaration is a valid value
+  local value = defn[2]
+  assert(nil ~= value,
+         table.concat{name, ' : const value must be non-nil: ',
+                      tostring(value)})
+
+  -- convert value to the correct type:
+  local coercedvalue = nil
+  if xtypes.builtin.boolean == atom then
+      if 'boolean' ~= type(value) then
+          if 'false' == value or '0' == value then coercedvalue = false
+          elseif 'true' == value or '1' == value then coercedvalue = true
+          else coercedvalue = not not value -- toboolean
+          end
+          if nil ~= coercedvalue then
+             log.info(table.concat{name, 
+                                ' : converting to boolean: "', value,
+                                '" -> ', tostring(coercedvalue)})
+          else
+             log.notice(table.concat{name, 
+                                ' : converting to boolean: "', value,
+                                '" -> nil'})
+          end
+      end
+  elseif xtypes.string() == atom or
+         xtypes.wstring() == atom or
+         xtypes.builtin.char == atom then
+      if 'string' ~= type(value) then
+          coercedvalue = tostring(value)
+          if nil ~= coercedvalue then
+             log.info(table.concat{name, ' : converting to string: "', value,
+                                '" -> "', coercedvalue, '"'})
+          else
+             log.notice(table.concat{name, 
+                                ' : converting to string: "', value,
+                                '" -> nil'})
+          end
+      end
+  elseif xtypes.builtin.short == atom or
+         xtypes.builtin.unsigned_short == atom or
+         xtypes.builtin.long == atom or
+         xtypes.builtin.unsigned_long == atom or
+         xtypes.builtin.long_long == atom or
+         xtypes.builtin.unsigned_long_long == atom or
+         xtypes.builtin.float == atom or
+         xtypes.builtin.double == atom or
+         xtypes.builtin.long_double == atom then
+      if 'number' ~= type(value) then
+          coercedvalue = tonumber(value)
+          if nil ~= coercedvalue then
+             log.info(table.concat{name, ' : converting to number: "', value,
+                                '" -> ', coercedvalue})
+          else
+             log.notice(table.concat{name, 
+                                ' : converting to number: "', value,
+                                '" -> nil'})
+          end
+      end
+  end
+  if nil ~= coercedvalue then value = coercedvalue end
+
+  local model = _.model(atom)
+  if xtypes.builtin.unsigned_short == atom or
+     xtypes.builtin.unsigned_long == atom or
+     xtypes.builtin.unsigned_long_long == atom then
+     if value < 0 then
+       log.notice(table.concat{name, 
+                        ' : const value of "', value, ' of type "',
+                        type(value),
+                        '" must be non-negative and of the type: ',
+                        model[NAME] or ''})
+     end
+  end
+
+  -- char: truncate value to 1st char; warn if truncated
+  if (xtypes.builtin.char == atom or xtypes.builtin.wchar == atom) and
+      #value > 1 then
+    value = string.sub(value, 1, 1)
+    log.notice(table.concat{name, ' : truncating string value for ',
+                                  model[NAME] or '',
+                                  ' constant to: ', value})
+  end
+
+  -- integer: truncate value to integer; warn if truncated
+  if (xtypes.builtin.short == atom or xtypes.builtin.unsigned_short == atom or
+      xtypes.builtin.long == atom or xtypes.builtin.unsigned_long == atom or
+      xtypes.builtin.long_long == atom or
+      xtypes.builtin.unsigned_long_long == atom) and
+      'number' == type(value) and
+      value - math.floor(value) ~= 0 then
+    value = math.floor(value)
+    log.notice(table.concat{name, 
+                   ' : truncating decimal value for integer constant',
+                   ' to: ', value})
+  end
+
+  -- create the template
+  local template, model =
+                   _.new_template(name, xtypes.CONST, xtypes.API[xtypes.CONST])
+  model[_.DEFN] = { atom, value } -- { atom, value [,expression] }
+  return template
+end
+
+
+-- Const API meta-table
+xtypes.API[xtypes.CONST] = {
+
+  __tostring = function(template)
+    local model = _.model(template)
+    return model[NAME] or
+           model[KIND]() -- evaluate the function
+  end,
+
+  __index = function (template, key)
+    local model = _.model(template)
+    return model[key]
+  end,
+
+  __newindex = function (template, key, value)
+    -- immutable: do-nothing
+  end,
+
+  -- instance value and datatype is obtained by evaluating the table:
+  -- eg: MY_CONST()
+  __call = function(template)
+    local model = _.model(template)
+    return model[_.DEFN][2], model[_.DEFN][1] -- value, datatype
+  end,
+}
+
+--============================================================================--
 -- Modules --
 
---- Create a module
---
--- A module represents a name-space that holds various user defined types
--- @param decl  [in] a table containing a sequence of templates (model elements)
---      { Name = { const{...}, typedef{...}, enum{...},
---                 struct{...}, union{...}, module{...}, ... } }
--- @return The module template. A table representing the module data model.
--- The table fields contain the templates to produce string indices to
--- de-reference the **user-defined** data types
+--- Create a module namespace.
+-- A module is an name-space for holding (enclosing) datatypes.
+-- @tparam {[string]={xtemplate,...} decl  a table containing a module name 
+--   mapped to an array of datatypes (`xtemplate`)  
+-- @treturn table a module namespace.
+--   The table is a map of the datatype names to `xtemplate` canonical 
+--   instances. 
 -- @usage
---    -- Create module: Declarative style
---    local MyModule = xtypes.module{
+--    -- Create module: declarative style
+--    local MyModule = xtypes.`module`{
 --      MyModule = {
---        -- templates ---
---        xtypes.const{...},
---        xtypes.typedef{...},
---        xtypes.enum{...},
---        xtypes.struct{...},
---        xtypes.union{...},
---        xtypes.module{...}, -- nested name-space
+--        xtypes.`const`{...},
+--        :
+--        xtypes.`enum`{...},
+--        :
+--        xtypes.`struct`{...},
+--        :
+--        xtypes.`union`{...},
+--        :
+--        xtypes.`typedef`{...},
+--        :
+--        xtypes.`module`{...}, -- nested module name-space
 --        :
 --      }
 --    }
---  -- Create module: Imperative style
---   local MyModule = xtypes.module{MyModule=xtypes.EMPTY}
+--    
+--  -- Create module: imperative style (start with `EMPTY`)
+--  local MyModule = xtypes.`module`{
+--    MyModule = xtypes.EMPTY
+--  }
 --
---  -- Get | Set a member:
---   print(MyModule[i])
---   MyModule[i] = template
+--  -- Get the i-th member:
+--  print(MyModule[i])
+--   
+--  -- Set the i-th member:
+--  MyModule[i] = `xtemplate`
+--  
+--  -- After setting the i-th member, the following post-condition holds:
+--  MyModule.name == `xtemplate` -- where: name = `xtemplate`[xtypes.`NAME`]
 --
---  -- After either of the above definition, the following post-condition holds:
---    MyModule.role == template
---  where 'role' is the name of the template
+--  -- Delete the i-th member:
+--  MyModule[i] = nil  
 --
---  The the fully qualified name of the template includes the fully qualified
---  module name (i.e. nested within the module namespace hierarchy).
 --
+-- -- Get the number of members in the module:
+--  print(#MyModule)
+--  
 --  -- Iterate over the module definition (ordered):
---   for i = 1, #MyModule do print(MyModule[i]) end
+--  for i = 1, #MyModule do print(MyModule[i]) end
 --
 --  -- Iterate over module namespace (unordered):
---   for k, v in pairs(MyModule) do print(k, v) end
+--  for k, v in pairs(MyModule) do print(k, v) end
 -- @within Datatypes
 function xtypes.module(decl)
   local name, defn = xtypes.parse_decl(decl)
@@ -1598,84 +1820,6 @@ xtypes.API[xtypes.MODULE] = {
         rawset(template, role, role_template)
       end
     end
-  end,
-}
-
---============================================================================--
--- Typedefs --
-
---- Create a typedef.
---
--- Typedefs are aliases for underlying primitive or composite types
--- @param decl  [in] a table containing a typedef declaration
---      { name = { template, [collection_qualifier,]
---                           [annotation1, annotation2, ...] }  }
--- i.e. the underlying type definition and optional multiplicity and annotations
--- @return the typedef template
--- @usage
---   Typedefs:
---  { template, [collection_qualifier,] [annotation1, annotation2, ...] }
--- 
---  IDL: typedef sequence<MyStruct> MyStructSeq
---  Lua: local MyStructSeq = xtypes.typedef{
---            MyStructSeq = { xtypes.MyStruct, xtypes.sequence() }
---       }
---
---  IDL: typedef MyStruct MyStructArray[10][20]
---  Lua: local MyStructArray = xtypes.typedef{
---          MyStructArray = { xtypes.MyStruct, xtypes.array(10, 20) }
---       }
---       
---  Show the underlying datatype
---     print( MyStructSeq() )
--- @within Datatypes
-function xtypes.typedef(decl)
-  local name, defn = xtypes.parse_decl(decl)
-
-  -- pre-condition: ensure that the 1st defn element is a valid type
-  local alias = defn[1]
-  _.assert_template_kind(alias)
-
-  -- pre-condition: ensure that the 2nd defn element if present
-  -- is a 'collection' kind
-  local collection_qualifier = defn[2]
-  if collection and not xtypes.info.is_collection_kind(collection) then
-    error(table.concat{'expected sequence or array, got: ', tostring(value)},
-          2)
-  end
-
-  -- create the template
-  local template, model = _.new_template(name, xtypes.TYPEDEF,
-                                               xtypes.API[xtypes.TYPEDEF])
-  model[_.DEFN] = { alias, collection_qualifier }
-  return template
-end
-
--- Atom API meta-table
-xtypes.API[xtypes.TYPEDEF] = {
-
-  __tostring = function(template)
-    -- the name or the kind (if no name has been assigned)
-    local model = _.model(template)
-    return model[NAME] or
-           model[KIND]() -- evaluate the function
-  end,
-
-  __index = function (template, key)
-    local model = _.model(template)    
-    return model[key]
-  end,
-
-  __newindex = function (template, key, value)
-    -- immutable: do-nothing
-  end,
-
-  -- alias and collection information is obtained by evaluating the table:
-  -- @return alias, collection_qualifier
-  -- eg: my_typedef()
-  __call = function(template)
-    local model = _.model(template)
-    return model[_.DEFN][1], model[_.DEFN][2] -- datatype, collection_qualifier
   end,
 }
 
@@ -1799,9 +1943,9 @@ return {
   --==========================================================================--
   -- Datatype Attributes
 
-  NS                 = NS,
-  NAME               = NAME,
   KIND               = KIND,
+  NAME               = NAME,
+  NS                 = NS,
   QUALIFIERS         = QUALIFIERS,  
   BASE               = BASE,
   SWITCH             = SWITCH,

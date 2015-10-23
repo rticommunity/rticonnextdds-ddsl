@@ -7,6 +7,9 @@ title=[[DDSL Documentation]]
 description=[[Data Domain Specific Language]]
 
 full_description = [[
+
+[DDSl meta-model diagram](https://docs.google.com/presentation/d/1UYCS0KznOBapPTgaMkYoG4rC7DERpLhXtl0odkaGOSI/edit#slide=id.ga31862cc3_0_22) 
+ 
 Documentation Conventions:
 
  - `xtemplate`: a cannonical instance returned by the `ddsl.xtypes` 
