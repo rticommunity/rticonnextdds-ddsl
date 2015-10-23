@@ -62,43 +62,81 @@
 
 local xtypes = {
 
-  -- X-types possible KIND values
+  --- Datatype Kinds.
+  -- 
+  -- Use these to get and set the corresponding datatype attribute.
+  -- @usage
+  --  -- get the kind of a datatype
+  --  print(mytype[`KIND`]()) -- evaluate the kind to get the description
+  -- 
+  --  -- use the kind of a datatype to make decisions
+  --  if `STRUCT` == mytype[`KIND`] then 
+  --    ... 
+  --  else
+  --    ...
+  --  end
+  -- 
+  -- @section Kind
+  
+  --- Annotation kind.
+  -- @treturn string 'annotation'
   ANNOTATION = function() return 'annotation' end,
+  
+  --- Atom kind.
+  -- @treturn string 'atom'
   ATOM       = function() return 'atom' end,
+  
+  --- Constant kind.
+  -- @treturn string 'const'
   CONST      = function() return 'const' end,
+  
+  --- Ennumeration kind.
+  -- @treturn string 'enum'
   ENUM       = function() return 'enum' end,
+  
+  --- Struct kind.
+  -- @treturn string 'struct'
   STRUCT     = function() return 'struct' end,
+  
+  --- Union kind.
+  -- @treturn string 'union'
   UNION      = function() return 'union' end,
+  
+  --- Module kind.
+  -- @treturn string 'module'
   MODULE     = function() return 'module' end,
+  
+  --- Typedef kind.
+  -- @treturn string 'typedef'
   TYPEDEF    = function() return 'typedef' end,
   
-  -- Concrete X-Types model info interface
+  --- @section end
+  
+  
+  --==========================================================================--
+
+  --- Concrete X-Types model info interface.
+  -- @local
   info = {},
 
-  -- Meta-tables that define/control the Public API for the X-Type templates
+  --- Meta-tables that define/control the Public API for the X-Types.
+  -- @local
   API = {},
+  
+  --- Builtins.
+  builtin = {},
 }
 
 --============================================================================--
--- Local bindings to selected DDSL functionality
+-- Local bindings for selected DDSL functionality
 
 -- Instantiate the DDSL core, using the 'info' interface defined here:
 local _ = require('ddsl')(xtypes.info)
 
 local log                = _.log
 
-local NS                 = _.NS
-local NAME               = _.NAME
-local KIND               = _.KIND
-local QUALIFIERS         = _.QUALIFIERS
-local BASE               = function() return ' : ' end
-local SWITCH             = function() return 'switch' end
-
---============================================================================--
--- Datatypes
-
---- `ddsl.EMPTY`: Empty datatype. It can be shaped into any other datatype. 
--- It is used as initializer in datatype constructors.
+--- `ddsl.EMPTY`: Empty datatype definition for use as initializer in 
+-- datatype constructors.
 -- @usage
 --  local xtypes = require 'ddsl.xtypes'
 --  
@@ -106,10 +144,48 @@ local SWITCH             = function() return 'switch' end
 --  local mytype = xtypes.<kind>{
 --     MyType = EMPTY
 --  }
--- @table EMPTY
--- @within Datatypes
+--  @table EMPTY
 local EMPTY             = _.EMPTY
 
+--- Datatype Attributes.
+-- 
+-- Use these to get and set the corresponding datatype attribute.
+-- @usage
+--  -- get the name of a datatype
+--  print(mytype[NAME])
+--       
+--  -- set the name of a datatype
+--  mytype[NAME] = 'MyTypeNewName' 
+-- @section DatatypeAttributes
+
+--- `ddsl.NS`: Datatype enclosing namespace (enclosing scope).
+-- @function NS
+local NS                 = _.NS
+
+--- `ddsl.NAME`: Datatype name.
+-- @function NAME
+local NAME               = _.NAME
+
+--- `ddsl.KIND`: Datatype kind. 
+-- @function KIND
+local KIND               = _.KIND
+
+--- `ddsl.QUALIFIERS`: Datatype qualifiers (annotations).
+-- @function QUALIFIERS
+local QUALIFIERS         =  _.QUALIFIERS
+
+--- Datatype of the base `struct` (inheritance)
+-- @treturn string ' : '
+-- @function BASE
+local BASE              = function() return ' : ' end
+
+--- Datatype of a `union` discriminator (switch).
+-- @treturn string 'switch'
+-- @function SWITCH
+local SWITCH            = function() return 'switch' end
+
+--- @section end
+  
 --============================================================================--
 -- DDSL info interface implementation for X-Types
 
@@ -181,7 +257,7 @@ function xtypes.info.is_template_kind(value)
 end
 
 --============================================================================--
--- Helper --
+-- Helpers --
 
 --- Ensure that we have a valid declaration, and if so, split it into a 
 -- name and an underlying definition.
@@ -208,7 +284,12 @@ function xtypes.parse_decl(decl)
 end
 
 --============================================================================--
--- Annotations
+-- Qualifiers --
+
+--- Datatype Qualifiers.
+-- @section DatatypeQualifiers
+
+-- Annotations --
 
 --- Create an annotation.
 -- Annotations attributes are not interpreted; they are kept intact in the 
@@ -233,7 +314,6 @@ end
 --
 --  -- Use builtin annotation `Extensibility`
 --  xtypes.Extensibility{'EXTENSIBLE_EXTENSIBILITY'}  
--- @within DatatypeQualifiers
 function xtypes.annotation(decl)
   local name, defn = xtypes.parse_decl(decl)
 
@@ -317,8 +397,8 @@ xtypes.API[xtypes.ANNOTATION] = {
   end
 }
 
---============================================================================--
--- Collections: Arrays & Sequences
+
+-- Collections: Arrays & Sequences --
 
 -- Arrays are implemented as a special annotations, whose
 -- attributes are positive integer constants, that specify the dimension bounds
@@ -333,9 +413,8 @@ xtypes.ARRAY = _.model(array)
 -- @int n the first dimension
 -- @param ... the remaining dimensions
 -- @treturn table the array qualifier instance
--- @within DatatypeQualifiers
 function xtypes.array(n, ...)
-  return xtypes.make_collection(array, n, ...)
+  return xtypes.make_collection_qualifier(array, n, ...)
 end
 
 -- Sequences are implemented as a special annotations, whose
@@ -351,9 +430,8 @@ xtypes.SEQUENCE = _.model(sequence)
 -- @int n the first dimension
 -- @param ... the remaining dimensions
 -- @treturn table the sequence qualifier instance
--- @within DatatypeQualifiers
 function xtypes.sequence(n, ...)
-  return xtypes.make_collection(sequence, n, ...)
+  return xtypes.make_collection_qualifier(sequence, n, ...)
 end
 
 --- Make a collection qualifier instance.
@@ -368,7 +446,7 @@ end
 -- @param ... the remaining dimensions
 -- @treturn table the qualifier annotation instance describing the collection
 -- @local
-function xtypes.make_collection(annotation, n, ...)
+function xtypes.make_collection_qualifier(annotation, n, ...)
 
   -- ensure that we have an array of positive numbers
   local dimensions = {...}
@@ -395,53 +473,10 @@ function xtypes.make_collection(annotation, n, ...)
   return annotation(dimensions)
 end
 
---============================================================================--
--- Built-in annotations
-
---- BuiltinAnnotations.
--- 
--- Use these to qualify the datatype structure. Some apply to datatypes,
--- while others apply to datatype members.
--- 
--- @section BuiltinAnnotations
-
-xtypes.builtin = xtypes.builtin or {}
-
---- Datatype member is a *key* field. `@Key`
-xtypes.builtin.Key = xtypes.annotation{Key=EMPTY}
-
---- Datatype member id. `@ID{n}`
-xtypes.builtin.ID = xtypes.annotation{ID=EMPTY}
-
---- Datatype member is optional. `@Optional`
-xtypes.builtin.Optional = xtypes.annotation{Optional=EMPTY}
-
---- Datatype member is required. `@MustUnderstand`
-xtypes.builtin.MustUnderstand = xtypes.annotation{MustUnderstand=EMPTY}
-
---- Datatype member is shared. `@Shared`
-xtypes.builtin.Shared = xtypes.annotation{Shared=EMPTY}
-
---- `enum` datatype is bit-bound. `@BitBound{n}`
-xtypes.builtin.BitBound = xtypes.annotation{BitBound=EMPTY}
-
---- `enum` datatype is a bit-set. `@BitSet`
-xtypes.builtin.BitSet = xtypes.annotation{BitSet=EMPTY}
-
---- Datatype extensibility.
---  `@Extensibility{'EXTENSIBLE_EXTENSIBILITY'|'MUTABLE_EXTENSIBILITY'|'FINAL_EXTENSIBILITY}`
-xtypes.builtin.Extensibility = xtypes.annotation{Extensibility=EMPTY}
-
---- Datatype is not top-level it is nexted. `@Nested`
-xtypes.builtin.Nested = xtypes.annotation{Nested=EMPTY}
-
---- Datatype may (or may not) be top-level. `@top_level{false}`
-xtypes.builtin.top_level = xtypes.annotation{['top-level']=EMPTY} -- legacy
-
 --- @section end
 
 --============================================================================--
--- Atoms
+-- Atoms --
 
 --- Create an atomic type.
 -- There are two kinds of atomic types:
@@ -526,72 +561,7 @@ xtypes.API[xtypes.ATOM] = {
 }
 
 --============================================================================--
--- Built-in atomic types
-
---- BuiltinTypes.
--- Builtin *atomic* datatypes.
--- @section BuiltinTypes
-
---- boolean.
-xtypes.builtin.boolean = xtypes.atom{boolean=EMPTY}
-
---- octet.
-xtypes.builtin.octet = xtypes.atom{octet=EMPTY}
-
---- char.
-xtypes.builtin.char= xtypes.atom{char=EMPTY}
-
---- wide char.
-xtypes.builtin.wchar = xtypes.atom{wchar=EMPTY}
-
---- float.
-xtypes.builtin.float = xtypes.atom{float=EMPTY}
-
---- double.
-xtypes.builtin.double = xtypes.atom{double=EMPTY}
-
---- long double.
-xtypes.builtin.long_double = xtypes.atom{['long double']=EMPTY}
-
---- short.
-xtypes.builtin.short = xtypes.atom{short=EMPTY}
-
---- long.
-xtypes.builtin.long = xtypes.atom{long=EMPTY}
-
---- long long.
-xtypes.builtin.long_long = xtypes.atom{['long long']=EMPTY}
-
---- unsigned short.
-xtypes.builtin.unsigned_short = xtypes.atom{['unsigned short']=EMPTY}
-
---- unsigned long.
-xtypes.builtin.unsigned_long = xtypes.atom{['unsigned long']=EMPTY}
-
---- unsigned long long.
-xtypes.builtin.unsigned_long_long = xtypes.atom{['unsigned long long']=EMPTY}
-
-
--- strings and wstrings --
-
---- `string<n>`: string of length n.
--- @int n the maximum length of the string
--- @treturn xtemplate the string datatype
-function xtypes.string(n)
-  return xtypes.atom{string={n}} --NOTE: installed as xtypes.builtin.wstring<n>
-end
-
---- `wstring<n>`:wstring of length n.
--- @int n the maximum length of the wstring
--- @treturn xtemplate the wstring datatype
-function xtypes.wstring(n)
-  return xtypes.atom{wstring={n}} --NOTE: installed as xtypes.builtin.wstring<n>
-end
-
---- @section end
-
---============================================================================--
--- Constant
+-- Constants --
 
 --- Create a constant.
 -- @param decl  [in] a table containing a constant declaration
@@ -762,7 +732,7 @@ xtypes.API[xtypes.CONST] = {
 }
 
 --============================================================================--
--- Enum 
+-- Enums --
 
 --- Create an enum type
 -- @param decl  [in] a table containing an enum declaration
@@ -941,7 +911,7 @@ xtypes.API[xtypes.ENUM] = {
 }
 
 --============================================================================--
--- Struct
+-- Structs --
 
 --- Create a struct type
 -- @param decl  [in] a table containing a struct declaration
@@ -1183,7 +1153,7 @@ xtypes.API[xtypes.STRUCT] = {
 }
 
 --============================================================================--
--- Union
+-- Unions --
 
 --- Create a union type
 -- @param decl  [in] a table containing a union declaration
@@ -1490,7 +1460,7 @@ function xtypes.assert_case(discriminator, case)
 end
 
 --============================================================================--
--- Module
+-- Modules --
 
 --- Create a module
 --
@@ -1632,7 +1602,7 @@ xtypes.API[xtypes.MODULE] = {
 }
 
 --============================================================================--
--- Typedef
+-- Typedefs --
 
 --- Create a typedef.
 --
@@ -1710,50 +1680,134 @@ xtypes.API[xtypes.TYPEDEF] = {
 }
 
 --============================================================================--
+-- Built-in atomic types
+
+--- Builtin Datatypes.
+-- Builtin *atomic* datatypes.
+-- @section BuiltinTypes
+
+--- boolean.
+xtypes.builtin.boolean = xtypes.atom{boolean=EMPTY}
+
+--- octet.
+xtypes.builtin.octet = xtypes.atom{octet=EMPTY}
+
+--- char.
+xtypes.builtin.char= xtypes.atom{char=EMPTY}
+
+--- wide char.
+xtypes.builtin.wchar = xtypes.atom{wchar=EMPTY}
+
+--- float.
+xtypes.builtin.float = xtypes.atom{float=EMPTY}
+
+--- double.
+xtypes.builtin.double = xtypes.atom{double=EMPTY}
+
+--- long double.
+xtypes.builtin.long_double = xtypes.atom{['long double']=EMPTY}
+
+--- short.
+xtypes.builtin.short = xtypes.atom{short=EMPTY}
+
+--- long.
+xtypes.builtin.long = xtypes.atom{long=EMPTY}
+
+--- long long.
+xtypes.builtin.long_long = xtypes.atom{['long long']=EMPTY}
+
+--- unsigned short.
+xtypes.builtin.unsigned_short = xtypes.atom{['unsigned short']=EMPTY}
+
+--- unsigned long.
+xtypes.builtin.unsigned_long = xtypes.atom{['unsigned long']=EMPTY}
+
+--- unsigned long long.
+xtypes.builtin.unsigned_long_long = xtypes.atom{['unsigned long long']=EMPTY}
+
+
+-- strings and wstrings --
+
+--- `string<n>`: string of length n.
+-- @int n the maximum length of the string
+-- @treturn xtemplate the string datatype
+function xtypes.string(n)
+  return xtypes.atom{string={n}} --NOTE: installed as xtypes.builtin.wstring<n>
+end
+
+--- `wstring<n>`:wstring of length n.
+-- @int n the maximum length of the wstring
+-- @treturn xtemplate the wstring datatype
+function xtypes.wstring(n)
+  return xtypes.atom{wstring={n}} --NOTE: installed as xtypes.builtin.wstring<n>
+end
+
+--- @section end
+
+--============================================================================--
+-- Built-in annotations
+
+--- Builtin Annotations.
+-- 
+-- Use these to qualify the datatype structure. Some apply to datatypes,
+-- while others apply to datatype members.
+-- 
+-- @section BuiltinAnnotations
+
+--- Datatype member is a *key* field. `@Key`
+xtypes.builtin.Key = xtypes.annotation{Key=EMPTY}
+
+--- Datatype member id. `@ID{n}`
+xtypes.builtin.ID = xtypes.annotation{ID=EMPTY}
+
+--- Datatype member is optional. `@Optional`
+xtypes.builtin.Optional = xtypes.annotation{Optional=EMPTY}
+
+--- Datatype member is required. `@MustUnderstand`
+xtypes.builtin.MustUnderstand = xtypes.annotation{MustUnderstand=EMPTY}
+
+--- Datatype member is shared. `@Shared`
+xtypes.builtin.Shared = xtypes.annotation{Shared=EMPTY}
+
+--- `enum` datatype is bit-bound. `@BitBound{n}`
+xtypes.builtin.BitBound = xtypes.annotation{BitBound=EMPTY}
+
+--- `enum` datatype is a bit-set. `@BitSet`
+xtypes.builtin.BitSet = xtypes.annotation{BitSet=EMPTY}
+
+--- Datatype extensibility.
+--  `@Extensibility{'EXTENSIBLE_EXTENSIBILITY'|'MUTABLE_EXTENSIBILITY'|'FINAL_EXTENSIBILITY}`
+xtypes.builtin.Extensibility = xtypes.annotation{Extensibility=EMPTY}
+
+--- Datatype is not top-level it is nexted. `@Nested`
+xtypes.builtin.Nested = xtypes.annotation{Nested=EMPTY}
+
+--- Datatype may (or may not) be top-level. `@top_level{false}`
+xtypes.builtin.top_level = xtypes.annotation{['top-level']=EMPTY} -- legacy
+
+--- @section end
+
+--============================================================================--
 -- xtypes public interface
 
 return {
   --- `logger` to log messages and get/set the verbosity levels
-  log                     = log,
+  log                = log,
 
-  --==========================================================================--
- 
-  --- DatatypeAttributes.
-  -- 
-  -- Use these to get and set the corresponding datatype attribute.
-  -- @usage
-  --  -- get the name of a datatype
-  --  print(mytype[NAME])
-  --       
-  --  -- set the name of a datatype
-  --  mytype[NAME] = 'MyTypeNewName' 
-  -- @section DatatypeAttributes
+  EMPTY              = EMPTY,
   
-  --- `ddsl.NS`: Datatype enclosing namespace (enclosing scope).
+  --==========================================================================--
+  -- Datatype Attributes
+
   NS                 = NS,
-  
-  --- `ddsl.NAME`: Datatype name.
   NAME               = NAME,
-  
-  --- `ddsl.KIND`: Datatype kind. 
   KIND               = KIND,
-  
-  --- `ddsl.QUALIFIERS`: Datatype qualifiers (annotations).
-  QUALIFIERS         = QUALIFIERS,
-  
-  --- Datatype of the base `struct` (inheritance)
+  QUALIFIERS         = QUALIFIERS,  
   BASE               = BASE,
-  
-  --- Datatype of a `union` discriminator (switch).
   SWITCH             = SWITCH,
-  
-  --- @section end
 
   --==========================================================================--
-
-  -- DatatypeOperations.
-  -- 
-  -- Use these to work with instances.
+  -- Datatype Operations
    
   --- `ddsl.nsname`: fully qualified name within the enclosing scope.
   -- @function nsname 
@@ -1785,11 +1839,20 @@ return {
 
 
   --==========================================================================--
-  -- Datatypes --
-  -- NOTE: the doc comments already exported for these items
+  -- Datatype Kinds
+  
+  ANNOTATION         = xtypes.ANNOTATION,
+  ATOM               = xtypes.ATOM,
+  CONST              = xtypes.CONST,
+  ENUM               = xtypes.ENUM,
+  STRUCT             = xtypes.STRUCT,
+  UNION              = xtypes.UNION,
+  MODULE             = xtypes.MODULE,
+  TYPEDEF            = xtypes.TYPEDEF,
 
-  -- empty
-  EMPTY              = EMPTY,
+  --==========================================================================--
+  -- Datatypes
+  -- NOTE: the doc comments are already exported for these items
  
    -- composite types
   const              = xtypes.const,
