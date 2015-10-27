@@ -1,120 +1,280 @@
-                                                                                                                                                    
-# rticonnextdds-ddsl
+# DDSL - Data Domain Specific Language
 
-New Outline
+## Introduction
 
- Brief Intro: Why? & What?
- Link to the presentation
- 
- - Getting Started
-   - Step through the tutorial
-   - Read the through the ddsl.xtypes module overview
-   - Browse the ddsl.xtypes API and usage examples
-   - Write your apps using DDSL
-     - create datatype directly in DDSL
-     - create datatypes in XML and import
-     - output IDL
-   - Try out the scripts: xml2idl
-   - Look at the the unit tests for more advanced examples
-          
- - Contributing Code
-   - Ensure dependencies: lua5.2, ldoc
-   - Setup client side (local githooks)
-   - Build doc
-      -all option
-   - Modify and Update Code
-     - Add unit tests
-   - Pass all unit tests
-   - Update Changelog
-   - Merge upstream
-   - Create a release
+DDSL provides a way to work with strongly typed data in 
+[Lua](http://www.lua.org/about.html), which itself is dynamically typed 
+and does not enforce data structure constraints. 
 
-  - Versioning
-  
-  - License
+Here is a quick illustration using a `ShapeType` datatype.
+
+IDL:
+```idl
+struct ShapeType {
+    long x;
+    long y;
+    double shapesize;
+    string<128> color; //@Key
+};
+```
+
+DDSL:
+```Lua
+local ShapeType = xtypes.struct{
+    ShapeType = {
+      { x = { xtypes.long } },
+      { y = { xtypes.long } },
+      { shapesize = { xtypes.long } },
+      { color = { xtypes.string(128), xtypes.Key } },
+    }
+  }
+```
+
+An instance created from a DDSL datatype will have a form that adheres to the 
+the underlying datatype. For example, an instance of `ShapeType` will 
+have the form:
+```Lua
+shape = {
+    x           = 'x',
+    y           = 'y',
+    shapesize   = 'shapesize',
+    color       = 'color'
+}
+```
+
+DDSL brings the following capabilities to Lua (and therefore to platforms where Lua can be embedded).
+
+1. DDSL is a language for describing datatypes in [Lua](http://www.lua.org/about.html). It can be used as replacement
+for data description in an [IDL](https://en.wikipedia.org/wiki/Interface_description_language). In particular:
+
+   - [X-Types](http://www.omg.org/spec/DDS-XTypes/) can be defined in DDSL.
+   - Datatypes can be imported from XML.
+   - Datatypes can be exported to IDL.
    
-## Data Domain Specific Language (DDSL)
+   Unlike static formats (such as IDL or XML or JSON), DDSL brings the full 
+   power of the [Lua programming language](http://www.lua.org/start.html) to 
+   constructing and manipulating datatypes. The datatypes form a connected 
+   graph whose integrity is maintained as new datatypes are defined, 
+   existing ones removed, or altered.  
 
+2. DDSL provides a way to create instances from datatypes. The datatype
+*structural* constraints are enforced on the instances. For example, only fields
+that are allowed by the datatype can be present in an instance. Collection 
+bounds are enforced. 
 
-The purpose of DDSL is to slice and dice data-types.
+   - Note that for efficiency reasons, non-structural constraints are not 
+   enforced on the instances. Thus, an instance field whose underlying
+   datatype is a boolean can be assigned a string value. However, such 
+   constraints can easily be enforced by user code, if so desired.
 
-- [Presentation](https://docs.google.com/presentation/d/1UYCS0KznOBapPTgaMkYoG4rC7DERpLhXtl0odkaGOSI/edit#slide=id.g4653da537_05)
+3. DDSL provides a way to modify the datatypes dynamically at anytime. All the 
+aspects of a datatype, except its `KIND` can be changed. For example, datatype members can be added, removed, or their datatype changed. The datatype 
+name, enclosing scopes (namespaces) can be altered. This makes DDSL ideal for 
+datatype modeling, synthesis and transformation.
 
-- [Tutorial](examples/ddsl-tutorial.lua)
+4. DDSL keeps all the instances of a datatype in "sync" with the datatype. Thus, 
+if a member is removed from a datatype, the corresponding field is removed from
+all the instances of the datatype. When a new member is added, all the 
+instances are updated with the new field--- initialized to a default value. If a member's datatype is structurally changed, the corresponding field is reset to 
+the default value for the new structure. 
 
+5. The default value of a field in an instance is a dot ('.') separated *string*
+formed by navigating to that field from the instance. The default value can be
+used as an index into some storage system.
 
+6. Datatypes can be introspected, examined, and traversed. For example, enumerations can be be looked by name or ordinal values. Collection bounds 
+can be looked up, aliases can be resolved, and so on. This makes it easy to work with structured data in a dynamic language such as Lua, or any environment where
+Lua can be embedded (almost every platform).
 
-## Core Concepts
+7. All of the above make DDSL ideally suited for for writing generators. In particular:
 
-Every DDSL data-object has two sides (like the faces of the coin):
-
-- the template which describes its blueprint (i.e. type or schema)
-
-- the instance which embodies the member fields and their values
-     
-     
-## Modifying Code
-
-- sub-modules 'extend' the parent module; thus new sub-modules can be added 
-  independently
-  
-- run the unit tests
-
-    cd test/
-    ./ddsl-xtypes-tester.lua 
-
-  all unit tests should pass before committing code
-  
-- run the utilities
-
-    cd test/
-    ../bin/run xml2ddsl
-    ../bin/run xml2ddsl xml-test-connector.xml
-    ../bin/run xml2ddsl xml-test-ddsc-types1.xml
+   - *Data generators* that produce instances confirming to some data space or 
+   data generation rules/constraints, while adhering to an underlying datatype.
     
-   Should print out the IDL version of the XML files
-   
+   - *Code generators* that produce behavior the context of some operational 
+   scenario, while adhering to an underlying datatype.
 
-## Importing XML
-
-
-### Command Line
+![Alt text](doc/datatype_algebra.svg "Datatype Algebra")
 
 
-    bin/run xml2ddsl [-d] <xml-file> [ <xml-files> ...]
+## Getting Started
 
-e.g.:
+- Minimum requirement: [Lua](http://www.lua.org) 5.1+
 
-    cd test/
-    ../bin/run xml2ddsl xml-test-simple.xml
+```bash
+# check the installed lua version
+lua -v
+```
+[Install](http://www.lua.org/start.html) an updated Lua version if needed.
 
-or, with tracing on:
+- Download DDSL
 
-    ../bin/run xml2ddsl -d xml-test-simple.xml
+```bash
+# Download as a zip file.
+```
 
-### API
+- Read the [ddsl.xtypes](ddsl.xtypes) module overview.
 
-    local xml = require('ddsl.xtypes.xml')
+- Browse the [ddsl.xtypes](ddsl.xtypes) API and usage examples.
 
-    -- xml.log.verbosity(xml.log.DEBUG) -- OPTIONAL: turn on debugging
+- Step through the [tutorial](examples/ddsl-tutorial.lua) examples.
 
-    local schemas = xml.filelist2xtypes{'xml-test-simple.xml'} -- file list
+```bash
+cd tutorial/
+lua ddsl_tutorial.lua
+```
 
+- Try out the scripts: [xml2idl](xml2idl).
+
+```bash
+cd test/
+../bin/run xml2ddsl xml-test-simple.xml
+```
+or, with debugging on:
+```bash   
+../bin/run xml2ddsl -d xml-test-simple.xml
+```
+
+- Look at the the [unit tests](test/ddsl-xtypes-tester.lua) for more advanced examples.
+
+
+## Writing Apps
+     
+- Setup Lua's `package.path` to include `lib/lua` (or `src/` if you want to 
+  use the source). Assuming `DDSL_HOME` is the location of the directory where 
+  you installed DDSL, set the `LUA_PATH` environment variable as follows.
+
+```bash
+export LUA_PATH+=\
+ "${DDSL_HOME}/src/?.lua;${DDSL_HOME}/src/?/init.lua;\
+  ${DDSL_HOME}/lib/lua/?.lc;${DDSL_HOME}/lib/lua/?/init.lc;"
+```
+
+- Create datatypes directly using the [ddsl.xtypes](ddsl.xtypes) module.
+
+```lua
+require 'ddsl.xtypes'
+```
+    
+- OR, Import datatypes from XML using the [ddsl.xtypes.xml](ddsl.xtypes.xml)
+  module.
+  
+```lua
+require 'ddsl.xtypes.xml'
+```
+
+- Output IDL using the [ddsl.xtypes.utils](ddsl.xtypes.utils) module.
+
+```lua
+require 'ddsl.xtypes.utils'
+```
+    
+- Create instances and use them in application code. Use the logger
+  [logger](logger) module to log messages at different verbosity levels.
+  
+```lua
+require 'logger'
+```
+    
 ## Versioning
 
-Tags specify the release version numbers.
+- DDSL uses [semantic versioning](http://semver.org).
 
-The version numbering follows the rules of
-[semantic versioning](http://semver.org).
+- Annotated tags specify the release version numbers.
+
+- The `master` branch is always the latest stable version.
+
+- The `develop` branch is the work in progress.
+ 
+
+## Contributing Code
+
+1. Ensure dependencies are available on the development host
+
+   - [Lua](http://www.lua.org) 5.1+
+   - [LDoc](http://stevedonovan.github.io/ldoc/) 1.4.3+ for documentation
+
+Install the above, if not present on your system.
+
+
+2. Fork/clone the repository, and setup the client side git hooks. 
+   
+```bash
+# setup client side hooks
+ln -s build/githooks/pre-commit.lua .git/hooks/pre-commit
+```
+        
+3. Build the public API documentation. 
+
+```bash
+cd doc/
+ldoc .
+# Browse the output: `out/html/index.html`
+open out/html/index.html
+```
+    
+4. Build all the documentation, both public and private. This may be helpful if 
+  you intend to create new type-systems or data model, or just want to 
+  understand the inner workings.
+
+```bash
+cd doc/
+ldoc . -all  
+# Browse the output: `out/html/index.html`
+open out/html/index.html
+```
+   
+5. Review the [Documentation Conventions](html/index.html) and 
+   [Module Organization](html/index.html).
+
+6. Add/Modify/Update Code
+ 
+7. Add unit tests
+   
+8. Pass all the unit tests
+
+```bash
+cd test/
+lua ddsl-xtypes-tester.lua
+```
+    
+9. Update CHANGELOG.md to add a section describing the contribution
+
+```bash
+edit CHANGELOG.md
+```
+      
+10. Create a candidate release locally.
+ 
+```bash
+build/scripts/release.sh
+# Output goes to `out/{bin,lib}`.
+```
+
+11. Spot check the candidate release.
+
+```bash
+cd test/
+../out/bin/run xml2idl xml-test-connector.xml 
+# Browse the documentation: `out/html/index.html`
+open out/html/index.html
+```
+   
+12. If everything looks great, send a [pull request](https://help.github.com/articles/using-pull-requests/); otherwise repeat steps 6-12.
+
 
 ## License
 
-    (c) 2005-2015 Copyright, Real-Time Innovations, All rights reserved.    
-                                                                            
-     RTI grants Licensee a license to use, modify, compile, and create          
-     derivative works of the Software.  Licensee has the right to distribute    
-     object form only for use with RTI products. The Software is provided       
-     "as is", with no warranty of any type, including any warranty for fitness  
-     for any purpose. RTI is under no obligation to maintain or support the     
-     Software.  RTI shall not be liable for any incidental or consequential     
-     damages arising out of the use or inability to use the software.           
+Copyright (C) 2015 Real-Time Innovations, Inc.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.

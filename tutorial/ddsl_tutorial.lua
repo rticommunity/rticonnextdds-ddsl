@@ -151,6 +151,8 @@ tutorial = Tutorial:new{
 
       local xml = require('ddsl.xtypes.xml')
       
+      -- xml.log.verbosity(xml.log.DEBUG) -- OPTIONAL: turn on debugging
+      
       show('--- import datatypes defined in XML ---')
       local datatypes = xml.filelist2xtypes({
             '../test/xml-test-simple.xml',

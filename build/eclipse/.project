@@ -16,6 +16,16 @@
 	</natures>
 	<linkedResources>
 		<link>
+			<name>CHANGELOG.md</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/CHANGELOG.md</locationURI>
+		</link>
+		<link>
+			<name>LICENSE.txt</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/LICENSE.txt</locationURI>
+		</link>
+		<link>
 			<name>README.md</name>
 			<type>1</type>
 			<locationURI>PARENT-2-PROJECT_LOC/README.md</locationURI>
@@ -31,9 +41,9 @@
 			<locationURI>PARENT-2-PROJECT_LOC/doc</locationURI>
 		</link>
 		<link>
-			<name>githooks</name>
+			<name>scripts</name>
 			<type>2</type>
-			<locationURI>PARENT-1-PROJECT_LOC/githooks</locationURI>
+			<locationURI>PARENT-1-PROJECT_LOC/scripts</locationURI>
 		</link>
 		<link>
 			<name>src</name>
