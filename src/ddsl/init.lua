@@ -131,7 +131,7 @@ local _ = {
   TEMPLATE  = function() return 'TEMPLATE' end,--table key for template instance
   
   --- @section end
-  
+
   --============================== ===========================================--
   
   --- Data(type) Model info **abstract** interface that defines the categories 
@@ -150,6 +150,7 @@ local _ = {
   --   
   --  Note that a model element may satisfy several of these categories. For 
   --  example a leaf model element could act as a template for instances.
+  --  @within MetaModel
   --  @local
   info = {
     is_qualifier_kind = function (v) error('define abstract function!') end,
@@ -195,7 +196,7 @@ _.log.version = require('ddsl.version')
 --   encapsulating the rules and constraints for the datatype model
 -- @treturn table a new (empty) template backed by an underlying 
 --   data(type) model
--- @within Constructors
+-- @within MetaModel
 -- @local
 function _.new_template(name, kind, api)
 
@@ -220,7 +221,7 @@ end
 -- @tparam table template a template, generally empty
 -- @tparam table defn an array of definition elements for the template `KIND`
 -- @treturn table template populated with the definition elements
--- @within Constructors
+-- @within MetaModel
 -- @local
 function _.populate_template(template, defn)
   -- populate the role definitions
@@ -257,7 +258,7 @@ end
 --  - `annotation_i` are optional annotations (if any)
 -- @treturn table role_instance (member) instance 
 -- @treturn table `role_defn` (that was passed in)
--- @within Constructors
+-- @within MetaModel
 -- @local
 function _.create_role_instance(role, role_defn)
   
@@ -302,8 +303,8 @@ end
 -- @string role the role to propagate
 -- @xtemplate role_template the new template role instance (already 
 --  created using `create_role_instance`) to propagate; may be nil
--- @within Modifiers
--- @local                    
+-- @within MetaModel    
+-- @local               
 function _.update_instances(model, role, role_template)
 
    -- update template first
@@ -523,7 +524,7 @@ end
 --  be part of a role instance, i.e. will it belong to a template?
 -- @treturn xinstance a newly created collection with the given name, and the 
 --  given collection as the *collection template*
--- @within Constructors
+-- @within MetaModel
 -- @local
 function _.new_collection_instance(collection, name, is_role_instance) 
 
@@ -551,17 +552,9 @@ function _.new_collection_instance(collection, name, is_role_instance)
 
   return new_collection_instance                              
 end             
-                        
---- Is the given object a collection of instances?
--- @xinstance v the object to check
--- @treturn boolean|nil true if v is a collection, false or nil otherwise 
--- @within Helpers
-function _.is_collection(v) 
-  local model = getmetatable(v)
-  return model and model[_.KIND] == _.collection_metatable[_.KIND]
-end
 
 --- Collection meta-model.
+-- @within MetaModel
 -- @local
 _.collection_metatable = {
 
@@ -650,7 +643,7 @@ _.collection_metatable = {
 --   role instance, i.e. will it belong to a template?
 -- @treturn xinstance a new instance with fields properly initialized 
 --   for `prefix`
--- @within Constructors
+-- @within MetaModel
 -- @local
 function _.clone(v, prefix, is_role_instance) 
 
@@ -694,10 +687,18 @@ end
 -- `new_collection`() or `new_template`().
 -- @xinstance instance the instance whose model we want to retrieve
 -- @treturn table the underlying datatype model
--- @within Retrievers
+-- @within MetaModel
 -- @local
 function _.model(instance)
   return getmetatable(instance)
+end
+
+--- Get the datatype kind for any arbitrary object.
+-- @xinstance instance the object for which to retrieve the model type
+-- @return the datatype `KIND` or nil (if 'value' is not a valid datatype)
+function _.kind(instance)
+  local model = getmetatable(instance)
+  return model and model[_.KIND]
 end
 
 --- Retrieve the (*cannonical*) template instance.
@@ -705,7 +706,6 @@ end
 -- `new_collection`() or `new_template`().
 -- @xinstance instance the instance whose template we want to retrieve
 -- @treturn xtemplate the underlying template (*cannonical*) instance
--- @within Retrievers
 function _.template(instance)
   local model = getmetatable(instance)
   return model and model[_.TEMPLATE]
@@ -717,7 +717,6 @@ end
 -- @treturn ... variadic number of return values consisting of the underlying 
 --  non-alias datatype template, and the collection qualifiers wrapping it
 --    [ [collection_qualifier,] ... ] <Non-Alias Template>
--- @within Retrievers
 function _.resolve(template)
   local is_alias_kind = template and _.info.is_alias_kind(template)
   if is_alias_kind then
@@ -741,7 +740,6 @@ end
 --  template's outermost enclosing scope (`root` namespace)
 -- @treturn string the qualified name of the datatype relative to the 
 --   namespace; may be nil (for example when template == namespace). 
--- @within Retrievers
 function _.nsname(template, namespace)
   -- pre-conditions:
   assert(nil ~= _.kind(template), "nsname(): not a valid template")
@@ -768,7 +766,6 @@ end
 -- @xinstance template the instance (or template) whose root is to be determined
 -- @treturn xtemplate the root namespace ie. the outermost enclosing scope 
 --   (NOTE: maybe template itself)
--- @within Retrievers
 function _.nsroot(template)
   -- pre-conditions:
   assert(nil ~= _.kind(template), "nsroot(): not a valid template")
@@ -785,21 +782,21 @@ end
 
 --============================================================================--
 -- Helpers
-
---- Get the datatype kind for any arbitrary object.
--- @xinstance value the object for which to retrieve the model type
--- @return the datatype `KIND` or nil (if 'value' is not a valid datatype)
--- @within Retrievers
-function _.kind(value)
-  local model = getmetatable(value)
-  return model and model[_.KIND]
+               
+--- Is the given object a collection of instances?
+-- @xinstance v the object to check
+-- @treturn boolean|nil true if v is a collection, false or nil otherwise 
+function _.is_collection(v) 
+  local model = getmetatable(v)
+  return model and model[_.KIND] == _.collection_metatable[_.KIND]
 end
 
 --- Ensure that an object is a valid datatype of the given kind.
 -- @param kind   the expected model element `KIND`
 -- @xinstance value  the object to check if it is a datatype model of `kind`
 -- @treturn xinstance|nil the value if the kind matches, or nil otherwise
--- @within Helpers
+-- @within MetaModel
+-- @local
 function _.assert_kind(kind, value)
     local model = getmetatable(value)
     assert(model and kind == model[_.KIND],
@@ -808,10 +805,33 @@ function _.assert_kind(kind, value)
     return value
 end
 
+--- Ensure that a given object can be used to create an instance. In other
+-- words, it satisfies the `info`.`is_template_kind`() interface.
+-- @xinstance template the potential object to check
+-- @treturn xtemplate|nil the template or nil (not a valid template)
+-- @within MetaModel
+-- @local
+function _.assert_template_kind(template)
+    assert(_.info.is_template_kind(template), 
+           table.concat{'unexpected template kind \"', tostring(template), '"'})
+    return template
+end
+
+--- Ensure that a given role name is valid.
+-- @string role the role name to check
+-- @treturn role|nil the role if valid; nil otherwise
+-- @within MetaModel
+-- @local
+function _.assert_role(role)
+  assert('string' == type(role), 
+      table.concat{'invalid role name: ', tostring(role)})
+  return role
+end
+
 --- Ensure that a given object is a datatype qualifier.
 -- @xinstance qualifier the object to check if it is a qualifier
 -- @treturn xinstance|nil the qualifier or nil otherwise (not a qualifier) 
--- @within Helpers
+-- @within MetaModel
 -- @local
 function _.assert_qualifier(qualifier)
     assert(_.info.is_qualifier_kind(qualifier), 
@@ -823,7 +843,8 @@ end
 -- @tparam {xinstance,...} value the potential qualifier array to check
 -- @treturn {xinstance,...}|nil the `value` qualifier array or nil 
 --   otherwise (not a qualifier array)
--- @within Helpers
+-- @within MetaModel
+-- @local
 function _.assert_qualifier_array(value)
     -- establish valid qualifiers, if any
     if nil == value then return nil end
@@ -847,27 +868,6 @@ function _.assert_qualifier_array(value)
     return value
 end
 
---- Ensure that a given role name is valid.
--- @string role the role name to check
--- @treturn role|nil the role if valid; nil otherwise
--- @within Helpers
--- @local
-function _.assert_role(role)
-  assert('string' == type(role), 
-      table.concat{'invalid role name: ', tostring(role)})
-  return role
-end
-
---- Ensure that a given object is a datatype template.
--- @xinstance template the potential object to check if it is a datatype template
--- @treturn xtemplate|nil the template or nil (not a valid template)
--- @within Helpers
-function _.assert_template_kind(template)
-    assert(_.info.is_template_kind(template), 
-           table.concat{'unexpected template kind \"', tostring(template), '"'})
-    return template
-end
-
 --============================================================================--
 -- Public Interface (of this module):
 
@@ -882,32 +882,33 @@ local interface = {
   NAME                    = _.NAME,
   NS                      = _.NS,
   QUALIFIERS              = _.QUALIFIERS,
+
+    
+  kind                    = _.kind,
+  template                = _.template,
+  resolve                 = _.resolve,
+  nsname                  = _.nsname,
+  nsroot                  = _.nsroot,
+  
+  -- for users of templates created with ddsl
+  new_instance            = _.new_instance,
+  new_collection          = _.new_collection,
+  
+  is_collection           = _.is_collection,
+
+  -- MetaModel: for building an ontology of models
   DEFN                    = _.DEFN,
   INSTANCES               = _.INSTANCES,
   
-  
-  -- ddsl operations: for building an ontology of models
   new_template            = _.new_template,
   populate_template       = _.populate_template,
   create_role_instance    = _.create_role_instance,
   update_instances        = _.update_instances,
   
-  kind                    = _.kind,
+  model                   = _.model,
   assert_kind             = _.assert_kind,
   assert_template_kind    = _.assert_template_kind,
   assert_qualifier_array  = _.assert_qualifier_array,
-   
-  
-  -- for users of templates created with ddsl
-  new_instance            = _.new_instance,
-  new_collection          = _.new_collection,
-  is_collection           = _.is_collection,
-  
-  model                   = _.model,
-  template                = _.template,
-  resolve                 = _.resolve,
-  nsname                  = _.nsname,
-  nsroot                  = _.nsroot,
 }
 
 -- enforce that the user provides a function to binds the 
