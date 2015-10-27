@@ -477,7 +477,7 @@ function _.new_collection(content_template, capacity, name, is_role_instance)
          table.concat{'new_collection(): needs a template or collection'})
   
   -- convert capacity model element into its value
-  if _.model_kind(capacity) then capacity = capacity() end
+  if _.kind(capacity) then capacity = capacity() end
   assert(nil == capacity or 'number' == type(capacity),
          table.concat{'create_collection(): invalid capacity'})
     
@@ -744,8 +744,8 @@ end
 -- @within Retrievers
 function _.nsname(template, namespace)
   -- pre-conditions:
-  assert(nil ~= _.model_kind(template), "nsname(): not a valid template")
-  assert(nil == namespace or nil ~= _.model_kind(namespace), 
+  assert(nil ~= _.kind(template), "nsname(): not a valid template")
+  assert(nil == namespace or nil ~= _.kind(namespace), 
                                         "nsname(): not a valid namespace")
                            
   -- traverse up the template namespaces, until 'namespace' is found
@@ -771,7 +771,7 @@ end
 -- @within Retrievers
 function _.nsroot(template)
   -- pre-conditions:
-  assert(nil ~= _.model_kind(template), "nsroot(): not a valid template")
+  assert(nil ~= _.kind(template), "nsroot(): not a valid template")
 
   -- traverse up the instance namespace, until 'namespace' is found
   local model = getmetatable(template)
@@ -790,7 +790,7 @@ end
 -- @xinstance value the object for which to retrieve the model type
 -- @return the datatype `KIND` or nil (if 'value' is not a valid datatype)
 -- @within Retrievers
-function _.model_kind(value)
+function _.kind(value)
   local model = getmetatable(value)
   return model and model[_.KIND]
 end
@@ -800,7 +800,7 @@ end
 -- @xinstance value  the object to check if it is a datatype model of `kind`
 -- @treturn xinstance|nil the value if the kind matches, or nil otherwise
 -- @within Helpers
-function _.assert_model_kind(kind, value)
+function _.assert_kind(kind, value)
     local model = getmetatable(value)
     assert(model and kind == model[_.KIND],
            table.concat{'expected model kind "', kind(), 
@@ -892,8 +892,8 @@ local interface = {
   create_role_instance    = _.create_role_instance,
   update_instances        = _.update_instances,
   
-  model_kind              = _.model_kind,
-  assert_model_kind       = _.assert_model_kind,
+  kind                    = _.kind,
+  assert_kind             = _.assert_kind,
   assert_template_kind    = _.assert_template_kind,
   assert_qualifier_array  = _.assert_qualifier_array,
    

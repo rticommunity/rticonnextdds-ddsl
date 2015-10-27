@@ -245,7 +245,7 @@ local SWITCH            = function() return 'switch' end
 -- @function info.is_qualifier_kind
 -- @local
 function xtypes.info.is_qualifier_kind(value)
-  local kind = _.model_kind(value)
+  local kind = _.kind(value)
   return (xtypes.ANNOTATION == kind)
          and value
          or nil
@@ -270,7 +270,7 @@ end
 -- @function info.is_alias_kind
 -- @local
 function xtypes.info.is_alias_kind(value)
-  local kind = _.model_kind(value)
+  local kind = _.kind(value)
   return (xtypes.TYPEDEF == kind)
          and value
          or nil
@@ -282,7 +282,7 @@ end
 -- @function info.is_leaf_kind
 -- @local
 function xtypes.info.is_leaf_kind(value)
-  local kind = _.model_kind(value)
+  local kind = _.kind(value)
   return (xtypes.ATOM == kind or
           xtypes.ENUM == kind)
          and value
@@ -295,7 +295,7 @@ end
 -- @function info.is_template_kind
 -- @local
 function xtypes.info.is_template_kind(value)
-  local kind = _.model_kind(value)
+  local kind = _.kind(value)
   return (xtypes.ATOM == kind or
           xtypes.ENUM == kind or
           xtypes.STRUCT == kind or
@@ -512,7 +512,7 @@ function xtypes.make_collection_qualifier(annotation, n, ...)
     local dim = v
 
     -- if the dim is a CONST, use its value for validation
-    if  xtypes.CONST == _.model_kind(v) then
+    if  xtypes.CONST == _.kind(v) then
        dim = v()
     end
 
@@ -559,7 +559,7 @@ end
 -- @within Datatypes
 function xtypes.atom(decl)
   local name, defn = xtypes.parse_decl(decl)
-  local dim, dim_kind = defn[1], _.model_kind(defn[1])
+  local dim, dim_kind = defn[1], _.kind(defn[1])
 
   -- pre-condition: validate the dimension
   local dim_value = xtypes.CONST == dim_kind and dim() or dim
@@ -887,7 +887,7 @@ function xtypes.struct(decl)
 
   -- OPTIONAL base: pop the next element if it is a base model element
   local base
-  if xtypes.STRUCT == _.model_kind(_.resolve(defn[1])) then
+  if xtypes.STRUCT == _.kind(_.resolve(defn[1])) then
     base = defn[1]   table.remove(defn, 1)
 
     -- insert the base class:
@@ -1008,7 +1008,7 @@ xtypes.API[xtypes.STRUCT] = {
       -- get the base model, if any:
       local new_base
       if nil ~=value and 
-         _.assert_model_kind(xtypes.STRUCT, _.resolve(value)) then
+         _.assert_kind(xtypes.STRUCT, _.resolve(value)) then
         new_base = value
       end
 
@@ -1539,7 +1539,7 @@ function xtypes.const(decl)
   local name, defn = xtypes.parse_decl(decl)
 
   -- pre-condition: ensure that the 1st defn declaration is a valid type
-  local atom = _.assert_model_kind(xtypes.ATOM, _.resolve(defn[1]))
+  local atom = _.assert_kind(xtypes.ATOM, _.resolve(defn[1]))
 
   -- pre-condition: ensure that the 2nd defn declaration is a valid value
   local value = defn[2]
@@ -1797,7 +1797,7 @@ xtypes.API[xtypes.MODULE] = {
         --    role_template
 
         -- pre-condition: value must be a model instance (template)
-        assert(nil ~= _.model_kind(value),
+        assert(nil ~= _.kind(value),
                table.concat{template[NAME] or '', 
                       ' : invalid template: ', tostring(value)})
 
