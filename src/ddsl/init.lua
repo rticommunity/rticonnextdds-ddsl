@@ -8,7 +8,7 @@
 --- DDSL Core Abstraction; see `ddsl.xtypes` for a concrete implementation.
 -- 
 -- Core primitives for the Datatype definition Domain Specific Language 
--- (DDSL). Defines and implements the DDSL meta-model. The core primitive
+-- (DDSL). Defines and implements the DDSL meta-model. The core
 -- abstractions are:
 -- 
 --   - datatype (a.k.a. datamodel or model)
@@ -434,6 +434,8 @@ end
 --- Creates a new named collection of instances based on an element template. 
 -- The collection is comprised of elements specified by the given template 
 -- or collection (previously created via a call to this function).
+-- Note that a sequence or array field in an instance is also a collection of
+-- instances (created using this constructor). 
 -- @xtemplate content_template the collection element element datatype template
 --  
 --   - may be a template i.e. `xtemplate` (i.e. a non-collection) OR

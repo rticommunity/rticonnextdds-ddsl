@@ -9,9 +9,10 @@
 -- Uses the `ddsl` core primitives to implement datatypes (a.k.a. `xtypes`) as 
 -- defined by the OMG X-Types specification in Lua. 
 -- 
--- The datatypes are equivalent to those specified in OMG IDL. Thus, this 
--- module can serve as an alternative for defining types in Lua,instead of 
--- IDL or XML.
+-- The datatypes are equivalent to those described by the [X-Types](
+-- http://www.omg.org/spec/DDS-XTypes/) specification. Thus, this module 
+-- can serve as an alternative for defining types in Lua, instead of in [IDL](
+-- https://en.wikipedia.org/wiki/Interface_description_language) or XML.
 -- 
 -- A datatype is a blueprint for a data structure. Any
 -- number of data-objects or instances (a.k.a. `xinstance`) can be created 
