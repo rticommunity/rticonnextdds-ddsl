@@ -1,5 +1,12 @@
 # DDSL - Data Domain Specific Language
 
+- [Introduction](#introduction)
+- [Getting Started](#getting-started)
+- [Writing Apps](#writing-apps)
+- [Versioning](#versioning)
+- [Contributing Code](#contributing-code)
+- [License](#license)
+
 ## Introduction
 
 DDSL provides a way to work with strongly typed data in 
@@ -189,22 +196,21 @@ require 'logger'
 
 ## Contributing Code
 
-1. Ensure dependencies are available on the development host
+- Ensure dependencies are available on the development host
 
    - [Lua](http://www.lua.org) 5.1+
    - [LDoc](http://stevedonovan.github.io/ldoc/) 1.4.3+ for documentation
 
-Install the above, if not present on your system.
+  Install the above, if not present on your system.
 
-
-2. Fork/clone the repository, and setup the client side git hooks. 
+- Fork/clone the repository, and setup the client side git hooks. 
    
 ```bash
 # setup client side hooks
 ln -s build/githooks/pre-commit.lua .git/hooks/pre-commit
 ```
-        
-3. Build the public API documentation. 
+  
+- Build the public API documentation. 
 
 ```bash
 cd doc/
@@ -212,8 +218,8 @@ ldoc .
 # Browse the output: `out/html/index.html`
 open out/html/index.html
 ```
-    
-4. Build all the documentation, both public and private. This may be helpful if 
+
+- Build all the documentation, both public and private. This may be helpful if 
   you intend to create new type-systems or data model, or just want to 
   understand the inner workings.
 
@@ -223,35 +229,35 @@ ldoc . -all
 # Browse the output: `out/html/index.html`
 open out/html/index.html
 ```
-   
-5. Review the [Documentation Conventions](html/index.html) and 
+
+- Review the [Documentation Conventions](html/index.html) and 
    [Module Organization](html/index.html).
 
-6. Add/Modify/Update Code
+- Add/Modify/Update Code
  
-7. Add unit tests
+- Add unit tests
    
-8. Pass all the unit tests
+- Pass all the unit tests
 
 ```bash
 cd test/
 lua ddsl-xtypes-tester.lua
 ```
-    
-9. Update CHANGELOG.md to add a section describing the contribution
+  
+- Update CHANGELOG.md to add a section describing the contribution
 
 ```bash
 edit CHANGELOG.md
 ```
       
-10. Create a candidate release locally.
+- Create a candidate release locally.
  
 ```bash
 build/scripts/release.sh
 # Output goes to `out/{bin,lib}`.
 ```
 
-11. Spot check the candidate release.
+- Spot check the candidate release.
 
 ```bash
 cd test/
@@ -259,8 +265,8 @@ cd test/
 # Browse the documentation: `out/html/index.html`
 open out/html/index.html
 ```
-   
-12. If everything looks great, send a [pull request](https://help.github.com/articles/using-pull-requests/); otherwise repeat steps 6-12.
+
+- If everything looks great, send a [pull request](https://help.github.com/articles/using-pull-requests/); otherwise continue iterating on the previous steps.
 
 
 ## License
