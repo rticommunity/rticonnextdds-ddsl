@@ -1,17 +1,23 @@
 --[[
-  (c) 2005-2015 Copyright, Real-Time Innovations, All rights reserved.     
-                                                                           
- Permission to modify and use for internal purposes granted.               
- This software is provided "as is", without warranty, express or implied.
+Copyright (C) 2015 Real-Time Innovations, Inc.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
 --]]
---[[
- -----------------------------------------------------------------------------
- Purpose: Tutorial Helpers
- Created: Rajive Joshi, 2015 Jul 8
- Usage:
-    Helpers to step through a tutorial, one lesson at a time.      
------------------------------------------------------------------------------
---]]
+
+--- Tutorial Helpers
+-- @usage
+--  Helpers to step through a tutorial, one lesson at a time.     
+-- @author Rajive Joshi 
 
 --- Switch to control whether the show() prints any output or not?
 local is_show = true
@@ -20,7 +26,7 @@ local is_show = true
 -- @param ... the arguments
 local function show(...) return is_show and print(...) end
 
---------------------------------------------------------------------------------
+--============================================================================--
 
 local is_show_stack = {}  -- stack of previous 'is_show' states
 
@@ -34,7 +40,7 @@ local function show_restore() -- restore output
   is_show_stack[#is_show_stack] = nil -- pop the stack
 end
 
---------------------------------------------------------------------------------
+--============================================================================--
 local Tutorial = {}
 
 --- Create a new tutorial
@@ -63,7 +69,7 @@ function Tutorial:new(lessons)
   return lessons
 end
 
---------------------------------------------------------------------------------
+--============================================================================--
 
 --- Do a specific lesson silently (do show output)
 -- @param title[in] 
@@ -87,7 +93,7 @@ function Tutorial:dolesson(title)
   return table.unpack(result)
 end
 
---------------------------------------------------------------------------------
+--============================================================================--
 
 function Tutorial:run(starting_lesson)
   
@@ -107,10 +113,10 @@ function Tutorial:run(starting_lesson)
   show('\n========== Congratulations on completing the tutorial!! ==========')
 end
 
---------------------------------------------------------------------------------
+--============================================================================--
 
 Tutorial.show  = show
 
---------------------------------------------------------------------------------
+--============================================================================--
   
 return Tutorial

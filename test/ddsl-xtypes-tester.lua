@@ -1,29 +1,34 @@
 #!/usr/bin/env lua
 --[[
-  (c) 2005-2014 Copyright, Real-Time Innovations, All rights reserved.     
-                                                                           
- Permission to modify and use for internal purposes granted.               
- This software is provided "as is", without warranty, express or implied.
+Copyright (C) 2015 Real-Time Innovations, Inc.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
 --]]
---[[
- -----------------------------------------------------------------------------
- Purpose: Test Lua X-Types and Domain Specific Language (DDSL)
- Created: Rajive Joshi, 2014 Feb 14
- Usage:
-          ../bin/run ddsl-xtypes-tester
-    OR
-          ./ddsl-xtypes-tester.lua
------------------------------------------------------------------------------
---]]
+
+--- Purpose: Test Lua X-Types and Domain Specific Language (DDSL)
+-- Created: Rajive Joshi, 2014 Feb 14
+-- Usage:
+--          ../bin/run ddsl-xtypes-tester
+--    OR
+--          ./ddsl-xtypes-tester.lua
 
 package.path = '../src/?.lua;../src/?/init.lua;' .. package.path
 
 local xtypes = require('ddsl.xtypes')
 local xutils = require('ddsl.xtypes.utils')
 
---------------------------------------------------------------------------------
+--============================================================================--
 -- Tester - the unit tests
---------------------------------------------------------------------------------
 
 local Tester = {} -- array of test functions
 local Test = {}   -- table to hold the types created by the tests
@@ -2150,8 +2155,7 @@ function Tester:test_api()
   end
 end
 
----
--- print - helper method to print the IDL and the index for data definition
+--- Helper method to print the IDL and the index for data definition.
 function Tester:print(instance)
     -- print IDL
     local idl = xutils.to_idl_string_table(instance, {'model (IDL):'})
@@ -2162,9 +2166,8 @@ function Tester:print(instance)
     print(table.concat(fields, '\n\t'))
 end
 
----
--- main() - run the list of tests passed on the command line
---          if no command line arguments are passed in, run all the tests
+--- Run the list of tests passed on the command line
+--  if no command line arguments are passed in, run all the tests.
 function Tester:main()
   	if #arg > 0 then -- run selected tests passed in from the command line
         self:test_module() -- always run this one to initialize the module
@@ -2184,6 +2187,5 @@ function Tester:main()
   	end
 end
 
+--============================================================================--
 Tester:main()
-
---------------------------------------------------------------------------------

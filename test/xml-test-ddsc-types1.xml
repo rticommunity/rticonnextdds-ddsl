@@ -1,18 +1,18 @@
 <?xml version="1.0" encoding="iso-8859-1"?>
 <!-- 
- (c) Copyright, Real-Time Innovations, $Date: 2013/11/16 03:37:02 $.
- All rights reserved.
- No duplications, whole or partial, manual or electronic, may be made
- without express written permission.  Any such copies, or
- revisions thereof, must display this notice unaltered.
- This code contains trade secrets of Real-Time Innovations, Inc.
+Copyright (C) 2015 Real-Time Innovations, Inc.
 
-modification history
-5.0.1,15nov13,fcs Test for bug CORE-6027
-1.5c,12oct10,fcs  Test for bug 13687
-1.5c,27feb10,fcs  Test for bug 13312
-1.5a,06nov09,fcs  Added MyUnion2
-1.4d,10mar09,fcs  Created
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
 -->
 <types xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
        xsi:noNamespaceSchemaLocation="../../../nddsgen.1.0/resource/rtiddsgen/schema/rti_dds_topic_types.xsd">

@@ -1,25 +1,33 @@
 #!/usr/bin/env lua
 --[[
-  (c) 2005-2015 Copyright, Real-Time Innovations, All rights reserved.     
-                                                                           
- Permission to modify and use for internal purposes granted.               
- This software is provided "as is", without warranty, express or implied.
---]]
---[[
--------------------------------------------------------------------------------
-Purpose: git pre-commit hook
-Created: Rajive Joshi, 2015 Oct 13
-Installation:
-        ln -s pre-commit.lua .git/hooks/pre-commit
--------------------------------------------------------------------------------
+Copyright (C) 2015 Real-Time Innovations, Inc.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
 --]]
 
--------------------------------------------------------------------------------
+--- git pre-commit hook
+-- @usage 
+--  Installation:
+--  
+--     ln -s pre-commit.lua .git/hooks/pre-commit
+-- @author Rajive Joshi
+
+--============================================================================--
 
 --- Starts program cmd in a separated process and captures its stdout
--- @param cmd[in] the command to run
--- @param is_raw[in] non-nil => return the raw output without processing 
--- @return the output of 'cmd' (to stdout)
+-- @string cmd the command to run
+-- @bool[opt=nil] is_raw non-nil => return the raw output without processing 
+-- @treturn string the output of 'cmd' (to stdout)
 function os.capture(cmd, is_raw)
   local f = assert(io.popen(cmd, 'r'))
   local s = assert(f:read('*a'))
@@ -31,10 +39,10 @@ function os.capture(cmd, is_raw)
   return s
 end
 
--------------------------------------------------------------------------------
+--============================================================================--
 
 --- Pass tests on prospective commit:
--- @return the status of running tests: true | false
+-- @treturn boolean the status of running tests: true | false
 local function passtests()
   os.execute('git stash -q --keep-index')
   
@@ -47,11 +55,11 @@ local function passtests()
   return status
 end
 
--------------------------------------------------------------------------------
+--============================================================================--
 
 --- Update version number.
--- @param file the lua file to update with the new version number
--- @return the status of updating the file: true | false
+-- @string file the lua file to update with the new version number
+-- @treturn boolean the status of updating the file: true | false
 local function update_version(file)
   -- NOTE: The current working directory for hook scripts is always set to the
   -- root of the repository
@@ -68,7 +76,7 @@ local function update_version(file)
   return os.execute('git add ' .. file)
 end
 
--------------------------------------------------------------------------------
+--============================================================================--
 
 --- main
 -- Run the pre-commit script
@@ -89,6 +97,5 @@ local function main()
   os.exit(status)
 end
 
--------------------------------------------------------------------------------
+--============================================================================--
 main()
--------------------------------------------------------------------------------

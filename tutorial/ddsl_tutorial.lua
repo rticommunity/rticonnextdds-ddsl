@@ -1,21 +1,27 @@
 #!/usr/bin/env lua
 --[[
-  (c) 2005-2015 Copyright, Real-Time Innovations, All rights reserved.     
-                                                                           
- Permission to modify and use for internal purposes granted.               
- This software is provided "as is", without warranty, express or implied.
+Copyright (C) 2015 Real-Time Innovations, Inc.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
 --]]
---[[
- -----------------------------------------------------------------------------
- Purpose: DDSL Tutorial
- Created: Rajive Joshi, 2015 Jul 7
- Usage:
-    Step though one lesson at a time. Look at the code (this file) side by side.
-          ../bin/run ddsl-tutorial [starting_lesson_number]
-    OR
-          ./ddsl-tutorial.lua [starting_lesson_number]
------------------------------------------------------------------------------
---]]
+
+--- DDSL Tutorial
+-- @usage
+--  Step though one lesson at a time. Look at the code (this file) side by side.
+--          ../bin/run ddsl-tutorial [starting_lesson_number]
+--    OR
+--          ./ddsl-tutorial.lua [starting_lesson_number]
+-- @author Rajive Joshi
 
 package.path = '../src/?.lua;../src/?/init.lua;' .. package.path
 
@@ -25,9 +31,8 @@ local xutils   = require('ddsl.xtypes.utils')
 local Tutorial = require('tutorial')
 local show     = Tutorial.show
 
---------------------------------------------------------------------------------
+--============================================================================--
 -- DDSL Helpers 
---------------------------------------------------------------------------------
 
 local function show_datatype(datatype, description)
     description = description or (tostring(datatype) .. ' datatype:')
@@ -41,12 +46,12 @@ local function show_instance(instance, description)
     show(table.concat(values, '\n\t'))
 end
 
---------------------------------------------------------------------------------
+--============================================================================--
 -- DDSL Lessons 
---------------------------------------------------------------------------------
+
 local tutorial
 tutorial = Tutorial:new{
-  ------------------------------------------------------------------------------
+  --==========================================================================--
 
   { intro = function ()
         
@@ -72,7 +77,7 @@ tutorial = Tutorial:new{
     end 
   },
 
-  ------------------------------------------------------------------------------
+  --==========================================================================--
   
   { const = function ()
     
@@ -95,7 +100,7 @@ tutorial = Tutorial:new{
     end 
   },
 
-  ------------------------------------------------------------------------------
+  --==========================================================================--
 
   { shapetype = function () 
     
@@ -120,7 +125,7 @@ tutorial = Tutorial:new{
     end
   },
 
-  ------------------------------------------------------------------------------
+  --==========================================================================--
 
   { shapetype_imperative = function ()
   
@@ -145,7 +150,7 @@ tutorial = Tutorial:new{
     end
   },
 
-  ------------------------------------------------------------------------------
+  --==========================================================================--
 
   { shapetype_xml_import = function ()
 
@@ -167,7 +172,7 @@ tutorial = Tutorial:new{
     end
   },
   
-  ------------------------------------------------------------------------------
+  --==========================================================================--
 
   { shapetype_model_iterators = function ()
 
@@ -198,7 +203,7 @@ tutorial = Tutorial:new{
     end
   },
   
-  ------------------------------------------------------------------------------
+  --==========================================================================--
  
   { struct_model_operators = function ()
 
@@ -231,7 +236,7 @@ tutorial = Tutorial:new{
     end
   },
   
-  ------------------------------------------------------------------------------
+  --==========================================================================--
 
   { shape_instance = function ()
 
@@ -270,7 +275,7 @@ tutorial = Tutorial:new{
     end  
   },
   
-  ------------------------------------------------------------------------------
+  --==========================================================================--
 
   { shape_instance_iterators = function ()
 
@@ -291,7 +296,7 @@ tutorial = Tutorial:new{
     end
   },
   
-  ------------------------------------------------------------------------------
+  --==========================================================================--
 
   { shape_accessors = function ()
 
@@ -304,7 +309,7 @@ tutorial = Tutorial:new{
     end
   },
 
-  ------------------------------------------------------------------------------
+  --==========================================================================--
 
   { inheritance_and_nested_struct_seq = function ()
     
@@ -358,7 +363,7 @@ tutorial = Tutorial:new{
     end
   },
  
-  ------------------------------------------------------------------------------ 
+  --==========================================================================--
    
   { typedefs = function ()
     
@@ -427,7 +432,7 @@ tutorial = Tutorial:new{
  
   --[[ Lesson Template: copy and paste the content to create the next lesson
 
-  ------------------------------------------------------------------------------
+  --==========================================================================--
 
   { next_lesson_title = function ()
         
@@ -437,10 +442,9 @@ tutorial = Tutorial:new{
   --]]
 }
 
---------------------------------------------------------------------------------
+--============================================================================--
 -- main --
 tutorial:run(arg[1] or 1)
---------------------------------------------------------------------------------
 
 
 
