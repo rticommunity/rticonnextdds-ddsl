@@ -15,14 +15,19 @@
 # Purpose: Build the DDSL lib/lua binaries
 # Created: Rajive Joshi, 2015 Oct 19
 
-DDSLHOME=$(cd $(dirname "$0")/..; pwd -P)
+DDSLHOME=$(cd $(dirname "$0")/../..; pwd -P)
 cd ${DDSLHOME}
+echo `pwd`
 
 #------------------------------------------------------------------------------
 # output dir:
 
 OUTPUT=out
 mkdir -p ${OUTPUT}
+
+#------------------------------------------------------------------------------
+# update version:
+env lua ./build/scripts/update-version.lua 
 
 #------------------------------------------------------------------------------
 # lib:
@@ -53,9 +58,9 @@ xml2idl \
 
 mkdir -p ${OUTPUT}/bin
 for file in ${BIN_SRC}; do
-    # NOTE: luac must correspond to the lua interpreter used to load these files
-    luac -o ${OUTPUT}/lib/lua/${file}.lc ${DDSLHOME}/bin/${file}.lua
-    chmod a+x ${OUTPUT}/bin/${file}
+	# NOTE: luac must correspond to the lua interpreter used to load these files
+    luac -o ${OUTPUT}/bin/${file}.lc ${DDSLHOME}/bin/${file}.lua
+    chmod a+x ${OUTPUT}/bin/${file}.lc
 done
 
 # run script:
@@ -65,6 +70,15 @@ echo "Created/Updated ${OUTPUT}/bin!"
 
 #------------------------------------------------------------------------------
 # doc:
+
+DOC_SRC="\
+datatype_algebra.svg \
+"
+
+mkdir -p ${OUTPUT}/html/topics/doc
+for file in ${DOC_SRC}; do
+cp -p ${DDSLHOME}/doc/${file} ${OUTPUT}/html/topics/doc/
+done
 
 cd ${DDSLHOME}/doc
 ldoc .

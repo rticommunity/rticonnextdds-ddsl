@@ -18,7 +18,6 @@ limitations under the License.
 --- git pre-commit hook
 -- @usage 
 --  Installation:
---  
 --     ln -s pre-commit.lua .git/hooks/pre-commit
 -- @author Rajive Joshi
 
@@ -43,7 +42,7 @@ end
 
 --- Pass tests on prospective commit:
 -- @treturn boolean the status of running tests: true | false
-local function passtests()
+local function pass_tests()
   os.execute('git stash -q --keep-index')
   
   print('  Running tests...')  
@@ -57,43 +56,15 @@ end
 
 --============================================================================--
 
---- Update version number.
--- @string file the lua file to update with the new version number
--- @treturn boolean the status of updating the file: true | false
-local function update_version(file)
-  -- NOTE: The current working directory for hook scripts is always set to the
-  -- root of the repository
- 
-  local status = os.execute(
-    [[echo "return '`git describe`'" >]] .. file
-  )
-  if not status then return status end
-  
-  local version = loadfile(file)
-  if not version then return false end
-  
-  print('  Committing version number: ', version())
-  return os.execute('git add ' .. file)
-end
-
---============================================================================--
-
 --- main
 -- Run the pre-commit script
 local function main()
   print('pre-commit hook:')
-  local status = passtests()
-  if not status then -- failed!
-    print('  Tests must pass in order to commit!\n  Aborting commit!')
+  local status = pass_tests()
+  if not status then
+    print('  Failed to pass tests\n  Aborting!')
     os.exit(status)
   end
-  
-  status = update_version('src/ddsl/version.lua')
-  if not status then -- failed!
-    print('  Version number update failed!\n  Aborting commit!')
-    os.exit(status) 
-  end 
-
   os.exit(status)
 end
 

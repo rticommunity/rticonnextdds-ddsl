@@ -207,7 +207,8 @@ require 'logger'
    
 ```bash
 # setup client side hooks
-ln -s build/githooks/pre-commit.lua .git/hooks/pre-commit
+cd .git/hooks/
+ln -s ../../build/scripts/pre-commit.lua pre-commit
 ```
   
 - Build the public API documentation. 
