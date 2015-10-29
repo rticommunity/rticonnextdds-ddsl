@@ -51,6 +51,12 @@
 # Created: Rajive Joshi, 2015 Jun 26
 #-------------------------------------------------------------------------------
 
+if [ $# -lt 1 ]; then
+	echo "Usage: run <lua_script> <lua_script_args>"
+	echo "   <lua_script> is a .lua|.lc file in: ., bin/, lib/, or src/"
+	exit 0
+fi
+
 MY_HOME=$(cd $(dirname "$0")/..; pwd -P)
 
 # Locate architecture specific path, if any:
@@ -83,6 +89,8 @@ elif [ -r ${MY_HOME}/src/${LUA_CMD}.lua ]; then
 	LUA_CMD_PATH=${MY_HOME}/src/${LUA_CMD}.lua # get it from the src directory
 elif [ -r ${MY_HOME}/bin/${LUA_CMD}.lua ]; then
 	LUA_CMD_PATH=${MY_HOME}/bin/${LUA_CMD}.lua # get it from the bin directory
+elif [ -r ${MY_HOME}/bin/${LUA_CMD}.lc ]; then
+	LUA_CMD_PATH=${MY_HOME}/bin/${LUA_CMD}.lc # get it from the bin directory
 elif [ -r ${MY_LIB_ARCH}/${LUA_CMD}.lc ]; then
 	LUA_CMD_PATH=${MY_LIB_ARCH}/${LUA_CMD}.lc # get it from arch lib directory
 elif [ -r ${MY_HOME}/lib/lua/${LUA_CMD}.lc ]; then
