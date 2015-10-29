@@ -251,14 +251,14 @@ lua ddsl-xtypes-tester.lua
 edit CHANGELOG.md
 ```
       
-- Create a candidate release locally.
+- Create a candidate build locally.
  
 ```bash
-build/scripts/release.sh
-# Output goes to `out/{bin,lib}`.
+./build/scripts/release.sh
+# Output goes to `out/{bin,lib, html}`.
 ```
 
-- Spot check the candidate release.
+- Spot check the candidate build.
 
 ```bash
 cd test/
@@ -269,6 +269,13 @@ open out/html/index.html
 
 - If everything looks great, send a [pull request](https://help.github.com/articles/using-pull-requests/); otherwise continue iterating on the previous steps.
 
+- Create a new release.
+```bash
+# update the version number and tag the sources
+./build/scripts/new-release.lua
+# create release build: binaries and documentation
+./build/scripts/release.sh
+```
 
 ## License
 

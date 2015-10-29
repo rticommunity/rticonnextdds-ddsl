@@ -26,10 +26,6 @@ OUTPUT=out
 mkdir -p ${OUTPUT}
 
 #------------------------------------------------------------------------------
-# update version:
-env lua ./build/scripts/update-version.lua 
-
-#------------------------------------------------------------------------------
 # lib:
 LIB_SRC="\
 ddsl/version \
