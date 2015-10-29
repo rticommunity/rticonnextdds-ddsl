@@ -54,7 +54,8 @@ DDSL brings the following capabilities to Lua (and therefore to platforms where 
 1. DDSL is a language for describing datatypes in [Lua](http://www.lua.org/about.html). It can be used as replacement
 for data description in an [IDL](https://en.wikipedia.org/wiki/Interface_description_language). In particular:
 
-   - [X-Types](http://www.omg.org/spec/DDS-XTypes/) can be defined in DDSL.
+   - [DDS X-Types](http://www.omg.org/spec/DDS-XTypes/) can be defined 
+     in DDSL.
    - Datatypes can be imported from XML.
    - Datatypes can be exported to IDL.
    
@@ -101,7 +102,7 @@ Lua can be embedded (almost every platform).
    - *Code generators* that produce behavior the context of some operational 
    scenario, while adhering to an underlying datatype.
 
-![Alt text](doc/datatype_algebra.svg "Datatype Algebra")
+![Datatype Algebra Diagram](http://rticommunity.github.io/rticonnextdds-ddsl/topics/doc/datatype_algebra.svg "Datatype Algebra")
 
 
 ## Getting Started
@@ -120,29 +121,29 @@ lua -v
 # Download as a zip file.
 ```
 
-- Read the [ddsl.xtypes](ddsl.xtypes) module overview.
+- Read the [ddsl.xtypes](http://rticommunity.github.io/rticonnextdds-ddsl/modules/ddsl.xtypes.html) module overview.
 
-- Browse the [ddsl.xtypes](ddsl.xtypes) API and usage examples.
+- Browse the [ddsl.xtypes](http://rticommunity.github.io/rticonnextdds-ddsl/modules/ddsl.xtypes.html) API and usage examples.
 
-- Step through the [tutorial](examples/ddsl-tutorial.lua) examples.
+- Step through the [tutorial](http://rticommunity.github.io/rticonnextdds-ddsl/examples/ddsl_tutorial.lua.html) examples.
 
 ```bash
 cd tutorial/
 lua ddsl_tutorial.lua
 ```
 
-- Try out the scripts: [xml2idl](xml2idl).
+- Try out the scripts: [xml2idl](http://rticommunity.github.io/rticonnextdds-ddsl/scripts/xml2idl.html).
 
 ```bash
 cd test/
-../bin/run xml2ddsl xml-test-simple.xml
+../bin/run xml2idl xml-test-simple.xml
 ```
 or, with debugging on:
 ```bash   
-../bin/run xml2ddsl -d xml-test-simple.xml
+../bin/run xml2idl -d xml-test-simple.xml
 ```
 
-- Look at the the [unit tests](test/ddsl-xtypes-tester.lua) for more advanced examples.
+- Look at the the [unit tests](https://github.com/rticommunity/rticonnextdds-ddsl/blob/develop/test/ddsl-xtypes-tester.lua) for more advanced examples.
 
 
 ## Writing Apps
@@ -157,27 +158,27 @@ export LUA_PATH+=\
   ${DDSL_HOME}/lib/lua/?.lc;${DDSL_HOME}/lib/lua/?/init.lc;"
 ```
 
-- Create datatypes directly using the [ddsl.xtypes](ddsl.xtypes) module.
+- Create datatypes directly using the [ddsl.xtypes](http://rticommunity.github.io/rticonnextdds-ddsl/modules/ddsl.xtypes.html) module.
 
 ```lua
 require 'ddsl.xtypes'
 ```
     
-- OR, Import datatypes from XML using the [ddsl.xtypes.xml](ddsl.xtypes.xml)
+- OR, Import datatypes from XML using the [ddsl.xtypes.xml](http://rticommunity.github.io/rticonnextdds-ddsl/modules/ddsl.xtypes.xml.html)
   module.
   
 ```lua
 require 'ddsl.xtypes.xml'
 ```
 
-- Output IDL using the [ddsl.xtypes.utils](ddsl.xtypes.utils) module.
+- Output IDL using the [ddsl.xtypes.utils](http://rticommunity.github.io/rticonnextdds-ddsl/modules/ddsl.xtypes.utils.html) module.
 
 ```lua
 require 'ddsl.xtypes.utils'
 ```
     
 - Create instances and use them in application code. Use the logger
-  [logger](logger) module to log messages at different verbosity levels.
+  [logger](http://rticommunity.github.io/rticonnextdds-ddsl/modules/logger.html) module to log messages at different verbosity levels.
   
 ```lua
 require 'logger'
@@ -231,8 +232,8 @@ ldoc . -all
 open out/html/index.html
 ```
 
-- Review the [Documentation Conventions](html/index.html) and 
-   [Module Organization](html/index.html).
+- Review the [Documentation Conventions](http://rticommunity.github.io/rticonnextdds-ddsl/index.html) and 
+   [Module Organization](http://rticommunity.github.io/rticonnextdds-ddsl/index.html).
 
 - Add/Modify/Update Code
  
