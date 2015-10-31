@@ -1,0 +1,521 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+   "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+<head>
+    <title>DDSL Documentation</title>
+    <link rel="stylesheet" href="../ldoc_fixed.css" type="text/css" />
+</head>
+<body>
+
+<div id="container">
+
+<div id="product">
+	<div id="product_logo"></div>
+	<div id="product_name"><big><b></b></big></div>
+	<div id="product_description"></div>
+</div> <!-- id="product" -->
+
+
+<div id="main">
+
+
+<!-- Menu -->
+
+<div id="navigation">
+<br/>
+<h1>DDSL</h1>
+
+<ul>
+  <li><a href="../index.html">Index</a></li>
+</ul>
+
+
+
+<h2>Examples</h2>
+<ul class="$(kind=='Topics' and '' or 'nowrap'">
+  <li><strong>ddsl_tutorial.lua</strong></li>
+</ul>
+<h2>Modules</h2>
+<ul class="$(kind=='Topics' and '' or 'nowrap'">
+  <li><a href="../modules/ddsl.html">ddsl</a></li>
+  <li><a href="../modules/ddsl.xtypes.html">ddsl.xtypes</a></li>
+  <li><a href="../modules/ddsl.xtypes.utils.html">ddsl.xtypes.utils</a></li>
+  <li><a href="../modules/ddsl.xtypes.xml.html">ddsl.xtypes.xml</a></li>
+  <li><a href="../modules/ddsl.xtypes.xml.parser.html">ddsl.xtypes.xml.parser</a></li>
+  <li><a href="../modules/logger.html">logger</a></li>
+</ul>
+<h2>Scripts</h2>
+<ul class="$(kind=='Topics' and '' or 'nowrap'">
+  <li><a href="../scripts/xml2idl.html">xml2idl</a></li>
+</ul>
+<h2>Topics</h2>
+<ul class="$(kind=='Topics' and '' or 'nowrap'">
+  <li><a href="../topics/README.md.html">README</a></li>
+  <li><a href="../topics/CHANGELOG.md.html">CHANGELOG</a></li>
+</ul>
+
+</div>
+
+<div id="content">
+
+    <h2>ddsl_tutorial.lua</h2>
+<pre>
+#!/usr/bin/env lua
+<span class="comment">--[[
+Copyright (C) 2015 Real-Time Innovations, Inc.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+--]]</span>
+
+<span class="comment">--- DDSL Tutorial
+</span><span class="comment">-- @usage
+</span><span class="comment">--  Step though one lesson at a time. Look at the code (this file) side by side.
+</span><span class="comment">--          ../bin/run ddsl-tutorial [starting_lesson_number]
+</span><span class="comment">--    OR
+</span><span class="comment">--          ./ddsl-tutorial.lua [starting_lesson_number]
+</span><span class="comment">-- @author Rajive Joshi
+</span>
+<span class="global">package</span>.path = <span class="string">'../src/?.lua;../src/?/init.lua;'</span> .. <span class="global">package</span>.path
+
+<span class="keyword">local</span> xtypes   = <span class="global">require</span>(<span class="string">'ddsl.xtypes'</span>)
+<span class="keyword">local</span> xutils   = <span class="global">require</span>(<span class="string">'ddsl.xtypes.utils'</span>)
+
+<span class="keyword">local</span> Tutorial = <span class="global">require</span>(<span class="string">'tutorial'</span>)
+<span class="keyword">local</span> show     = Tutorial.show
+
+<span class="comment">--============================================================================--
+</span><span class="comment">-- DDSL Helpers
+</span>
+<span class="keyword">local</span> <span class="keyword">function</span> show_datatype(datatype, description)
+    description = description <span class="keyword">or</span> (<span class="global">tostring</span>(datatype) .. <span class="string">' datatype:'</span>)
+    <span class="keyword">local</span> idl = xutils.to_idl_string_table(datatype, { description })
+    show(<span class="global">table</span>.concat(idl, <span class="string">'\n\t'</span>))
+<span class="keyword">end</span>
+
+<span class="keyword">local</span> <span class="keyword">function</span> show_instance(instance, description)
+    description = description <span class="keyword">or</span> (<span class="global">tostring</span>(instance) .. <span class="string">' instance:'</span>)
+    <span class="keyword">local</span> values = xutils.to_instance_string_table(instance, { description })
+    show(<span class="global">table</span>.concat(values, <span class="string">'\n\t'</span>))
+<span class="keyword">end</span>
+
+<span class="comment">--============================================================================--
+</span><span class="comment">-- DDSL Lessons
+</span>
+<span class="keyword">local</span> tutorial
+tutorial = Tutorial:new{
+  <span class="comment">--==========================================================================--
+</span>
+  { intro = <span class="keyword">function</span> ()
+
+      show(
+      <span class="comment">-- Show the welcome message:
+</span>      <span class="string">[[
+
+
+                      Welcome to the DDSL Tutorial!
+
+        Please open this lua tutorial source file in a code viewer/editor,
+        and follow along the lessons, one at a time, at your own pace.
+
+        You can rerun the tutorial, or jump to a specific  lesson simply by
+        running this lua script with the lesson number, thus:
+            ddsl_tutorial &lt;n&gt;
+        where n is the lesson number to jump to or restart from.
+
+        Version:  ]]</span>,
+
+      <span class="comment">-- Show the current DDSL version
+</span>      xtypes.log.version)
+    <span class="keyword">end</span>
+  },
+
+  <span class="comment">--==========================================================================--
+</span>
+  { const = <span class="keyword">function</span> ()
+
+      <span class="keyword">local</span> MAX_COLOR_LEN = xtypes.const{ MAX_COLOR_LEN = { xtypes.long, <span class="number">128</span> } }
+
+      <span class="keyword">local</span> value, datatype
+
+      show(<span class="string">'--- MAX_COLOR_LEN ---'</span>)
+      show_datatype(MAX_COLOR_LEN)
+
+      value, datatype = MAX_COLOR_LEN()
+
+      show(<span class="string">'\tvalue    '</span>,  value)
+      <span class="global">assert</span>(value == <span class="number">128</span>)
+
+      show(<span class="string">'\tdatatype'</span>, datatype)
+      <span class="global">assert</span>(datatype == xtypes.long)
+
+      <span class="keyword">return</span> MAX_COLOR_LEN
+    <span class="keyword">end</span>
+  },
+
+  <span class="comment">--==========================================================================--
+</span>
+  { shapetype = <span class="keyword">function</span> ()
+
+      show(<span class="string">'--- define a datatype (template) using declarative style ---'</span>)
+
+      <span class="keyword">local</span> MAX_COLOR_LEN = xtypes.const{ MAX_COLOR_LEN = { xtypes.long, <span class="number">128</span> } }
+      show_datatype(MAX_COLOR_LEN)
+
+      <span class="keyword">local</span> ShapeType = xtypes.struct{
+        ShapeType = {
+          { x = { xtypes.long } },
+          { y = { xtypes.long } },
+          { shapesize = { xtypes.long } },
+          { color = { xtypes.<span class="global">string</span>(MAX_COLOR_LEN), xtypes.Key } },
+          xtypes.Extensibility{<span class="string">'EXTENSIBLE_EXTENSIBILITY'</span>},
+          xtypes.top_level{},
+        }
+      }
+      show_datatype(ShapeType)
+
+      <span class="keyword">return</span> MAX_COLOR_LEN, ShapeType
+    <span class="keyword">end</span>
+  },
+
+  <span class="comment">--==========================================================================--
+</span>
+  { shapetype_imperative = <span class="keyword">function</span> ()
+
+      show(<span class="string">'--- define the same datatype (template) using imperative style ---'</span>)
+
+      <span class="keyword">local</span> MAX_COLOR_LEN = xtypes.const{ MAX_COLOR_LEN = { xtypes.long, <span class="number">128</span> } }
+      show_datatype(MAX_COLOR_LEN)
+
+      <span class="keyword">local</span> ShapeType = xtypes.struct{ShapeType=xtypes.EMPTY}
+      ShapeType[<span class="number">1</span>] = { x = { xtypes.long } }
+      ShapeType[<span class="number">2</span>] = { y = { xtypes.long } }
+      ShapeType[<span class="number">3</span>] = { shapesize = { xtypes.long } }
+      ShapeType[<span class="number">4</span>] = { color = { xtypes.<span class="global">string</span>(MAX_COLOR_LEN), xtypes.Key } }
+      ShapeType[xtypes.QUALIFIERS] = {
+          xtypes.Extensibility{<span class="string">'EXTENSIBLE_EXTENSIBILITY'</span>},
+          xtypes.top_level{},
+      }
+
+      show_datatype(ShapeType)
+
+      <span class="keyword">return</span> MAX_COLOR_LEN, ShapeType
+    <span class="keyword">end</span>
+  },
+
+  <span class="comment">--==========================================================================--
+</span>
+  { shapetype_xml_import = <span class="keyword">function</span> ()
+
+      <span class="keyword">local</span> xml = <span class="global">require</span>(<span class="string">'ddsl.xtypes.xml'</span>)
+
+      <span class="comment">-- xml.log.verbosity(xml.log.DEBUG) -- OPTIONAL: turn on debugging
+</span>
+      show(<span class="string">'--- import datatypes defined in XML ---'</span>)
+      <span class="keyword">local</span> datatypes = xml.filelist2xtypes({
+            <span class="string">'../test/xml-test-simple.xml'</span>,
+      })
+
+      show(<span class="string">'--- export datatypes to IDL ---'</span>)
+      <span class="keyword">for</span> i = <span class="number">1</span>, #datatypes <span class="keyword">do</span>
+         show_datatype(datatypes[i], <span class="global">tostring</span>(datatypes[i]) .. <span class="string">':'</span>)
+      <span class="keyword">end</span>
+
+      <span class="keyword">return</span> <span class="global">table</span>.unpack(datatypes)
+    <span class="keyword">end</span>
+  },
+
+  <span class="comment">--==========================================================================--
+</span>
+  { shapetype_model_iterators = <span class="keyword">function</span> ()
+
+      <span class="keyword">local</span> MAX_COLOR_LEN, ShapeType = tutorial:dolesson(<span class="string">'shapetype'</span>)
+
+      show(<span class="string">"--- show model attributes ---"</span>)
+      show(<span class="string">'KIND'</span>, ShapeType[xtypes.KIND]())
+      show(<span class="string">'NS'</span>, ShapeType[xtypes.NS])
+      show(<span class="string">'NAME'</span>, ShapeType[xtypes.NAME])
+      show(<span class="string">'BASE'</span>, ShapeType[xtypes.BASE])
+
+      show(<span class="string">'QUALIFIERS = '</span>, <span class="global">table</span>.unpack(ShapeType[xtypes.QUALIFIERS]))
+      <span class="keyword">for</span> i = <span class="number">1</span>, #ShapeType[xtypes.QUALIFIERS] <span class="keyword">do</span>
+         <span class="keyword">local</span> qualifier = ShapeType[xtypes.QUALIFIERS][i]
+         show(<span class="global">table</span>.concat{<span class="string">'qualifier['</span>, i, <span class="string">'] = '</span>}, qualifier)  <span class="comment">-- use tostring
+</span>         show(<span class="string">'\t'</span>,                          <span class="comment">-- OR construct ourselves
+</span>                qualifier[xtypes.NAME],       <span class="comment">--annotation/collection name
+</span>                <span class="global">table</span>.concat(qualifier, <span class="string">' '</span>)) <span class="comment">--annotation/collection attributes
+</span>      <span class="keyword">end</span>
+
+      show(<span class="string">"--- iterate through the model members ---"</span>)
+      <span class="keyword">for</span> i = <span class="number">1</span>, #ShapeType <span class="keyword">do</span>
+        <span class="keyword">local</span> member = ShapeType[i]
+        show(<span class="string">''</span>, <span class="global">table</span>.unpack(member))
+      <span class="keyword">end</span>
+
+      <span class="keyword">return</span> MAX_COLOR_LEN, ShapeType
+    <span class="keyword">end</span>
+  },
+
+  <span class="comment">--==========================================================================--
+</span>
+  { struct_model_operators = <span class="keyword">function</span> ()
+
+      <span class="keyword">local</span> MAX_COLOR_LEN, ShapeType = tutorial:dolesson(<span class="string">'shapetype'</span>)
+
+      show(<span class="string">'--- add member z ---'</span>)
+      ShapeType[#ShapeType+<span class="number">1</span>] = { z = { xtypes.<span class="global">string</span>() , xtypes.Key } }
+      show_datatype(ShapeType)
+
+      show(<span class="string">'--- remove member x ---'</span>)
+      ShapeType[<span class="number">1</span>] = <span class="keyword">nil</span>
+      show_datatype(ShapeType)
+
+      show(<span class="string">'--- redefine member y ---'</span>)
+      ShapeType[<span class="number">1</span>] = { y = { xtypes.double } }
+      show_datatype(ShapeType)
+
+      show(<span class="string">'--- add a base struct ---'</span>)
+      <span class="keyword">local</span> Property = xtypes.struct{
+        Property = {
+          { name  = { xtypes.<span class="global">string</span>(MAX_COLOR_LEN) } },
+          { value = { xtypes.<span class="global">string</span>(MAX_COLOR_LEN) } },
+        }
+      }
+      ShapeType[xtypes.BASE] = Property
+      show_datatype(ShapeType)
+      show_instance(ShapeType)
+
+      <span class="keyword">return</span> ShapeType
+    <span class="keyword">end</span>
+  },
+
+  <span class="comment">--==========================================================================--
+</span>
+  { shape_instance = <span class="keyword">function</span> ()
+
+      <span class="keyword">local</span> MAX_COLOR_LEN, ShapeType = tutorial:dolesson(<span class="string">'shapetype'</span>)
+
+      show(<span class="string">'--- create an instance from the datatype (template) ---'</span>)
+      <span class="keyword">local</span> shape = xtypes.new_instance(ShapeType)
+
+      <span class="comment">-- shape is equivalent to manually defining the following  --
+</span>      <span class="keyword">local</span> shape_manual = {
+          x          = <span class="number">50</span>,
+          y          = <span class="number">30</span>,
+          shapesize  = <span class="number">20</span>,
+          color      = <span class="string">'GREEN'</span>,
+      }
+
+      show(<span class="string">'--- initialize the shape instance from shape_manual table ---'</span>)
+      <span class="keyword">for</span> role, _ <span class="keyword">in</span> <span class="global">pairs</span>(shape_manual) <span class="keyword">do</span>
+        shape[role] = shape_manual[role]
+        show(<span class="string">'\t'</span>, role, shape[role])
+      <span class="keyword">end</span>
+
+      show_instance(shape)
+
+      show(<span class="string">"--- show instance 'model' attributes ---"</span>)
+      show(<span class="string">'KIND'</span>, shape[xtypes.KIND]())
+      show(<span class="string">'NS'</span>, shape[xtypes.NS])
+      show(<span class="string">'NAME'</span>, shape[xtypes.NAME])
+      show(<span class="string">'QUALIFIERS'</span>, <span class="global">table</span>.unpack(shape[xtypes.QUALIFIERS]))
+      show(<span class="string">'BASE'</span>, shape[xtypes.BASE])
+
+      show(<span class="string">'template'</span>, xtypes.template(shape))
+      <span class="global">assert</span>(xtypes.template(shape) == ShapeType)
+
+      <span class="keyword">return</span> MAX_COLOR_LEN, ShapeType, shape
+    <span class="keyword">end</span>
+  },
+
+  <span class="comment">--==========================================================================--
+</span>
+  { shape_instance_iterators = <span class="keyword">function</span> ()
+
+      <span class="keyword">local</span> MAX_COLOR_LEN,ShapeType,shape = tutorial:dolesson(<span class="string">'shape_instance'</span>)
+
+      show(<span class="string">"--- iterate through instance members : unordered ---"</span>)
+      <span class="keyword">for</span> role, _ <span class="keyword">in</span> <span class="global">pairs</span>(shape) <span class="keyword">do</span>
+        show(<span class="string">''</span>, role, <span class="string">'='</span>, shape[role])
+      <span class="keyword">end</span>
+
+      show(<span class="string">"--- iterate through instance members : ordered ---"</span>)
+      <span class="keyword">for</span> i = <span class="number">1</span>, #ShapeType <span class="keyword">do</span>
+        <span class="keyword">local</span> role = ShapeType[i][<span class="number">1</span>]
+        show(<span class="string">''</span>, role, <span class="string">'='</span>, shape[role])
+      <span class="keyword">end</span>
+
+      <span class="keyword">return</span> shape
+    <span class="keyword">end</span>
+  },
+
+  <span class="comment">--==========================================================================--
+</span>
+  { shape_accessors = <span class="keyword">function</span> ()
+
+      <span class="keyword">local</span> MAX_COLOR_LEN, ShapeType = tutorial:dolesson(<span class="string">'shapetype'</span>)
+
+      show(<span class="string">'--- template member values are DDSDynamicData accessor strings ---'</span>)
+      show_instance(ShapeType)
+
+      <span class="keyword">return</span> ShapeType
+    <span class="keyword">end</span>
+  },
+
+  <span class="comment">--==========================================================================--
+</span>
+  { inheritance_and_nested_struct_seq = <span class="keyword">function</span> ()
+
+      <span class="keyword">local</span> MAX_COLOR_LEN, ShapeType = tutorial:dolesson(<span class="string">'shapetype'</span>)
+
+      show(<span class="string">'--- define a property struct ---'</span>)
+      <span class="keyword">local</span> Property = xtypes.struct{
+        Property = {
+          { name  = { xtypes.<span class="global">string</span>(MAX_COLOR_LEN) } },
+          { value = { xtypes.<span class="global">string</span>(MAX_COLOR_LEN) } },
+        }
+      }
+      show_datatype(Property)
+
+      show(<span class="string">'--- define a derived struct with a sequence of properties ---'</span>)
+      <span class="keyword">local</span> ShapeTypeWithProperties = xtypes.struct{
+        ShapeTypeWithProperties = {
+          ShapeType,
+          { properties = { Property, xtypes.sequence(<span class="number">5</span>) } },
+        }
+      }
+      show_datatype(ShapeTypeWithProperties)
+
+      show(<span class="string">'--- template member values are DDSDynamicData accessor strings ---'</span>)
+      show_instance(ShapeTypeWithProperties)
+
+
+      show(<span class="string">'--- create a new instance ---'</span>)
+      <span class="keyword">local</span> shapeWithProperties = xtypes.new_instance(ShapeTypeWithProperties)
+      shapeWithProperties.x = <span class="number">50</span>
+      shapeWithProperties.y = <span class="number">30</span>
+      shapeWithProperties.shapesize = <span class="number">20</span>
+      shapeWithProperties.color = <span class="string">'GREEN'</span>
+      <span class="keyword">for</span> i = <span class="number">1</span>, shapeWithProperties.properties() - <span class="number">2</span> <span class="keyword">do</span>
+        shapeWithProperties.properties[i].name  = <span class="string">'name'</span> .. i
+        shapeWithProperties.properties[i].value = i
+      <span class="keyword">end</span>
+      show_instance(shapeWithProperties)
+
+      show(<span class="string">'properties is_collection ?'</span>,
+                          xtypes.is_collection(shapeWithProperties.properties))
+      <span class="global">assert</span>(xtypes.is_collection(shapeWithProperties.properties) == <span class="keyword">true</span>)
+      <span class="global">assert</span>(shapeWithProperties.properties() == <span class="number">5</span>)
+
+      show(<span class="string">'properties capacity'</span>, shapeWithProperties.properties(), <span class="comment">-- or
+</span>                                   ShapeTypeWithProperties.properties())
+      show(<span class="string">'properties length'</span>, #shapeWithProperties.properties)
+      <span class="global">assert</span>(#shapeWithProperties.properties == <span class="number">3</span>)
+
+      <span class="keyword">return</span> ShapeTypeWithProperties, shapeWithProperties
+    <span class="keyword">end</span>
+  },
+
+  <span class="comment">--==========================================================================--
+</span>
+  { typedefs = <span class="keyword">function</span> ()
+
+      <span class="keyword">local</span> MAX_COLOR_LEN, ShapeType = tutorial:dolesson(<span class="string">'shapetype'</span>)
+      <span class="keyword">local</span> MyShape = xtypes.typedef{
+        MyShape = { ShapeType }
+      }
+      <span class="keyword">local</span> MyShapeSeq = xtypes.typedef{
+        MyShapeSeq = { MyShape, xtypes.sequence(<span class="number">7</span>) }
+      }
+      <span class="keyword">local</span> MyShapeSeqArray = xtypes.typedef{
+        MyShapeSeqArray = { MyShapeSeq, xtypes.array(<span class="number">3</span>,<span class="number">5</span>) }
+      }
+
+      <span class="keyword">local</span> alias, collection_qualifier
+
+
+      show(<span class="string">'--- MyShapeSeqArray ---'</span>)
+      show_datatype(MyShapeSeqArray)
+
+      alias, collection_qualifier = MyShapeSeqArray()
+
+      show(<span class="string">'\talias    '</span>,  alias)
+      <span class="global">assert</span>(alias == MyShapeSeq)
+
+      show(<span class="string">'\tqualifier'</span>, collection_qualifier,
+                          collection_qualifier[xtypes.NAME],
+                          collection_qualifier[<span class="number">1</span>], collection_qualifier[<span class="number">2</span>])
+      <span class="global">assert</span>(collection_qualifier[xtypes.NAME] == <span class="string">'array'</span> <span class="keyword">and</span>
+             collection_qualifier[<span class="number">1</span>] == <span class="number">3</span>, collection_qualifier[<span class="number">1</span>] == <span class="number">5</span>)
+
+
+      show(<span class="string">'--- MyShapeSeq ---'</span>)
+      show_datatype(MyShapeSeq)
+
+      alias, collection_qualifier = MyShapeSeq()
+
+      show(<span class="string">'\talias    '</span>,  alias)
+      <span class="global">assert</span>(alias == MyShape)
+
+      show(<span class="string">'\tqualifier'</span>, collection_qualifier,
+                          collection_qualifier[xtypes.NAME],
+                          collection_qualifier[<span class="number">1</span>])
+      <span class="global">assert</span>(collection_qualifier[xtypes.NAME] == <span class="string">'sequence'</span> <span class="keyword">and</span>
+             collection_qualifier[<span class="number">1</span>] == <span class="number">7</span>)
+
+
+      show(<span class="string">'--- MyShape ---'</span>)
+      show_datatype(MyShape)
+
+      alias, collection_qualifier = MyShape()
+
+      show(<span class="string">'\talias    '</span>,  alias)
+      <span class="global">assert</span>(alias == ShapeType)
+
+      show(<span class="string">'\tqualifier'</span>, collection_qualifier)
+      <span class="global">assert</span>(collection_qualifier == <span class="keyword">nil</span>)
+
+
+      show(<span class="string">'--- resolve ---'</span>)
+      show(<span class="string">'\tMyShapeSeqArray -&gt; '</span>, xtypes.resolve(MyShapeSeqArray))
+
+      <span class="keyword">return</span> MAX_COLOR_LEN, ShapeType, MyShape, MyShapeSeq, MyShapeSeqArray
+    <span class="keyword">end</span>
+  },
+
+  <span class="comment">--[[ Lesson Template: copy and paste the content to create the next lesson
+
+  --==========================================================================--
+
+  { next_lesson_title = function ()
+
+    end
+  },
+
+  --]]</span>
+}
+
+<span class="comment">--============================================================================--
+</span><span class="comment">-- main --
+</span>tutorial:run(arg[<span class="number">1</span>] <span class="keyword">or</span> <span class="number">1</span>)</pre>
+
+
+</div> <!-- id="content" -->
+</div> <!-- id="main" -->
+<div id="about">
+<i>generated by <a href="http://github.com/stevedonovan/LDoc">LDoc 1.4.3</a></i>
+<i style="float:right;">Last updated 2015-10-30 18:29:15 </i>
+</div> <!-- id="about" -->
+</div> <!-- id="container" -->
+</body>
+</html>

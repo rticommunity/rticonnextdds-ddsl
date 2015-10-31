@@ -1,0 +1,710 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+   "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+<head>
+    <title>DDSL Documentation</title>
+    <link rel="stylesheet" href="../ldoc_fixed.css" type="text/css" />
+</head>
+<body>
+
+<div id="container">
+
+<div id="product">
+	<div id="product_logo"></div>
+	<div id="product_name"><big><b></b></big></div>
+	<div id="product_description"></div>
+</div> <!-- id="product" -->
+
+
+<div id="main">
+
+
+<!-- Menu -->
+
+<div id="navigation">
+<br/>
+<h1>DDSL</h1>
+
+<ul>
+  <li><a href="../index.html">Index</a></li>
+</ul>
+
+<h2>Contents</h2>
+<ul>
+<li><a href="#Functions">Functions</a></li>
+<li><a href="#Tables">Tables</a></li>
+<li><a href="#Fields">Fields</a></li>
+<li><a href="#Attributes">Attributes </a></li>
+<li><a href="#Constructors">Constructors</a></li>
+</ul>
+
+
+<h2>Modules</h2>
+<ul class="$(kind=='Topics' and '' or 'nowrap'">
+  <li><strong>ddsl</strong></li>
+  <li><a href="../modules/ddsl.xtypes.html">ddsl.xtypes</a></li>
+  <li><a href="../modules/ddsl.xtypes.utils.html">ddsl.xtypes.utils</a></li>
+  <li><a href="../modules/ddsl.xtypes.xml.html">ddsl.xtypes.xml</a></li>
+  <li><a href="../modules/ddsl.xtypes.xml.parser.html">ddsl.xtypes.xml.parser</a></li>
+  <li><a href="../modules/logger.html">logger</a></li>
+</ul>
+<h2>Scripts</h2>
+<ul class="$(kind=='Topics' and '' or 'nowrap'">
+  <li><a href="../scripts/xml2idl.html">xml2idl</a></li>
+</ul>
+<h2>Topics</h2>
+<ul class="$(kind=='Topics' and '' or 'nowrap'">
+  <li><a href="../topics/README.md.html">README</a></li>
+  <li><a href="../topics/CHANGELOG.md.html">CHANGELOG</a></li>
+</ul>
+<h2>Examples</h2>
+<ul class="$(kind=='Topics' and '' or 'nowrap'">
+  <li><a href="../examples/ddsl_tutorial.lua.html">ddsl_tutorial.lua</a></li>
+</ul>
+
+</div>
+
+<div id="content">
+
+<h1>Module <code>ddsl</code></h1>
+<p>DDSL Core Abstraction; see <a href="../modules/ddsl.xtypes.html#">ddsl.xtypes</a> for a concrete implementation.</p>
+<p>
+
+
+<p> Core primitives for the Datatype definition Domain Specific Language
+ (DDSL). Defines and implements the DDSL meta-model. The core
+ abstractions are:</p>
+
+<ul>
+    <li>datatype (a.k.a. datamodel or model)</li>
+    <li>instance</li>
+    <li>collection</li>
+    <li>alias</li>
+    <li>qualifier</li>
+</ul>
+
+<p> These primitives can be used to define datatypes according to a set of
+ datatype construction rules (for example, <a href="../modules/ddsl.xtypes.html#">ddsl.xtypes</a>). Thus, DDSL can be
+ thought of as a meta-model class implementing the semantic data
+ definition model underlying OMG X-Types.</p>
+
+<p> The DDSL core engine provides the infrastructure to create instances and
+ instance collections backed by datatypes, to manipulate the underlying
+ datatypes, keep all the instances in sync with the underlying datatypes.</p>
+
+<p> A datatype is a blueprint for a data structure. Any
+ number of data-objects or instances (a.k.a. <code>xinstance</code>) can be created
+ from a datatype. Every instance is backed by an underlying datatype. The
+ underlying datatype is never exposed directly; it is always manipulated
+ through any one of its instances. Thus, any instance can used as a handle
+ to manipulate the underlying datatype. Any changes made to the underlying
+ datatype are propagated to all its instances---thus keeping all the
+ instances in "sync" with the underlying datatype.</p>
+
+<p> Any instance can be used as a constructor for new instances of the underlying
+ datatype---when used in this manner, an instance can be thought of as a
+ <em>template</em> for creating new instances. More specifically, we refer
+ to the instance returned by a datatype constructor as the <em>template instance</em>
+ (a.k.a. <code>xtemplate</code>) for that datatytpe. It is used as the
+ <em>cannonical</em> template instance for creating other instances of the datatype,
+ and as the handle for manipulating the datatype. Its fields should not be
+ altered, as they are used to initialize the fields of new instances
+ created from it.</p>
+
+<p> <strong>Nomenclature</strong></p>
+
+<p> This documentation uses the following nomenclature to refer to parts
+ of a datatype. Below, the nomenclature is illustrated using an IDL example.</p>
+
+<pre>
+// @AnnotationX (annotations are <span class="string">'qualifiers'</span>)
+struct Model {              //  Datatype
+   Element1 role1;          //  @AnnotationY (a <span class="string">'qualifier'</span>)
+   Element2 role2;          //
+   sequence&lt;Element3&gt; role3;// a one-dimensional <span class="string">'collection'</span>
+   Element4 role4[<span class="number">7</span>][<span class="number">9</span>]     // a multi-dimensional <span class="string">'collection'</span>
+}
+</pre>
+
+<p>  where <code>ElementX</code> may be recursively defined as another Model (i.e. datatype)
+  composed of other elements.</p>
+
+<p>  To create an instance (<code>xinstance</code>) named <code>i1</code> from a datatytype
+  named <code>Model</code>:</p>
+
+<pre>
+<span class="keyword">local</span> i1 = <span class="backtick"><a href="../modules/ddsl.html#new_instance">new_instance</a></span>(Model, <span class="string">'i1'</span>)
+</pre>
+
+<p>  Now, one can use all the fields of the resulting table, <code>i1</code>. Furthermore,
+  the fields are properly initialized for indexing into a storage scheme based
+  on flattening out the field names.</p>
+
+<pre>
+i1.role1 == <span class="string">'i1.role1'</span>
+</pre>
+
+<p>  More precisely, a newly created <code>xinstance</code> (and, therefore also the
+  <code>xtemplate</code>) will have the fields initialized as follows.</p>
+
+<ul>
+    <li>For a primitive (i.e. atomic) member role:
+
+<pre>
+role = <span class="string">'role'</span>
+</pre>
+</li>
+    <li>For a composite member role:
+
+<pre>
+roleX = <span class="backtick"><a href="../modules/ddsl.html#new_instance">new_instance</a></span>(ElementX, <span class="string">'roleX'</span>)
+</pre>
+</li>
+    <li>For a collection member role (sequences or arrays):
+
+<pre>
+roleY = <span class="backtick"><a href="../modules/ddsl.html#new_collection">new_collection</a></span>(ElementY, capacity, <span class="string">'roleY'</span>)
+</pre>
+</li>
+</ul>
+</p>
+    <h3>Info:</h3>
+    <ul>
+        <li><strong>Author</strong>: Rajive Joshi</li>
+    </ul>
+
+
+<h2><a href="#Functions">Functions</a></h2>
+<table class="function_list">
+	<tr>
+	<td class="name" nowrap><a href="#kind">kind (instance)</a></td>
+	<td class="summary">Get the datatype kind for any arbitrary object.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#template">template (instance)</a></td>
+	<td class="summary">Retrieve the (<em>cannonical</em>) template instance.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#resolve">resolve (template)</a></td>
+	<td class="summary">Resolve an alias template to the underlying non-alias template and the
+ collection qualifiers that wrap that non-alias template.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#nsname">nsname (template[, namespace=nil])</a></td>
+	<td class="summary">Qualified (scoped) name of a datatype model relative to a namespace.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#nsroot">nsroot (template)</a></td>
+	<td class="summary">Get the root namespace (the outermost enclosing scope) for an instance.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#is_collection">is_collection (v)</a></td>
+	<td class="summary">Is the given object a collection of instances?</td>
+	</tr>
+</table>
+<h2><a href="#Tables">Tables</a></h2>
+<table class="function_list">
+	<tr>
+	<td class="name" nowrap><a href="#EMPTY">EMPTY</a></td>
+	<td class="summary">Initializer/sentinel value to indicate an empty datatype definition.</td>
+	</tr>
+</table>
+<h2><a href="#Fields">Fields</a></h2>
+<table class="function_list">
+	<tr>
+	<td class="name" nowrap><a href="#log">log</a></td>
+	<td class="summary"><a href="../modules/logger.html#">logger</a> to log messages and get/set the verbosity levels.</td>
+	</tr>
+</table>
+<h2><a href="#Attributes">Attributes </a></h2>
+<table class="function_list">
+	<tr>
+	<td class="name" nowrap><a href="#KIND">KIND ()</a></td>
+	<td class="summary">Immutable data(type) model kind.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#NAME">NAME ()</a></td>
+	<td class="summary">Name of the data(type) model.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#NS">NS ()</a></td>
+	<td class="summary">Namespace a data(type) model belongs to.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#QUALIFIERS">QUALIFIERS ()</a></td>
+	<td class="summary">Qualifiers associated with a data(type) model.</td>
+	</tr>
+</table>
+<h2><a href="#Constructors">Constructors</a></h2>
+<table class="function_list">
+	<tr>
+	<td class="name" nowrap><a href="#new_instance">new_instance (template[, name=nil[, is_role_instance=nil]])</a></td>
+	<td class="summary">Create an instance, using another instance as a template.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#new_collection">new_collection (content_template[, capacity=nil[, name=nil[, is_role_instance=nil]]])</a></td>
+	<td class="summary">Creates a new named collection of instances based on an element template.</td>
+	</tr>
+</table>
+
+<br/>
+<br/>
+
+
+    <h2 class="section-header "><a name="Functions"></a>Functions</h2>
+
+    <dl class="function">
+    <dt>
+    <a name = "kind"></a>
+    <strong>kind (instance)</strong>
+    </dt>
+    <dd>
+    Get the datatype kind for any arbitrary object.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">instance</span>
+            <span class="types"><span class="type">xinstance</span></span>
+         the object for which to retrieve the model type
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+        the datatype <a href="../modules/ddsl.html#KIND">KIND</a> or nil (if 'value' is not a valid datatype)
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "template"></a>
+    <strong>template (instance)</strong>
+    </dt>
+    <dd>
+    Retrieve the (<em>cannonical</em>) template instance.
+ The instance would have been created previously using <a href="../modules/ddsl.html#new_instance">new_instance</a>() or
+ <a href="../modules/ddsl.html#new_collection">new_collection</a>() or <code>new_template</code>().
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">instance</span>
+            <span class="types"><span class="type">xinstance</span></span>
+         the instance whose template we want to retrieve
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><span class="type">xtemplate</span></span>
+        the underlying template (<em>cannonical</em>) instance
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "resolve"></a>
+    <strong>resolve (template)</strong>
+    </dt>
+    <dd>
+    Resolve an alias template to the underlying non-alias template and the
+ collection qualifiers that wrap that non-alias template.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">template</span>
+            <span class="types"><span class="type">xinstance</span></span>
+         the alias datatype template to resolve
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><span class="type">...</span></span>
+
+<p> variadic number of return values consisting of the underlying
+  non-alias datatype template, and the collection qualifiers wrapping it</p>
+<pre><code>[ [collection_qualifier,] ... ] &lt;Non-Alias Template&gt;
+</code></pre>
+
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "nsname"></a>
+    <strong>nsname (template[, namespace=nil])</strong>
+    </dt>
+    <dd>
+    Qualified (scoped) name of a datatype model relative to a namespace. <br/>
+ Computes the shortest <em>distance</em> (scoped name) to navigate to the datatype
+ template from namespace. Each name segment is separated by '::'.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">template</span>
+            <span class="types"><span class="type">xinstance</span></span>
+         the datatype whose qualified name is
+  desired in the context of the namespace
+        </li>
+        <li><span class="parameter">namespace</span>
+            <span class="types"><span class="type">xtemplate</span></span>
+         the namespace datatype; if nil, defaults to
+  template's outermost enclosing scope (<code>root</code> namespace)
+         (<em>default</em> nil)
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><a class="type" href="http://www.lua.org/manual/5.2/manual.html#6.4">string</a></span>
+        the qualified name of the datatype relative to the
+   namespace; may be nil (for example when template == namespace).
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "nsroot"></a>
+    <strong>nsroot (template)</strong>
+    </dt>
+    <dd>
+    Get the root namespace (the outermost enclosing scope) for an instance.
+ Note that a namespace without an enclosing namespace is the outermost
+ enclosing scope.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">template</span>
+            <span class="types"><span class="type">xinstance</span></span>
+         the instance (or template) whose root is to be determined
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><span class="type">xtemplate</span></span>
+        the root namespace ie. the outermost enclosing scope
+   (NOTE: maybe template itself)
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "is_collection"></a>
+    <strong>is_collection (v)</strong>
+    </dt>
+    <dd>
+    Is the given object a collection of instances?
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">v</span>
+            <span class="types"><span class="type">xinstance</span></span>
+         the object to check
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><span class="type">boolean</span> or <span class="type">nil</span></span>
+        true if v is a collection, false or nil otherwise
+    </ol>
+
+
+
+
+</dd>
+</dl>
+    <h2 class="section-header "><a name="Tables"></a>Tables</h2>
+
+    <dl class="function">
+    <dt>
+    <a name = "EMPTY"></a>
+    <strong>EMPTY</strong>
+    </dt>
+    <dd>
+    Initializer/sentinel value to indicate an empty datatype definition.
+
+
+
+
+
+
+
+</dd>
+</dl>
+    <h2 class="section-header "><a name="Fields"></a>Fields</h2>
+
+    <dl class="function">
+    <dt>
+    <a name = "log"></a>
+    <strong>log</strong>
+    </dt>
+    <dd>
+    <a href="../modules/logger.html#">logger</a> to log messages and get/set the verbosity levels.
+ This module extends the logger to add a <code>version</code> field.
+
+
+
+
+
+
+    <h3>Usage:</h3>
+    <ul>
+        <pre class="example">
+  <span class="comment">-- show version
+</span>  <span class="global">print</span>(<span class="backtick"><a href="../modules/ddsl.html#log">ddsl.log</a></span>.version)</pre>
+    </ul>
+
+</dd>
+</dl>
+    <h2 class="section-header has-description"><a name="Attributes"></a>Attributes </h2>
+
+          <div class="section-description">
+
+
+<p> Every <code>xinstance</code> has a metatable that implements the following attributes.
+ For example, if the metatable, <code>model</code> defines the datatype
+ model, then the <a href="../modules/ddsl.html#KIND">KIND</a> table key specifies the kind of datatype model.</p>
+<pre><code> model[KIND] = &lt;the datatype model kind&gt;
+</code></pre>
+
+          </div>
+    <dl class="function">
+    <dt>
+    <a name = "KIND"></a>
+    <strong>KIND ()</strong>
+    </dt>
+    <dd>
+    Immutable data(type) model kind.   Cannot be changed after a datatype
+ model is constructed.
+
+
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "NAME"></a>
+    <strong>NAME ()</strong>
+    </dt>
+    <dd>
+    Name of the data(type) model.
+
+
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "NS"></a>
+    <strong>NS ()</strong>
+    </dt>
+    <dd>
+    Namespace a data(type) model belongs to.
+
+
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "QUALIFIERS"></a>
+    <strong>QUALIFIERS ()</strong>
+    </dt>
+    <dd>
+    Qualifiers associated with a data(type) model.
+
+
+
+
+
+
+
+</dd>
+</dl>
+    <h2 class="section-header "><a name="Constructors"></a>Constructors</h2>
+
+    <dl class="function">
+    <dt>
+    <a name = "new_instance"></a>
+    <strong>new_instance (template[, name=nil[, is_role_instance=nil]])</strong>
+    </dt>
+    <dd>
+    Create an instance, using another instance as a template.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">template</span>
+            <span class="types"><span class="type">xtemplate</span></span>
+         the template to use for creating an instance
+        </li>
+        <li><span class="parameter">name</span>
+            <span class="types"><a class="type" href="http://www.lua.org/manual/5.2/manual.html#6.4">string</a></span>
+
+<p> the template role name; maybe nil</p>
+
+<ul>
+    <li>non-nil => creating a cannonical template instance </li>
+    <li>nil => creating an instance for holding data</li>
+</ul>
+
+         (<em>default</em> nil)
+        </li>
+        <li><span class="parameter">is_role_instance</span>
+            <span class="types"><span class="type">bool</span></span>
+         is the new instance going to be a part of
+   a role instance, i.e. will the new instance belong to a <code>xtemplate</code>?
+         (<em>default</em> nil)
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><span class="type">xinstance</span></span>
+        newly created instance that supports indexing by <code>name</code>
+    </ol>
+
+
+
+    <h3>Usage:</h3>
+    <ul>
+        <pre class="example">
+  <span class="comment">-- As an index into some storage system: sample[]
+</span>  <span class="keyword">local</span> myInstance = ddsl.<span class="backtick"><a href="../modules/ddsl.html#new_instance">new_instance</a></span>(MyType, <span class="string">"myInstance"</span>)
+  <span class="keyword">local</span> member = sample[myInstance.member] <span class="comment">-- = sample["myInstance.member"]
+</span>
+  <span class="comment">-- As storage for data itself
+</span>  <span class="keyword">local</span> myInstance = ddsl.<span class="backtick"><a href="../modules/ddsl.html#new_instance">new_instance</a></span>(MyType)
+ myInstance.member = <span class="string">"value"</span></pre>
+    </ul>
+
+</dd>
+    <dt>
+    <a name = "new_collection"></a>
+    <strong>new_collection (content_template[, capacity=nil[, name=nil[, is_role_instance=nil]]])</strong>
+    </dt>
+    <dd>
+    Creates a new named collection of instances based on an element template. <br/>
+ The collection is comprised of elements specified by the given template
+ or collection (previously created via a call to this function).
+ Note that a sequence or array field in an instance is also a collection of
+ instances (created using this constructor).
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">content_template</span>
+            <span class="types"><span class="type">xtemplate</span></span>
+
+<p> the collection element element datatype template</p>
+
+<ul>
+    <li>may be a template i.e. <code>xtemplate</code> (i.e. a non-collection) OR</li>
+    <li>may be a collection (i.e. creating a collection of collections)</li>
+</ul>
+
+        </li>
+        <li><span class="parameter">capacity</span>
+         the capacity, i.e. the maximum number of instances;
+   nil => unbounded
+         (<em>default</em> nil)
+        </li>
+        <li><span class="parameter">name</span>
+            <span class="types"><a class="type" href="http://www.lua.org/manual/5.2/manual.html#6.4">string</a></span>
+
+<p> role name, if the new instance will be a member of
+   another instance.</p>
+
+<ul>
+    <li>non-nil => creating a template instance </li>
+    <li>nil => creating an instance for holding data</li>
+</ul>
+
+         (<em>default</em> nil)
+        </li>
+        <li><span class="parameter">is_role_instance</span>
+            <span class="types"><span class="type">bool</span></span>
+         is the new collection going to be part of
+   a role instance, i.e. will it belong to a template?
+         (<em>default</em> nil)
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><span class="type">xinstance</span></span>
+        returns the newly created collection instance
+    </ol>
+
+
+
+    <h3>Usage:</h3>
+    <ul>
+        <pre class="example">
+  <span class="comment">-- As an index into DDS dynamic data: sample[]
+</span>  <span class="keyword">local</span> myInstance = ddsl.<span class="backtick"><a href="../modules/ddsl.html#new_collection">new_collection</a></span>(MyType, <span class="number">10</span>, <span class="string">"myInstance"</span>)
+  <span class="keyword">for</span> i = <span class="number">1</span>, sample[#myInstance] <span class="keyword">do</span>     <span class="comment">-- = sample['myInstance#']
+</span>    <span class="comment">-- access the i-th element
+</span>    <span class="global">print</span>(sample[myInstance[i].member])  <span class="comment">-- = sample["myInstance[i].member"]
+</span>  <span class="keyword">end</span>
+
+  <span class="comment">-- As a storage for data itself
+</span>  <span class="keyword">local</span> myInstance = ddsl.<span class="backtick"><a href="../modules/ddsl.html#new_collection">new_collection</a></span>(MyType, <span class="number">10</span>)
+  <span class="keyword">for</span> i = <span class="number">1</span>, <span class="number">5</span> <span class="keyword">do</span>
+    <span class="global">print</span>(myInstance[i].member) <span class="comment">-- get the i-th element = "member"
+</span>    myInstance[i].member = i    <span class="comment">-- set the i-th element
+</span>  <span class="keyword">end</span>
+
+  <span class="comment">-- the actual number of elements
+</span>  <span class="global">print</span>(#myInstance)  <span class="comment">-- 5
+</span>
+  <span class="comment">-- the collection capacity
+</span>  <span class="global">print</span>(myInstance()) -- <span class="number">10</span></pre>
+    </ul>
+
+</dd>
+</dl>
+
+
+</div> <!-- id="content" -->
+</div> <!-- id="main" -->
+<div id="about">
+<i>generated by <a href="http://github.com/stevedonovan/LDoc">LDoc 1.4.3</a></i>
+<i style="float:right;">Last updated 2015-10-30 18:29:15 </i>
+</div> <!-- id="about" -->
+</div> <!-- id="container" -->
+</body>
+</html>

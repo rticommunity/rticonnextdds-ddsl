@@ -1,0 +1,1992 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+   "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+<head>
+    <title>DDSL Documentation</title>
+    <link rel="stylesheet" href="../ldoc_fixed.css" type="text/css" />
+</head>
+<body>
+
+<div id="container">
+
+<div id="product">
+	<div id="product_logo"></div>
+	<div id="product_name"><big><b></b></big></div>
+	<div id="product_description"></div>
+</div> <!-- id="product" -->
+
+
+<div id="main">
+
+
+<!-- Menu -->
+
+<div id="navigation">
+<br/>
+<h1>DDSL</h1>
+
+<ul>
+  <li><a href="../index.html">Index</a></li>
+</ul>
+
+<h2>Contents</h2>
+<ul>
+<li><a href="#Functions">Functions</a></li>
+<li><a href="#Tables">Tables</a></li>
+<li><a href="#Fields">Fields</a></li>
+<li><a href="#Datatype_Kinds">Datatype Kinds </a></li>
+<li><a href="#Datatype_Attributes">Datatype Attributes </a></li>
+<li><a href="#Datatype_Qualifiers">Datatype Qualifiers </a></li>
+<li><a href="#Datatypes">Datatypes</a></li>
+<li><a href="#Builtin_Datatypes">Builtin Datatypes </a></li>
+<li><a href="#Builtin_Annotations">Builtin Annotations </a></li>
+</ul>
+
+
+<h2>Modules</h2>
+<ul class="$(kind=='Topics' and '' or 'nowrap'">
+  <li><a href="../modules/ddsl.html">ddsl</a></li>
+  <li><strong>ddsl.xtypes</strong></li>
+  <li><a href="../modules/ddsl.xtypes.utils.html">ddsl.xtypes.utils</a></li>
+  <li><a href="../modules/ddsl.xtypes.xml.html">ddsl.xtypes.xml</a></li>
+  <li><a href="../modules/ddsl.xtypes.xml.parser.html">ddsl.xtypes.xml.parser</a></li>
+  <li><a href="../modules/logger.html">logger</a></li>
+</ul>
+<h2>Scripts</h2>
+<ul class="$(kind=='Topics' and '' or 'nowrap'">
+  <li><a href="../scripts/xml2idl.html">xml2idl</a></li>
+</ul>
+<h2>Topics</h2>
+<ul class="$(kind=='Topics' and '' or 'nowrap'">
+  <li><a href="../topics/README.md.html">README</a></li>
+  <li><a href="../topics/CHANGELOG.md.html">CHANGELOG</a></li>
+</ul>
+<h2>Examples</h2>
+<ul class="$(kind=='Topics' and '' or 'nowrap'">
+  <li><a href="../examples/ddsl_tutorial.lua.html">ddsl_tutorial.lua</a></li>
+</ul>
+
+</div>
+
+<div id="content">
+
+<h1>Module <code>ddsl.xtypes</code></h1>
+<p>Datatypes in Lua.</p>
+<p> Uses the <a href="../modules/ddsl.html#">ddsl</a> core primitives to implement datatypes (a.k.a. <a href="../modules/ddsl.xtypes.html">xtypes</a>) as
+ defined by the OMG X-Types specification in Lua. </p>
+
+<p> The datatypes are equivalent to those described by the <a href="
+ http://www.omg.org/spec/DDS-XTypes/">X-Types</a> specification. Thus, this module
+ can serve as an alternative for defining types in Lua, instead of in <a href="
+ https://en.wikipedia.org/wiki/Interface_description_language">IDL</a> or XML.</p>
+
+<p> A datatype is a blueprint for a data structure. Any
+ number of data-objects or instances (a.k.a. <code>xinstance</code>) can be created
+ from a datatype. Each instance is backed by the underlying datatype from
+ which it was created. The datatype constraints are enforced on the
+ instances---for example a <a href="../modules/ddsl.xtypes.html#struct">struct</a> instance can only have the fields defined
+ in the <a href="../modules/ddsl.xtypes.html#struct">struct</a> datatype; sequence and array bounds are enforced.
+ Furthermore, if the datatype structure changes, those changes are propagated
+ to all the instances.</p>
+
+<p> Operators to manipulate datatypes (i.e. structure) are also provided. Thus,
+ for a <a href="../modules/ddsl.xtypes.html#struct">struct</a> datatype, new members can be added, existing ones can be
+ removed or modified. Since every instance is backed by a datatype, any
+ instance can be used as a handle to manipulate the underlying datatype.
+ Changes are propagated to all the other instances, to ensure consistency.</p>
+
+<p> Since every instance is backed by a datatype, a new instance can be created
+ from any instance using <a href="../modules/ddsl.xtypes.html#new_instance">new_instance</a>. A datatype constructor returns
+ a <em>template instance</em> (a.k.a. <code>xtemplate</code>) that can be used as cannonical
+ instance to refer to the datatype.  </p>
+
+<p> Each field in the template instance is
+ initialized to a flattened out accessor <a href="../modules/ddsl.xtypes.html#string">string</a> that can be used retrive
+ that field's value in some storage system. For example, the accessor strings
+ can be directly used for data access in Lua scripts used with the
+ <em>RTI Connext DDS Prototyper</em> (see <strong>Section 8.4, Data Access API</strong> in the
+ <a href="
+ https://community.rti.com/static/documentation/connext-dds/5.2.0/doc/manuals/connext_dds/prototyper/RTI_ConnextDDS_CoreLibraries_Prototyper_GettingStarted.pdf">RTI Connext DDS Prototyper Getting Started Guide</a>).</p>
+
+
+<p> <strong>General Syntax</strong></p>
+
+<p> Since <a href="../modules/ddsl.html#">ddsl</a> does not impose any specific syntax on how datatypes are
+ expressed in Lua, this module defines the syntax. The general syntax and
+ patterns common to all datatypes are illsurated below.</p>
+
+
+<pre>
+<span class="keyword">local</span> xtypes = <span class="global">require</span> <span class="string">'ddsl.xtypes'</span>
+
+<span class="comment">-- create a datatype of kind 'kind' with the name 'MyType'
+</span><span class="comment">-- NOTE: <code>mytype</code> is the template instance for <code>MyType</code> (i.e. <code>xtemplate</code>)
+</span><span class="keyword">local</span> mytype = xtypes.&lt;kind&gt;{
+   MyType = { &lt;definition_syntax_for_kind&gt; }
+}
+
+
+<span class="comment">-- create an instance to use in user application code
+</span><span class="keyword">local</span> myinstance = xtypes.<span class="backtick"><a href="../modules/ddsl.xtypes.html#new_instance">new_instance</a></span>(mytype)
+
+<span class="comment">-- print the datatype underlying an instance
+</span><span class="global">print</span>(<span class="global">tostring</span>(myinstance)) <span class="comment">-- or simply
+</span><span class="global">print</span>(myinstance)
+
+
+<span class="comment">-- get the template instance
+</span><span class="global">assert</span>(xtypes.<span class="backtick"><a href="../modules/ddsl.xtypes.html#template">template</a></span>(myinstance) == mytype)
+
+
+<span class="comment">-- print the kind of a datatype
+</span><span class="comment">-- NOTE: the kind is immutable, i.e. cannot be changed after creation
+</span><span class="global">print</span>(mytype[xtypes.<span class="backtick"><a href="../modules/ddsl.xtypes.html#KIND">KIND</a></span>]())
+
+
+<span class="comment">-- get the name of a datatype
+</span><span class="global">print</span>(mytype[xtypes.<span class="backtick"><a href="../modules/ddsl.xtypes.html#NAME">NAME</a></span>])
+
+<span class="comment">-- set the name of a datatype
+</span>mytype[xtypes.<span class="backtick"><a href="../modules/ddsl.xtypes.html#NAME">NAME</a></span>] = <span class="string">'MyTypeNewName'</span>
+
+
+<span class="comment">-- get the enclosing namespace of a datatype
+</span><span class="global">print</span>(mytype[xtypes.<span class="backtick"><a href="../modules/ddsl.xtypes.html#NS">NS</a></span>])
+
+<span class="comment">-- set the enclosing namespace of a datatype
+</span>mytype[xtypes.<span class="backtick"><a href="../modules/ddsl.xtypes.html#NS">NS</a></span>] = <span class="backtick"><code>YourType</code></span> <span class="comment">-- defined elsewhere; maybe <code>nil</code>
+</span>
+
+<span class="comment">-- get the qualifiers associated with a datatype
+</span><span class="global">print</span>(mytype[xtypes.<span class="backtick"><a href="../modules/ddsl.xtypes.html#QUALIFIERS">QUALIFIERS</a></span>])
+
+<span class="comment">-- set the qualifiers associated with a datatype
+</span>mytype[xtypes.<span class="backtick"><a href="../modules/ddsl.xtypes.html#QUALIFIERS">QUALIFIERS</a></span>] = {
+  xtypes.<span class="backtick"><a href="../modules/ddsl.xtypes.html#Nested">Nested</a></span>,
+  xtypes.<span class="backtick"><a href="../modules/ddsl.xtypes.html#Extensibility">Extensibility</a></span>{<span class="string">'FINAL_EXTENSIBILITY'</span>},
+}
+
+<span class="comment">-- Get the qualified name (i.e. scoped name) of a datatype:
+</span><span class="global">print</span>(xtypes.<span class="backtick"><a href="../modules/ddsl.xtypes.html#nsname">nsname</a></span>(mytype)
+
+<span class="comment">-- Get the outermost enclosing scope of a datatype:
+</span><span class="global">print</span>(xtypes.<span class="backtick"><a href="../modules/ddsl.xtypes.html#nsroot">nsroot</a></span>(mytype)
+</pre>
+
+<p> The datatype constructors provide more usage examples, specific to each type.</p>
+    <h3>Info:</h3>
+    <ul>
+        <li><strong>Author</strong>: Rajive Joshi</li>
+    </ul>
+
+
+<h2><a href="#Functions">Functions</a></h2>
+<table class="function_list">
+	<tr>
+	<td class="name" nowrap><a href="#nsname">nsname ()</a></td>
+	<td class="summary"><a href="../modules/ddsl.html#nsname">ddsl.nsname</a>: fully qualified name within the enclosing scope.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#nsroot">nsroot ()</a></td>
+	<td class="summary"><a href="../modules/ddsl.html#nsroot">ddsl.nsroot</a>: outermost enclosing <code>root</code> namespace.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#resolve">resolve ()</a></td>
+	<td class="summary"><a href="../modules/ddsl.html#resolve">ddsl.resolve</a>: resolve a typedef</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#template">template ()</a></td>
+	<td class="summary"><a href="../modules/ddsl.html#template">ddsl.template</a>: get the <em>cannonical</em> template instance (<code>xtemplate</code>)</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#new_instance">new_instance ()</a></td>
+	<td class="summary"><a href="../modules/ddsl.html#new_instance">ddsl.new_instance</a>: create a new instance (<code>xinstance</code>)</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#new_collection">new_collection ()</a></td>
+	<td class="summary"><a href="../modules/ddsl.html#new_collection">ddsl.new_collection</a>: create a new collection of instances (<code>xinstances</code>)</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#is_collection">is_collection ()</a></td>
+	<td class="summary"><a href="../modules/ddsl.html#is_collection">ddsl.is_collection</a>: is this a collection of instances (<code>xinstances</code>) ?</td>
+	</tr>
+</table>
+<h2><a href="#Tables">Tables</a></h2>
+<table class="function_list">
+	<tr>
+	<td class="name" nowrap><a href="#EMPTY">EMPTY</a></td>
+	<td class="summary"><a href="../modules/ddsl.html#EMPTY">ddsl.EMPTY</a>: Empty datatype definition for use as initializer in
+ datatype constructors.</td>
+	</tr>
+</table>
+<h2><a href="#Fields">Fields</a></h2>
+<table class="function_list">
+	<tr>
+	<td class="name" nowrap><a href="#log">log</a></td>
+	<td class="summary"><a href="../modules/logger.html#">logger</a> to log messages and get/set the verbosity levels</td>
+	</tr>
+</table>
+<h2><a href="#Datatype_Kinds">Datatype Kinds </a></h2>
+<table class="function_list">
+	<tr>
+	<td class="name" nowrap><a href="#ANNOTATION">ANNOTATION ()</a></td>
+	<td class="summary">Annotation kind.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#ATOM">ATOM ()</a></td>
+	<td class="summary">Atom kind.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#ENUM">ENUM ()</a></td>
+	<td class="summary">Ennumeration kind.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#STRUCT">STRUCT ()</a></td>
+	<td class="summary">Struct kind.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#UNION">UNION ()</a></td>
+	<td class="summary">Union kind.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#TYPEDEF">TYPEDEF ()</a></td>
+	<td class="summary">Typedef kind.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#CONST">CONST ()</a></td>
+	<td class="summary">Constant kind.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#MODULE">MODULE ()</a></td>
+	<td class="summary">Module kind.</td>
+	</tr>
+</table>
+<h2><a href="#Datatype_Attributes">Datatype Attributes </a></h2>
+<table class="function_list">
+	<tr>
+	<td class="name" nowrap><a href="#KIND">KIND ()</a></td>
+	<td class="summary"><a href="../modules/ddsl.html#KIND">ddsl.KIND</a>: Datatype kind.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#NAME">NAME ()</a></td>
+	<td class="summary"><a href="../modules/ddsl.html#NAME">ddsl.NAME</a>: Datatype name.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#NS">NS ()</a></td>
+	<td class="summary"><a href="../modules/ddsl.html#NS">ddsl.NS</a>: Datatype enclosing namespace (enclosing scope).</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#QUALIFIERS">QUALIFIERS ()</a></td>
+	<td class="summary"><a href="../modules/ddsl.html#QUALIFIERS">ddsl.QUALIFIERS</a>: Datatype qualifiers (annotations).</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#BASE">BASE ()</a></td>
+	<td class="summary">Datatype of the base <a href="../modules/ddsl.xtypes.html#struct">struct</a> (inheritance)</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#SWITCH">SWITCH ()</a></td>
+	<td class="summary">Datatype of a <a href="../modules/ddsl.xtypes.html#union">union</a> discriminator (switch).</td>
+	</tr>
+</table>
+<h2><a href="#Datatype_Qualifiers">Datatype Qualifiers </a></h2>
+<table class="function_list">
+	<tr>
+	<td class="name" nowrap><a href="#annotation">annotation (decl)</a></td>
+	<td class="summary">Create an annotation.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#array">array (n, ...)</a></td>
+	<td class="summary">Create an array qualifier with the specified dimensions.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#sequence">sequence (n, ...)</a></td>
+	<td class="summary">Create a sequence qualifier with the specified dimensions.</td>
+	</tr>
+</table>
+<h2><a href="#Datatypes">Datatypes</a></h2>
+<table class="function_list">
+	<tr>
+	<td class="name" nowrap><a href="#atom">atom (decl)</a></td>
+	<td class="summary">Create an atomic datatype.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#enum">enum (decl)</a></td>
+	<td class="summary">Create an enum datatype.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#struct">struct (decl)</a></td>
+	<td class="summary">Create a struct datatype.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#union">union (decl)</a></td>
+	<td class="summary">Create a union datatype.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#typedef">typedef (decl)</a></td>
+	<td class="summary">Create a typedef <code>alias</code> datatype.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#const">const (decl)</a></td>
+	<td class="summary">Create a constant.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#module">module (decl)</a></td>
+	<td class="summary">Create a module namespace.</td>
+	</tr>
+</table>
+<h2><a href="#Builtin_Datatypes">Builtin Datatypes </a></h2>
+<table class="function_list">
+	<tr>
+	<td class="name" nowrap><a href="#boolean">boolean</a></td>
+	<td class="summary">boolean.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#octet">octet</a></td>
+	<td class="summary">octet.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#char">char</a></td>
+	<td class="summary">char.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#wchar">wchar</a></td>
+	<td class="summary">wide char.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#float">float</a></td>
+	<td class="summary">float.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#double">double</a></td>
+	<td class="summary">double.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#long_double">long_double</a></td>
+	<td class="summary">long double.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#short">short</a></td>
+	<td class="summary">short.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#long">long</a></td>
+	<td class="summary">long.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#long_long">long_long</a></td>
+	<td class="summary">long long.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#unsigned_short">unsigned_short</a></td>
+	<td class="summary">unsigned short.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#unsigned_long">unsigned_long</a></td>
+	<td class="summary">unsigned long.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#unsigned_long_long">unsigned_long_long</a></td>
+	<td class="summary">unsigned long long.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#string">string (n)</a></td>
+	<td class="summary"><code>string&lt;n&gt;</code>: string of length n.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#wstring">wstring (n)</a></td>
+	<td class="summary"><code>wstring&lt;n&gt;</code>:wstring of length n.</td>
+	</tr>
+</table>
+<h2><a href="#Builtin_Annotations">Builtin Annotations </a></h2>
+<table class="function_list">
+	<tr>
+	<td class="name" nowrap><a href="#Key">Key</a></td>
+	<td class="summary">Datatype member is a <em>key</em> field.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#ID">ID</a></td>
+	<td class="summary">Datatype member id.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#Optional">Optional</a></td>
+	<td class="summary">Datatype member is optional.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#MustUnderstand">MustUnderstand</a></td>
+	<td class="summary">Datatype member is required.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#Shared">Shared</a></td>
+	<td class="summary">Datatype member is shared.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#BitBound">BitBound</a></td>
+	<td class="summary"><a href="../modules/ddsl.xtypes.html#enum">enum</a> datatype is bit-bound.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#BitSet">BitSet</a></td>
+	<td class="summary"><a href="../modules/ddsl.xtypes.html#enum">enum</a> datatype is a bit-set.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#Extensibility">Extensibility</a></td>
+	<td class="summary">Datatype extensibility.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#Nested">Nested</a></td>
+	<td class="summary">Datatype is not top-level it is nexted.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#top_level">top_level</a></td>
+	<td class="summary">Datatype may (or may not) be top-level.</td>
+	</tr>
+</table>
+
+<br/>
+<br/>
+
+
+    <h2 class="section-header "><a name="Functions"></a>Functions</h2>
+
+    <dl class="function">
+    <dt>
+    <a name = "nsname"></a>
+    <strong>nsname ()</strong>
+    </dt>
+    <dd>
+    <a href="../modules/ddsl.html#nsname">ddsl.nsname</a>: fully qualified name within the enclosing scope.
+
+
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "nsroot"></a>
+    <strong>nsroot ()</strong>
+    </dt>
+    <dd>
+    <a href="../modules/ddsl.html#nsroot">ddsl.nsroot</a>: outermost enclosing <code>root</code> namespace.
+
+
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "resolve"></a>
+    <strong>resolve ()</strong>
+    </dt>
+    <dd>
+    <a href="../modules/ddsl.html#resolve">ddsl.resolve</a>: resolve a typedef
+
+
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "template"></a>
+    <strong>template ()</strong>
+    </dt>
+    <dd>
+    <a href="../modules/ddsl.html#template">ddsl.template</a>: get the <em>cannonical</em> template instance (<code>xtemplate</code>)
+
+
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "new_instance"></a>
+    <strong>new_instance ()</strong>
+    </dt>
+    <dd>
+    <a href="../modules/ddsl.html#new_instance">ddsl.new_instance</a>: create a new instance (<code>xinstance</code>)
+
+
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "new_collection"></a>
+    <strong>new_collection ()</strong>
+    </dt>
+    <dd>
+    <a href="../modules/ddsl.html#new_collection">ddsl.new_collection</a>: create a new collection of instances (<code>xinstances</code>)
+
+
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "is_collection"></a>
+    <strong>is_collection ()</strong>
+    </dt>
+    <dd>
+    <a href="../modules/ddsl.html#is_collection">ddsl.is_collection</a>: is this a collection of instances (<code>xinstances</code>) ?
+
+
+
+
+
+
+
+</dd>
+</dl>
+    <h2 class="section-header "><a name="Tables"></a>Tables</h2>
+
+    <dl class="function">
+    <dt>
+    <a name = "EMPTY"></a>
+    <strong>EMPTY</strong>
+    </dt>
+    <dd>
+    <a href="../modules/ddsl.html#EMPTY">ddsl.EMPTY</a>: Empty datatype definition for use as initializer in
+ datatype constructors.
+
+
+
+
+
+
+    <h3>Usage:</h3>
+    <ul>
+        <pre class="example">
+  <span class="keyword">local</span> xtypes = <span class="global">require</span> <span class="string">'ddsl.xtypes'</span>
+
+  <span class="comment">-- create an empty datatype of kind 'kind' with the name 'MyType'
+</span>  <span class="keyword">local</span> mytype = xtypes.&lt;kind&gt;{
+     MyType = EMPTY
+  }</pre>
+    </ul>
+
+</dd>
+</dl>
+    <h2 class="section-header "><a name="Fields"></a>Fields</h2>
+
+    <dl class="function">
+    <dt>
+    <a name = "log"></a>
+    <strong>log</strong>
+    </dt>
+    <dd>
+    <a href="../modules/logger.html#">logger</a> to log messages and get/set the verbosity levels
+
+
+
+
+
+
+
+</dd>
+</dl>
+    <h2 class="section-header has-description"><a name="Datatype_Kinds"></a>Datatype Kinds </h2>
+
+          <div class="section-description">
+           Use these to get and set the corresponding datatype attribute.
+          </div>
+            <h3>Usage:</h3>
+            <pre class="example">
+  <span class="comment">-- get the kind of a datatype
+</span>  <span class="global">print</span>(mytype[<span class="backtick"><a href="../modules/ddsl.xtypes.html#KIND">KIND</a></span>]()) <span class="comment">-- evaluate the kind to get the description
+</span>
+  <span class="comment">-- use the kind of a datatype to make decisions
+</span>  <span class="keyword">if</span> <span class="backtick"><a href="../modules/ddsl.xtypes.html#STRUCT">STRUCT</a></span> == mytype[<span class="backtick"><a href="../modules/ddsl.xtypes.html#KIND">KIND</a></span>] <span class="keyword">then</span>
+    ...
+  <span class="keyword">else</span>
+    ...
+  <span class="keyword">end</span></pre>
+    <dl class="function">
+    <dt>
+    <a name = "ANNOTATION"></a>
+    <strong>ANNOTATION ()</strong>
+    </dt>
+    <dd>
+    Annotation kind.
+
+
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><a class="type" href="../modules/ddsl.xtypes.html#string">string</a></span>
+        'annotation'
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "ATOM"></a>
+    <strong>ATOM ()</strong>
+    </dt>
+    <dd>
+    Atom kind.
+
+
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><a class="type" href="../modules/ddsl.xtypes.html#string">string</a></span>
+        'atom'
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "ENUM"></a>
+    <strong>ENUM ()</strong>
+    </dt>
+    <dd>
+    Ennumeration kind.
+
+
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><a class="type" href="../modules/ddsl.xtypes.html#string">string</a></span>
+        'enum'
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "STRUCT"></a>
+    <strong>STRUCT ()</strong>
+    </dt>
+    <dd>
+    Struct kind.
+
+
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><a class="type" href="../modules/ddsl.xtypes.html#string">string</a></span>
+        'struct'
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "UNION"></a>
+    <strong>UNION ()</strong>
+    </dt>
+    <dd>
+    Union kind.
+
+
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><a class="type" href="../modules/ddsl.xtypes.html#string">string</a></span>
+        'union'
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "TYPEDEF"></a>
+    <strong>TYPEDEF ()</strong>
+    </dt>
+    <dd>
+    Typedef kind.
+
+
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><a class="type" href="../modules/ddsl.xtypes.html#string">string</a></span>
+        'typedef'
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "CONST"></a>
+    <strong>CONST ()</strong>
+    </dt>
+    <dd>
+    Constant kind.
+
+
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><a class="type" href="../modules/ddsl.xtypes.html#string">string</a></span>
+        'const'
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "MODULE"></a>
+    <strong>MODULE ()</strong>
+    </dt>
+    <dd>
+    Module kind.
+
+
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><a class="type" href="../modules/ddsl.xtypes.html#string">string</a></span>
+        'module'
+    </ol>
+
+
+
+
+</dd>
+</dl>
+    <h2 class="section-header has-description"><a name="Datatype_Attributes"></a>Datatype Attributes </h2>
+
+          <div class="section-description">
+           Use these to get and set the corresponding datatype attribute.
+          </div>
+            <h3>Usage:</h3>
+            <pre class="example">
+  <span class="comment">-- get the name of a datatype
+</span>  <span class="global">print</span>(mytype[NAME])
+
+  <span class="comment">-- set the name of a datatype
+</span>  mytype[NAME] = <span class="string">'MyTypeNewName'</span> </pre>
+    <dl class="function">
+    <dt>
+    <a name = "KIND"></a>
+    <strong>KIND ()</strong>
+    </dt>
+    <dd>
+    <a href="../modules/ddsl.html#KIND">ddsl.KIND</a>: Datatype kind.
+
+
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "NAME"></a>
+    <strong>NAME ()</strong>
+    </dt>
+    <dd>
+    <a href="../modules/ddsl.html#NAME">ddsl.NAME</a>: Datatype name.
+
+
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "NS"></a>
+    <strong>NS ()</strong>
+    </dt>
+    <dd>
+    <a href="../modules/ddsl.html#NS">ddsl.NS</a>: Datatype enclosing namespace (enclosing scope).
+
+
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "QUALIFIERS"></a>
+    <strong>QUALIFIERS ()</strong>
+    </dt>
+    <dd>
+    <a href="../modules/ddsl.html#QUALIFIERS">ddsl.QUALIFIERS</a>: Datatype qualifiers (annotations).
+
+
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "BASE"></a>
+    <strong>BASE ()</strong>
+    </dt>
+    <dd>
+    Datatype of the base <a href="../modules/ddsl.xtypes.html#struct">struct</a> (inheritance)
+
+
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><a class="type" href="../modules/ddsl.xtypes.html#string">string</a></span>
+        ' : '
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "SWITCH"></a>
+    <strong>SWITCH ()</strong>
+    </dt>
+    <dd>
+    Datatype of a <a href="../modules/ddsl.xtypes.html#union">union</a> discriminator (switch).
+
+
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><a class="type" href="../modules/ddsl.xtypes.html#string">string</a></span>
+        'switch'
+    </ol>
+
+
+
+
+</dd>
+</dl>
+    <h2 class="section-header "><a name="Datatype_Qualifiers"></a>Datatype Qualifiers </h2>
+
+    <dl class="function">
+    <dt>
+    <a name = "annotation"></a>
+    <strong>annotation (decl)</strong>
+    </dt>
+    <dd>
+    Create an annotation.
+ Annotations qualify a datatype or a member of the datatype. Except for
+ <a href="../modules/ddsl.xtypes.html#array">array</a> and <a href="../modules/ddsl.xtypes.html#sequence">sequence</a> qualifiers, annotation contents are opaque to
+ DDSL; they are kept intact and may be interpreted in the user's context.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">decl</span>
+            <span class="types"><a class="type" href="../modules/ddsl.xtypes.html#string">{[string]=...}</a></span>
+         a table containing an annotation name and
+  definition, where ...  are the optional <em>default</em> attributes
+  of the annotation.
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><a class="type" href="http://www.lua.org/manual/5.2/manual.html#6.5">table</a></span>
+        an annotation datatype template (<code>xtemplate</code>)
+    </ol>
+
+
+
+    <h3>Usage:</h3>
+    <ul>
+        <pre class="example">
+  <span class="comment">-- Create user defined annotation @MyAnnotation(value1 = 42, value2 = 42.0)
+</span>  <span class="keyword">local</span> MyAnnotation = xtypes.<span class="backtick"><a href="../modules/ddsl.xtypes.html#annotation">annotation</a></span>{
+     MyAnnotation = {value1 = <span class="number">42</span>, value2 = <span class="number">9.0</span>} <span class="comment">-- default attributes
+</span>  }
+
+  <span class="comment">-- Use user defined annotation with custom attributes
+</span>  MyAnnotation{value1 = <span class="number">942</span>, value2 = <span class="number">999.0</span>}
+
+  <span class="comment">-- Print the annotation contents (value1, value2)
+</span>  <span class="keyword">for</span> k, v <span class="keyword">in</span> <span class="global">pairs</span>(MyAnnotation) <span class="keyword">do</span>
+    <span class="global">print</span>(k, v)
+  <span class="keyword">end</span>
+
+  <span class="comment">-- Use builtin annotation <a href="../modules/ddsl.xtypes.html#Key">Key</a>
+</span>  xtypes.Key
+
+  <span class="comment">-- Use builtin annotation <a href="../modules/ddsl.xtypes.html#Extensibility">Extensibility</a>
+</span>  xtypes.Extensibility{<span class="string">'EXTENSIBLE_EXTENSIBILITY'</span>}  </pre>
+    </ul>
+
+</dd>
+    <dt>
+    <a name = "array"></a>
+    <strong>array (n, ...)</strong>
+    </dt>
+    <dd>
+    Create an array qualifier with the specified dimensions.
+ Ensures that a valid set of dimension values is passed in. Returns the
+ array datatype qualifier, initialized with the specified dimensions.
+ An array qualifier is interpreted by DDSL as a <em>collection</em> qualifier.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">n</span>
+            <span class="types"><span class="type">int</span></span>
+         the first dimension
+        </li>
+        <li><span class="parameter">...</span>
+         the remaining dimensions
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><a class="type" href="http://www.lua.org/manual/5.2/manual.html#6.5">table</a></span>
+        the array qualifier instance (<code>xtemplate</code>)
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "sequence"></a>
+    <strong>sequence (n, ...)</strong>
+    </dt>
+    <dd>
+    Create a sequence qualifier with the specified dimensions.
+ Ensures that a valid set of dimension values is passed in. Returns the
+ sequence datatype qualifier, initialized with the specified dimensions.
+ A sequence qualifier is interpreted by DDSL as a <em>collection</em> qualifier.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">n</span>
+            <span class="types"><span class="type">int</span></span>
+         the first dimension
+        </li>
+        <li><span class="parameter">...</span>
+         the remaining dimensions
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><a class="type" href="http://www.lua.org/manual/5.2/manual.html#6.5">table</a></span>
+        the sequence qualifier instance (<code>xtemplate</code>)
+    </ol>
+
+
+
+
+</dd>
+</dl>
+    <h2 class="section-header "><a name="Datatypes"></a>Datatypes</h2>
+
+    <dl class="function">
+    <dt>
+    <a name = "atom"></a>
+    <strong>atom (decl)</strong>
+    </dt>
+    <dd>
+
+<p>Create an atomic datatype.
+ There are two kinds of atomic types:</p>
+
+<ul>
+    <li>un-dimensioned</li>
+    <li>dimensioned, e.g. bounded size/length (e.g. <a href="../modules/ddsl.xtypes.html#string">string</a><n>)
+    </li>
+</ul>
+
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">decl</span>
+            <span class="types"><a class="type" href="../modules/ddsl.xtypes.html#string">{[string]=EMPTY</a>, <span class="type">{int}</span> or <a class="type" href="../modules/ddsl.xtypes.html#const">const}</a></span>
+         a table containing an atom name
+  mapped to and <a href="../modules/ddsl.xtypes.html#EMPTY">EMPTY</a> initializer (for undimensioned atoms) or a a table
+  containing an integral <em>dimension</em> (for dimensioned atoms). The dimension
+  could also be an integral <a href="../modules/ddsl.xtypes.html#const">const</a> datatype.
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><a class="type" href="http://www.lua.org/manual/5.2/manual.html#6.5">table</a></span>
+        an atom datatype template (<code>xtemplate</code>)
+    </ol>
+
+
+
+    <h3>Usage:</h3>
+    <ul>
+        <pre class="example">
+  <span class="comment">-- Create an un-dimensioned atomic datatype named 'MyAtom':
+</span>  <span class="keyword">local</span> MyAtom = xtypes.atom{
+    MyAtom = EMPTY
+  }
+
+  <span class="comment">-- Create a dimensioned atomic type:
+</span>  <span class="keyword">local</span> string10 = xtypes.atom{<span class="global">string</span>={<span class="number">10</span>}}        <span class="comment">-- bounded length string
+</span>  <span class="keyword">local</span> wstring10 = xtypes.atom{wstring={<span class="number">10</span>}}      <span class="comment">-- bounded length wstring
+</span>
+  <span class="comment">-- Create a dimensioned atomic type, where 'MAXLEN' is a <a href="../modules/ddsl.xtypes.html#const">const</a>:
+</span>  <span class="keyword">local</span> StringMaxlen = xtypes.atom{<span class="global">string</span>=MAXLEN} -- bounded length <span class="global">string</span></pre>
+    </ul>
+
+</dd>
+    <dt>
+    <a name = "enum"></a>
+    <strong>enum (decl)</strong>
+    </dt>
+    <dd>
+    Create an enum datatype.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">decl</span>
+            <span class="types"><a class="type" href="../modules/ddsl.xtypes.html#string">{[string]={string,string,[string]=int,[string]=int,...}</a></span>
+
+<p> a
+  table containing an enum name mapped to a table (which is an array of
+  strings or a map of strings to ordinal values, or a mix of both).
+  For example,</p>
+<pre><code> { MyEnum = { { str1 = ord1 }, { str2 = ord2 }, ... } }
+</code></pre>
+<p>  or  </p>
+<pre><code> { MyEnum = { str1, str2, ... } }
+</code></pre>
+<p>  or a mix of the above</p>
+<pre><code> { MyEnum = { strA, strB, { str1 = ord1 }, { str2 = ord2 }, ... } }
+</code></pre>
+
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><a class="type" href="http://www.lua.org/manual/5.2/manual.html#6.5">table</a></span>
+        an enum datatype template  (<code>xtemplate</code>)
+   The table is a map of enumerator strings to their ordinal values.
+    </ol>
+
+
+
+    <h3>Usage:</h3>
+    <ul>
+        <pre class="example">
+  <span class="comment">-- Create enum: declarative style
+</span>  <span class="keyword">local</span> MyEnum = xtypes.<span class="backtick"><a href="../modules/ddsl.xtypes.html#enum">enum</a></span>{
+    MyEnum = {
+          { role_1 = ordinal_1 },
+          :
+          { role_M = ordinal_M },
+
+          <span class="comment">-- OR --
+</span>
+          role_A,
+          :
+          role_Z,
+
+          <span class="comment">-- OPTIONAL --
+</span>          <span class="backtick"><a href="../modules/ddsl.xtypes.html#annotation">annotation</a></span>_x,
+          :
+          <span class="backtick"><a href="../modules/ddsl.xtypes.html#annotation">annotation</a></span>_z,
+    }
+  }
+
+  <span class="comment">-- Create enum: imperative style (start with <a href="../modules/ddsl.xtypes.html#EMPTY">EMPTY</a>)
+</span>  MyEnum = xtypes.<span class="backtick"><a href="../modules/ddsl.xtypes.html#enum">enum</a></span>{
+    MyEnum = xtypes.<span class="backtick"><a href="../modules/ddsl.xtypes.html#EMPTY">EMPTY</a></span>
+  }
+
+
+  <span class="comment">-- Get the i-th member:
+</span>  <span class="global">print</span>(<span class="global">table</span>.unpack{MyEnum[i]}) <span class="comment">-- role_i, ordinal_i
+</span>
+  <span class="comment">-- Set the i-th member:
+</span>  MyEnum[i] = { new_role_i = new_ordinal_i }
+  <span class="comment">-- OR --
+</span>  MyEnum[i] = role <span class="comment">-- <code>ordinal</code> value = #MyEnum
+</span>
+  <span class="comment">-- After setting the i-th member, the following post-conditions hold:
+</span>  MyEnum.role_i     == ordinal_i
+  MyEnum(ordinal_i) == role_i
+
+  <span class="comment">-- Delete the i-th member:
+</span>  MyEnum[i] = <span class="keyword">nil</span>
+
+
+  <span class="comment">-- Get the number of enumerators in the enum:
+</span>  <span class="global">print</span>(#MyEnum)
+
+  <span class="comment">-- Iterate over the model definition (ordered):
+</span>  <span class="keyword">for</span> i = <span class="number">1</span>, #MyEnum <span class="keyword">do</span> <span class="global">print</span>(<span class="global">table</span>.unpack(MyEnum[i])) <span class="keyword">end</span>
+
+  <span class="comment">-- Iterate over enum and ordinal values (unordered):
+</span>  <span class="keyword">for</span> k, v <span class="keyword">in</span> <span class="global">pairs</span>(MyEnum) <span class="keyword">do</span> <span class="global">print</span>(k, v) <span class="keyword">end</span>
+
+  <span class="comment">-- Lookup the enumerator name for an ordinal value:
+</span>  <span class="global">print</span>(MyEnum(ordinal)) -- role</pre>
+    </ul>
+
+</dd>
+    <dt>
+    <a name = "struct"></a>
+    <strong>struct (decl)</strong>
+    </dt>
+    <dd>
+    Create a struct datatype.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">decl</span>
+            <span class="types"><a class="type" href="../modules/ddsl.xtypes.html#string">{[string]={[string]={...},{[string]={...},...}</a></span>
+
+<p> a table
+  containing a struct name mapped  to a table (which is an array of strings
+  mapped to member definitions). For example,</p>
+<pre><code>{ MyStruct = { { role1 = {...}, { role2 = {...} }, ... } }
+</code></pre>
+<p>  where the member definition for a role is,</p>
+<pre><code>{ role = { xtemplate, [array | sequence,] [annotation, ...] } }
+</code></pre>
+
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><a class="type" href="http://www.lua.org/manual/5.2/manual.html#6.5">table</a></span>
+         a struct datatype template (<code>xtemplate</code>). <br/>
+   The table is a map of the role names to flattened out strings that
+   represent the path from the enclosing top-level struct scope to the role.
+   The string values may be be used to retrieve the field values from
+   some storage system.
+    </ol>
+
+
+
+    <h3>Usage:</h3>
+    <ul>
+        <pre class="example">
+  <span class="comment">-- Create struct: declarative style
+</span>  <span class="keyword">local</span> MyStruct = xtypes.<span class="backtick"><a href="../modules/ddsl.xtypes.html#struct">struct</a></span>{
+    MyStruct = {
+      [&lt;optional base <span class="backtick"><a href="../modules/ddsl.xtypes.html#struct">struct</a></span>&gt;], <span class="comment">-- base <a href="../modules/ddsl.xtypes.html#struct">struct</a> must be the 1st item
+</span>
+      {role_1={xtemplate_1, [<span class="backtick"><a href="../modules/ddsl.xtypes.html#array">array</a></span>_1|<span class="backtick"><a href="../modules/ddsl.xtypes.html#sequence">sequence</a></span>_1,] [<span class="backtick"><a href="../modules/ddsl.xtypes.html#annotation">annotation</a></span>_1,...]}},
+        :
+      {role_M={xtemplate_M, [<span class="backtick"><a href="../modules/ddsl.xtypes.html#array">array</a></span>_M|<span class="backtick"><a href="../modules/ddsl.xtypes.html#sequence">sequence</a></span>_M,] [<span class="backtick"><a href="../modules/ddsl.xtypes.html#annotation">annotation</a></span>_M,...]}},
+
+      <span class="comment">-- OPTIONAL --
+</span>      <span class="backtick"><a href="../modules/ddsl.xtypes.html#annotation">annotation</a></span>_x,
+       :
+      <span class="backtick"><a href="../modules/ddsl.xtypes.html#annotation">annotation</a></span>_z,
+    }
+  }
+
+  <span class="comment">-- OR Create struct: imperative style (start with base <a href="../modules/ddsl.xtypes.html#struct">struct</a> or <a href="../modules/ddsl.xtypes.html#EMPTY">EMPTY</a>)
+</span>  <span class="keyword">local</span> MyStruct = xtypes.<span class="backtick"><a href="../modules/ddsl.xtypes.html#struct">struct</a></span>{
+    MyStruct = { &lt;optional base <span class="backtick"><a href="../modules/ddsl.xtypes.html#struct">struct</a></span>&gt; } | xtypes.<span class="backtick"><a href="../modules/ddsl.xtypes.html#EMPTY">EMPTY</a></span>
+  }
+
+
+  <span class="comment">-- Get the i-th member:
+</span>  <span class="global">print</span>(<span class="global">table</span>.unpack(MyStruct[i])) <span class="comment">-- role_i, value_i
+</span>
+  <span class="comment">-- Set the i-th member:
+</span>  MyStruct[i] = { new_role = { new_xtemplate,
+                                [new_<span class="backtick"><a href="../modules/ddsl.xtypes.html#array">array</a></span> | new_<span class="backtick"><a href="../modules/ddsl.xtypes.html#sequence">sequence</a></span>,]
+                                [new_<span class="backtick"><a href="../modules/ddsl.xtypes.html#annotation">annotation</a></span>, ...] } }
+
+  <span class="comment">-- After setting the i-th member, the following post-condition holds:
+</span>  <span class="comment">-- NOTE: also holds for roles defined in the base <a href="../modules/ddsl.xtypes.html#struct">struct</a> datatype
+</span>  MyStruct.role == <span class="string">'prefix.enclosing.scope.path.to.role'</span>
+
+  <span class="comment">-- Delete the i-th member:
+</span>  MyStruct[i] = <span class="keyword">nil</span>
+
+
+  <span class="comment">-- Get the base class:
+</span>   <span class="global">print</span>(MyStruct[xtypes.<span class="backtick"><a href="../modules/ddsl.xtypes.html#BASE">BASE</a></span>])
+
+  <span class="comment">-- Set base class:
+</span>   MyStruct[xtypes.<span class="backtick"><a href="../modules/ddsl.xtypes.html#BASE">BASE</a></span>] = <span class="backtick"><code>YourStruct</code></span> <span class="comment">-- defined elsewhere
+</span>
+
+  <span class="comment">-- Get the number of members in the struct (not including base struct):
+</span>  <span class="global">print</span>(#MyStruct)
+
+  <span class="comment">-- Iterate over the model definition (ordered):
+</span>  <span class="comment">-- NOTE: does NOT show the roles defined in the base <a href="../modules/ddsl.xtypes.html#struct">struct</a> datatype
+</span>  <span class="keyword">for</span> i = <span class="number">1</span>, #MyStruct <span class="keyword">do</span> <span class="global">print</span>(<span class="global">table</span>.unpack(MyStruct[i])) <span class="keyword">end</span>
+
+  <span class="comment">-- Iterate over instance members and the indexes (unordered):
+</span>  <span class="comment">-- NOTE: shows roles defined in the base <a href="../modules/ddsl.xtypes.html#struct">struct</a> datatype
+</span>  <span class="keyword">for</span> k, v <span class="keyword">in</span> <span class="global">pairs</span>(MyStruct) <span class="keyword">do</span> <span class="global">print</span>(k, v) <span class="keyword">end</span></pre>
+    </ul>
+
+</dd>
+    <dt>
+    <a name = "union"></a>
+    <strong>union (decl)</strong>
+    </dt>
+    <dd>
+    Create a union datatype.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">decl</span>
+            <span class="types"><a class="type" href="../modules/ddsl.xtypes.html#string">{[string]={xtemplate,{case,[string]={...}},...}</a></span>
+
+<p> a table
+  containing a union name mapped to a table as follows.</p>
+<pre><code>{
+  MyUnion = {
+      xtemplate,
+      { case1, [ role1 = {...} ] },
+      { case2, [ role2 = {...} ] },
+      ...
+      { nil,   [ role2 = {...} ] } -- default
+  }
+}
+</code></pre>
+<p>  where the member definition for a role is,</p>
+<pre><code>{ role = { xtemplate, [array | sequence,] [annotation, ...] } }
+</code></pre>
+
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><a class="type" href="http://www.lua.org/manual/5.2/manual.html#6.5">table</a></span>
+         an union datatype template (<code>xtemplate</code>).
+   The table is a map of the role names to flattened out strings that
+   represent the path from the enclosing top-level union scope to the role.
+   The string values may be be used to retrieve the field values from
+   some storage system.
+    </ol>
+
+
+
+    <h3>Usage:</h3>
+    <ul>
+        <pre class="example">
+  <span class="comment">-- Create union: declarative style
+</span>  <span class="keyword">local</span> MyUnion = xtypes.<span class="backtick"><a href="../modules/ddsl.xtypes.html#union">union</a></span>{
+    MyUnion = {
+      &lt;discriminator <span class="backtick"><a href="../modules/ddsl.xtypes.html#atom">atom</a></span> <span class="keyword">or</span> <span class="backtick"><a href="../modules/ddsl.xtypes.html#enum">enum</a></span>&gt;,  <span class="comment">-- must be the 1st item
+</span>
+      { case1,
+        [{role_1={xtemplate_1,[<span class="backtick"><a href="../modules/ddsl.xtypes.html#array">array</a></span>_1|<span class="backtick"><a href="../modules/ddsl.xtypes.html#sequence">sequence</a></span>_1,][<span class="backtick"><a href="../modules/ddsl.xtypes.html#annotation">annotation</a></span>_1,...]}}]
+      },
+        :
+      { caseM,
+        [{role_M={xtemplate_M,[<span class="backtick"><a href="../modules/ddsl.xtypes.html#array">array</a></span>_M|<span class="backtick"><a href="../modules/ddsl.xtypes.html#sequence">sequence</a></span>_M,][<span class="backtick"><a href="../modules/ddsl.xtypes.html#annotation">annotation</a></span>_M,...]}}]
+      },
+
+      { <span class="keyword">nil</span>, <span class="comment">-- default
+</span>        [{role={xtemplate,[<span class="backtick"><a href="../modules/ddsl.xtypes.html#array">array</a></span>|<span class="backtick"><a href="../modules/ddsl.xtypes.html#sequence">sequence</a></span>,][<span class="backtick"><a href="../modules/ddsl.xtypes.html#annotation">annotation</a></span>,...]}}]
+
+      <span class="comment">-- OPTIONAL --
+</span>      <span class="backtick"><a href="../modules/ddsl.xtypes.html#annotation">annotation</a></span>_x,
+       :
+      <span class="backtick"><a href="../modules/ddsl.xtypes.html#annotation">annotation</a></span>_z,
+    }
+  }
+
+  <span class="comment">-- OR Create union: imperative style (start with <a href="../modules/ddsl.xtypes.html#EMPTY">EMPTY</a>)
+</span>  <span class="keyword">local</span> MyUnion = xtypes.<span class="backtick"><a href="../modules/ddsl.xtypes.html#union">union</a></span>{
+    MyUnion = { &lt;discriminator <span class="backtick"><a href="../modules/ddsl.xtypes.html#atom">atom</a></span> <span class="keyword">or</span> <span class="backtick"><a href="../modules/ddsl.xtypes.html#enum">enum</a></span>&gt; }
+  }
+
+  <span class="comment">-- Get the i-th member:
+</span>  <span class="global">print</span>(<span class="global">table</span>.unpack(MyUnion[i])) <span class="comment">-- role_i, value_i
+</span>
+  <span class="comment">-- Set the i-th member:
+</span>   MyUnion[i] = { case, [ { role = { xtemplate,
+                                      [<span class="backtick"><a href="../modules/ddsl.xtypes.html#array">array</a></span> | <span class="backtick"><a href="../modules/ddsl.xtypes.html#sequence">sequence</a></span>,]
+                                      [<span class="backtick"><a href="../modules/ddsl.xtypes.html#annotation">annotation</a></span>, ...] } } ] },
+
+  <span class="comment">-- After setting the i-th member, the following post-condition holds:
+</span>  MyStruct.role == <span class="string">'prefix.enclosing.scope.path.to.role'</span>
+
+  <span class="comment">-- Delete the i-th member:
+</span>  MyUnion[i] = <span class="keyword">nil</span>
+
+
+  <span class="comment">-- Get the discriminator:
+</span>   <span class="global">print</span>(MyUnion[xtypes.<span class="backtick"><a href="../modules/ddsl.xtypes.html#SWITCH">SWITCH</a></span>])
+
+  <span class="comment">-- Set the discriminator:
+</span>   MyUnion[xtypes.<span class="backtick"><a href="../modules/ddsl.xtypes.html#SWITCH">SWITCH</a></span>] = &lt;discriminator <span class="backtick"><a href="../modules/ddsl.xtypes.html#atom">atom</a></span> <span class="keyword">or</span> <span class="backtick"><a href="../modules/ddsl.xtypes.html#enum">enum</a></span>&gt;
+
+ <span class="comment">-- After setting the discriminator, the following post-condition holds:
+</span>  MyUnion._d == <span class="string">'#'</span>
+
+
+ <span class="comment">-- Get the number of members in the union:
+</span>  <span class="global">print</span>(#MyUnion)
+
+  <span class="comment">-- Iterate over the model definition (ordered):
+</span>  <span class="keyword">for</span> i = <span class="number">1</span>, #MyUnion <span class="keyword">do</span> <span class="global">print</span>(<span class="global">table</span>.unpack(MyUnion[i])) <span class="keyword">end</span>
+
+  <span class="comment">-- Iterate over instance members and the indexes (unordered):
+</span>  <span class="keyword">for</span> k, v <span class="keyword">in</span> <span class="global">pairs</span>(MyUnion) <span class="keyword">do</span> <span class="global">print</span>(k, v) <span class="keyword">end</span>
+
+ <span class="comment">-- Retrieve the currectly selected member
+</span> NOTE: i.e. the member selected by current discriminator value, <span class="backtick"><code>MyUnion._d</code></span>
+ <span class="global">print</span>(MyUnion()) -- may be <span class="backtick"><code>nil</code></span></pre>
+    </ul>
+
+</dd>
+    <dt>
+    <a name = "typedef"></a>
+    <strong>typedef (decl)</strong>
+    </dt>
+    <dd>
+    Create a typedef <code>alias</code> datatype.
+ Typedefs are aliases for underlying datatypes.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">decl</span>
+            <span class="types"><a class="type" href="../modules/ddsl.xtypes.html#string">{[string]={xtemplate,[array</a> or <a class="type" href="../modules/ddsl.xtypes.html#sequence">sequence,][annotation,...]}}</a></span>
+         a table
+ containing a typedef mapped to an array as follows.</p>
+<pre><code>{ MyTypedef = { xtemplate, [array | sequence,] [annotation, ...] } }
+</code></pre>
+<p> where <code>xtemplate</code> is the underlying type definition, optionally followed by
+ and <a href="../modules/ddsl.xtypes.html#array">array</a> or <a href="../modules/ddsl.xtypes.html#sequence">sequence</a> qualifiers to specify the multiplicity,
+ optionally followed by annotations.
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><a class="type" href="http://www.lua.org/manual/5.2/manual.html#6.5">table</a></span>
+        an typedef datatype template (<code>xtemplate</code>).
+    </ol>
+
+
+
+    <h3>Usage:</h3>
+    <ul>
+        <pre class="example">
+  <span class="comment">-- Create a typedef datatype:
+</span>  <span class="keyword">local</span> MyTypedef = xtypes.<span class="backtick"><a href="../modules/ddsl.xtypes.html#typedef">typedef</a></span>{
+    MyTypedef = { <span class="backtick"><code>xtemplate</code></span>, [<span class="backtick"><a href="../modules/ddsl.xtypes.html#array">array</a></span> | <span class="backtick"><a href="../modules/ddsl.xtypes.html#sequence">sequence</a></span>,] [<span class="backtick"><a href="../modules/ddsl.xtypes.html#annotation">annotation</a></span>, ...] }
+  }
+
+  <span class="comment">-- Retreive the typedef definition
+</span>  <span class="global">print</span>(MyTypedef()) <span class="comment">-- <code>xtemplate</code>, [<a href="../modules/ddsl.xtypes.html#array">array</a> | <a href="../modules/ddsl.xtypes.html#sequence">sequence</a>]
+</span>
+  <span class="comment">-- Resolve a typedef to the underlying non-typedef datatype and a list
+</span>  <span class="comment">-- of collection qualifiers
+</span>  <span class="global">print</span>(xtypes.<span class="backtick"><a href="../modules/ddsl.xtypes.html#resolve">resolve</a></span>(MyTypedef))
+
+
+  <span class="comment">-- Example: typedef sequence&lt;MyStruct&gt; MyStructSeq
+</span>  <span class="keyword">local</span> MyStructSeq = xtypes.<span class="backtick"><a href="../modules/ddsl.xtypes.html#typedef">typedef</a></span>{
+    MyStructSeq = { xtypes.MyStruct, xtypes.<span class="backtick"><a href="../modules/ddsl.xtypes.html#sequence">sequence</a></span>() }
+  }
+
+  <span class="global">print</span>(MyStructSeq()) <span class="comment">--     MyStruct     @sequence(10)
+</span>
+
+  <span class="comment">-- Example: typedef MyStruct MyStructArray[10][20]
+</span>  <span class="keyword">local</span> MyStructArray = xtypes.<span class="backtick"><a href="../modules/ddsl.xtypes.html#typedef">typedef</a></span>{
+    MyStructArray = { xtypes.MyStruct, xtypes.<span class="backtick"><a href="../modules/ddsl.xtypes.html#array">array</a></span>(<span class="number">10</span>, <span class="number">20</span>) }
+  }
+
+  <span class="global">print</span>(MyStructArray()) --   MyStruct     @array(<span class="number">10</span>, <span class="number">20</span>)</pre>
+    </ul>
+
+</dd>
+    <dt>
+    <a name = "const"></a>
+    <strong>const (decl)</strong>
+    </dt>
+    <dd>
+    Create a constant.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">decl</span>
+            <span class="types"><a class="type" href="../modules/ddsl.xtypes.html#string">{[string]={atom,value}}</a></span>
+         a table containing a constant name
+   mapped to an array containing an <a href="../modules/ddsl.xtypes.html#atom">atom</a> and a value of the atom datatype.
+   NOTE: this method will try to convert the value to the correct type,
+   if not already so (for example, if the value is a string).
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><a class="type" href="http://www.lua.org/manual/5.2/manual.html#6.5">table</a></span>
+        a constant.
+    </ol>
+
+
+
+    <h3>Usage:</h3>
+    <ul>
+        <pre class="example">
+  <span class="comment">-- Create a constant datatype
+</span>  <span class="keyword">local</span> MY_CONST = xtypes.<span class="backtick"><a href="../modules/ddsl.xtypes.html#const">const</a></span>{
+    MY_CONST = { <span class="backtick"><a href="../modules/ddsl.xtypes.html#atom">atom</a></span>, &lt;const_value&gt; }
+  }
+
+  <span class="comment">-- Get the const value and the underlying atomic datatype
+</span>  <span class="global">print</span>(MY_CONST()) <span class="comment">--    value      <a href="../modules/ddsl.xtypes.html#atom">atom</a>
+</span>
+
+  <span class="comment">-- Examples:
+</span>  <span class="keyword">local</span> MAXLEN = xtypes.<span class="backtick"><a href="../modules/ddsl.xtypes.html#const">const</a></span>{
+    MAXLEN = { xtypes.short, <span class="number">128</span> }
+  }
+  <span class="global">print</span>(MAXLEN()) <span class="comment">-- 128  short
+</span>
+  <span class="keyword">local</span> PI = xtypes.<span class="backtick"><a href="../modules/ddsl.xtypes.html#const">const</a></span>{
+    PI = { xtypes.<span class="backtick"><a href="../modules/ddsl.xtypes.html#double">double</a></span>, <span class="number">3.14</span> }
+  }
+  <span class="global">print</span>(PI()) <span class="comment">-- 3.14  double
+</span>
+  <span class="keyword">local</span> MY_STRING = xtypes.<span class="backtick"><a href="../modules/ddsl.xtypes.html#const">const</a></span>{
+    MY_STRING = { xtypes.<span class="backtick"><a href="../modules/ddsl.xtypes.html#string">string</a></span>(<span class="number">128</span>), <span class="string">"My String Constant"</span> }
+  }
+  <span class="global">print</span>(MY_STRING()) <span class="comment">-- My String Constant      string&lt;128&gt;
+</span>
+
+  <span class="comment">-- Use a const datatype
+</span>  <span class="keyword">local</span> MyStringSeq =  xtypes.<span class="backtick"><a href="../modules/ddsl.xtypes.html#typedef">typedef</a></span>{
+    MyStringSeq = { xtypes.<span class="backtick"><a href="../modules/ddsl.xtypes.html#string">string</a></span>, xtypes.<span class="backtick"><a href="../modules/ddsl.xtypes.html#sequence">sequence</a></span>(MAXLEN) }
+  }</pre>
+    </ul>
+
+</dd>
+    <dt>
+    <a name = "module"></a>
+    <strong>module (decl)</strong>
+    </dt>
+    <dd>
+    Create a module namespace.
+ A module is an name-space for holding (enclosing) datatypes.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">decl</span>
+            <span class="types"><a class="type" href="../modules/ddsl.xtypes.html#string">{[string]={xtemplate,...}</a></span>
+          a table containing a module name
+   mapped to an array of datatypes (<code>xtemplate</code>)
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><a class="type" href="http://www.lua.org/manual/5.2/manual.html#6.5">table</a></span>
+         a module namespace.
+   The table is a map of the datatype names to <code>xtemplate</code> canonical
+   instances.
+    </ol>
+
+
+
+    <h3>Usage:</h3>
+    <ul>
+        <pre class="example">
+    <span class="comment">-- Create module: declarative style
+</span>    <span class="keyword">local</span> MyModule = xtypes.<span class="backtick"><a href="../modules/ddsl.xtypes.html#module">module</a></span>{
+      MyModule = {
+        xtypes.<span class="backtick"><a href="../modules/ddsl.xtypes.html#const">const</a></span>{...},
+        :
+        xtypes.<span class="backtick"><a href="../modules/ddsl.xtypes.html#enum">enum</a></span>{...},
+        :
+        xtypes.<span class="backtick"><a href="../modules/ddsl.xtypes.html#struct">struct</a></span>{...},
+        :
+        xtypes.<span class="backtick"><a href="../modules/ddsl.xtypes.html#union">union</a></span>{...},
+        :
+        xtypes.<span class="backtick"><a href="../modules/ddsl.xtypes.html#typedef">typedef</a></span>{...},
+        :
+        xtypes.<span class="backtick"><a href="../modules/ddsl.xtypes.html#module">module</a></span>{...}, <span class="comment">-- nested module name-space
+</span>        :
+      }
+    }
+
+  <span class="comment">-- Create module: imperative style (start with <a href="../modules/ddsl.xtypes.html#EMPTY">EMPTY</a>)
+</span>  <span class="keyword">local</span> MyModule = xtypes.<span class="backtick"><a href="../modules/ddsl.xtypes.html#module">module</a></span>{
+    MyModule = xtypes.EMPTY
+  }
+
+  <span class="comment">-- Get the i-th member:
+</span>  <span class="global">print</span>(MyModule[i])
+
+  <span class="comment">-- Set the i-th member:
+</span>  MyModule[i] = <span class="backtick"><code>xtemplate</code></span>
+
+  <span class="comment">-- After setting the i-th member, the following post-condition holds:
+</span>  MyModule.name == <span class="backtick"><code>xtemplate</code></span> <span class="comment">-- where: name = <code>xtemplate</code>[xtypes.<a href="../modules/ddsl.xtypes.html#NAME">NAME</a>]
+</span>
+  <span class="comment">-- Delete the i-th member:
+</span>  MyModule[i] = <span class="keyword">nil</span>
+
+
+ <span class="comment">-- Get the number of members in the module:
+</span>  <span class="global">print</span>(#MyModule)
+
+  <span class="comment">-- Iterate over the module definition (ordered):
+</span>  <span class="keyword">for</span> i = <span class="number">1</span>, #MyModule <span class="keyword">do</span> <span class="global">print</span>(MyModule[i]) <span class="keyword">end</span>
+
+  <span class="comment">-- Iterate over module namespace (unordered):
+</span>  <span class="keyword">for</span> k, v <span class="keyword">in</span> <span class="global">pairs</span>(MyModule) <span class="keyword">do</span> <span class="global">print</span>(k, v) <span class="keyword">end</span></pre>
+    </ul>
+
+</dd>
+</dl>
+    <h2 class="section-header has-description"><a name="Builtin_Datatypes"></a>Builtin Datatypes </h2>
+
+          <div class="section-description">
+           Builtin <em>atomic</em> datatypes.
+          </div>
+    <dl class="function">
+    <dt>
+    <a name = "boolean"></a>
+    <strong>boolean</strong>
+    </dt>
+    <dd>
+    boolean.
+
+
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "octet"></a>
+    <strong>octet</strong>
+    </dt>
+    <dd>
+    octet.
+
+
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "char"></a>
+    <strong>char</strong>
+    </dt>
+    <dd>
+    char.
+
+
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "wchar"></a>
+    <strong>wchar</strong>
+    </dt>
+    <dd>
+    wide char.
+
+
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "float"></a>
+    <strong>float</strong>
+    </dt>
+    <dd>
+    float.
+
+
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "double"></a>
+    <strong>double</strong>
+    </dt>
+    <dd>
+    double.
+
+
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "long_double"></a>
+    <strong>long_double</strong>
+    </dt>
+    <dd>
+    long double.
+
+
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "short"></a>
+    <strong>short</strong>
+    </dt>
+    <dd>
+    short.
+
+
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "long"></a>
+    <strong>long</strong>
+    </dt>
+    <dd>
+    long.
+
+
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "long_long"></a>
+    <strong>long_long</strong>
+    </dt>
+    <dd>
+    long long.
+
+
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "unsigned_short"></a>
+    <strong>unsigned_short</strong>
+    </dt>
+    <dd>
+    unsigned short.
+
+
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "unsigned_long"></a>
+    <strong>unsigned_long</strong>
+    </dt>
+    <dd>
+    unsigned long.
+
+
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "unsigned_long_long"></a>
+    <strong>unsigned_long_long</strong>
+    </dt>
+    <dd>
+    unsigned long long.
+
+
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "string"></a>
+    <strong>string (n)</strong>
+    </dt>
+    <dd>
+    <code>string&lt;n&gt;</code>: string of length n.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">n</span>
+            <span class="types"><span class="type">int</span></span>
+         the maximum length of the string
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><span class="type">xtemplate</span></span>
+        the string datatype
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "wstring"></a>
+    <strong>wstring (n)</strong>
+    </dt>
+    <dd>
+    <code>wstring&lt;n&gt;</code>:wstring of length n.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">n</span>
+            <span class="types"><span class="type">int</span></span>
+         the maximum length of the wstring
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><span class="type">xtemplate</span></span>
+        the wstring datatype
+    </ol>
+
+
+
+
+</dd>
+</dl>
+    <h2 class="section-header has-description"><a name="Builtin_Annotations"></a>Builtin Annotations </h2>
+
+          <div class="section-description">
+           Use these to qualify the datatype structure. Some apply to datatypes,
+ while others apply to datatype members.
+
+          </div>
+    <dl class="function">
+    <dt>
+    <a name = "Key"></a>
+    <strong>Key</strong>
+    </dt>
+    <dd>
+    Datatype member is a <em>key</em> field.  <code>@Key</code>
+
+
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "ID"></a>
+    <strong>ID</strong>
+    </dt>
+    <dd>
+    Datatype member id.  <code>@ID{n}</code>
+
+
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "Optional"></a>
+    <strong>Optional</strong>
+    </dt>
+    <dd>
+    Datatype member is optional.  <code>@Optional</code>
+
+
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "MustUnderstand"></a>
+    <strong>MustUnderstand</strong>
+    </dt>
+    <dd>
+    Datatype member is required.  <code>@MustUnderstand</code>
+
+
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "Shared"></a>
+    <strong>Shared</strong>
+    </dt>
+    <dd>
+    Datatype member is shared.  <code>@Shared</code>
+
+
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "BitBound"></a>
+    <strong>BitBound</strong>
+    </dt>
+    <dd>
+    <a href="../modules/ddsl.xtypes.html#enum">enum</a> datatype is bit-bound.  <code>@BitBound{n}</code>
+
+
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "BitSet"></a>
+    <strong>BitSet</strong>
+    </dt>
+    <dd>
+    <a href="../modules/ddsl.xtypes.html#enum">enum</a> datatype is a bit-set.  <code>@BitSet</code>
+
+
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "Extensibility"></a>
+    <strong>Extensibility</strong>
+    </dt>
+    <dd>
+    Datatype extensibility.
+  <code>@Extensibility{&apos;EXTENSIBLE_EXTENSIBILITY&apos;|&apos;MUTABLE_EXTENSIBILITY&apos;|&apos;FINAL_EXTENSIBILITY}</code>
+
+
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "Nested"></a>
+    <strong>Nested</strong>
+    </dt>
+    <dd>
+    Datatype is not top-level it is nexted.  <code>@Nested</code>
+
+
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "top_level"></a>
+    <strong>top_level</strong>
+    </dt>
+    <dd>
+    Datatype may (or may not) be top-level.  <code>@top_level{false}</code>
+
+
+
+
+
+
+
+</dd>
+</dl>
+
+
+</div> <!-- id="content" -->
+</div> <!-- id="main" -->
+<div id="about">
+<i>generated by <a href="http://github.com/stevedonovan/LDoc">LDoc 1.4.3</a></i>
+<i style="float:right;">Last updated 2015-10-30 18:29:15 </i>
+</div> <!-- id="about" -->
+</div> <!-- id="container" -->
+</body>
+</html>

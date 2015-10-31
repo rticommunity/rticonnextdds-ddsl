@@ -1,0 +1,288 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+   "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+<head>
+    <title>DDSL Documentation</title>
+    <link rel="stylesheet" href="../ldoc_fixed.css" type="text/css" />
+</head>
+<body>
+
+<div id="container">
+
+<div id="product">
+	<div id="product_logo"></div>
+	<div id="product_name"><big><b></b></big></div>
+	<div id="product_description"></div>
+</div> <!-- id="product" -->
+
+
+<div id="main">
+
+
+<!-- Menu -->
+
+<div id="navigation">
+<br/>
+<h1>DDSL</h1>
+
+<ul>
+  <li><a href="../index.html">Index</a></li>
+</ul>
+
+<h2>Contents</h2>
+<ul>
+<li><a href="#Functions">Functions</a></li>
+<li><a href="#Fields">Fields</a></li>
+</ul>
+
+
+<h2>Modules</h2>
+<ul class="$(kind=='Topics' and '' or 'nowrap'">
+  <li><a href="../modules/ddsl.html">ddsl</a></li>
+  <li><a href="../modules/ddsl.xtypes.html">ddsl.xtypes</a></li>
+  <li><a href="../modules/ddsl.xtypes.utils.html">ddsl.xtypes.utils</a></li>
+  <li><strong>ddsl.xtypes.xml</strong></li>
+  <li><a href="../modules/ddsl.xtypes.xml.parser.html">ddsl.xtypes.xml.parser</a></li>
+  <li><a href="../modules/logger.html">logger</a></li>
+</ul>
+<h2>Scripts</h2>
+<ul class="$(kind=='Topics' and '' or 'nowrap'">
+  <li><a href="../scripts/xml2idl.html">xml2idl</a></li>
+</ul>
+<h2>Topics</h2>
+<ul class="$(kind=='Topics' and '' or 'nowrap'">
+  <li><a href="../topics/README.md.html">README</a></li>
+  <li><a href="../topics/CHANGELOG.md.html">CHANGELOG</a></li>
+</ul>
+<h2>Examples</h2>
+<ul class="$(kind=='Topics' and '' or 'nowrap'">
+  <li><a href="../examples/ddsl_tutorial.lua.html">ddsl_tutorial.lua</a></li>
+</ul>
+
+</div>
+
+<div id="content">
+
+<h1>Module <code>ddsl.xtypes.xml</code></h1>
+<p>DDSL XML Import.</p>
+<p> Load X-Types in Lua from XML.</p>
+    <h3>Info:</h3>
+    <ul>
+        <li><strong>Author</strong>: Rajive Joshi</li>
+    </ul>
+
+
+<h2><a href="#Functions">Functions</a></h2>
+<table class="function_list">
+	<tr>
+	<td class="name" nowrap><a href="#root">root ()</a></td>
+	<td class="summary">Get the top level "root" builtin module namespace.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#empty">empty ()</a></td>
+	<td class="summary">Empty the <a href="../modules/ddsl.xtypes.xml.html#root">root</a> builtin module namespace.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#string2xtypes">string2xtypes (xmlstring[, ns=root])</a></td>
+	<td class="summary">Given an XML string, imports the xtype definitions, and returns the
+ root module populated with the datatypes defined in the XML string.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#file2xtypes">file2xtypes (filename[, ns=root])</a></td>
+	<td class="summary">Given an XML file, imports the xtype definitions, and returns the <br/>
+ root module populated with the datatypes defined in the XML file.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#filelist2xtypes">filelist2xtypes (files)</a></td>
+	<td class="summary">Given an array of XML files, imports the xtype definitions and returns the <br/>
+ root module populated with the datatypes defined in the XML files.</td>
+	</tr>
+</table>
+<h2><a href="#Fields">Fields</a></h2>
+<table class="function_list">
+	<tr>
+	<td class="name" nowrap><a href="#log">log</a></td>
+	<td class="summary"><a href="../modules/logger.html#">logger</a> to log messages and get/set the verbosity levels</td>
+	</tr>
+</table>
+
+<br/>
+<br/>
+
+
+    <h2 class="section-header "><a name="Functions"></a>Functions</h2>
+
+    <dl class="function">
+    <dt>
+    <a name = "root"></a>
+    <strong>root ()</strong>
+    </dt>
+    <dd>
+    Get the top level "root" builtin module namespace. <br/>
+ All the data-types are imported from XML files into this builtin namespace.
+
+
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><span class="type">xtemplate</span></span>
+        the root <a href="../modules/ddsl.xtypes.html#module">xtypes.module</a> namespace for xml import
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "empty"></a>
+    <strong>empty ()</strong>
+    </dt>
+    <dd>
+    Empty the <a href="../modules/ddsl.xtypes.xml.html#root">root</a> builtin module namespace.
+ Deletes all the entries in the <a href="../modules/ddsl.xtypes.xml.html#root">root</a> module.
+
+
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><span class="type">xtemplate</span></span>
+        the root <a href="../modules/ddsl.xtypes.html#module">xtypes.module</a> namespace for xml import
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "string2xtypes"></a>
+    <strong>string2xtypes (xmlstring[, ns=root])</strong>
+    </dt>
+    <dd>
+    Given an XML string, imports the xtype definitions, and returns the
+ root module populated with the datatypes defined in the XML string.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">xmlstring</span>
+            <span class="types"><a class="type" href="http://www.lua.org/manual/5.2/manual.html#6.4">string</a></span>
+         xml string containing XML datatype definitions
+        </li>
+        <li><span class="parameter">ns</span>
+            <span class="types"><span class="type">xtemplate</span></span>
+         module namespace into which to import the datatypes
+         (<em>default</em> root)
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><span class="type">the</span></span>
+        module namespace populated with the datatypes defined
+   in the <code>xmlstring</code>
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "file2xtypes"></a>
+    <strong>file2xtypes (filename[, ns=root])</strong>
+    </dt>
+    <dd>
+    Given an XML file, imports the xtype definitions, and returns the <br/>
+ root module populated with the datatypes defined in the XML file.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">filename</span>
+            <span class="types"><a class="type" href="http://www.lua.org/manual/5.2/manual.html#6.4">string</a></span>
+         xml file path containing XML datatype definitions
+        </li>
+        <li><span class="parameter">ns</span>
+            <span class="types"><span class="type">xtemplate</span></span>
+         module namespace into which to import the datatypes
+         (<em>default</em> root)
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><span class="type">the</span></span>
+        namespace populated with the datatypes defined in
+   the XML file <code>filename</code>
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "filelist2xtypes"></a>
+    <strong>filelist2xtypes (files)</strong>
+    </dt>
+    <dd>
+    Given an array of XML files, imports the xtype definitions and returns the <br/>
+ root module populated with the datatypes defined in the XML files. <br/>
+ Clears the root_module of any definitions, previously imported
+ by calling <a href="../modules/ddsl.xtypes.xml.html#empty">empty</a>.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">files</span>
+            <span class="types"><a class="type" href="http://www.lua.org/manual/5.2/manual.html#6.4">{string,...}</a></span>
+         array of file paths to XML files containing
+   datatype definitions
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><span class="type">the</span></span>
+        <a href="../modules/ddsl.xtypes.xml.html#root">root</a> module namespace populated with the datatypes defined
+  in the xml files given by <code>files</code>
+    </ol>
+
+
+
+
+</dd>
+</dl>
+    <h2 class="section-header "><a name="Fields"></a>Fields</h2>
+
+    <dl class="function">
+    <dt>
+    <a name = "log"></a>
+    <strong>log</strong>
+    </dt>
+    <dd>
+    <a href="../modules/logger.html#">logger</a> to log messages and get/set the verbosity levels
+
+
+
+
+
+
+
+</dd>
+</dl>
+
+
+</div> <!-- id="content" -->
+</div> <!-- id="main" -->
+<div id="about">
+<i>generated by <a href="http://github.com/stevedonovan/LDoc">LDoc 1.4.3</a></i>
+<i style="float:right;">Last updated 2015-10-30 18:29:15 </i>
+</div> <!-- id="about" -->
+</div> <!-- id="container" -->
+</body>
+</html>

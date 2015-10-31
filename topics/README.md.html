@@ -1,0 +1,454 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+   "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+<head>
+    <title>DDSL Documentation</title>
+    <link rel="stylesheet" href="../ldoc_fixed.css" type="text/css" />
+</head>
+<body>
+
+<div id="container">
+
+<div id="product">
+	<div id="product_logo"></div>
+	<div id="product_name"><big><b></b></big></div>
+	<div id="product_description"></div>
+</div> <!-- id="product" -->
+
+
+<div id="main">
+
+
+<!-- Menu -->
+
+<div id="navigation">
+<br/>
+<h1>DDSL</h1>
+
+<ul>
+  <li><a href="../index.html">Index</a></li>
+</ul>
+
+<h2>Contents</h2>
+<ul>
+<li><a href="#Introduction">Introduction </a></li>
+<li><a href="#Getting_Started">Getting Started </a></li>
+<li><a href="#Writing_Apps">Writing Apps </a></li>
+<li><a href="#Versioning">Versioning </a></li>
+<li><a href="#Contributing_Code">Contributing Code </a></li>
+<li><a href="#License">License </a></li>
+</ul>
+
+
+<h2>Topics</h2>
+<ul class="$(kind=='Topics' and '' or 'nowrap'">
+  <li><strong>README</strong></li>
+  <li><a href="../topics/CHANGELOG.md.html">CHANGELOG</a></li>
+</ul>
+<h2>Modules</h2>
+<ul class="$(kind=='Topics' and '' or 'nowrap'">
+  <li><a href="../modules/ddsl.html">ddsl</a></li>
+  <li><a href="../modules/ddsl.xtypes.html">ddsl.xtypes</a></li>
+  <li><a href="../modules/ddsl.xtypes.utils.html">ddsl.xtypes.utils</a></li>
+  <li><a href="../modules/ddsl.xtypes.xml.html">ddsl.xtypes.xml</a></li>
+  <li><a href="../modules/ddsl.xtypes.xml.parser.html">ddsl.xtypes.xml.parser</a></li>
+  <li><a href="../modules/logger.html">logger</a></li>
+</ul>
+<h2>Scripts</h2>
+<ul class="$(kind=='Topics' and '' or 'nowrap'">
+  <li><a href="../scripts/xml2idl.html">xml2idl</a></li>
+</ul>
+<h2>Examples</h2>
+<ul class="$(kind=='Topics' and '' or 'nowrap'">
+  <li><a href="../examples/ddsl_tutorial.lua.html">ddsl_tutorial.lua</a></li>
+</ul>
+
+</div>
+
+<div id="content">
+
+
+<h1>DDSL - Data Domain Specific Language</h1>
+
+<ul>
+    <li><a href="#introduction">Introduction</a></li>
+    <li><a href="#getting-started">Getting Started</a></li>
+    <li><a href="#writing-apps">Writing Apps</a></li>
+    <li><a href="#versioning">Versioning</a></li>
+    <li><a href="#contributing-code">Contributing Code</a></li>
+    <li><a href="#license">License</a></li>
+</ul>
+
+<p><a name="Introduction"></a></p>
+<h2>Introduction</h2>
+
+<p>DDSL provides a way to work with strongly typed data in
+<a href="http://www.lua.org/about.html">Lua</a>, which itself is dynamically typed
+and does not enforce data structure constraints. </p>
+
+<p>Here is a quick illustration using a <code>ShapeType</code> datatype.</p>
+
+<p>IDL:</p>
+
+<pre>
+struct ShapeType {
+    long x;
+    long y;
+    double shapesize;
+    <span class="global">string</span>&lt;<span class="number">128</span>&gt; color; //@Key
+};
+</pre>
+
+
+<p>DDSL:</p>
+
+<pre>
+<span class="keyword">local</span> ShapeType = xtypes.struct{
+    ShapeType = {
+      { x = { xtypes.long } },
+      { y = { xtypes.long } },
+      { shapesize = { xtypes.long } },
+      { color = { xtypes.<span class="global">string</span>(<span class="number">128</span>), xtypes.Key } },
+    }
+  }
+</pre>
+
+
+<p>An instance created from a DDSL datatype will have a form that adheres to the
+the underlying datatype. For example, an instance of <code>ShapeType</code> will
+have the form:</p>
+
+<pre>
+shape = {
+    x           = <span class="string">'x'</span>,
+    y           = <span class="string">'y'</span>,
+    shapesize   = <span class="string">'shapesize'</span>,
+    color       = <span class="string">'color'</span>
+}
+</pre>
+
+
+<p>DDSL brings the following capabilities to Lua (and therefore to platforms where Lua can be embedded).</p>
+
+<ol>
+    <li><p>DDSL is a language for describing datatypes in <a href="http://www.lua.org/about.html">Lua</a>. It can be used as replacement
+    for data description in an <a href="https://en.wikipedia.org/wiki/Interface_description_language">IDL</a>. In particular:</p></li>
+    <li><p><a href="http://www.omg.org/spec/DDS-XTypes/">X-Types</a> can be defined in DDSL.</p></li>
+    <li><p>Datatypes can be imported from XML.</p></li>
+    <li><p>Datatypes can be exported to IDL.</p></li>
+</ol>
+
+<p>   Unlike static formats (such as IDL or XML or JSON), DDSL brings the full
+   power of the <a href="http://www.lua.org/start.html">Lua programming language</a> to
+   constructing and manipulating datatypes. The datatypes form a connected
+   graph whose integrity is maintained as new datatypes are defined,
+   existing ones removed, or altered.  </p>
+
+<ol>
+    <li><p>DDSL provides a way to create instances from datatypes. The datatype
+    <em>structural</em> constraints are enforced on the instances. For example, only fields
+    that are allowed by the datatype can be present in an instance. Collection
+    bounds are enforced. </p></li>
+    <li><p>Note that for efficiency reasons, non-structural constraints are not
+    enforced on the instances. Thus, an instance field whose underlying
+    datatype is a boolean can be assigned a string value. However, such
+    constraints can easily be enforced by user code, if so desired.</p></li>
+    <li><p>DDSL provides a way to modify the datatypes dynamically at anytime. All the
+    aspects of a datatype, except its <code>KIND</code> can be changed. For example, datatype members can be added, removed, or their datatype changed. The datatype
+    name, enclosing scopes (namespaces) can be altered. This makes DDSL ideal for
+    datatype modeling, synthesis and transformation.</p></li>
+    <li><p>DDSL keeps all the instances of a datatype in "sync" with the datatype. Thus,
+    if a member is removed from a datatype, the corresponding field is removed from
+    all the instances of the datatype. When a new member is added, all the
+    instances are updated with the new field--- initialized to a default value. If a member's datatype is structurally changed, the corresponding field is reset to
+    the default value for the new structure. </p></li>
+    <li><p>The default value of a field in an instance is a dot ('.') separated <em>string</em>
+    formed by navigating to that field from the instance. The default value can be
+    used as an index into some storage system.</p></li>
+    <li><p>Datatypes can be introspected, examined, and traversed. For example, enumerations can be be looked by name or ordinal values. Collection bounds
+    can be looked up, aliases can be resolved, and so on. This makes it easy to work with structured data in a dynamic language such as Lua, or any environment where
+    Lua can be embedded (almost every platform).</p></li>
+    <li><p>All of the above make DDSL ideally suited for for writing generators. In particular:</p></li>
+    <li><p><em>Data generators</em> that produce instances confirming to some data space or
+    data generation rules/constraints, while adhering to an underlying datatype.</p></li>
+    <li><p><em>Code generators</em> that produce behavior the context of some operational
+    scenario, while adhering to an underlying datatype.</p></li>
+</ol>
+
+<p><img src="doc/datatype_algebra.svg" alt="Datatype Algebra Diagram" title="Datatype Algebra"/></p>
+
+
+<p><a name="Getting_Started"></a></p>
+<h2>Getting Started</h2>
+
+<ul>
+    <li>Minimum requirement: <a href="http://www.lua.org">Lua</a> 5.1+</li>
+</ul>
+
+
+<pre>
+# check the installed lua version
+lua -v
+</pre>
+
+<p><a href="http://www.lua.org/start.html">Install</a> an updated Lua version if needed.</p>
+
+<ul>
+    <li>Download DDSL</li>
+</ul>
+
+
+<pre>
+# Download as a zip file.
+</pre>
+
+
+<ul>
+    <li><p>Read the <a href="ddsl.xtypes">ddsl.xtypes</a> module overview.</p></li>
+    <li><p>Browse the <a href="ddsl.xtypes">ddsl.xtypes</a> API and usage examples.</p></li>
+    <li><p>Step through the <a href="examples/ddsl-tutorial.lua">tutorial</a> examples.</p></li>
+</ul>
+
+
+<pre>
+cd tutorial/
+lua ddsl_tutorial.lua
+</pre>
+
+
+<ul>
+    <li>Try out the scripts: <a href="xml2idl">xml2idl</a>.</li>
+</ul>
+
+
+<pre>
+cd test/
+../bin/run xml2idl xml-test-simple.xml
+</pre>
+
+<p>or, with debugging on:</p>
+
+<pre>
+../bin/run xml2idl -d xml-test-simple.xml
+</pre>
+
+
+<ul>
+    <li>Look at the the <a href="test/ddsl-xtypes-tester.lua">unit tests</a> for more advanced examples.</li>
+</ul>
+
+
+<p><a name="Writing_Apps"></a></p>
+<h2>Writing Apps</h2>
+
+<ul>
+    <li>Setup Lua's <a href="http://www.lua.org/manual/5.2/manual.html#pdf-package.path">package.path</a> to include <code>lib/lua</code> (or <code>src/</code> if you want to
+    use the source). Assuming <code>DDSL_HOME</code> is the location of the directory where
+    you installed DDSL, set the <code>LUA_PATH</code> environment variable as follows.</li>
+</ul>
+
+
+<pre>
+export LUA_PATH+=\
+ <span class="string">"${DDSL_HOME}/src/?.lua;${DDSL_HOME}/src/?/init.lua;\
+  ${DDSL_HOME}/lib/lua/?.lc;${DDSL_HOME}/lib/lua/?/init.lc;"</span>
+</pre>
+
+
+<ul>
+    <li>Create datatypes directly using the <a href="ddsl.xtypes">ddsl.xtypes</a> module.</li>
+</ul>
+
+
+<pre>
+<span class="global">require</span> <span class="string">'ddsl.xtypes'</span>
+</pre>
+
+
+<ul>
+    <li>OR, Import datatypes from XML using the <a href="ddsl.xtypes.xml">ddsl.xtypes.xml</a>
+    module.</li>
+</ul>
+
+
+<pre>
+<span class="global">require</span> <span class="string">'ddsl.xtypes.xml'</span>
+</pre>
+
+
+<ul>
+    <li>Output IDL using the <a href="ddsl.xtypes.utils">ddsl.xtypes.utils</a> module.</li>
+</ul>
+
+
+<pre>
+<span class="global">require</span> <span class="string">'ddsl.xtypes.utils'</span>
+</pre>
+
+
+<ul>
+    <li>Create instances and use them in application code. Use the logger
+    <a href="logger">logger</a> module to log messages at different verbosity levels.</li>
+</ul>
+
+
+<pre>
+<span class="global">require</span> <span class="string">'logger'</span>
+</pre>
+
+
+<p><a name="Versioning"></a></p>
+<h2>Versioning</h2>
+
+<ul>
+    <li><p>DDSL uses <a href="http://semver.org">semantic versioning</a>.</p></li>
+    <li><p>Annotated tags specify the release version numbers.</p></li>
+    <li><p>The <code>master</code> branch is always the latest stable version.</p></li>
+    <li><p>The <code>develop</code> branch is the work in progress.</p></li>
+</ul>
+
+
+<p><a name="Contributing_Code"></a></p>
+<h2>Contributing Code</h2>
+
+<ul>
+    <li><p>Ensure dependencies are available on the development host</p></li>
+    <li><p><a href="http://www.lua.org">Lua</a> 5.1+</p></li>
+    <li><p><a href="http://stevedonovan.github.io/ldoc/">LDoc</a> 1.4.3+ for documentation</p></li>
+</ul>
+
+<p>  Install the above, if not present on your system.</p>
+
+<ul>
+    <li>Fork/clone the repository, and setup the client side git hooks. </li>
+</ul>
+
+
+<pre>
+# setup client side hooks
+cd .git/hooks/
+ln -s ../../build/scripts/pre-commit.lua pre-commit
+</pre>
+
+
+<ul>
+    <li>Build the public API documentation. </li>
+</ul>
+
+
+<pre>
+cd doc/
+ldoc .
+# Browse the output: <span class="backtick"><code>out/html/index.html</code></span>
+open out/html/index.html
+</pre>
+
+
+<ul>
+    <li>Build all the documentation, both public and private. This may be helpful if
+    you intend to create new type-systems or data model, or just want to
+    understand the inner workings.</li>
+</ul>
+
+
+<pre>
+cd doc/
+ldoc . -all
+# Browse the output: <span class="backtick"><code>out/html/index.html</code></span>
+open out/html/index.html
+</pre>
+
+
+<ul>
+    <li><p>Review the <a href="html/index.html">Documentation Conventions</a> and
+    <a href="html/index.html">Module Organization</a>.</p></li>
+    <li><p>Add/Modify/Update Code</p></li>
+    <li><p>Add unit tests</p></li>
+    <li><p>Pass all the unit tests</p></li>
+</ul>
+
+
+<pre>
+cd test/
+lua ddsl-xtypes-tester.lua
+</pre>
+
+
+<ul>
+    <li>Update CHANGELOG.md to add a section describing the contribution</li>
+</ul>
+
+
+<pre>
+edit CHANGELOG.md
+</pre>
+
+
+<ul>
+    <li>Create a candidate build locally.</li>
+</ul>
+
+
+<pre>
+./build/scripts/release.sh
+# Output goes to <span class="backtick"><code>out/{bin,lib, html}</code></span>.
+</pre>
+
+
+<ul>
+    <li>Spot check the candidate build.</li>
+</ul>
+
+
+<pre>
+cd test/
+../out/bin/run xml2idl xml-test-connector.xml
+# Browse the documentation: <span class="backtick"><code>out/html/index.html</code></span>
+open out/html/index.html
+</pre>
+
+
+<ul>
+    <li><p>If everything looks great, send a <a href="https://help.github.com/articles/using-pull-requests/">pull request</a>; otherwise continue iterating on the previous steps.</p></li>
+    <li><p>Create a new release.</p>
+
+<pre>
+# update the version number <span class="keyword">and</span> tag the sources
+./build/scripts/new-release.lua
+# create release build: binaries <span class="keyword">and</span> documentation
+./build/scripts/release.sh
+</pre>
+</li>
+</ul>
+
+<p><a name="License"></a></p>
+<h2>License</h2>
+
+<p>Copyright (C) 2015 Real-Time Innovations, Inc.</p>
+
+<p>Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at</p>
+
+
+<pre>
+http://www.apache.org/licenses/LICENSE-<span class="number">2.0</span>
+</pre>
+
+<p>Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.</p>
+
+
+</div> <!-- id="content" -->
+</div> <!-- id="main" -->
+<div id="about">
+<i>generated by <a href="http://github.com/stevedonovan/LDoc">LDoc 1.4.3</a></i>
+<i style="float:right;">Last updated 2015-10-30 18:29:15 </i>
+</div> <!-- id="about" -->
+</div> <!-- id="container" -->
+</body>
+</html>

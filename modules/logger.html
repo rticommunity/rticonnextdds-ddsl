@@ -1,0 +1,525 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+   "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+<head>
+    <title>DDSL Documentation</title>
+    <link rel="stylesheet" href="../ldoc_fixed.css" type="text/css" />
+</head>
+<body>
+
+<div id="container">
+
+<div id="product">
+	<div id="product_logo"></div>
+	<div id="product_name"><big><b></b></big></div>
+	<div id="product_description"></div>
+</div> <!-- id="product" -->
+
+
+<div id="main">
+
+
+<!-- Menu -->
+
+<div id="navigation">
+<br/>
+<h1>DDSL</h1>
+
+<ul>
+  <li><a href="../index.html">Index</a></li>
+</ul>
+
+<h2>Contents</h2>
+<ul>
+<li><a href="#Functions">Functions</a></li>
+<li><a href="#Fields">Fields</a></li>
+</ul>
+
+
+<h2>Modules</h2>
+<ul class="$(kind=='Topics' and '' or 'nowrap'">
+  <li><a href="../modules/ddsl.html">ddsl</a></li>
+  <li><a href="../modules/ddsl.xtypes.html">ddsl.xtypes</a></li>
+  <li><a href="../modules/ddsl.xtypes.utils.html">ddsl.xtypes.utils</a></li>
+  <li><a href="../modules/ddsl.xtypes.xml.html">ddsl.xtypes.xml</a></li>
+  <li><a href="../modules/ddsl.xtypes.xml.parser.html">ddsl.xtypes.xml.parser</a></li>
+  <li><strong>logger</strong></li>
+</ul>
+<h2>Scripts</h2>
+<ul class="$(kind=='Topics' and '' or 'nowrap'">
+  <li><a href="../scripts/xml2idl.html">xml2idl</a></li>
+</ul>
+<h2>Topics</h2>
+<ul class="$(kind=='Topics' and '' or 'nowrap'">
+  <li><a href="../topics/README.md.html">README</a></li>
+  <li><a href="../topics/CHANGELOG.md.html">CHANGELOG</a></li>
+</ul>
+<h2>Examples</h2>
+<ul class="$(kind=='Topics' and '' or 'nowrap'">
+  <li><a href="../examples/ddsl_tutorial.lua.html">ddsl_tutorial.lua</a></li>
+</ul>
+
+</div>
+
+<div id="content">
+
+<h1>Module <code>logger</code></h1>
+<p>Log messages at different verbosity levels.</p>
+<p> Keeps track of the current verbosity level, and outputs log messages that
+ are at or below the current verbosity level.</p>
+    <h3>Info:</h3>
+    <ul>
+        <li><strong>Author</strong>: Rajive Joshi</li>
+    </ul>
+
+
+<h2><a href="#Functions">Functions</a></h2>
+<table class="function_list">
+	<tr>
+	<td class="name" nowrap><a href="#new">new ([default_verbosity=ERROR])</a></td>
+	<td class="summary">Create a new logger object.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#verbosity">verbosity ([new_verbosity=nil])</a></td>
+	<td class="summary">Get or Set the verbosity level</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#fatal">fatal (...)</a></td>
+	<td class="summary">Log messages at the FATAL verbosity level</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#severe">severe (...)</a></td>
+	<td class="summary">Log messages at the SEVERE verbosity level</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#error">error (...)</a></td>
+	<td class="summary">Log messages at the ERROR verbosity level</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#warning">warning (...)</a></td>
+	<td class="summary">Log messages at the WARNING verbosity level</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#notice">notice (...)</a></td>
+	<td class="summary">Log messages at the NOTICE verbosity level</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#info">info (...)</a></td>
+	<td class="summary">Log messages at the INFO verbosity level</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#debug">debug (...)</a></td>
+	<td class="summary">Log messages at the DEBUG verbosity level</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#trace">trace (...)</a></td>
+	<td class="summary">Log messages at the TRACE verbosity level</td>
+	</tr>
+</table>
+<h2><a href="#Fields">Fields</a></h2>
+<table class="function_list">
+	<tr>
+	<td class="name" nowrap><a href="#SILENT">SILENT</a></td>
+	<td class="summary">SILENT verbosity level</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#FATAL">FATAL</a></td>
+	<td class="summary">FATAL verbosity level</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#SEVERE">SEVERE</a></td>
+	<td class="summary">SEVERE verbosity level</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#ERROR">ERROR</a></td>
+	<td class="summary">ERROR verbosity level</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#WARNING">WARNING</a></td>
+	<td class="summary">WARNING verbosity level</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#NOTICE">NOTICE</a></td>
+	<td class="summary">NOTICE verbosity level</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#INFO">INFO</a></td>
+	<td class="summary">INFO verbosity level</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#DEBUG">DEBUG</a></td>
+	<td class="summary">DEBUG verbosity level</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#TRACE">TRACE</a></td>
+	<td class="summary">TRACE verbosity level</td>
+	</tr>
+</table>
+
+<br/>
+<br/>
+
+
+    <h2 class="section-header "><a name="Functions"></a>Functions</h2>
+
+    <dl class="function">
+    <dt>
+    <a name = "new"></a>
+    <strong>new ([default_verbosity=ERROR])</strong>
+    </dt>
+    <dd>
+    Create a new logger object.
+ Use as many or as few logger objects as needed. For example, different
+ logger objects could be used for different categories of
+ capabilities or functionality in a large software package (e.g. UI, Platform,
+ Connectivity etc.).</p>
+
+<p> NOTE: Any logger object can be used as a factory of logger objects.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">default_verbosity</span>
+            <span class="types"><span class="type">int</span></span>
+         the default verbosity level of this Logger
+         (<em>default</em> ERROR)
+        </li>
+    </ul>
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "verbosity"></a>
+    <strong>verbosity ([new_verbosity=nil])</strong>
+    </dt>
+    <dd>
+    Get or Set the verbosity level
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">new_verbosity</span>
+            <span class="types"><span class="type">int</span></span>
+         the new verbosity level. Should be one of
+ the verbosity level constants
+         (<em>default</em> nil)
+        </li>
+    </ul>
+
+    <h3>Returns:</h3>
+    <ol>
+
+           <span class="types"><span class="type">int</span></span>
+        the verbosity level
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "fatal"></a>
+    <strong>fatal (...)</strong>
+    </dt>
+    <dd>
+    Log messages at the FATAL verbosity level
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">...</span>
+         variadic
+        </li>
+    </ul>
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "severe"></a>
+    <strong>severe (...)</strong>
+    </dt>
+    <dd>
+    Log messages at the SEVERE verbosity level
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">...</span>
+         variadic
+        </li>
+    </ul>
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "error"></a>
+    <strong>error (...)</strong>
+    </dt>
+    <dd>
+    Log messages at the ERROR verbosity level
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">...</span>
+         variadic
+        </li>
+    </ul>
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "warning"></a>
+    <strong>warning (...)</strong>
+    </dt>
+    <dd>
+    Log messages at the WARNING verbosity level
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">...</span>
+         variadic
+        </li>
+    </ul>
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "notice"></a>
+    <strong>notice (...)</strong>
+    </dt>
+    <dd>
+    Log messages at the NOTICE verbosity level
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">...</span>
+         variadic
+        </li>
+    </ul>
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "info"></a>
+    <strong>info (...)</strong>
+    </dt>
+    <dd>
+    Log messages at the INFO verbosity level
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">...</span>
+         variadic
+        </li>
+    </ul>
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "debug"></a>
+    <strong>debug (...)</strong>
+    </dt>
+    <dd>
+    Log messages at the DEBUG verbosity level
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">...</span>
+         variadic
+        </li>
+    </ul>
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "trace"></a>
+    <strong>trace (...)</strong>
+    </dt>
+    <dd>
+    Log messages at the TRACE verbosity level
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">...</span>
+         variadic
+        </li>
+    </ul>
+
+
+
+
+
+</dd>
+</dl>
+    <h2 class="section-header "><a name="Fields"></a>Fields</h2>
+
+    <dl class="function">
+    <dt>
+    <a name = "SILENT"></a>
+    <strong>SILENT</strong>
+    </dt>
+    <dd>
+    SILENT verbosity level
+
+
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "FATAL"></a>
+    <strong>FATAL</strong>
+    </dt>
+    <dd>
+    FATAL verbosity level
+
+
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "SEVERE"></a>
+    <strong>SEVERE</strong>
+    </dt>
+    <dd>
+    SEVERE verbosity level
+
+
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "ERROR"></a>
+    <strong>ERROR</strong>
+    </dt>
+    <dd>
+    ERROR verbosity level
+
+
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "WARNING"></a>
+    <strong>WARNING</strong>
+    </dt>
+    <dd>
+    WARNING verbosity level
+
+
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "NOTICE"></a>
+    <strong>NOTICE</strong>
+    </dt>
+    <dd>
+    NOTICE verbosity level
+
+
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "INFO"></a>
+    <strong>INFO</strong>
+    </dt>
+    <dd>
+    INFO verbosity level
+
+
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "DEBUG"></a>
+    <strong>DEBUG</strong>
+    </dt>
+    <dd>
+    DEBUG verbosity level
+
+
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "TRACE"></a>
+    <strong>TRACE</strong>
+    </dt>
+    <dd>
+    TRACE verbosity level
+
+
+
+
+
+
+
+</dd>
+</dl>
+
+
+</div> <!-- id="content" -->
+</div> <!-- id="main" -->
+<div id="about">
+<i>generated by <a href="http://github.com/stevedonovan/LDoc">LDoc 1.4.3</a></i>
+<i style="float:right;">Last updated 2015-10-30 18:29:15 </i>
+</div> <!-- id="about" -->
+</div> <!-- id="container" -->
+</body>
+</html>
