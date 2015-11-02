@@ -17,7 +17,7 @@ limitations under the License.
 
 --- Update the version number and create an annotated tag.
 -- @usage 
---    build/scripts/update-version.lua
+--    build/scripts/new-release.lua
 -- @author Rajive Joshi
 
 --============================================================================--
@@ -46,7 +46,7 @@ local function update_version(file)
   
   print('-> Updated version: ', version())
   
-  return status
+  return status, version()
 end
 
 --============================================================================--
@@ -55,7 +55,7 @@ end
 -- @treturn boolean the status of tagging
 local function tag_release(file)
  
-  local answer, status
+  local answer, status, version
   repeat
      io.write("Enter tag name: ")
      io.flush()
@@ -64,13 +64,13 @@ local function tag_release(file)
   print('  Tag name: ', answer)
   
   -- first create a lightweight tag
-  status = os.execute([[echo "git tag ]] .. answer .. [["]])
+  status, version = os.execute([[echo "git tag ]] .. answer .. [["]])
   if not status then return status end
   
   -- use this to update the version number
-  status = update_version('src/ddsl/version.lua')
+  status, version = update_version('src/ddsl/version.lua')
   if not status then 
-    print('  Failed to updated version number\n  Aborting!')
+    print('  Failed to update version number\n  Aborting!')
     os.exit(status) 
   end 
   
@@ -83,6 +83,27 @@ local function tag_release(file)
   if not status then return status end
   print('-> Tagged release: ', answer)
     
+  return status, version
+end
+
+--============================================================================--
+
+--- Update gh-pages
+local function update_gh_pages()
+  local status
+  
+  status = os.execute([[./build/scripts/new-build.sh"]])
+  if not status then 
+    print('  Failed to create new build\n  Aborting!')
+    os.exit(status)
+  end
+  
+  status = os.execute([[git checkout gh-pages"]])
+  if not status then 
+    print('  Failed to checkout gh-pages\n  Aborting!')
+    os.exit(status)
+  end
+  
   return status
 end
 

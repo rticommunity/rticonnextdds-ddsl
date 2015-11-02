@@ -23,6 +23,8 @@ full_description = [[
 - [README](topics/README.md.html) 
   first!
 
+- [Download the latest bundle](ddsl.zip)
+
 - [Source Code (github)](https://github.com/rticommunity/rticonnextdds-ddsl).
 
 

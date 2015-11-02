@@ -126,15 +126,12 @@ lua -v
 - Get DDSL
 
 ```bash
-#--- Create directory for holding the DDSL release. 
-mkdir /path/to/ddsl/ 
-cd /path/to/ddsl/
-#--- Download the latest release to this directory from the release page:
-open https://github.com/rticommunity/rticonnextdds-ddsl/releases
+#--- Download the latest bundle:
+open http://rticommunity.github.io/rticonnextdds-ddsl/ddsl.zip
 #--- unzip or untar the release, e.g.
-unzip 1.0.0.zip   # This will create a directory: 1.0.0/
+unzip ddsl.zip   # This will create a directory: ddsl/
 #--- We refer to the location of the release as `DDSL_HOME`, e.g.
-export DDSL_HOME=/path/to/ddsl/1.0.0/
+export DDSL_HOME=/path/to/ddsl/
 ```
 
 - Read the [ddsl.xtypes](http://rticommunity.github.io/rticonnextdds-ddsl/modules/ddsl.xtypes.html) module overview.
@@ -282,7 +279,7 @@ edit CHANGELOG.md
 - Create a candidate build locally.
  
 ```bash
-./build/scripts/release.sh
+./build/scripts/new-build.sh
 # Output goes to `out/{bin,lib, html}`.
 ```
 
@@ -295,14 +292,13 @@ cd test/
 open out/html/index.html
 ```
 
-- If everything looks great, send a [pull request](https://help.github.com/articles/using-pull-requests/); otherwise continue iterating on the previous steps.
+- If everything looks great, send a [pull request](https://help.github.com/articles/using-pull-requests/); otherwise continue iterating on the previous
+steps.
 
 - Create a new release.
 ```bash
 # update the version number and tag the sources
 ./build/scripts/new-release.lua
-# create release build: binaries and documentation
-./build/scripts/release.sh
 ```
 
 ## License

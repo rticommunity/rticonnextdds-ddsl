@@ -23,7 +23,10 @@ echo `pwd`
 # output dir:
 
 OUTPUT=out
-mkdir -p ${OUTPUT}
+
+# remove the old one:
+rm -rf ${OUTPUT}
+echo "Deleted ${OUTPUT}/"
 
 #------------------------------------------------------------------------------
 # lib:
@@ -83,4 +86,17 @@ cd ${DDSLHOME}/doc
 ldoc .
 
 echo "Created/Updated ${OUTPUT}/html!"
+
 #------------------------------------------------------------------------------
+# Bundle
+
+cd ${DDSLHOME}/${OUTPUT}
+
+ln -s . ddsl
+zip -r html/ddsl ddsl/lib ddsl/bin ddsl/html
+rm -f ddsl
+
+echo "Created ${OUTPUT}/html/ddsl.zip!"
+
+#------------------------------------------------------------------------------
+exit 0 # success
