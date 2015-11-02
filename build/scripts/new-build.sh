@@ -30,6 +30,7 @@ echo "Deleted ${OUTPUT}/"
 
 #------------------------------------------------------------------------------
 # lib:
+
 LIB_SRC="\
 ddsl/version \
 ddsl/init \
@@ -71,6 +72,21 @@ cp -p  ${DDSLHOME}/bin/run ${OUTPUT}/bin
 echo "Created/Updated ${OUTPUT}/bin!"
 
 #------------------------------------------------------------------------------
+# examples:
+
+EXAMPLE_SRC="\
+ddsl_tutorial.lua \
+tutorial.lua \
+types.xml
+"
+
+mkdir -p ${OUTPUT}/tutorial
+for file in ${EXAMPLE_SRC}; do
+	cp -p ${DDSLHOME}/tutorial/${file} ${OUTPUT}/tutorial/${file}
+done
+echo "Created/Updated ${OUTPUT}/tutorial!"
+
+#------------------------------------------------------------------------------
 # doc:
 
 DOC_SRC="\
@@ -93,7 +109,7 @@ echo "Created/Updated ${OUTPUT}/html!"
 cd ${DDSLHOME}/${OUTPUT}
 
 ln -s . ddsl
-zip -r html/ddsl ddsl/lib ddsl/bin ddsl/html
+zip -r html/ddsl ddsl/lib ddsl/bin ddsl/tutorial ddsl/html
 rm -f ddsl
 
 echo "Created ${OUTPUT}/html/ddsl.zip!"

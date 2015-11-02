@@ -127,21 +127,31 @@ lua -v
 
 ```bash
 #--- Download the latest bundle:
-open http://rticommunity.github.io/rticonnextdds-ddsl/ddsl.zip
-#--- unzip or untar the release, e.g.
+wget http://rticommunity.github.io/rticonnextdds-ddsl/ddsl.zip
+#--- unzip the release:
 unzip ddsl.zip   # This will create a directory: ddsl/
 #--- We refer to the location of the release as `DDSL_HOME`, e.g.
-export DDSL_HOME=/path/to/ddsl/
+cd /path/to/ddsl/
+export DDSL_HOME=$(pwd -P)
 ```
 
 - Read the [ddsl.xtypes](http://rticommunity.github.io/rticonnextdds-ddsl/modules/ddsl.xtypes.html) module overview.
 
 - Browse the [ddsl.xtypes](http://rticommunity.github.io/rticonnextdds-ddsl/modules/ddsl.xtypes.html) API and usage examples.
 
+- Setup Lua's `package.path` to include `lib/lua`. Assuming `DDSL_HOME` is the location of the directory where you installed DDSL, set the `LUA_PATH` 
+environment variable as follows.
+
+```bash
+export LUA_PATH+="${DDSL_HOME}/lib/lua/?.lua;${DDSL_HOME}/lib/lua/?/init.lua;"
+export LUA_PATH+="${DDSL_HOME}/lib/lua/?.lc;${DDSL_HOME}/lib/lua/?/init.lc;"
+```
+
 - Step through the [tutorial](http://rticommunity.github.io/rticonnextdds-ddsl/examples/ddsl_tutorial.lua.html) examples.
 
 ```bash
 cd tutorial/
+export LUA_PATH+="${DDSL_HOME}/tutorial/?.lua;"
 lua ddsl_tutorial.lua
 ```
 
@@ -149,11 +159,11 @@ lua ddsl_tutorial.lua
 
 ```bash
 cd test/
-../bin/run xml2idl xml-test-simple.xml
+bin/run xml2idl xml-test-simple.xml
 ```
 or, with debugging on:
 ```bash   
-../bin/run xml2idl -d xml-test-simple.xml
+bin/run xml2idl -d xml-test-simple.xml
 ```
 
 - Look at the the [unit tests](https://github.com/rticommunity/rticonnextdds-ddsl/blob/develop/test/ddsl-xtypes-tester.lua) for more advanced examples.
@@ -161,14 +171,12 @@ or, with debugging on:
 
 ## Writing Apps
      
-- Setup Lua's `package.path` to include `lib/lua` (or `src/` if you want to 
-  use the source). Assuming `DDSL_HOME` is the location of the directory where 
-  you installed DDSL, set the `LUA_PATH` environment variable as follows.
+- Setup Lua's `package.path` to include `src/` (before `lib/lua`). Assuming `DDSL_HOME` is the location of the directory where you cloned DDSL, set the `LUA_PATH` environment variable as follows.
 
 ```bash
-export LUA_PATH+=\
- "${DDSL_HOME}/src/?.lua;${DDSL_HOME}/src/?/init.lua;\
-  ${DDSL_HOME}/lib/lua/?.lc;${DDSL_HOME}/lib/lua/?/init.lc;"
+export LUA_PATH+="${DDSL_HOME}/src/?.lua;${DDSL_HOME}/src/?/init.lua;"
+export LUA_PATH+="${DDSL_HOME}/lib/lua/?.lua;${DDSL_HOME}/lib/lua/?/init.lua;"
+export LUA_PATH+="${DDSL_HOME}/lib/lua/?.lc;${DDSL_HOME}/lib/lua/?/init.lc;"
 ```
 
 - Create datatypes directly using the [ddsl.xtypes](http://rticommunity.github.io/rticonnextdds-ddsl/modules/ddsl.xtypes.html) module.

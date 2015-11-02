@@ -31,17 +31,17 @@ local function update_version(file)
 
   local status
   
-  status = os.execute([[echo "return '`git describe`'" >]] .. file)
+  status = os.execute([[echo "return '`git describe --tags`'" >]] .. file)
   if not status then return status end
   
   local version = loadfile(file)
   if not version then return false end
   
   print('Committing version number: ', version())
-  status = os.execute([[echo git add ]] .. file)
+  status = os.execute([[git add ]] .. file)
   if not status then return status end
   
-  status = os.execute([[echo git commit -m ]] .. version())
+  status = os.execute([[git commit -m ]] .. version())
   if not status then return status end
   
   print('-> Updated version: ', version())
@@ -64,7 +64,7 @@ local function tag_release(file)
   print('  Tag name: ', answer)
   
   -- first create a lightweight tag
-  status, version = os.execute([[echo "git tag ]] .. answer .. [["]])
+  status, version = os.execute([[git tag ]] .. answer)
   if not status then return status end
   
   -- use this to update the version number
@@ -75,11 +75,11 @@ local function tag_release(file)
   end 
   
   -- delete the a lightweight tag
-  status = os.execute([[echo "git tag -d ]] .. answer .. [["]])
+  status = os.execute([[git tag -d ]] .. answer)
   if not status then return status end
   
   -- create an annotated tag
-  status = os.execute([[echo "git tag -a ]] .. answer .. [["]])
+  status = os.execute([[git tag -m 'Version ]] ..version.. [[ ' -a ]] .. answer)
   if not status then return status end
   print('-> Tagged release: ', answer)
     
@@ -89,20 +89,46 @@ end
 --============================================================================--
 
 --- Update gh-pages
-local function update_gh_pages()
+-- @string version the version number
+local function update_gh_pages(version)
   local status
   
-  status = os.execute([[./build/scripts/new-build.sh"]])
+  status = os.execute([[./build/scripts/new-build.sh]])
   if not status then 
     print('  Failed to create new build\n  Aborting!')
     os.exit(status)
   end
   
-  status = os.execute([[git checkout gh-pages"]])
+  status = os.execute([[git checkout gh-pages]])
   if not status then 
     print('  Failed to checkout gh-pages\n  Aborting!')
     os.exit(status)
   end
+  
+  status = os.execute([[mv out .out; rm -rf *; mv .out out; mv out/html/* .]])
+  if not status then 
+    print('  Failed to update gh-pages content\n  Aborting!')
+    os.exit(status)
+  end
+  
+  status = os.execute([[git add *; git commit -m 'Version ]]..version..[[']])
+  if not status then 
+    print('  Failed to commit gh-page update\n  Aborting!')
+    os.exit(status)
+  end
+  
+  print([[TO DO:
+   - Review the gh-pages update
+          git status
+          ls
+          git log
+   - If it looks good, push the updates to the github server:
+          git push origin gh-pages
+   - Switch to a code branch: 
+          git checkout master
+   - Push the code branch (if not already done):
+          git push origin master
+   ]])
   
   return status
 end
@@ -111,13 +137,20 @@ end
 
 --- main
 local function main()
-  local status = true
+  local status, version = true
   
-  status = tag_release()
+  status, version = tag_release()
   if not status then
     print('  Failed to tag release!\n  Use "git tag" to review existing tags')
     os.exit(status)
   end
+  
+  status = update_gh_pages(version)
+  if not status then
+    print('  Failed to update gh-pages!\n Review the gh-pages branch!')
+    os.exit(status)
+  end
+  
   os.exit(status)
 end
 
