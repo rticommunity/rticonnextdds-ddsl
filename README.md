@@ -49,7 +49,8 @@ shape = {
 }
 ```
 
-DDSL brings the following capabilities to Lua (and therefore to platforms where Lua can be embedded).
+DDSL brings the following capabilities to Lua (and therefore to platforms where
+Lua can be embedded).
 
 1. DDSL is a language for describing datatypes in [Lua](http://www.lua.org/about.html). It can be used as replacement
 for data description in an [IDL](https://en.wikipedia.org/wiki/Interface_description_language). In particular:
@@ -102,6 +103,13 @@ Lua can be embedded (almost every platform).
    - *Code generators* that produce behavior the context of some operational 
    scenario, while adhering to an underlying datatype.
 
+8. DDSL is designed to integrate nicely with the
+[RTI Connector for Connext DDS](https://community.rti.com/downloads/experimental/rticonnextdds-connector) which provides a quick and easy way to access the power and functionality of [RTI Connext DDS](https://community.rti.com) from a 
+variety of different scripting languages including JavaScript, Python and Lua. 
+RTI Connext DDS is a popular software Connectivity Databus for the 
+[Industrial Internet of Things](https://www.rti.com) based on the [Data Distribution Service, a.k.a. DDS](http://portals.omg.org/dds/)
+open standard for IoT data connectivity.
+
 ![Datatype Algebra Diagram](http://rticommunity.github.io/rticonnextdds-ddsl/topics/doc/datatype_algebra.svg "Datatype Algebra")
 
 
@@ -115,10 +123,18 @@ lua -v
 ```
 [Install](http://www.lua.org/start.html) an updated Lua version if needed.
 
-- Download DDSL
+- Get DDSL
 
 ```bash
-# Download as a zip file.
+#--- Create directory for holding the DDSL release. 
+mkdir /path/to/ddsl/ 
+cd /path/to/ddsl/
+#--- Download the latest release to this directory from the release page:
+open https://github.com/rticommunity/rticonnextdds-ddsl/releases
+#--- unzip or untar the release, e.g.
+unzip 1.0.0.zip   # This will create a directory: 1.0.0/
+#--- We refer to the location of the release as `DDSL_HOME`, e.g.
+export DDSL_HOME=/path/to/ddsl/1.0.0/
 ```
 
 - Read the [ddsl.xtypes](http://rticommunity.github.io/rticonnextdds-ddsl/modules/ddsl.xtypes.html) module overview.
@@ -204,15 +220,17 @@ require 'logger'
 
   Install the above, if not present on your system.
 
-- Fork/clone the repository, and setup the client side git hooks. 
+- [Fork](https://help.github.com/articles/fork-a-repo/) and clone the repository.
+
+- Setup the client side git hooks in you local clone of the repository (fork)
    
 ```bash
 # setup client side hooks
 cd .git/hooks/
 ln -s ../../build/scripts/pre-commit.lua pre-commit
 ```
-  
-- Build the public API documentation. 
+
+- [OPTIONAL] Build the public API documentation. 
 
 ```bash
 cd doc/
@@ -221,9 +239,8 @@ ldoc .
 open out/html/index.html
 ```
 
-- Build all the documentation, both public and private. This may be helpful if 
-  you intend to create new type-systems or data model, or just want to 
-  understand the inner workings.
+- [OPTIONAL] Build all the documentation, both public and private. This may be helpful if you intend to create new type-systems or data model, or just want to
+understand the inner workings.
 
 ```bash
 cd doc/
@@ -234,6 +251,16 @@ open out/html/index.html
 
 - Review the [Documentation Conventions](http://rticommunity.github.io/rticonnextdds-ddsl/index.html) and 
    [Module Organization](http://rticommunity.github.io/rticonnextdds-ddsl/index.html).
+
+- [OPTIONAL: Eclipse Users] If you use the [Eclipse](https://eclipse.org/home/index.php) IDE, **Import...** the `rticonnextdds-ddsl` project located in 
+`build/eclipse`.
+
+```bash
+#--- Eclipse > File > Import... > Existing Projects into Workspace
+build/eclipse/
+```
+
+Eclipse [Lua Development Tools (LDT)](https://eclipse.org/ldt/) provides an excellent IDE for editing Lua code.
 
 - Add/Modify/Update Code
  
