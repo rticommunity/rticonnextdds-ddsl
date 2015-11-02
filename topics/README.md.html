@@ -129,12 +129,18 @@ shape = {
 </pre>
 
 
-<p>DDSL brings the following capabilities to Lua (and therefore to platforms where Lua can be embedded).</p>
+<p>DDSL brings the following capabilities to Lua (and therefore to platforms where
+Lua can be embedded).</p>
 
 <ol>
     <li><p>DDSL is a language for describing datatypes in <a href="http://www.lua.org/about.html">Lua</a>. It can be used as replacement
     for data description in an <a href="https://en.wikipedia.org/wiki/Interface_description_language">IDL</a>. In particular:</p></li>
-    <li><p><a href="http://www.omg.org/spec/DDS-XTypes/">X-Types</a> can be defined in DDSL.</p></li>
+    <li><p><a href="http://www.omg.org/spec/DDS-XTypes/">DDS X-Types</a> can be defined </p>
+
+<pre>
+<span class="keyword">in</span> DDSL.
+</pre>
+</li>
     <li><p>Datatypes can be imported from XML.</p></li>
     <li><p>Datatypes can be exported to IDL.</p></li>
 </ol>
@@ -174,9 +180,15 @@ shape = {
     data generation rules/constraints, while adhering to an underlying datatype.</p></li>
     <li><p><em>Code generators</em> that produce behavior the context of some operational
     scenario, while adhering to an underlying datatype.</p></li>
+    <li><p>DDSL is designed to integrate nicely with the
+    <a href="https://community.rti.com/downloads/experimental/rticonnextdds-connector">RTI Connector for Connext DDS</a> which provides a quick and easy way to access the power and functionality of <a href="https://community.rti.com">RTI Connext DDS</a> from a
+    variety of different scripting languages including JavaScript, Python and Lua.
+    RTI Connext DDS is a popular software Connectivity Databus for the
+    <a href="https://www.rti.com">Industrial Internet of Things</a> based on the <a href="http://portals.omg.org/dds/">Data Distribution Service, a.k.a. DDS</a>
+    open standard for IoT data connectivity.</p></li>
 </ol>
 
-<p><img src="doc/datatype_algebra.svg" alt="Datatype Algebra Diagram" title="Datatype Algebra"/></p>
+<p><img src="http://rticommunity.github.io/rticonnextdds-ddsl/topics/doc/datatype_algebra.svg" alt="Datatype Algebra Diagram" title="Datatype Algebra"/></p>
 
 
 <p><a name="Getting_Started"></a></p>
@@ -195,19 +207,24 @@ lua -v
 <p><a href="http://www.lua.org/start.html">Install</a> an updated Lua version if needed.</p>
 
 <ul>
-    <li>Download DDSL</li>
+    <li>Get DDSL</li>
 </ul>
 
 
 <pre>
-# Download as a zip file.
+#<span class="comment">--- Download the latest bundle:
+</span>open http://rticommunity.github.<span class="global">io</span>/rticonnextdds-ddsl/ddsl.zip
+#<span class="comment">--- unzip or untar the release, e.g.
+</span>unzip ddsl.zip   # This will create a directory: ddsl/
+#<span class="comment">--- We refer to the location of the release as <code>DDSL_HOME</code>, e.g.
+</span>export DDSL_HOME=/path/to/ddsl/
 </pre>
 
 
 <ul>
-    <li><p>Read the <a href="ddsl.xtypes">ddsl.xtypes</a> module overview.</p></li>
-    <li><p>Browse the <a href="ddsl.xtypes">ddsl.xtypes</a> API and usage examples.</p></li>
-    <li><p>Step through the <a href="examples/ddsl-tutorial.lua">tutorial</a> examples.</p></li>
+    <li><p>Read the <a href="http://rticommunity.github.io/rticonnextdds-ddsl/modules/ddsl.xtypes.html">ddsl.xtypes</a> module overview.</p></li>
+    <li><p>Browse the <a href="http://rticommunity.github.io/rticonnextdds-ddsl/modules/ddsl.xtypes.html">ddsl.xtypes</a> API and usage examples.</p></li>
+    <li><p>Step through the <a href="http://rticommunity.github.io/rticonnextdds-ddsl/examples/ddsl_tutorial.lua.html">tutorial</a> examples.</p></li>
 </ul>
 
 
@@ -218,7 +235,7 @@ lua ddsl_tutorial.lua
 
 
 <ul>
-    <li>Try out the scripts: <a href="xml2idl">xml2idl</a>.</li>
+    <li>Try out the scripts: <a href="http://rticommunity.github.io/rticonnextdds-ddsl/scripts/xml2idl.html">xml2idl</a>.</li>
 </ul>
 
 
@@ -235,7 +252,7 @@ cd test/
 
 
 <ul>
-    <li>Look at the the <a href="test/ddsl-xtypes-tester.lua">unit tests</a> for more advanced examples.</li>
+    <li>Look at the the <a href="https://github.com/rticommunity/rticonnextdds-ddsl/blob/develop/test/ddsl-xtypes-tester.lua">unit tests</a> for more advanced examples.</li>
 </ul>
 
 
@@ -257,7 +274,7 @@ export LUA_PATH+=\
 
 
 <ul>
-    <li>Create datatypes directly using the <a href="ddsl.xtypes">ddsl.xtypes</a> module.</li>
+    <li>Create datatypes directly using the <a href="http://rticommunity.github.io/rticonnextdds-ddsl/modules/ddsl.xtypes.html">ddsl.xtypes</a> module.</li>
 </ul>
 
 
@@ -267,7 +284,7 @@ export LUA_PATH+=\
 
 
 <ul>
-    <li>OR, Import datatypes from XML using the <a href="ddsl.xtypes.xml">ddsl.xtypes.xml</a>
+    <li>OR, Import datatypes from XML using the <a href="http://rticommunity.github.io/rticonnextdds-ddsl/modules/ddsl.xtypes.xml.html">ddsl.xtypes.xml</a>
     module.</li>
 </ul>
 
@@ -278,7 +295,7 @@ export LUA_PATH+=\
 
 
 <ul>
-    <li>Output IDL using the <a href="ddsl.xtypes.utils">ddsl.xtypes.utils</a> module.</li>
+    <li>Output IDL using the <a href="http://rticommunity.github.io/rticonnextdds-ddsl/modules/ddsl.xtypes.utils.html">ddsl.xtypes.utils</a> module.</li>
 </ul>
 
 
@@ -289,7 +306,7 @@ export LUA_PATH+=\
 
 <ul>
     <li>Create instances and use them in application code. Use the logger
-    <a href="logger">logger</a> module to log messages at different verbosity levels.</li>
+    <a href="http://rticommunity.github.io/rticonnextdds-ddsl/modules/logger.html">logger</a> module to log messages at different verbosity levels.</li>
 </ul>
 
 
@@ -321,7 +338,8 @@ export LUA_PATH+=\
 <p>  Install the above, if not present on your system.</p>
 
 <ul>
-    <li>Fork/clone the repository, and setup the client side git hooks. </li>
+    <li><p><a href="https://help.github.com/articles/fork-a-repo/">Fork</a> and clone the repository.</p></li>
+    <li><p>Setup the client side git hooks in you local clone of the repository (fork)</p></li>
 </ul>
 
 
@@ -333,7 +351,7 @@ ln -s ../../build/scripts/pre-commit.lua pre-commit
 
 
 <ul>
-    <li>Build the public API documentation. </li>
+    <li>[OPTIONAL] Build the public API documentation. </li>
 </ul>
 
 
@@ -346,8 +364,7 @@ open out/html/index.html
 
 
 <ul>
-    <li>Build all the documentation, both public and private. This may be helpful if
-    you intend to create new type-systems or data model, or just want to
+    <li>[OPTIONAL] Build all the documentation, both public and private. This may be helpful if you intend to create new type-systems or data model, or just want to
     understand the inner workings.</li>
 </ul>
 
@@ -361,8 +378,22 @@ open out/html/index.html
 
 
 <ul>
-    <li><p>Review the <a href="html/index.html">Documentation Conventions</a> and
-    <a href="html/index.html">Module Organization</a>.</p></li>
+    <li><p>Review the <a href="http://rticommunity.github.io/rticonnextdds-ddsl/index.html">Documentation Conventions</a> and
+    <a href="http://rticommunity.github.io/rticonnextdds-ddsl/index.html">Module Organization</a>.</p></li>
+    <li><p>[OPTIONAL: Eclipse Users] If you use the <a href="https://eclipse.org/home/index.php">Eclipse</a> IDE, <strong>Import...</strong> the <code>rticonnextdds-ddsl</code> project located in
+    <code>build/eclipse</code>.</p></li>
+</ul>
+
+
+<pre>
+#<span class="comment">--- Eclipse &gt; File &gt; Import... &gt; Existing Projects into Workspace
+</span>build/eclipse/
+</pre>
+
+
+<p>Eclipse <a href="https://eclipse.org/ldt/">Lua Development Tools (LDT)</a> provides an excellent IDE for editing Lua code.</p>
+
+<ul>
     <li><p>Add/Modify/Update Code</p></li>
     <li><p>Add unit tests</p></li>
     <li><p>Pass all the unit tests</p></li>
@@ -391,7 +422,7 @@ edit CHANGELOG.md
 
 
 <pre>
-./build/scripts/release.sh
+./build/scripts/new-build.sh
 # Output goes to <span class="backtick"><code>out/{bin,lib, html}</code></span>.
 </pre>
 
@@ -410,14 +441,13 @@ open out/html/index.html
 
 
 <ul>
-    <li><p>If everything looks great, send a <a href="https://help.github.com/articles/using-pull-requests/">pull request</a>; otherwise continue iterating on the previous steps.</p></li>
+    <li><p>If everything looks great, send a <a href="https://help.github.com/articles/using-pull-requests/">pull request</a>; otherwise continue iterating on the previous
+    steps.</p></li>
     <li><p>Create a new release.</p>
 
 <pre>
 # update the version number <span class="keyword">and</span> tag the sources
 ./build/scripts/new-release.lua
-# create release build: binaries <span class="keyword">and</span> documentation
-./build/scripts/release.sh
 </pre>
 </li>
 </ul>
@@ -447,7 +477,7 @@ limitations under the License.</p>
 </div> <!-- id="main" -->
 <div id="about">
 <i>generated by <a href="http://github.com/stevedonovan/LDoc">LDoc 1.4.3</a></i>
-<i style="float:right;">Last updated 2015-10-30 18:29:15 </i>
+<i style="float:right;">Last updated 2015-11-02 12:27:38 </i>
 </div> <!-- id="about" -->
 </div> <!-- id="container" -->
 </body>
