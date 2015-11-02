@@ -41,7 +41,8 @@ logger \
 for file in ${LIB_SRC}; do
     # NOTE: luac must correspond to the lua interpreter used to load these files
 	mkdir -p "${OUTPUT}/lib/lua/`dirname $file`"
-    luac -o ${OUTPUT}/lib/lua/${file}.lc ${DDSLHOME}/src/${file}.lua
+    #luac -o ${OUTPUT}/lib/lua/${file}.lc ${DDSLHOME}/src/${file}.lua
+    cp -p ${DDSLHOME}/src/${file}.lua ${OUTPUT}/lib/lua/${file}.lua 
 done
 echo "Created/Updated ${OUTPUT}/lib/lua!"
 
@@ -55,8 +56,10 @@ xml2idl \
 mkdir -p ${OUTPUT}/bin
 for file in ${BIN_SRC}; do
 	# NOTE: luac must correspond to the lua interpreter used to load these files
-    luac -o ${OUTPUT}/bin/${file}.lc ${DDSLHOME}/bin/${file}.lua
-    chmod a+x ${OUTPUT}/bin/${file}.lc
+    #luac -o ${OUTPUT}/bin/${file}.lc ${DDSLHOME}/bin/${file}.lua
+    #chmod a+x ${OUTPUT}/bin/${file}.lc
+    cp -p ${DDSLHOME}/bin/${file}.lua ${OUTPUT}/bin/${file}.lua 
+    chmod a+x ${OUTPUT}/bin/${file}.lua
 done
 
 # run script:
