@@ -55,6 +55,7 @@ limitations under the License.
 	            </enum>
 	        </module>
             <union name="XXXX_vvvvTrigger">
+                <!-- comment -->
                 <discriminator type="nonBasic"
                     nonBasicTypeName="DDS_xxxx_bbbbbbManagement::DDS_xxxx_vvvvManagement::EnumModule::xxxx_aa_bb_vvvvTrigger_UE" />
                 <case>

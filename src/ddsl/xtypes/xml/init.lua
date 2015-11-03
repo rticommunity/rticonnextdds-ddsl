@@ -223,13 +223,17 @@ tag2template = {
   end,
     
   enum = function(tag, ns)
-    local template = xtypes.enum{
-      [tag.xarg.name] = xtypes.EMPTY
-    }
+    local template = ns and ns[tag.xarg.name] -- already forward_dcl ?
 
-    -- add to the module namespace, so we can lookup by name
-    if ns then ns[#ns+1] = template end
-              
+    if not template then
+      template = xtypes.enum{
+        [tag.xarg.name] = xtypes.EMPTY
+      }
+
+      -- add to the module namespace, so we can lookup by name
+      if ns then ns[#ns+1] = template end
+    end
+               
     -- child tags
     for i, child in ipairs(tag) do
       if 'table' == type(child) then -- skip comments
@@ -250,11 +254,15 @@ tag2template = {
   end,
   
   struct = function (tag, ns)
-    local template = xtypes.struct{[tag.xarg.name]=xtypes.EMPTY}
+    local template = ns and ns[tag.xarg.name] -- already forward_dcl ?
     
-    -- add to the module namespace, so we can lookup by name
-    if ns then ns[#ns+1] = template end
-                   
+    if not template then
+      template = xtypes.struct{[tag.xarg.name]=xtypes.EMPTY}
+      
+      -- add to the module namespace, so we can lookup by name
+      if ns then ns[#ns+1] = template end
+    end
+                  
     -- base type    
     if tag.xarg.baseType or tag.xarg.baseClass then
       template[xtypes.BASE] = nslookup(tag.xarg.baseType or tag.xarg.baseClass, 
@@ -277,24 +285,38 @@ tag2template = {
   end,
   
   union = function (tag, ns)
+
+    local template = ns and ns[tag.xarg.name] -- already forward_dcl ?
     
-    local template
-    local disc
-    
-    -- child tags
+    -- discriminator
+    local disc = xtypes.long -- default
     for i, child in ipairs(tag) do
       if 'table' == type(child) then -- skip comments
-      
         if 'discriminator' == child.label then
           log.debug(tag.label, child.label, 
                            child.xarg.nonBasicTypeName or child.xarg.type)
-          disc = xmlattr2xtype.type(child.xarg, ns)
-          template=xtypes.union{[tag.xarg.name]={disc}}
-          
-          -- add to the module namespace, so we can lookup by name
-          if ns then ns[#ns+1] = template end
+          disc = xmlattr2xtype.type(child.xarg, ns)     
+        end
+      end
+    end
+    
+    -- create template, if not already created
+    if not template then
+      template = xtypes.union{[tag.xarg.name]={disc}}
       
-        elseif 'case' == child.label then
+      -- add to the module namespace, so we can lookup by name
+      if ns then ns[#ns+1] = template end
+    else
+      -- set the discriminator
+      template[xtypes.SWITCH] = disc
+    end
+
+    
+    -- cases:
+    for i, child in ipairs(tag) do
+      if 'table' == type(child) then -- skip comments
+      
+        if 'case' == child.label then
           local case = nil -- default
           for j, grandchild in ipairs(child) do
             log.debug(tag.label, child.label, grandchild.label, 
@@ -364,13 +386,19 @@ tag2template = {
 
     return template
   end,
-  
+
   include = function (tag, ns)
     local file, template = tag.xarg.file, nil
     if file then 
       template = file2xtypes(file, ns) 
     end
     return template
+  end,
+  
+  -- Forward declaration
+  forward_dcl = function (tag, ns)
+    -- tag.xarg.kind = enum | struct | union
+    return tag2template[tag.xarg.kind](tag, ns)
   end,
   
   -- Legacy tags

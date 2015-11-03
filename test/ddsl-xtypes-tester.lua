@@ -1923,6 +1923,7 @@ function Tester:test_xml_advanced()
     'xml-test-connector.xml',
     'xml-test-ddsc-types1.xml',
     'xml-test-union-enum.xml',
+    '../tutorial/types-lua.xml',
   }
   
   -- xml.log.verbosity(xml.log.TRACE)
