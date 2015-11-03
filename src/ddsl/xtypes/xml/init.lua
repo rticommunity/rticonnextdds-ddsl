@@ -352,6 +352,9 @@ tag2template = {
         local tag_handler = tag2template[child.label]
         if tag_handler then
           local xtype = tag_handler(child, template) -- change ns to this module
+        else
+          log.error(tag.label, child.label, child.xarg.name,
+                    'IGNORING Unrecognized tag in module!')
         end
       end
     end
@@ -402,7 +405,8 @@ local function xml2xtypes(xml, ns)
     log.debug(xml.label, xml.xarg.name or xml.xarg.file, 'END')
       
   else -- don't recognize the label as an xtype, visit the child nodes  
-
+    log.info(xml.label, 'SKIPPING Unrecognized tag in file!')
+    
     for i, child in ipairs(xml) do
       if 'table' == type(child) then -- skip comments
         template = xml2xtypes(child, ns) -- recursively process the child nodes
