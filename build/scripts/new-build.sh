@@ -74,16 +74,7 @@ echo "Created/Updated ${OUTPUT}/bin!"
 #------------------------------------------------------------------------------
 # examples:
 
-EXAMPLE_SRC="\
-ddsl_tutorial.lua \
-tutorial.lua \
-types.xml
-"
-
-mkdir -p ${OUTPUT}/tutorial
-for file in ${EXAMPLE_SRC}; do
-	cp -p ${DDSLHOME}/tutorial/${file} ${OUTPUT}/tutorial/${file}
-done
+cp -pr ${DDSLHOME}/tutorial ${OUTPUT}
 echo "Created/Updated ${OUTPUT}/tutorial!"
 
 #------------------------------------------------------------------------------
