@@ -25,6 +25,7 @@ limitations under the License.
 --- Update version number.
 -- @string file the lua file to update with the new version number
 -- @treturn boolean the status of updating the file: true | false
+-- @treturn string the version string 
 local function update_version(file)
   -- NOTE: The current working directory for hook scripts is always set to the
   -- root of the repository
@@ -52,7 +53,9 @@ end
 --============================================================================--
 
 --- Create annotated tag
--- @treturn boolean the status of tagging
+-- @treturn boolean the status of tagging: true | false
+-- @treturn string the version string 
+-- @treturn string the tag name
 local function tag_release(file)
  
   local answer, status, version
@@ -83,7 +86,7 @@ local function tag_release(file)
   if not status then return status end
   print('-> Tagged release: ', answer)
     
-  return status, version
+  return status, version, answer
 end
 
 --============================================================================--
@@ -105,31 +108,18 @@ local function update_gh_pages(version)
     os.exit(status)
   end
   
-  status = os.execute([[mv out .out; rm -rf *; mv .out out; mv out/html/* .]])
+  status = os.execute([[mv out .out; rm -rf *; mv .out/html/* .; git add *]])
   if not status then 
     print('  Failed to update gh-pages content\n  Aborting!')
     os.exit(status)
   end
   
-  status = os.execute([[git add *; git commit -m 'Version ]]..version..[[']])
+  status = os.execute([[mv .out out; git commit -m 'Version ]]..version..[[']])
   if not status then 
     print('  Failed to commit gh-page update\n  Aborting!')
     os.exit(status)
   end
-  
-  print([[TO DO:
-   - Review the gh-pages update
-          git status
-          ls
-          git log
-   - If it looks good, push the updates to the github server:
-          git push origin gh-pages
-   - Switch to a code branch: 
-          git checkout master
-   - Push the code branch (if not already done):
-          git push origin master
-   ]])
-  
+
   return status
 end
 
@@ -137,9 +127,9 @@ end
 
 --- main
 local function main()
-  local status, version = true
+  local status, version, tagname = true
   
-  status, version = tag_release()
+  status, version, tagname = tag_release()
   if not status then
     print('  Failed to tag release!\n  Use "git tag" to review existing tags')
     os.exit(status)
@@ -151,6 +141,21 @@ local function main()
     os.exit(status)
   end
   
+  print([[
+  TODO
+   - Review the gh-pages update
+          git status
+          git log
+          git ls-files
+          ls
+   - Review the tags
+          git tag
+          git show ]] .. tagname .. [[
+
+   - If everything looks good, push the updates to the origin
+          git push origin gh-pages
+          git push origin ]] .. tagname .. [[
+   ]])
   os.exit(status)
 end
 
