@@ -199,7 +199,7 @@ limitations under the License.
             <member name="m1" type="long"/>
         </case>
         <case>
-            <caseDiscriminator value="MyConst11"/>
+            <XcaseDiscriminator value="MyConst11"/>
             <caseDiscriminator value="false"/>
             <member name="m2" arrayDimensions="1,2" type="nonBasic" nonBasicTypeName="MyModule1::MyModule1Struct1"/>
         </case>
