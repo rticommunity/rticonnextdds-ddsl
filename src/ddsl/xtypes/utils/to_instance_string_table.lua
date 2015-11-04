@@ -99,7 +99,7 @@ local function to_instance_string_table(instance, result, template, base)
       if 'struct' == mytype then
         role = member[1]
       elseif 'union' == mytype then
-        role = member[2]
+        role = next(member, #member > 0 and #member or nil)
       end
 
       local role_instance = instance[role]

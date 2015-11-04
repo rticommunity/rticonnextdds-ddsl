@@ -22,16 +22,13 @@ local log = xtypes.log
 --============================================================================--
 
 --- IDL string representation of a member role.
--- 
--- @tab member a member definition in the following format
---    {role, template, [collection_qualifier,] [annotation1, annotation2, ...]}
+-- @string role the member role name 
+-- @tab role_defn a member role definition in the following format
+--    {template, [collection_qualifier,] [annotation1, annotation2, ...]}
 -- @xtemplate module the module to which the owner data model element belongs
 -- @treturn string IDL string representation of the idl member
-local function tostring_member(member, module)
+local function tostring_member(role, role_defn, module)
 
-  local role = member[1]    table.remove(member, 1) -- pop off the role
-  local role_defn = member
-    
   local template, seq
 
   if role_defn then
@@ -153,7 +150,7 @@ local function to_idl_string_table(instance, result, indent_string)
 
 	if 'typedef' == mytype then
     table.insert(result, string.format('%s%s %s', indent_string,  mytype,
-                  tostring_member({ myname,  instance() }, mymodule)))
+                  tostring_member(myname, { instance() }, mymodule)))
 		return result
 	end
 
@@ -196,44 +193,51 @@ local function to_idl_string_table(instance, result, indent_string)
 
 		for i = 1, #instance do -- walk through the model definition
 		    local member = instance[i]
+		    local role = member[1]    table.remove(member, 1)
         table.insert(result, string.format('%s%s', content_indent_string,
-                            tostring_member(member, mymodule)))
+                            tostring_member(role, member, mymodule)))
 		end
 
 	elseif 'union' == mytype then
 		for i = 1, #instance do -- walk through the model definition
-        local member = instance[i]
+      local case = instance[i]
         	
-				-- case
-			 local case = member[1]
-				if (nil == case) then
-				  table.insert(result,
-				               string.format("%sdefault :", content_indent_string))
-        elseif ('enum' == instance[xtypes.SWITCH][xtypes.KIND]()) then
-          case = instance[xtypes.SWITCH](case) -- lookup the enumerator name
+			-- caseDiscriminator
+      if 0 == #case then -- default case
+          table.insert(result,
+                       string.format("%sdefault :", content_indent_string))
+      end
+		  for _, caseDiscriminator in ipairs(case) do
+
+        if ('enum' == instance[xtypes.SWITCH][xtypes.KIND]()) then
+          -- lookup the enumerator name
+          local caseDiscriminator = instance[xtypes.SWITCH](caseDiscriminator) 
           local scopename
           if instance[xtypes.SWITCH][xtypes.NS] then
             scopename = xtypes.nsname(instance[xtypes.SWITCH][xtypes.NS],
                                      instance[xtypes.NS])
           end
           if scopename then
-             case = scopename .. '::' .. case
+             caseDiscriminator = scopename .. '::' .. caseDiscriminator
           end
           table.insert(result, string.format("%scase %s :",
-            content_indent_string, tostring(case)))
+            content_indent_string, tostring(caseDiscriminator)))
         elseif (xtypes.char == instance[xtypes.SWITCH]) then
 					table.insert(result, string.format("%scase '%s' :",
-						content_indent_string, tostring(case)))
+						content_indent_string, tostring(caseDiscriminator)))
 				else
 					table.insert(result, string.format("%scase %s :",
-						content_indent_string, tostring(case)))
+						content_indent_string, tostring(caseDiscriminator)))
 				end
-
-				-- member element
-				table.remove(member, 1) -- pop the 1st element (case)
-				table.insert(result, string.format('%s%s', 
-				                      content_indent_string .. '   ',
-				                      tostring_member(member, mymodule)))
+      end
+      
+			-- member
+			local role, roledef = next(case, #case > 0 and #case or nil)
+			if roledef then
+  			table.insert(result, string.format('%s%s', 
+  			                      content_indent_string .. '   ',
+  			                      tostring_member(role, roledef, mymodule)))
+  	  end
 		end
 
 	elseif 'enum' == mytype then

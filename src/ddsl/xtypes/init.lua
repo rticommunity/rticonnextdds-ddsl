@@ -933,7 +933,7 @@ xtypes.API[xtypes.STRUCT] = {
     elseif 'number' == type(key) then -- get from the model definition and pack
       local role, roledef = next(model[_.DEFN][key])
       
-      -- role, template, [collection,] [annotation1, annotation2, ...]
+      -- role, template, [array|sequence,] [annotation1, annotation2, ...]
       return table.pack(role, table.unpack(roledef))
  
     else -- delegate to the model definition
@@ -955,7 +955,7 @@ xtypes.API[xtypes.STRUCT] = {
 
     elseif 'number' == type(key) then -- member definition
       --  Format:
-      --  { role = { template, [collection,] [annotation1, annotation2, ...] } }
+      -- { role = {template, [array|sequence,] [annotation1, annotation2, ...]}}
 
       -- clear the old member definition and instance fields
       if model_defn[key] then
@@ -1078,15 +1078,15 @@ xtypes.API[xtypes.STRUCT] = {
 -- Unions --
 
 --- Create a union datatype.
--- @tparam {[string]={xtemplate,{case,[string]={...}},...} decl a table 
---  containing a union name mapped to a table as follows.
+-- @tparam {[string]={xtemplate,{caseDisc1,...caseDiscN,[string]={...}},...} decl 
+--  a table containing a union name mapped to a table as follows.
 --    { 
 --      MyUnion = { 
 --          xtemplate,
---          { case1, [ role1 = {...} ] }, 
---          { case2, [ role2 = {...} ] }, 
+--          { caseDisc11, ..., caseDisc1N, role1 = {...} }, 
+--          { caseDisc21, ..., caseDisc2N, role2 = {...} }, 
 --          ... 
---          { nil,   [ role2 = {...} ] } -- default
+--          { nil,   [ role = {...} ] } -- default
 --      }
 --    }
 --  where the member definition for a role is,
@@ -1101,17 +1101,17 @@ xtypes.API[xtypes.STRUCT] = {
 --  local MyUnion = xtypes.`union`{
 --    MyUnion = {
 --      <discriminator `atom` or `enum`>,  -- must be the 1st item
---
---      { case1,
---        [{role_1={xtemplate_1,[`array`_1|`sequence`_1,][`annotation`_1,...]}}]
+-- 
+--      {  caseDiscriminator11, caseDiscriminator12, ... caseDiscriminator1N,
+--         {role_1={xtemplate_1,[`array`_1|`sequence`_1,][`annotation`_1,...]}}
 --      },
 --        :
---      { caseM,
---        [{role_M={xtemplate_M,[`array`_M|`sequence`_M,][`annotation`_M,...]}}]
+--      {  caseDiscriminatorM1, caseDiscriminatorM2, ... caseDiscriminatorMN,
+--         {role_M={xtemplate_M,[`array`_M|`sequence`_M,][`annotation`_M,...]}}
 --      },
 --
 --      { nil, -- default
---        [{role={xtemplate,[`array`|`sequence`,][`annotation`,...]}}]
+--        {role={xtemplate,[`array`|`sequence`,][`annotation`,...]}}
 --
 --      -- OPTIONAL --
 --      `annotation`_x,
@@ -1125,18 +1125,29 @@ xtypes.API[xtypes.STRUCT] = {
 --    MyUnion = { <discriminator `atom` or `enum`> }
 --  }
 --
---  -- Get the i-th member:
---  print(table.unpack(MyUnion[i])) -- role_i, value_i
+--  -- Get the i-th case:
+--  -- { 
+--  --   caseDiscriminator1, caseDiscriminator2, ... caseDiscriminatorN,
+--  --   role = {template, [array|sequence,] [annotation1, annotation2, ...]
+--  -- }
+--  local case = MyUnion[i]
+--  local role, roledef = next(case, 1)
+--  print(table.unpack(case), ':', role, table.unpack(roledef)) 
 -- 
---  -- Set the i-th member:
---   MyUnion[i] = { case, [ { role = { xtemplate, 
---                                      [`array` | `sequence`,] 
---                                      [`annotation`, ...] } } ] },
+--  -- Set the i-th case:
+--  -- { 
+--  --   caseDiscriminator1, caseDiscriminator2, ... caseDiscriminatorN,
+--  --   role = {template, [array|sequence,] [annotation1, annotation2, ...]
+--  -- }
+--  MyUnion[i] = { 
+--      caseDiscriminator1, ... caseDiscriminatorN, 
+--      role = { xtemplate, [`array` | `sequence`,] [`annotation`, ...] }
+--  },
 --                                      
 --  -- After setting the i-th member, the following post-condition holds:
---  MyStruct.role == 'prefix.enclosing.scope.path.to.role'
+--  MyUnion.role == 'prefix.enclosing.scope.path.to.role'
 --
---  -- Delete the i-th member:
+--  -- Delete the i-th case:
 --  MyUnion[i] = nil  
 --
 --  
@@ -1150,11 +1161,14 @@ xtypes.API[xtypes.STRUCT] = {
 --  MyUnion._d == '#'
 --
 --  
--- -- Get the number of members in the union:
+-- -- Get the number of cases in the union:
 --  print(#MyUnion)
 --  
 --  -- Iterate over the model definition (ordered):
---  for i = 1, #MyUnion do print(table.unpack(MyUnion[i])) end
+--  for i = 1, #MyUnion do 
+--    local case = MyUnion[i]
+--    print(next(case, 1), ':', table.unpack(case)) 
+--  end
 --
 --  -- Iterate over instance members and the indexes (unordered):
 --  for k, v in pairs(MyUnion) do print(k, v) end
@@ -1202,17 +1216,19 @@ xtypes.API[xtypes.UNION] = {
       return value
       
     elseif 'number' == type(key) then -- get from the model definition and pack
-      local case = model[_.DEFN][key][1]
-      local role, roledef = next(model[_.DEFN][key], 1) -- case and 1 or nil)
-                         -- next(member, #member > 0 and #member or nil)
+      local case = model[_.DEFN][key]
+      local role, roledef = next(case, #case > 0 and #case or nil) -- member
       
-       -- case, role, template, [collection,] [annotation1, annotation2, ...]
+      --  Format:
+      --  { caseDiscriminator1, caseDiscriminator2, ... caseDiscriminatorN,
+      --    role = {template, [array|sequence,] [annotation1, annotation2, ...]}
+      --  } 
+      local result = { table.unpack(case) }
       if roledef then 
-        return table.pack(case, role, table.unpack(roledef))
-      else
-        return table.pack(case) -- just the case, no member
+          result[role] = { table.unpack(roledef) }
       end
- 
+      return result
+         
     else -- delegate to the model definition
       return model[_.DEFN][key]
     end
@@ -1237,9 +1253,11 @@ xtypes.API[xtypes.UNION] = {
       -- pre-condition: ensure discriminator is of a valid type
       xtypes.assert_case(discriminator, nil)-- nil => validate discriminator
 
-      -- pre-condition: ensure that 'cases' are compatible with discriminator
-      for i, v in ipairs(model_defn) do
-        xtypes.assert_case(discriminator, v[1])
+      -- pre-condition: ensure that caseDiscriminators are compatible
+      for _, case in ipairs(model_defn) do
+        for __, caseDiscriminator in ipairs(case) do
+          xtypes.assert_case(discriminator, caseDiscriminator)
+        end
       end
 
       -- update the discriminator
@@ -1248,13 +1266,14 @@ xtypes.API[xtypes.UNION] = {
 
     elseif 'number' == type(key) then -- member definition
       --  Format:
-      --   { case,
-      --     role = { template, [collection,] [annotation1, annotation2, ...] }
-      --   }
+      --  { caseDiscriminator1, caseDiscriminator2, ... caseDiscriminatorN,
+      --    role = {template, [array|sequence,] [annotation1, annotation2, ...]}
+      --  }
 
       -- clear the old member definition
       if model_defn[key] then
-        local old_role = next(model_defn[key], 1) -- 2nd array item
+        local case = model_defn[key]
+        local old_role = next(case, #case > 0 and #case or nil) -- member
 
         -- update instances: remove the old_role
         if old_role then
@@ -1266,18 +1285,26 @@ xtypes.API[xtypes.UNION] = {
         -- remove the key-th member definition
         table.remove(model_defn, key) -- do not want holes in array
       else
-        -- set the new role_defn
-        local case = xtypes.assert_case(model_defn[SWITCH], value[1])
-
-        -- is the case already defined?
-        for i, defn_i in ipairs(model_defn) do
-          assert(case ~= defn_i[1],
-            table.concat{template[NAME] or '', 
-                         ' : case exists: "', tostring(case), '"'})
+        local case_copy = {} -- make our own local copy
+        for _, caseDiscriminator in ipairs(value) do
+          caseDiscriminator = xtypes.assert_case(model_defn[SWITCH], 
+                                                 caseDiscriminator)
+  
+          -- is the caseDiscriminator already defined?
+          for __, case in ipairs(model_defn) do
+            for i = 1, #case do
+              assert(caseDiscriminator ~= case[i],
+                table.concat{template[NAME] or '', 
+                    ' : case discriminator exists: "',
+                     tostring(caseDiscriminator), '"'})
+            end
+          end
+          
+          table.insert(case_copy, caseDiscriminator)
         end
-
-        -- get the role and definition
-        local role, role_defn = next(value, 1) -- 2nd item after the 'case'
+        
+        -- get the role and definition: after the 'caseDiscriminator' array
+        local role, role_defn = next(value, #value > 0 and #value or nil) 
 
           -- add the role
         if role then
@@ -1290,19 +1317,14 @@ xtypes.API[xtypes.UNION] = {
           local role_instance = _.create_role_instance(role, role_defn)
 
           -- insert the new member definition
-          local role_defn_copy = {} -- make our own local copy
-          for i, v in ipairs(role_defn) do role_defn_copy[i] = v end
-          model_defn[key] = {
-            case,                     -- array of length 1
-            [role] = role_defn_copy   -- map with one entry
-          }
+          case_copy[role] = {} -- make our own local copy of role defn
+          for i, v in ipairs(role_defn) do case_copy[role][i] = v end
+          model_defn[key] = case_copy
 
           -- update instances: add the new role_instance
           _.update_instances(model, role, role_instance)
         else
-          model_defn[key] = {
-            case,         -- array of length 1
-          }
+          model_defn[key] = case_copy
         end
       end
 
@@ -1314,8 +1336,8 @@ xtypes.API[xtypes.UNION] = {
         -- accept the key if it is defined in the model definition
         -- e.g. could have been an optional member that was removed
         else
-          for i = 1, #model_defn do
-            if key == next(model_defn[i]) then
+          for _, case in ipairs(model_defn) do
+            if key == next(case, #case > 0 and #case or nil) then
                 rawset(template, key, value)
             end
           end
@@ -1329,13 +1351,19 @@ xtypes.API[xtypes.UNION] = {
   __call = function(template)
     local model = _.model(template)
     
-    for i, v in ipairs(model[_.DEFN]) do
-      if template._d == v[1] then 
-        local role = next(v, 1)
+    for _, case in ipairs(model[_.DEFN]) do
+      local found = (0 == #case and nil == template._d) -- default case
+      for i = 1, #case do
+        if template._d == case[i] then 
+          found = true
+        end
+      end
+      if found then
+        local role = next(case, #case > 0 and #case or nil) -- member
         return template[role]
       end
     end
-    return nil -- no match 
+    return nil -- no match
   end,
 }
 

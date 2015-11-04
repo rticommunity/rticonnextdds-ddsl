@@ -317,12 +317,13 @@ tag2template = {
       if 'table' == type(child) then -- skip comments
       
         if 'case' == child.label then
-          local case = nil -- default
+          local case = {} -- default
           for j, grandchild in ipairs(child) do
             log.debug(tag.label, child.label, grandchild.label, 
                   grandchild.xarg.name or grandchild.xarg.value)
             if 'table' == type(grandchild) then -- skip comments
               if 'caseDiscriminator' == grandchild.label then
+                 local caseDiscriminator
                  if 'default' ~= grandchild.xarg.value then
                  
                    if 'enum' == disc[xtypes.KIND]() then
@@ -330,22 +331,24 @@ tag2template = {
                      _, enumerator = nslookup(grandchild.xarg.value, ns)
                      assert(enumerator, 'invalid case enumerator: ' ..
                                          grandchild.xarg.value)
-                     case = disc[enumerator]
+                     caseDiscriminator = disc[enumerator]
                      assert(case, 'invalid case value: ' ..
                                    grandchild.xarg.value)
                    else 
-                     case = nslookup(grandchild.xarg.value, ns) or 
+                     caseDiscriminator = nslookup(grandchild.xarg.value, ns) or 
                             grandchild.xarg.value
                    end
                  end
+                
+                 table.insert(case, caseDiscriminator) -- build the case
               elseif 'member' == grandchild.label then
-                template[#template+1] = { 
-                  case, 
-                    [grandchild.xarg.name] = xarg2roledefn(grandchild.xarg, ns)
-                }
-              end
-            end
+                case[grandchild.xarg.name] = xarg2roledefn(grandchild.xarg, ns)
+              end  
+            end            
           end
+        
+          -- create the case entry:
+          template[#template+1] = case
         end
       end
     end

@@ -486,7 +486,7 @@ function Tester:test_union_char_imperative()
     -- remove m_real:
     local case = DynamicUnion[1] -- save the case
     DynamicUnion[1] = nil -- erase m_real
-    print("\n-- removed: double m_str --\n")
+    print("\n-- removed: string m_str --\n")
     self:print(DynamicUnion)
     assert(DynamicUnion.m_str == nil) 
  
@@ -494,11 +494,13 @@ function Tester:test_union_char_imperative()
     -- check the accessor syntax - returned value must be assignable
     -- add the previously saved case1 at the end, under a new value
     case[1] = 'S'
-    DynamicUnion[#DynamicUnion+1] = { case[1], [case[2]] = { case[3] } }
-    print("\n-- re-inserted modified case for m_str at the end --\n")
+    case[2] = 's'
+    DynamicUnion[#DynamicUnion+1] = case
+    print("\n-- re-inserted modified cases for m_str at the end --\n")
     self:print(DynamicUnion)
     assert(DynamicUnion.m_str == 'm_str')
-
+    case = DynamicUnion[#DynamicUnion]
+    assert(case[1] == 'S' and case[2] == 's')
    
     -- add an annotation
     DynamicUnion[xtypes.QUALIFIERS] = { 
@@ -530,7 +532,9 @@ function Tester:test_union_char_imperative()
     print("\n-- union definition iteration --", DynamicUnion)
     print(DynamicUnion[xtypes.KIND](), DynamicUnion[xtypes.NAME], #DynamicUnion)
     for i = 1, #DynamicUnion do 
-      print(table.unpack(DynamicUnion[i])) 
+      local case = DynamicUnion[i]
+      local role, roledef = next(case, #case > 0 and #case or nil)
+      print(role, roledef and table.unpack(roledef), ':', table.unpack(case)) 
     end
     assert(5 == #DynamicUnion)
 end
@@ -585,7 +589,7 @@ function Tester:test_union_short()
     TestUnion1 = {xtypes.short,
       { 1, 
           x = { xtypes.string() } },
-      { 2, 
+      { 2, 4, 5,  -- NOTE: multiple case discriminators
           y = { xtypes.long_double } },
       { nil, -- default 
           z = { xtypes.boolean } },
