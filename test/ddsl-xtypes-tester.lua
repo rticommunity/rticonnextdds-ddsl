@@ -452,7 +452,7 @@ function Tester:test_union_char_imperative()
     local DynamicUnion = xtypes.union{DynamicUnion={xtypes.char}} -- switch
     DynamicUnion[1] = { 's', m_str = { xtypes.string() } }
     DynamicUnion[2] = { 'i', m_int = { xtypes.short } }  
-    DynamicUnion[3] = { 'n' } -- no definition
+    DynamicUnion[3] = { 'n', 'N', m_num = { xtypes.long } } 
     DynamicUnion[4] = { nil, m_oct = { xtypes.octet } } -- default case
 
     --[[ un-comment to test error checking (expected to assert)

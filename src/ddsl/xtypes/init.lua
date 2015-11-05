@@ -1305,27 +1305,24 @@ xtypes.API[xtypes.UNION] = {
         
         -- get the role and definition: after the 'caseDiscriminator' array
         local role, role_defn = next(value, #value > 0 and #value or nil) 
+        assert(nil ~= role_defn, table.concat{template[NAME] or '', 
+                        ' : member must be defined: "', role, '"'})
 
-          -- add the role
-        if role then
+        -- is the role already defined?
+        assert(nil == rawget(template, role),-- check template
+          table.concat{template[NAME] or '', 
+                      ' : member name already defined: "', role, '"'})
 
-          -- is the role already defined?
-          assert(nil == rawget(template, role),-- check template
-            table.concat{template[NAME] or '', 
-                        ' : member name already defined: "', role, '"'})
+        local role_instance = _.create_role_instance(role, role_defn)
 
-          local role_instance = _.create_role_instance(role, role_defn)
+        -- insert the new member definition
+        case_copy[role] = {} -- make our own local copy of role defn
+        for i, v in ipairs(role_defn) do case_copy[role][i] = v end
+        model_defn[key] = case_copy
 
-          -- insert the new member definition
-          case_copy[role] = {} -- make our own local copy of role defn
-          for i, v in ipairs(role_defn) do case_copy[role][i] = v end
-          model_defn[key] = case_copy
+        -- update instances: add the new role_instance
+        _.update_instances(model, role, role_instance)
 
-          -- update instances: add the new role_instance
-          _.update_instances(model, role, role_instance)
-        else
-          model_defn[key] = case_copy
-        end
       end
 
     else
