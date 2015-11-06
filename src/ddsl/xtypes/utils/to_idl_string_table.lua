@@ -243,7 +243,7 @@ local function to_idl_string_table(instance, result, indent_string)
 
 	elseif 'enum' == mytype then
 		for i = 1, #instance do -- walk through the model definition
-			local role, ordinal = table.unpack(instance[i])
+			local role, ordinal = next(instance[i])
 						
 			local seperator, enumerator = '', nil
       if i < #instance then -- not the last one

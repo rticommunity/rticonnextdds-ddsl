@@ -645,15 +645,15 @@ xtypes.API[xtypes.ATOM] = {
 --  -- Create enum: declarative style
 --  local MyEnum = xtypes.`enum`{
 --    MyEnum = {
---          { role_1 = ordinal_1 },
+--          { enumerator_1 = ordinal_1 },
 --          :
---          { role_M = ordinal_M },
+--          { enumerator_M = ordinal_M },
 --
 --          -- OR --
 --
---          role_A,
+--          enumerator_A,
 --          :
---          role_Z,
+--          enumerator_Z,
 --
 --          -- OPTIONAL --
 --          `annotation`_x,
@@ -669,16 +669,17 @@ xtypes.API[xtypes.ATOM] = {
 --
 --
 --  -- Get the i-th member:
---  print(table.unpack{MyEnum[i]}) -- role_i, ordinal_i
---   
+--  local enumerator, ordinal = next(MyEnum[i])
+--  print(enumerator, ordinal)
+--  
 --  -- Set the i-th member:
---  MyEnum[i] = { new_role_i = new_ordinal_i }
+--  MyEnum[i] = { new_enumerator_i = new_ordinal_i }
 --  -- OR --
---  MyEnum[i] = role -- `ordinal` value = #MyEnum
+--  MyEnum[i] = enumerator -- `ordinal` value = #MyEnum
 --
 --  -- After setting the i-th member, the following post-conditions hold:
 --  MyEnum.role_i     == ordinal_i
---  MyEnum(ordinal_i) == role_i
+--  MyEnum(ordinal_i) == enumerator_i
 --
 --  -- Delete the i-th member:
 --  MyEnum[i] = nil
@@ -688,13 +689,13 @@ xtypes.API[xtypes.ATOM] = {
 --  print(#MyEnum)
 -- 
 --  -- Iterate over the model definition (ordered):
---  for i = 1, #MyEnum do print(table.unpack(MyEnum[i])) end
+--  for i = 1, #MyEnum do print(next(MyEnum[i])) end
 --
 --  -- Iterate over enum and ordinal values (unordered):
 --  for k, v in pairs(MyEnum) do print(k, v) end
 --  
 --  -- Lookup the enumerator name for an ordinal value:
---  print(MyEnum(ordinal)) -- role
+--  print(MyEnum(ordinal))
 -- @within Datatypes
 function xtypes.enum(decl)
   local name, defn = xtypes.parse_decl(decl)
@@ -729,10 +730,16 @@ xtypes.API[xtypes.ENUM] = {
       return value
       
     elseif 'number' == type(key) then -- get from the model definition and pack
-       -- enumerator, ordinal_value
-       local enumerator, ordinal = next(model[_.DEFN][key]) 
-       return table.pack(enumerator, ordinal)
- 
+      -- enumerator, ordinal_value
+      local enumerator, ordinal = next(model[_.DEFN][key]) 
+
+      --  Format:
+      -- { enumerator = ordinal_value }      
+      local result = {}
+      result[enumerator] = ordinal
+
+      return result
+
     else -- delegate to the model definition
       return model[_.DEFN][key]
     end
@@ -766,14 +773,14 @@ xtypes.API[xtypes.ENUM] = {
 
       else
         --  Format:
-        --    { role = role_defn (i.e. ordinal value) }
+        --    { enumerator = ordinal_value }  
         -- OR
-        --    role
+        --    enumerator
         local role, role_defn
         if 'table' ==  type(value) then
-          role, role_defn = next(value)        --  { role = value }
+          role, role_defn = next(value)        -- { enumerator = ordinal_value }  
         else
-           role, role_defn = value, #template  --    role
+           role, role_defn = value, #template  -- enumerator
         end
 
         -- role must be a string

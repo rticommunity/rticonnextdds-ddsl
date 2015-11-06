@@ -88,6 +88,7 @@ function Tester:test_enum_imperative()
   assert(MyEnum.JUN == 5)
   
   -- delete an entry
+  local old_3 =  MyEnum[3]
   print("\n-- deleted 3rd entry --\n")
   MyEnum[3] = nil
   self:print(MyEnum)
@@ -100,6 +101,11 @@ function Tester:test_enum_imperative()
   assert(MyEnum.JAN == 100)
   
   assert(5 == #MyEnum)
+  
+  print("\n-- added back old 3rd entry at the end --\n")
+  MyEnum[#MyEnum+1] = old_3
+  self:print(MyEnum)
+  assert(MyEnum.MAR == 2)  
 end
 
 Tester[#Tester+1] = 'test_enum1'
