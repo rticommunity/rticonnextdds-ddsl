@@ -195,8 +195,8 @@ tutorial = Tutorial:new{
       
       show("--- iterate through the model members ---")
       for i = 1, #ShapeType do
-        local member = ShapeType[i]
-        show('', table.unpack(member))
+        local role, roledef = next(ShapeType[i])
+        show('', role, table.unpack(roledef))
       end
      
       return MAX_COLOR_LEN, ShapeType
@@ -288,7 +288,7 @@ tutorial = Tutorial:new{
       
       show("--- iterate through instance members : ordered ---")
       for i = 1, #ShapeType do
-        local role = ShapeType[i][1]
+        local role = next(ShapeType[i])
         show('', role, '=', shape[role])
       end
      
