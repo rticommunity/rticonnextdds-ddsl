@@ -208,6 +208,7 @@ function Tester:test_struct_imperative()
     
     
     -- remove z:
+    local member_z = DynamicShapeType[#DynamicShapeType]
     DynamicShapeType[#DynamicShapeType] = nil 
     print("\n-- removed: string z --\n")
     self:print(DynamicShapeType)
@@ -227,6 +228,12 @@ function Tester:test_struct_imperative()
     self:print(DynamicShapeType)
     assert(DynamicShapeType.org == 'org')  
     assert(DynamicShapeType[xtypes.BASE] == Bases.Base1)
+    
+    Bases.Base1[#Bases.Base1+1] = member_z
+    print("\n-- Base1: added the old z to the base class --\n")
+    self:print(Bases.Base1)
+    self:print(DynamicShapeType)
+    assert(DynamicShapeType.z == 'z') 
     
     -- redefine base class
     Bases.Base2 = xtypes.struct{
@@ -279,7 +286,8 @@ function Tester:test_struct_imperative()
     print("\n-- struct definition iteration --", DynamicShapeType)
     print(DynamicShapeType[xtypes.KIND](), DynamicShapeType[xtypes.NAME], #DynamicShapeType)
     for i = 1, #DynamicShapeType do
-      print(table.unpack(DynamicShapeType[i]))
+      local role, roledef = next(DynamicShapeType[i])
+      print(role, table.unpack(roledef))
     end
     assert(4 == #DynamicShapeType)
 end
@@ -319,7 +327,8 @@ function Tester:test_struct_basechange()
    -- change base class and add it
   Test.BaseStruct[1] = { w = { xtypes.string() } }
   Test.DerivedStruct[xtypes.BASE] = Test.BaseStruct
-  assert(Test.BaseStruct[1][2] == xtypes.string())
+  local role, roledef = next(Test.BaseStruct[1])
+  assert(roledef[1] == xtypes.string())
   
   print("\n-- DerivedStruct added modified base class --\n")
   self:print(Test.BaseStruct)
@@ -330,7 +339,8 @@ function Tester:test_struct_basechange()
 
   -- modify a filed in the base class 
   Test.BaseStruct[2] = { z = { xtypes.string() } }
-  assert(Test.BaseStruct[2][2] == xtypes.string())
+  role, roledef = next(Test.BaseStruct[2])
+  assert(roledef[1] == xtypes.string())
   
   print("\n-- DerivedStruct base changed from y : long -> z : string --\n")
   self:print(Test.BaseStruct)
@@ -2092,17 +2102,18 @@ function Tester:test_api()
   -- members:
   for i = 1, #ShapeType do
     local member = ShapeType[i]
-    print(table.concat{'member[', i, '] = '}, table.unpack(member))
+    local role, roledef = next(member)
+    print(table.concat{'member[', i, '] = '}, role, table.unpack(roledef))
                   
     -- member qualifiers (annotations/collection)
-    for j = 2, #member do
+    for j = 2, #roledef do
       print('\t\t',
-            member[j],
-            'NAME = ', member[j][xtypes.NAME],   -- member type name
-            'KIND = ', member[j][xtypes.KIND]()) -- member type kind
-      if 'annotation' == member[j][xtypes.KIND]() and
-         #member[j] > 0 then 
-            print('\t\t\t\t', table.concat(member[j], ' '))--attributes
+            roledef[j],
+            'NAME = ', roledef[j][xtypes.NAME],   -- member type name
+            'KIND = ', roledef[j][xtypes.KIND]()) -- member type kind
+      if 'annotation' == roledef[j][xtypes.KIND]() and
+         #roledef[j] > 0 then 
+            print('\t\t\t\t', table.concat(roledef[j], ' '))--attributes
       end
     end
   end
@@ -2116,13 +2127,13 @@ function Tester:test_api()
   
   print('ShapeType:')
   for i = 1, #ShapeType do
-    local role = ShapeType[i][1]
+    local role = next(ShapeType[i])
     print('', role, ' = ', ShapeType[role]) -- default members values
   end
 
   print('shape:')
   for i = 1, #ShapeType do
-    local role = ShapeType[i][1]
+    local role = next(ShapeType[i])
     print('', role, '=', shape[role])       -- shape instance members
   end
     
@@ -2145,7 +2156,7 @@ function Tester:test_api()
   
   print('shape (modified): ordered - removed field shapesize')
   for i = 1, #ShapeType do
-    local role = ShapeType[i][1]
+    local role = next(ShapeType[i])
     print('', role, '=', shape[role])     -- shape instance members
   end
   print('shape (modified): unordered - removed field shapesize')
@@ -2158,7 +2169,7 @@ function Tester:test_api()
   assert(shape.shapesize == 50)
   print('shape (modified): ordered - added field shapesize')
   for i = 1, #ShapeType do
-    local role = ShapeType[i][1]
+    local role = next(ShapeType[i])
     print('', role, ' = ', shape[role])     -- shape instance members
   end
   print('shape (modified): unordered - added field shapesize')

@@ -854,8 +854,13 @@ xtypes.API[xtypes.ENUM] = {
 --  
 --  
 --  -- Get the i-th member:
---  print(table.unpack(MyStruct[i])) -- role_i, value_i
--- 
+--  -- { 
+--  --   role = {template, [array|sequence,] [annotation1, annotation2, ...]
+--  -- }
+--  local member = MyStruct[i]
+--  local role, roledef = next(member)
+--  print(role, table.unpack(roledef))
+--  
 --  -- Set the i-th member:
 --  MyStruct[i] = { new_role = { new_xtemplate, 
 --                                [new_`array` | new_`sequence`,] 
@@ -870,10 +875,10 @@ xtypes.API[xtypes.ENUM] = {
 --
 --
 --  -- Get the base class:
---   print(MyStruct[xtypes.`BASE`])
+--  print(MyStruct[xtypes.`BASE`])
 --   
 --  -- Set base class:
---   MyStruct[xtypes.`BASE`] = `YourStruct` -- defined elsewhere
+--  MyStruct[xtypes.`BASE`] = `YourStruct` -- defined elsewhere
 --
 --
 --  -- Get the number of members in the struct (not including base struct):
@@ -881,7 +886,10 @@ xtypes.API[xtypes.ENUM] = {
 --  
 --  -- Iterate over the model definition (ordered):
 --  -- NOTE: does NOT show the roles defined in the base `struct` datatype
---  for i = 1, #MyStruct do print(table.unpack(MyStruct[i])) end
+--  for i = 1, #MyStruct do 
+--    local role, roledef = next(MyStruct[i])
+--    print(role, table.unpack(roledef))
+--  end
 --
 --  -- Iterate over instance members and the indexes (unordered):
 --  -- NOTE: shows roles defined in the base `struct` datatype
@@ -932,9 +940,13 @@ xtypes.API[xtypes.STRUCT] = {
       
     elseif 'number' == type(key) then -- get from the model definition and pack
       local role, roledef = next(model[_.DEFN][key])
+
+      --  Format:
+      -- { role = {template, [array|sequence,] [annotation1, annotation2, ...]}}      
+      local result = {}
+      result[role] = { table.unpack(roledef) }
       
-      -- role, template, [array|sequence,] [annotation1, annotation2, ...]
-      return table.pack(role, table.unpack(roledef))
+      return result
  
     else -- delegate to the model definition
       return model[_.DEFN][key]
@@ -1132,7 +1144,7 @@ xtypes.API[xtypes.STRUCT] = {
 --  -- }
 --  local case = MyUnion[i]
 --  local role, roledef = next(case, #case)
---  print(table.unpack(case), ':', role, table.unpack(roledef)) 
+--  print(role, table.unpack(roledef), ':', table.unpack(case))
 -- 
 --  -- Set the i-th case:
 --  -- { 
@@ -1225,9 +1237,7 @@ xtypes.API[xtypes.UNION] = {
       --    role = {template, [array|sequence,] [annotation1, annotation2, ...]}
       --  } 
       local result = { table.unpack(case) }
-      if roledef then 
-          result[role] = { table.unpack(roledef) }
-      end
+      result[role] = { table.unpack(roledef) }
       return result
          
     else -- delegate to the model definition

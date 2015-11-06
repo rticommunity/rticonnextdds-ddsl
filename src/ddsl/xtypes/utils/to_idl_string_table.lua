@@ -192,10 +192,9 @@ local function to_idl_string_table(instance, result, indent_string)
 	elseif 'struct' == mytype then
 
 		for i = 1, #instance do -- walk through the model definition
-		    local member = instance[i]
-		    local role = member[1]    table.remove(member, 1)
+		    local role, roledef = next(instance[i])
         table.insert(result, string.format('%s%s', content_indent_string,
-                            tostring_member(role, member, mymodule)))
+                            tostring_member(role, roledef, mymodule)))
 		end
 
 	elseif 'union' == mytype then
