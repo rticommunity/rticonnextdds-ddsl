@@ -789,6 +789,18 @@ function Tester:test_union_instance()
   print('--- instance: after yellow ---', myUnion())
   for k, v in pairs(myUnion) do print('\t', k, v) end
   assert(myUnion() == myUnion.default)
+  
+  print('--- role lookup ---') 
+  for role, value in pairs(myUnion) do
+    if '_d' ~= role then
+      print(role, table.unpack(myUnion(role)))
+    end
+  end
+  assert(myUnion('junk') == nil)
+  assert(myUnion('_d') == nil)
+  assert(myUnion('red')[1] == xtypes.long)
+  assert(myUnion('green')[1] == xtypes.float)
+  assert(myUnion('default')[1] == xtypes.boolean)
 end
 
 Tester[#Tester+1] = 'test_struct_complex1'
@@ -2124,6 +2136,7 @@ function Tester:test_api()
     end
   end
 
+
   print('--- Instance API ---') 
 
   -- given an instance, retrieve the template from the instance
@@ -2149,6 +2162,16 @@ function Tester:test_api()
     print('', role, value)
   end
   
+
+  print('--- role lookup ---') 
+  for role, value in pairs(shape) do
+    print(role, table.unpack(ShapeType(role)))
+  end
+  assert(ShapeType('junk') == nil)
+  assert(ShapeType('shapesize')[1] == xtypes.long)
+  assert(ShapeType('color')[1] == xtypes.string(128))
+  
+
   print('-- shape (instance) modifications ---')
   
   -- cannot add new fields

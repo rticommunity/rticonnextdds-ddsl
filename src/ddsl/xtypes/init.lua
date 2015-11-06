@@ -812,8 +812,8 @@ xtypes.API[xtypes.ENUM] = {
   end,
   
   -- Lookup the enumerator string, given an ordinal value
-  -- @param ordinal[in] the ordinal value
-  -- @param the enumerator string or 'nil' if it is not a valid ordinal value
+  -- @param ordinal the ordinal value
+  -- @return the enumerator string or 'nil' if it is not a valid ordinal value
   __call = function(template, ordinal)
     for k, v in pairs(template) do
       if v == ordinal then return k end
@@ -868,6 +868,12 @@ xtypes.API[xtypes.ENUM] = {
 --  local role, roledef = next(member)
 --  print(role, table.unpack(roledef))
 --  
+--  -- Get a member definition by role name. The return value is a table 
+--  -- in the same format that is used to define a member role:
+--  --  { template, [array|sequence,] [annotation1, annotation2, ...] }
+--  print(table.unpack(MyStruct(role)))
+--  
+--  
 --  -- Set the i-th member:
 --  MyStruct[i] = { new_role = { new_xtemplate, 
 --                                [new_`array` | new_`sequence`,] 
@@ -876,6 +882,7 @@ xtypes.API[xtypes.ENUM] = {
 --  -- After setting the i-th member, the following post-condition holds:
 --  -- NOTE: also holds for roles defined in the base `struct` datatype
 --  MyStruct.role == 'prefix.enclosing.scope.path.to.role'
+--  MyStruct(role) == <the role definition>
 --  
 --  -- Delete the i-th member:
 --  MyStruct[i] = nil
@@ -900,7 +907,7 @@ xtypes.API[xtypes.ENUM] = {
 --
 --  -- Iterate over instance members and the indexes (unordered):
 --  -- NOTE: shows roles defined in the base `struct` datatype
---  for k, v in pairs(MyStruct) do print(k, v) end
+--  for role, value in pairs(MyStruct) do print(role, value) end
 -- @within Datatypes
 function xtypes.struct(decl)
   local name, defn = xtypes.parse_decl(decl)
@@ -1090,14 +1097,29 @@ xtypes.API[xtypes.STRUCT] = {
           end
         end
     end
-  end
+  end,
+  
+  -- Get a member definition.
+  -- @string role the member name to lookup
+  -- @return the role definition in the format
+  --    { template, [array|sequence,] [annotation1, annotation2, ...] }
+  --   or nil if the role is not defined.
+  __call = function(template, role)
+    for i = 1, #template do
+      local role_i, roledef_i = next(template[i])
+      if role_i == role then 
+        return roledef_i
+      end
+    end
+    return nil 
+  end,
 }
 
 --============================================================================--
 -- Unions --
 
 --- Create a union datatype.
--- @tparam {[string]={xtemplate,{caseDisc1,...caseDiscN,[string]={...}},...} decl 
+-- @tparam {[string]={xtemplate,{caseDisc1,...caseDiscN,string]={...}},...}} decl 
 --  a table containing a union name mapped to a table as follows.
 --    { 
 --      MyUnion = { 
@@ -1105,11 +1127,12 @@ xtypes.API[xtypes.STRUCT] = {
 --          { caseDisc11, ..., caseDisc1N, role1 = {...} }, 
 --          { caseDisc21, ..., caseDisc2N, role2 = {...} }, 
 --          ... 
---          { EMPTY,   [ role = {...} ] } -- default
+--          { xtypes.EMPTY, [..., caseDiscN,]  role = {...} } -- default
 --      }
 --    }
 --  where the member definition for a role is,
 --    { role = { xtemplate, [array | sequence,] [annotation, ...] } }
+--  and `xtypes.EMPTY` is treated as the built-in **default** discriminator.
 -- @treturn table an union datatype template (`xtemplate`).
 --   The table is a map of the role names to flattened out strings that 
 --   represent the path from the enclosing top-level union scope to the role.
@@ -1122,15 +1145,15 @@ xtypes.API[xtypes.STRUCT] = {
 --      <discriminator `atom` or `enum`>,  -- must be the 1st item
 -- 
 --      {  caseDiscriminator11, caseDiscriminator12, ... caseDiscriminator1N,
---         {role_1={xtemplate_1,[`array`_1|`sequence`_1,][`annotation`_1,...]}}
+--         role_1 = {xtemplate_1,[`array`_1|`sequence`_1,][`annotation`_1,...]}
 --      },
 --        :
 --      {  caseDiscriminatorM1, caseDiscriminatorM2, ... caseDiscriminatorMN,
---         {role_M={xtemplate_M,[`array`_M|`sequence`_M,][`annotation`_M,...]}}
+--         role_M = {xtemplate_M,[`array`_M|`sequence`_M,][`annotation`_M,...]}
 --      },
 --
---      { EMPTY, [ caseDiscriminator1, ..., caseDiscriminatorN, ] -- default
---        {role={xtemplate,[`array`|`sequence`,][`annotation`,...]}}
+--      { `xtypes.EMPTY`, [..., caseDiscriminatorN, ] -- default
+--        role = { xtemplate,[`array`|`sequence`,][`annotation`,...]}
 --
 --      -- OPTIONAL --
 --      `annotation`_x,
@@ -1147,7 +1170,7 @@ xtypes.API[xtypes.STRUCT] = {
 --  -- Get the i-th case:
 --  -- { 
 --  --   caseDiscriminator1, caseDiscriminator2, ... caseDiscriminatorN,
---  --   role = {template, [array|sequence,] [annotation1, annotation2, ...]
+--  --   role = { template, [array|sequence,] [annotation1, annotation2, ...] }
 --  -- }
 --  local case = MyUnion[i]
 --  local role, roledef = next(case, #case)
@@ -1156,7 +1179,7 @@ xtypes.API[xtypes.STRUCT] = {
 --  -- Set the i-th case:
 --  -- { 
 --  --   caseDiscriminator1, caseDiscriminator2, ... caseDiscriminatorN,
---  --   role = {template, [array|sequence,] [annotation1, annotation2, ...]
+--  --   role = { template, [array|sequence,] [annotation1, annotation2, ...] }
 --  -- }
 --  MyUnion[i] = { 
 --      caseDiscriminator1, ... caseDiscriminatorN, 
@@ -1165,7 +1188,8 @@ xtypes.API[xtypes.STRUCT] = {
 --                                      
 --  -- After setting the i-th member, the following post-condition holds:
 --  MyUnion.role == 'prefix.enclosing.scope.path.to.role'
---
+--  MyUnion(role) == <the role definition>
+--  
 --  -- Delete the i-th case:
 --  MyUnion[i] = nil  
 --
@@ -1178,7 +1202,6 @@ xtypes.API[xtypes.STRUCT] = {
 --
 -- -- After setting the discriminator, the following post-condition holds:
 --  MyUnion._d == '#'
---
 --  
 -- -- Get the number of cases in the union:
 --  print(#MyUnion)
@@ -1191,11 +1214,16 @@ xtypes.API[xtypes.STRUCT] = {
 --  end
 --
 --  -- Iterate over instance members and the indexes (unordered):
---  for k, v in pairs(MyUnion) do print(k, v) end
+--  for role, value in pairs(MyUnion) do print(role, value) end
 --  
 -- -- Retrieve the currectly selected member
--- NOTE: i.e. the member selected by current discriminator value, `MyUnion._d`
+-- -- i.e. the member selected by current discriminator value, `MyUnion._d`
 -- print(MyUnion()) -- may be `nil` if there is no default case discriminator
+-- 
+--  -- Lookup a member definition by role name. The return value is a table 
+--  -- in the same format that is used to define a member role:
+--  --  { template, [array|sequence,] [annotation1, annotation2, ...] }
+--  print(table.unpack(MyUnion(role)))
 -- @within Datatypes
 function xtypes.union(decl)
   local name, defn = xtypes.parse_decl(decl)
@@ -1369,25 +1397,51 @@ xtypes.API[xtypes.UNION] = {
     end
   end,
   
-  -- Get the selected member
-  -- @param the selected member, based on the current discriminator value _d,
-  --        or 'nil' if the discriminator does not match any case (no default)
-  __call = function(template)
-    local model = _.model(template)
-    
-    local default_role = nil
-    for _, case in ipairs(model[_.DEFN]) do
-      for i = 1, #case do
-        if template._d == case[i] then 
-          local role = next(case, #case)   -- matched member role
-          return template[role]
+  -- Get the currently selected member OR Get a member definition.
+  -- @string role[opt=nil] the member name to lookup OR 
+  --   **nil** to lookup the currently selected member
+  -- @return When called with out an argument, returns the selected 
+  --   member, based on the current discriminator value _d, or 'nil' if the 
+  --   discriminator does not match any case (no default).
+  --   When called with an argument, returns the role definition in the format
+  --    { template, [array|sequence,] [annotation1, annotation2, ...] }
+  --   or nil if the role is not defined.
+  __call = function(template, role)
+  
+    local function lookup_selected_member()
+        local model = _.model(template)
+        
+        local default_role = nil
+        for _, case in ipairs(model[_.DEFN]) do
+          for i = 1, #case do
+            if template._d == case[i] then 
+              local role = next(case, #case)   -- matched member role
+              return template[role]
+            end
+            if EMPTY == case[i] then
+              default_role = next(case, #case) -- default member role
+            end
+          end
         end
-        if EMPTY == case[i] then
-          default_role = next(case, #case) -- default member role
+        return default_role and template[default_role] or nil -- default
+    end
+    
+    local function lookup_role_definition(role)
+      for i = 1, #template do
+        local case = template[i]
+        local role_i, roledef_i = next(case, #case)
+        if role_i == role then 
+          return roledef_i
         end
       end
+      return nil 
     end
-    return default_role and template[default_role] or nil -- default
+    
+    if nil ~= role then -- member lookup?
+      return '_d' ~= role and lookup_role_definition(role) or nil
+    end
+    
+    return lookup_selected_member()
   end,
 }
 
