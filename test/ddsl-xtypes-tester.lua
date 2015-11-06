@@ -453,7 +453,7 @@ function Tester:test_union_char_imperative()
     DynamicUnion[1] = { 's', m_str = { xtypes.string() } }
     DynamicUnion[2] = { 'i', m_int = { xtypes.short } }  
     DynamicUnion[3] = { 'n', 'N', m_num = { xtypes.long } } 
-    DynamicUnion[4] = { nil, m_oct = { xtypes.octet } } -- default case
+    DynamicUnion[4] = { 'd', xtypes.EMPTY, m_oct = { xtypes.octet } } -- default
 
     --[[ un-comment to test error checking (expected to assert)
     DynamicUnion[#DynamicUnion+1] = 
@@ -544,7 +544,7 @@ function Tester:test_union_char_imperative2()
     local DynamicUnion2 = xtypes.union{DynamicUnion2={xtypes.char}} -- switch
     DynamicUnion2[1] = { 's', m_str = { xtypes.string() } }
     DynamicUnion2[2] = { 'i', m_int = { xtypes.short } }  
-    DynamicUnion2[3] = { nil, m_oct = { xtypes.octet } } -- default case
+    DynamicUnion2[3] = { xtypes.EMPTY, m_oct = { xtypes.octet } } -- default
     
     local DynamicStruct2 = xtypes.struct{
       DynamicStruct2 = {
@@ -591,7 +591,7 @@ function Tester:test_union_short()
           x = { xtypes.string() } },
       { 2, 4, 5,  -- NOTE: multiple case discriminators
           y = { xtypes.long_double } },
-      { nil, -- default 
+      { xtypes.EMPTY, -- default 
           z = { xtypes.boolean } },
     }
   }
@@ -626,7 +626,7 @@ function Tester:test_union_typedefchar()
         name = { Test.Name, xtypes.Key } },
       { 'a', 
         address = { Test.Address } },
-      { nil, -- default
+      { xtypes.EMPTY, -- default
         x = { xtypes.double } },
     }
   }
@@ -661,7 +661,7 @@ function Tester:test_union_enum()
         name = { Test.Name } },
       { Test.Days.TUE, 
         address = { Test.Address } },
-      { nil, -- default
+      { xtypes.EMPTY, -- default
          x = { xtypes.double } },    
       xtypes.Extensibility{'EXTENSIBLE_EXTENSIBILITY',domain=5},
     }
@@ -717,7 +717,7 @@ end
 
 Tester[#Tester+1] = 'test_union_instance'
 function Tester:test_union_instance()
-  local MyEnum = xtypes.enum{MyEnum = {'RED', 'GREEN', 'BLUE'}}
+  local MyEnum = xtypes.enum{MyEnum = {'RED', 'GREEN', 'BLUE', 'YELLOW'}}
   self:print(MyEnum)
   
   local MyUnion = xtypes.union{
@@ -726,7 +726,8 @@ function Tester:test_union_instance()
           red = { xtypes.long } },
       { MyEnum.GREEN, 
           green = { xtypes.float } },          
-      { nil, -- default 
+      { MyEnum.BLUE, 
+        xtypes.EMPTY, -- default 
           default = { xtypes.boolean } },
     }
   }
@@ -734,7 +735,7 @@ function Tester:test_union_instance()
   
   -- datatype
   assert(MyUnion._d == '#')
-  assert(MyUnion() == nil)
+  assert(MyUnion() == MyUnion.default)
 
   
   -- instance
@@ -742,9 +743,9 @@ function Tester:test_union_instance()
   
   print('--- instance: initial ---', myUnion())
   for k, v in pairs(myUnion) do print('\t', k, v) end
-  assert(myUnion() == nil) -- accessor string is NOT a valid discriminator
+  assert(myUnion() == myUnion.default) -- accessor string matches default case
   
-  myUnion._d = nil
+  myUnion._d = xtypes.EMPTY
   myUnion.default = false
   print('--- instance: after default ---', myUnion())
   for k, v in pairs(myUnion) do print('\t', k, v) end
@@ -763,9 +764,15 @@ function Tester:test_union_instance()
   assert(myUnion() == myUnion.green)
   
   myUnion._d = MyEnum.BLUE
+  myUnion.default = true
   print('--- instance: after blue ---', myUnion())
   for k, v in pairs(myUnion) do print('\t', k, v) end
-  assert(myUnion() == nil)
+  assert(myUnion() == myUnion.default)
+  
+  myUnion._d = 'junk'
+  print('--- instance: after yellow ---', myUnion())
+  for k, v in pairs(myUnion) do print('\t', k, v) end
+  assert(myUnion() == myUnion.default)
 end
 
 Tester[#Tester+1] = 'test_struct_complex1'
@@ -1331,7 +1338,7 @@ function Tester:test_arrays2()
           days = { Test.Days, xtypes.array(6, 9) }},
         
         -- 3-D
-        {nil,
+        {xtypes.EMPTY,
           names = { Test.Name, xtypes.array(12, 15, 18) }},  
       }
   }

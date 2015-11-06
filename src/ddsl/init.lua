@@ -198,6 +198,8 @@ _.log.version = require('ddsl.version')
 --============================================================================--
 -- Models 
 
+setmetatable(_.EMPTY, { __tostring = function() return 'EMPTY' end, })
+
 --- Create a new 'empty' template.
 -- @string name the name of the underlying datatype model
 -- @param kind the kind of the underlying datatype model

@@ -324,8 +324,9 @@ tag2template = {
             if 'table' == type(grandchild) then -- skip comments
               if 'caseDiscriminator' == grandchild.label then
                  local caseDiscriminator
-                 if 'default' ~= grandchild.xarg.value then
-                 
+                 if 'default' == grandchild.xarg.value then
+                   caseDiscriminator = xtypes.EMPTY
+                 else
                    if 'enum' == disc[xtypes.KIND]() then
                      local _, enumerator
                      _, enumerator = nslookup(grandchild.xarg.value, ns)

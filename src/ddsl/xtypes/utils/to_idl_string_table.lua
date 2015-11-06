@@ -203,13 +203,13 @@ local function to_idl_string_table(instance, result, indent_string)
       local case = instance[i]
         	
 			-- caseDiscriminator
-      if 0 == #case then -- default case
-          table.insert(result,
-                       string.format("%sdefault :", content_indent_string))
-      end
 		  for _, caseDiscriminator in ipairs(case) do
 
-        if ('enum' == instance[xtypes.SWITCH][xtypes.KIND]()) then
+        if (xtypes.EMPTY == caseDiscriminator) then
+          table.insert(result,
+                       string.format("%sdefault :", content_indent_string))
+                       
+        elseif ('enum' == instance[xtypes.SWITCH][xtypes.KIND]()) then
           -- lookup the enumerator name
           local caseDiscriminator = instance[xtypes.SWITCH](caseDiscriminator) 
           local scopename
@@ -222,9 +222,11 @@ local function to_idl_string_table(instance, result, indent_string)
           end
           table.insert(result, string.format("%scase %s :",
             content_indent_string, tostring(caseDiscriminator)))
+        
         elseif (xtypes.char == instance[xtypes.SWITCH]) then
 					table.insert(result, string.format("%scase '%s' :",
 						content_indent_string, tostring(caseDiscriminator)))
+                       
 				else
 					table.insert(result, string.format("%scase %s :",
 						content_indent_string, tostring(caseDiscriminator)))

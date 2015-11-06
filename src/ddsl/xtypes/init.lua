@@ -1086,7 +1086,7 @@ xtypes.API[xtypes.STRUCT] = {
 --          { caseDisc11, ..., caseDisc1N, role1 = {...} }, 
 --          { caseDisc21, ..., caseDisc2N, role2 = {...} }, 
 --          ... 
---          { nil,   [ role = {...} ] } -- default
+--          { EMPTY,   [ role = {...} ] } -- default
 --      }
 --    }
 --  where the member definition for a role is,
@@ -1110,7 +1110,7 @@ xtypes.API[xtypes.STRUCT] = {
 --         {role_M={xtemplate_M,[`array`_M|`sequence`_M,][`annotation`_M,...]}}
 --      },
 --
---      { nil, -- default
+--      { EMPTY, [ caseDiscriminator1, ..., caseDiscriminatorN, ] -- default
 --        {role={xtemplate,[`array`|`sequence`,][`annotation`,...]}}
 --
 --      -- OPTIONAL --
@@ -1175,7 +1175,7 @@ xtypes.API[xtypes.STRUCT] = {
 --  
 -- -- Retrieve the currectly selected member
 -- NOTE: i.e. the member selected by current discriminator value, `MyUnion._d`
--- print(MyUnion()) -- may be `nil`
+-- print(MyUnion()) -- may be `nil` if there is no default case discriminator
 -- @within Datatypes
 function xtypes.union(decl)
   local name, defn = xtypes.parse_decl(decl)
@@ -1256,7 +1256,9 @@ xtypes.API[xtypes.UNION] = {
       -- pre-condition: ensure that caseDiscriminators are compatible
       for _, case in ipairs(model_defn) do
         for __, caseDiscriminator in ipairs(case) do
-          xtypes.assert_case(discriminator, caseDiscriminator)
+          if EMPTY ~= caseDiscriminator then -- not default
+            xtypes.assert_case(discriminator, caseDiscriminator)
+          end
         end
       end
 
@@ -1286,10 +1288,17 @@ xtypes.API[xtypes.UNION] = {
         table.remove(model_defn, key) -- do not want holes in array
       else
         local case_copy = {} -- make our own local copy
+        
+        -- ensure at least one 'caseDiscriminator':
+        assert(0 < #value, table.concat{template[NAME] or '', 
+                        ' : expecting at least one case discriminator'})
+                                
         for _, caseDiscriminator in ipairs(value) do
-          caseDiscriminator = xtypes.assert_case(model_defn[SWITCH], 
-                                                 caseDiscriminator)
-  
+          if EMPTY ~= caseDiscriminator then -- not default
+            caseDiscriminator = xtypes.assert_case(model_defn[SWITCH], 
+                                                   caseDiscriminator)
+          end
+          
           -- is the caseDiscriminator already defined?
           for __, case in ipairs(model_defn) do
             for i = 1, #case do
@@ -1344,23 +1353,23 @@ xtypes.API[xtypes.UNION] = {
   
   -- Get the selected member
   -- @param the selected member, based on the current discriminator value _d,
-  --        or 'nil' if the discriminator does not match any case
+  --        or 'nil' if the discriminator does not match any case (no default)
   __call = function(template)
     local model = _.model(template)
     
+    local default_role = nil
     for _, case in ipairs(model[_.DEFN]) do
-      local found = (0 == #case and nil == template._d) -- default case
       for i = 1, #case do
         if template._d == case[i] then 
-          found = true
+          local role = next(case, #case)   -- matched member role
+          return template[role]
+        end
+        if EMPTY == case[i] then
+          default_role = next(case, #case) -- default member role
         end
       end
-      if found then
-        local role = next(case, #case > 0 and #case or nil) -- member
-        return template[role]
-      end
     end
-    return nil -- no match
+    return default_role and template[default_role] or nil -- default
   end,
 }
 
