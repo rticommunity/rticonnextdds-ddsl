@@ -234,7 +234,7 @@ local function to_idl_string_table(instance, result, indent_string)
       end
       
 			-- member
-			local role, roledef = next(case, #case > 0 and #case or nil)
+			local role, roledef = next(case, #case)
 			if roledef then
   			table.insert(result, string.format('%s%s', 
   			                      content_indent_string .. '   ',

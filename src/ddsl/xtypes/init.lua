@@ -1131,7 +1131,7 @@ xtypes.API[xtypes.STRUCT] = {
 --  --   role = {template, [array|sequence,] [annotation1, annotation2, ...]
 --  -- }
 --  local case = MyUnion[i]
---  local role, roledef = next(case, 1)
+--  local role, roledef = next(case, #case)
 --  print(table.unpack(case), ':', role, table.unpack(roledef)) 
 -- 
 --  -- Set the i-th case:
@@ -1167,7 +1167,8 @@ xtypes.API[xtypes.STRUCT] = {
 --  -- Iterate over the model definition (ordered):
 --  for i = 1, #MyUnion do 
 --    local case = MyUnion[i]
---    print(next(case, 1), ':', table.unpack(case)) 
+--    local role, roledef = next(case, #case)
+--    print(role, table.unpack(roledef), ':', table.unpack(case)) 
 --  end
 --
 --  -- Iterate over instance members and the indexes (unordered):
@@ -1217,7 +1218,7 @@ xtypes.API[xtypes.UNION] = {
       
     elseif 'number' == type(key) then -- get from the model definition and pack
       local case = model[_.DEFN][key]
-      local role, roledef = next(case, #case > 0 and #case or nil) -- member
+      local role, roledef = next(case, #case) -- member
       
       --  Format:
       --  { caseDiscriminator1, caseDiscriminator2, ... caseDiscriminatorN,
@@ -1275,7 +1276,7 @@ xtypes.API[xtypes.UNION] = {
       -- clear the old member definition
       if model_defn[key] then
         local case = model_defn[key]
-        local old_role = next(case, #case > 0 and #case or nil) -- member
+        local old_role = next(case, #case) -- member
 
         -- update instances: remove the old_role
         if old_role then
@@ -1313,7 +1314,7 @@ xtypes.API[xtypes.UNION] = {
         end
         
         -- get the role and definition: after the 'caseDiscriminator' array
-        local role, role_defn = next(value, #value > 0 and #value or nil) 
+        local role, role_defn = next(value, #value) 
         assert(nil ~= role_defn, table.concat{template[NAME] or '', 
                         ' : member must be defined: "', role, '"'})
 

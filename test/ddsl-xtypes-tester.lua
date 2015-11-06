@@ -533,8 +533,8 @@ function Tester:test_union_char_imperative()
     print(DynamicUnion[xtypes.KIND](), DynamicUnion[xtypes.NAME], #DynamicUnion)
     for i = 1, #DynamicUnion do 
       local case = DynamicUnion[i]
-      local role, roledef = next(case, #case > 0 and #case or nil)
-      print(role, roledef and table.unpack(roledef), ':', table.unpack(case)) 
+      local role, roledef = next(case, #case)
+      print(role, table.unpack(roledef), ':', table.unpack(case)) 
     end
     assert(5 == #DynamicUnion)
 end
