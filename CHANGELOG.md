@@ -3,8 +3,8 @@
 1.0.0
 
 - First Public Release
-- Stable Implementation
 - Fully documented API
+- Stable Implementation
 - Unit tested
 - XML import
 - IDL export

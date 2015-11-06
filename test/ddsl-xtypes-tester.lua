@@ -549,8 +549,9 @@ function Tester:test_union_char_imperative()
     print(DynamicUnion[xtypes.KIND](), DynamicUnion[xtypes.NAME], #DynamicUnion)
     for i = 1, #DynamicUnion do 
       local case = DynamicUnion[i]
+      print(table.unpack(case))
       local role, roledef = next(case, #case)
-      print(role, table.unpack(roledef), ':', table.unpack(case)) 
+      print('\t', role, table.unpack(roledef))
     end
     assert(5 == #DynamicUnion)
 end
@@ -2167,9 +2168,10 @@ function Tester:test_api()
   for role, value in pairs(shape) do
     print(role, table.unpack(ShapeType(role)))
   end
-  assert(ShapeType('junk') == nil)
-  assert(ShapeType('shapesize')[1] == xtypes.long)
-  assert(ShapeType('color')[1] == xtypes.string(128))
+  assert(#shape == 4)
+  assert(shape('junk') == nil)
+  assert(shape('shapesize')[1] == xtypes.long)
+  assert(shape('color')[1] == xtypes.string(128))
   
 
   print('-- shape (instance) modifications ---')

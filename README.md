@@ -38,8 +38,11 @@ local ShapeType = xtypes.struct{
 ```
 
 An instance created from a DDSL datatype will have a form that adheres to the 
-the underlying datatype. For example, an instance of `ShapeType` will 
-have the form:
+the underlying datatype. 
+```
+local shape = xtypes.new_instance(ShapeType)
+```
+The `shape` instance of `ShapeType` will have the default value of:
 ```Lua
 shape = {
     x           = 'x',
@@ -48,6 +51,38 @@ shape = {
     color       = 'color'
 }
 ```
+The fields can be used to retrive the instances values from some storage system.
+The are correctly constructed for deeply nested datatypes.
+
+The new instance can be used to store a shape object:
+```Lua
+-- Fields in the underlying datatype are allowed:
+shape.color     = 'GREEN'
+shape.shapesize = 44  
+shape.x         = 99
+shape.y         = 77
+
+-- But, fields NOT in the datatype are NOT allowed:
+shape.z         = 111  -- will get dropped
+assert(shape.z == nil) -- 'z' not allowed
+```
+The `shape` instance can be queried for the underlying datatypes of its fields:
+```Lua
+-- color:
+assert(shape('color')[1] == xtypes.string(128))
+print(table.unpack(shape('color')) -- string<128>   @Key
+
+-- number of members
+print(#shape) -- 4
+```
+We can iterate through all the member names, values, and datatypes:
+```Lua
+for name, value in pairs(shape) do 
+  --    name  value   :   datatype
+  print(name, value, ':', table.unpack(shape(name)))
+end
+```
+
 
 DDSL brings the following capabilities to Lua (and therefore to platforms where
 Lua can be embedded).
@@ -56,7 +91,7 @@ Lua can be embedded).
 for data description in an [IDL](https://en.wikipedia.org/wiki/Interface_description_language). In particular:
 
    - [DDS X-Types](http://www.omg.org/spec/DDS-XTypes/) can be defined 
-     in DDSL.
+   in DDSL.
    - Datatypes can be imported from XML.
    - Datatypes can be exported to IDL.
    

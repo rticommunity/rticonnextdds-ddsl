@@ -254,7 +254,7 @@ tutorial = Tutorial:new{
       }
      
       show('--- initialize the shape instance from shape_manual table ---')
-      for role, _ in pairs(shape_manual) do
+      for role, _ in pairs(shape) do
         shape[role] = shape_manual[role]
         show('\t', role, shape[role])
       end
@@ -282,16 +282,17 @@ tutorial = Tutorial:new{
       local MAX_COLOR_LEN,ShapeType,shape = tutorial:dolesson('shape_instance')
       
       show("--- iterate through instance members : unordered ---")
-      for role, _ in pairs(shape) do
-        show('', role, '=', shape[role])
+      for role, value in pairs(shape) do 
+        show(role, value, ':', table.unpack(shape(role)))
       end
       
+      
       show("--- iterate through instance members : ordered ---")
-      for i = 1, #ShapeType do
-        local role = next(ShapeType[i])
-        show('', role, '=', shape[role])
+      for i = 1, #shape do
+        local role, roledef = next(shape[i])
+        show(role, shape[role], ':', table.unpack(roledef))
       end
-     
+
       return shape
     end
   },

@@ -140,31 +140,31 @@ local xtypes = {
   -- @treturn string 'annotation'
   ANNOTATION = function() return 'annotation' end,
   
-  --- Atom kind.
+  --- `atom` kind.
   -- @treturn string 'atom'
   ATOM       = function() return 'atom' end,
   
-  --- Ennumeration kind.
+  --- `enum`eration kind.
   -- @treturn string 'enum'
   ENUM       = function() return 'enum' end,
   
-  --- Struct kind.
+  --- `struct` kind.
   -- @treturn string 'struct'
   STRUCT     = function() return 'struct' end,
   
-  --- Union kind.
+  --- `union` kind.
   -- @treturn string 'union'
   UNION      = function() return 'union' end,
 
-  --- Typedef kind.
+  --- `typedef` kind.
   -- @treturn string 'typedef'
   TYPEDEF    = function() return 'typedef' end,
   
-  --- Constant kind.
+  --- `const`ant kind.
   -- @treturn string 'const'
   CONST      = function() return 'const' end,
   
-  --- Module kind.
+  --- `module` kind.
   -- @treturn string 'module'
   MODULE     = function() return 'module' end,
   
@@ -666,33 +666,38 @@ xtypes.API[xtypes.ATOM] = {
 --  MyEnum = xtypes.`enum`{
 --    MyEnum = xtypes.`EMPTY`
 --  }  
---
---
---  -- Get the i-th member:
---  local enumerator, ordinal = next(MyEnum[i])
---  print(enumerator, ordinal)
 --  
 --  -- Set the i-th member:
---  MyEnum[i] = { new_enumerator_i = new_ordinal_i }
+--  MyEnum[i] = { enumerator_i = ordinal_i }
 --  -- OR --
---  MyEnum[i] = enumerator -- `ordinal` value = #MyEnum
+--  MyEnum[i] = enumerator_i -- default: `ordinal`_i = #MyEnum
 --
 --  -- After setting the i-th member, the following post-conditions hold:
---  MyEnum.role_i     == ordinal_i
---  MyEnum(ordinal_i) == enumerator_i
+--  MyEnum[enumerator_i]     == ordinal_i
+--  MyEnum(ordinal_i)        == enumerator_i
+--
 --
 --  -- Delete the i-th member:
 --  MyEnum[i] = nil
 --  
---  
+--
 --  -- Get the number of enumerators in the enum:
 --  print(#MyEnum)
+--  
+--  
+--  -- Get the i-th member:
+--  local enumerator, ordinal = next(MyEnum[i])
+--  print(enumerator, ordinal)
+--  
+--  -- Get the enumerator's ordinal value:
+--  print(MyEnum[enumerator])
+--  
 -- 
 --  -- Iterate over the model definition (ordered):
 --  for i = 1, #MyEnum do print(next(MyEnum[i])) end
 --
 --  -- Iterate over enum and ordinal values (unordered):
---  for k, v in pairs(MyEnum) do print(k, v) end
+--  for enumerator, ordinal in pairs(MyEnum) do print(enumerator, ordinal) end
 --  
 --  -- Lookup the enumerator name for an ordinal value:
 --  print(MyEnum(ordinal))
@@ -859,6 +864,28 @@ xtypes.API[xtypes.ENUM] = {
 --    MyStruct = { <optional base `struct`> } | xtypes.`EMPTY`
 --  }
 --  
+--  -- Set the i-th member:
+--  MyStruct[i] = { new_role = { new_xtemplate, 
+--                                [new_`array` | new_`sequence`,] 
+--                                [new_`annotation`, ...] } }
+--  
+--  -- After setting the i-th member, the following post-condition holds:
+--  -- NOTE: also holds for roles defined in the base `struct` datatype
+--  MyStruct[role] == 'prefix.enclosing.scope.path.to.role'
+--  MyStruct(role) == <the role definition>
+--  
+--  
+--  -- Delete the i-th member:
+--  MyStruct[i] = nil
+--
+--   
+--  -- Set base class:
+--  MyStruct[xtypes.`BASE`] = `YourStruct` -- defined elsewhere
+--
+--
+---  -- Get the number of members in the struct (not including base struct):
+--  print(#MyStruct)
+--  
 --  
 --  -- Get the i-th member:
 --  -- { 
@@ -871,32 +898,17 @@ xtypes.API[xtypes.ENUM] = {
 --  -- Get a member definition by role name. The return value is a table 
 --  -- in the same format that is used to define a member role:
 --  --  { template, [array|sequence,] [annotation1, annotation2, ...] }
---  print(table.unpack(MyStruct(role)))
+--  local roledef = MyStruct(role)
+--  print(table.unpack(roledef))
 --  
 --  
---  -- Set the i-th member:
---  MyStruct[i] = { new_role = { new_xtemplate, 
---                                [new_`array` | new_`sequence`,] 
---                                [new_`annotation`, ...] } }
+--  -- Get the member role's value
+--  print(MyStruct[role])   -- an accessor string into some storage system
 --  
---  -- After setting the i-th member, the following post-condition holds:
---  -- NOTE: also holds for roles defined in the base `struct` datatype
---  MyStruct.role == 'prefix.enclosing.scope.path.to.role'
---  MyStruct(role) == <the role definition>
---  
---  -- Delete the i-th member:
---  MyStruct[i] = nil
---
 --
 --  -- Get the base class:
 --  print(MyStruct[xtypes.`BASE`])
---   
---  -- Set base class:
---  MyStruct[xtypes.`BASE`] = `YourStruct` -- defined elsewhere
---
---
---  -- Get the number of members in the struct (not including base struct):
---  print(#MyStruct)
+--  
 --  
 --  -- Iterate over the model definition (ordered):
 --  -- NOTE: does NOT show the roles defined in the base `struct` datatype
@@ -907,7 +919,9 @@ xtypes.API[xtypes.ENUM] = {
 --
 --  -- Iterate over instance members and the indexes (unordered):
 --  -- NOTE: shows roles defined in the base `struct` datatype
---  for role, value in pairs(MyStruct) do print(role, value) end
+--  for role, value in pairs(MyStruct) do 
+--    print(role, value, table.unpack(MyStruct(role))) 
+--  end
 -- @within Datatypes
 function xtypes.struct(decl)
   local name, defn = xtypes.parse_decl(decl)
@@ -1167,15 +1181,6 @@ xtypes.API[xtypes.STRUCT] = {
 --    MyUnion = { <discriminator `atom` or `enum`> }
 --  }
 --
---  -- Get the i-th case:
---  -- { 
---  --   caseDiscriminator1, caseDiscriminator2, ... caseDiscriminatorN,
---  --   role = { template, [array|sequence,] [annotation1, annotation2, ...] }
---  -- }
---  local case = MyUnion[i]
---  local role, roledef = next(case, #case)
---  print(role, table.unpack(roledef), ':', table.unpack(case))
--- 
 --  -- Set the i-th case:
 --  -- { 
 --  --   caseDiscriminator1, caseDiscriminator2, ... caseDiscriminatorN,
@@ -1187,24 +1192,54 @@ xtypes.API[xtypes.STRUCT] = {
 --  },
 --                                      
 --  -- After setting the i-th member, the following post-condition holds:
---  MyUnion.role == 'prefix.enclosing.scope.path.to.role'
+--  MyUnion[role] == 'prefix.enclosing.scope.path.to.role'
 --  MyUnion(role) == <the role definition>
+--  
 --  
 --  -- Delete the i-th case:
 --  MyUnion[i] = nil  
 --
 --  
---  -- Get the discriminator:
---   print(MyUnion[xtypes.`SWITCH`])
---
---  -- Set the discriminator:
+--  -- Set the discriminator type definition:
 --   MyUnion[xtypes.`SWITCH`] = <discriminator `atom` or `enum`>
 --
 -- -- After setting the discriminator, the following post-condition holds:
 --  MyUnion._d == '#'
 --  
+--  
 -- -- Get the number of cases in the union:
 --  print(#MyUnion)
+--  
+--  
+--  -- Get the i-th case:
+--  -- { 
+--  --   caseDiscriminator1, caseDiscriminator2, ... caseDiscriminatorN,
+--  --   role = { template, [array|sequence,] [annotation1, annotation2, ...] }
+--  -- }
+--  local case = MyUnion[i]
+--  print(table.unpack(case))
+--  local role, roledef = next(case, #case)
+--  print('\t', role, table.unpack(roledef))
+-- 
+--  -- Get a member definition by role name. The return value is a table 
+--  -- in the same format that is used to define a member role:
+--  --  { template, [array|sequence,] [annotation1, annotation2, ...] }
+--  local roledef = MyUnion(role)
+--  print(table.unpack(roledef))
+--
+--  -- Get the member role's value
+--  print(MyUnion[role])   -- an accessor string into some storage system
+--
+--  -- Get the discriminator type definition:
+--   print(MyUnion[xtypes.`SWITCH`])
+--
+--  -- Get the discriminator's value
+--  print(MyUnion._d)   -- an accessor string into some storage system
+--  
+-- -- Get the currectly selected member's value.
+-- -- i.e. the member selected by current discriminator value, `MyUnion._d`
+-- print(MyUnion()) -- may be `nil`, e.g. when there is no default discriminator
+-- 
 --  
 --  -- Iterate over the model definition (ordered):
 --  for i = 1, #MyUnion do 
@@ -1214,16 +1249,9 @@ xtypes.API[xtypes.STRUCT] = {
 --  end
 --
 --  -- Iterate over instance members and the indexes (unordered):
---  for role, value in pairs(MyUnion) do print(role, value) end
---  
--- -- Retrieve the currectly selected member
--- -- i.e. the member selected by current discriminator value, `MyUnion._d`
--- print(MyUnion()) -- may be `nil` if there is no default case discriminator
--- 
---  -- Lookup a member definition by role name. The return value is a table 
---  -- in the same format that is used to define a member role:
---  --  { template, [array|sequence,] [annotation1, annotation2, ...] }
---  print(table.unpack(MyUnion(role)))
+--  for role, value in pairs(MyUnion) do 
+--    print(role, value, table.unpack(MyUnion(role))) 
+--  end
 -- @within Datatypes
 function xtypes.union(decl)
   local name, defn = xtypes.parse_decl(decl)
