@@ -160,7 +160,7 @@ tutorial = Tutorial:new{
       
       show('--- import datatypes defined in XML ---')
       local datatypes = xml.filelist2xtypes({
-            'types.xml',
+            'tutorial.xml',
       })
         
       show('--- export datatypes to IDL ---')

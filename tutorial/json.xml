@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- 
+Copyright (C) 2015 Real-Time Innovations, Inc.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+-->
+<types xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:noNamespaceSchemaLocation="/Applications/rti_connext_dds-5.2.0/bin/../resource/app/app_support/rtiddsgen/schema/rti_dds_topic_types.xsd">
+	<module name="JSON">
+		<forward_dcl name="pair" kind="struct" />
+		<typedef name="object" sequenceMaxLength="-1" type="nonBasic"
+			nonBasicTypeName="JSON::pair" />
+		<forward_dcl name="value" kind="union" />
+		<typedef name="array" sequenceMaxLength="-1" type="nonBasic"
+			nonBasicTypeName="JSON::value" />
+		<enum name="constants">
+			<enumerator name="JSON_FALSE" />
+			<enumerator name="JSON_TRUE" />
+			<enumerator name="JSON_NULL" />
+		</enum>
+		<enum name="kind">
+			<enumerator name="STRING" />
+			<enumerator name="NUMBER" />
+			<enumerator name="OBJECT" />
+			<enumerator name="ARRAY" />
+		</enum>
+		<union name="value">
+			<discriminator type="nonBasic" nonBasicTypeName="JSON::kind" />
+			<case>
+				<caseDiscriminator value="(JSON::STRING)" />
+				<member name="s" id="1" type="string" />
+			</case>
+			<case>
+				<caseDiscriminator value="(JSON::NUMBER)" />
+				<member name="n" id="2" type="double" />
+			</case>
+			<case>
+				<caseDiscriminator value="(JSON::OBJECT)" />
+				<member name="o" id="3" type="nonBasic" nonBasicTypeName="JSON::object" />
+			</case>
+			<case>
+				<caseDiscriminator value="(JSON::ARRAY)" />
+				<member name="a" id="4" type="nonBasic" nonBasicTypeName="JSON::array" />
+			</case>
+			<case>
+				<caseDiscriminator value="default" />
+				<member name="c" id="5" type="nonBasic" nonBasicTypeName="JSON::constants" />
+			</case>
+		</union>
+		<struct name="pair">
+			<member name="name" id="0" type="string" />
+			<member name="value" id="1" type="nonBasic" nonBasicTypeName="JSON::value" />
+		</struct>
+	</module>
+</types>
