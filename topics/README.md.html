@@ -116,8 +116,11 @@ struct ShapeType {
 
 
 <p>An instance created from a DDSL datatype will have a form that adheres to the
-the underlying datatype. For example, an instance of <code>ShapeType</code> will
-have the form:</p>
+the underlying datatype. </p>
+<pre><code> local shape = xtypes.new_instance(ShapeType)
+</code></pre>
+
+<p>The <code>shape</code> instance of <code>ShapeType</code> will have the default value of:</p>
 
 <pre>
 shape = {
@@ -128,6 +131,46 @@ shape = {
 }
 </pre>
 
+<p>The fields can be used to retrive the instances values from some storage system.
+The are correctly constructed for deeply nested datatypes.</p>
+
+<p>The new instance can be used to store a shape object:</p>
+
+<pre>
+<span class="comment">-- Fields in the underlying datatype are allowed:
+</span>shape.color     = <span class="string">'GREEN'</span>
+shape.shapesize = <span class="number">44</span>
+shape.x         = <span class="number">99</span>
+shape.y         = <span class="number">77</span>
+
+<span class="comment">-- But, fields NOT in the datatype are NOT allowed:
+</span>shape.z         = <span class="number">111</span>  <span class="comment">-- will get dropped
+</span><span class="global">assert</span>(shape.z == <span class="keyword">nil</span>) <span class="comment">-- 'z' not allowed
+</span>
+</pre>
+
+<p>The <code>shape</code> instance can be queried for the underlying datatypes of its fields:</p>
+
+<pre>
+<span class="comment">-- color:
+</span><span class="global">assert</span>(shape(<span class="string">'color'</span>)[<span class="number">1</span>] == xtypes.<span class="global">string</span>(<span class="number">128</span>))
+<span class="global">print</span>(<span class="global">table</span>.unpack(shape(<span class="string">'color'</span>)) <span class="comment">-- string&lt;128&gt;   @Key
+</span>
+<span class="comment">-- number of members
+</span><span class="global">print</span>(#shape) <span class="comment">-- 4
+</span>
+</pre>
+
+<p>We can iterate through all the member names, values, and datatypes:</p>
+
+<pre>
+<span class="keyword">for</span> name, value <span class="keyword">in</span> <span class="global">pairs</span>(shape) <span class="keyword">do</span>
+  <span class="comment">--    name  value   :   datatype
+</span>  <span class="global">print</span>(name, value, <span class="string">':'</span>, <span class="global">table</span>.unpack(shape(name)))
+<span class="keyword">end</span>
+</pre>
+
+
 
 <p>DDSL brings the following capabilities to Lua (and therefore to platforms where
 Lua can be embedded).</p>
@@ -135,12 +178,8 @@ Lua can be embedded).</p>
 <ol>
     <li><p>DDSL is a language for describing datatypes in <a href="http://www.lua.org/about.html">Lua</a>. It can be used as replacement
     for data description in an <a href="https://en.wikipedia.org/wiki/Interface_description_language">IDL</a>. In particular:</p></li>
-    <li><p><a href="http://www.omg.org/spec/DDS-XTypes/">DDS X-Types</a> can be defined </p>
-
-<pre>
-<span class="keyword">in</span> DDSL.
-</pre>
-</li>
+    <li><p><a href="http://www.omg.org/spec/DDS-XTypes/">DDS X-Types</a> can be defined
+    in DDSL.</p></li>
     <li><p>Datatypes can be imported from XML.</p></li>
     <li><p>Datatypes can be exported to IDL.</p></li>
 </ol>
@@ -274,18 +313,6 @@ bin/run xml2idl -d xml-test-simple.xml
 <h2>Writing Apps</h2>
 
 <ul>
-    <li>Setup Lua's <a href="http://www.lua.org/manual/5.2/manual.html#pdf-package.path">package.path</a> to include <code>src/</code> (before <code>lib/lua</code>). Assuming <code>DDSL_HOME</code> is the location of the directory where you cloned DDSL, set the <code>LUA_PATH</code> environment variable as follows.</li>
-</ul>
-
-
-<pre>
-export LUA_PATH+=<span class="string">"${DDSL_HOME}/src/?.lua;${DDSL_HOME}/src/?/init.lua;"</span>
-export LUA_PATH+=<span class="string">"${DDSL_HOME}/lib/lua/?.lua;${DDSL_HOME}/lib/lua/?/init.lua;"</span>
-export LUA_PATH+=<span class="string">"${DDSL_HOME}/lib/lua/?.lc;${DDSL_HOME}/lib/lua/?/init.lc;"</span>
-</pre>
-
-
-<ul>
     <li>Create datatypes directly using the <a href="http://rticommunity.github.io/rticonnextdds-ddsl/modules/ddsl.xtypes.html">ddsl.xtypes</a> module.</li>
 </ul>
 
@@ -406,6 +433,18 @@ open out/html/index.html
 <p>Eclipse <a href="https://eclipse.org/ldt/">Lua Development Tools (LDT)</a> provides an excellent IDE for editing Lua code.</p>
 
 <ul>
+    <li>Setup Lua's <a href="http://www.lua.org/manual/5.2/manual.html#pdf-package.path">package.path</a> to include <code>src/</code> (before <code>lib/lua</code>). Assuming <code>DDSL_HOME</code> is the location of the directory where you cloned DDSL, set the <code>LUA_PATH</code> environment variable as follows.</li>
+</ul>
+
+
+<pre>
+export LUA_PATH+=<span class="string">"${DDSL_HOME}/src/?.lua;${DDSL_HOME}/src/?/init.lua;"</span>
+export LUA_PATH+=<span class="string">"${DDSL_HOME}/lib/lua/?.lua;${DDSL_HOME}/lib/lua/?/init.lua;"</span>
+export LUA_PATH+=<span class="string">"${DDSL_HOME}/lib/lua/?.lc;${DDSL_HOME}/lib/lua/?/init.lc;"</span>
+</pre>
+
+
+<ul>
     <li><p>Add/Modify/Update Code</p></li>
     <li><p>Add unit tests</p></li>
     <li><p>Pass all the unit tests</p></li>
@@ -489,7 +528,7 @@ limitations under the License.</p>
 </div> <!-- id="main" -->
 <div id="about">
 <i>generated by <a href="http://github.com/stevedonovan/LDoc">LDoc 1.4.3</a></i>
-<i style="float:right;">Last updated 2015-11-03 12:18:40 </i>
+<i style="float:right;">Last updated 2015-11-07 15:24:54 </i>
 </div> <!-- id="about" -->
 </div> <!-- id="container" -->
 </body>
