@@ -205,14 +205,6 @@ bin/run xml2idl -d xml-test-simple.xml
 
 
 ## Writing Apps
-     
-- Setup Lua's `package.path` to include `src/` (before `lib/lua`). Assuming `DDSL_HOME` is the location of the directory where you cloned DDSL, set the `LUA_PATH` environment variable as follows.
-
-```bash
-export LUA_PATH+="${DDSL_HOME}/src/?.lua;${DDSL_HOME}/src/?/init.lua;"
-export LUA_PATH+="${DDSL_HOME}/lib/lua/?.lua;${DDSL_HOME}/lib/lua/?/init.lua;"
-export LUA_PATH+="${DDSL_HOME}/lib/lua/?.lc;${DDSL_HOME}/lib/lua/?/init.lc;"
-```
 
 - Create datatypes directly using the [ddsl.xtypes](http://rticommunity.github.io/rticonnextdds-ddsl/modules/ddsl.xtypes.html) module.
 
@@ -301,6 +293,14 @@ build/eclipse/
 ```
 
 Eclipse [Lua Development Tools (LDT)](https://eclipse.org/ldt/) provides an excellent IDE for editing Lua code.
+
+- Setup Lua's `package.path` to include `src/` (before `lib/lua`). Assuming `DDSL_HOME` is the location of the directory where you cloned DDSL, set the `LUA_PATH` environment variable as follows.
+
+```bash
+export LUA_PATH+="${DDSL_HOME}/src/?.lua;${DDSL_HOME}/src/?/init.lua;"
+export LUA_PATH+="${DDSL_HOME}/lib/lua/?.lua;${DDSL_HOME}/lib/lua/?/init.lua;"
+export LUA_PATH+="${DDSL_HOME}/lib/lua/?.lc;${DDSL_HOME}/lib/lua/?/init.lc;"
+```
 
 - Add/Modify/Update Code
  
