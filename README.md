@@ -9,9 +9,13 @@
 
 ## Introduction
 
-DDSL provides a way to work with strongly typed data in 
-[Lua](http://www.lua.org/about.html), which itself is dynamically typed 
-and does not enforce data structure constraints. 
+DDSL makes it easy and fun to work with strongly typed data in [Lua](http://www.lua.org/about.html). Lua, like JavaScript and Python, is a dynamically typed language that does not enforce data structure constraints. DDSL is written in 
+pure Lua.
+
+Describing the datatypes independently of the data allows more efficient sharing 
+and storage of data. This is especially important for Industrial Internet of 
+Things (IoT) applications that must deal with a large volume and variety of 
+constantly changing data. 
 
 Here is a quick illustration using a `ShapeType` datatype.
 
@@ -51,8 +55,8 @@ shape = {
     color       = 'color'
 }
 ```
-The fields can be used to retrive the instances values from some storage system.
-The are correctly constructed for deeply nested datatypes.
+The fields can be used to retrieve the instances values from some storage 
+system. A '.' separated path is constructed for nested datatypes.
 
 The new instance can be used to store a shape object:
 ```Lua
@@ -83,6 +87,14 @@ for name, value in pairs(shape) do
 end
 ```
 
+DDSL is designed to integrate nicely with the
+[RTI Connector for Connext DDS](https://community.rti.com/downloads/experimental/rticonnextdds-connector) which provides a quick and easy way to access the power 
+and functionality of [RTI Connext DDS](https://community.rti.com) from a 
+variety of different scripting languages including JavaScript, Python and Lua. 
+RTI Connext DDS is a popular software Connectivity Databus for the 
+[Industrial Internet of Things](https://www.rti.com) based on the [Data 
+Distribution Service, a.k.a. DDS](http://portals.omg.org/dds/)
+open standard for IoT data connectivity.
 
 DDSL brings the following capabilities to Lua (and therefore to platforms where
 Lua can be embedded).
@@ -112,7 +124,8 @@ bounds are enforced.
    constraints can easily be enforced by user code, if so desired.
 
 3. DDSL provides a way to modify the datatypes dynamically at anytime. All the 
-aspects of a datatype, except its `KIND` can be changed. For example, datatype members can be added, removed, or their datatype changed. The datatype 
+aspects of a datatype, except its `KIND` can be changed. For example, datatype 
+members can be added, removed, or their datatype changed. The datatype 
 name, enclosing scopes (namespaces) can be altered. This makes DDSL ideal for 
 datatype modeling, synthesis and transformation.
 
@@ -126,11 +139,17 @@ the default value for the new structure.
 formed by navigating to that field from the instance. The default value can be
 used as an index into some storage system.
 
-6. Datatypes can be introspected, examined, and traversed. For example, enumerations can be be looked by name or ordinal values. Collection bounds 
-can be looked up, aliases can be resolved, and so on. This makes it easy to work with structured data in a dynamic language such as Lua, or any environment where
+6. Datatypes can be introspected, examined, and traversed. For example, 
+enumerations can be be looked by name or ordinal values. Collection bounds 
+can be looked up, aliases can be resolved, and so on. This makes it easy to work 
+with structured data in a dynamic language such as Lua, or any environment where
 Lua can be embedded (almost every platform).
 
-7. All of the above make DDSL ideally suited for for writing generators. In particular:
+7. DDSL allows user defined annotations to be added to any datatype or a field. 
+These could include defining measurement units, data ranges, and so on.
+
+8. All of the above make DDSL ideally suited for for writing generators. In 
+particular:
 
    - *Data generators* that produce instances confirming to some data space or 
    data generation rules/constraints, while adhering to an underlying datatype.
@@ -138,12 +157,6 @@ Lua can be embedded (almost every platform).
    - *Code generators* that produce behavior the context of some operational 
    scenario, while adhering to an underlying datatype.
 
-8. DDSL is designed to integrate nicely with the
-[RTI Connector for Connext DDS](https://community.rti.com/downloads/experimental/rticonnextdds-connector) which provides a quick and easy way to access the power and functionality of [RTI Connext DDS](https://community.rti.com) from a 
-variety of different scripting languages including JavaScript, Python and Lua. 
-RTI Connext DDS is a popular software Connectivity Databus for the 
-[Industrial Internet of Things](https://www.rti.com) based on the [Data Distribution Service, a.k.a. DDS](http://portals.omg.org/dds/)
-open standard for IoT data connectivity.
 
 ![Datatype Algebra Diagram](http://rticommunity.github.io/rticonnextdds-ddsl/topics/doc/datatype_algebra.svg "Datatype Algebra")
 
