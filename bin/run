@@ -68,7 +68,8 @@ MY_LIB_ARCH=`echo ${MY_HOME}/lib/*$(uname)*`
 
 # src/ (dev tree) lua overrides the byte code in lib (for distribution)
 export LUA_PATH=\
-"${MY_HOME}/src/?.lua;${MY_HOME}/src/?/init.lua;\
+"?.lua;?.lc;\
+${MY_HOME}/src/?.lua;${MY_HOME}/src/?/init.lua;\
 ${MY_LIB_ARCH}/?.lc;${MY_LIB_ARCH}/?/init.lc;\
 ${MY_HOME}/lib/lua/?.lua;${MY_HOME}/lib/lua/?/init.lua;\
 ${MY_HOME}/lib/lua/?.lc;${MY_HOME}/lib/lua/?/init.lc;"
