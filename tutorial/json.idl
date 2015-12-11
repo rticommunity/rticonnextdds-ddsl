@@ -22,9 +22,9 @@ module JSON {
     typedef sequence<value> array;
         
     enum constants {
+        JSON_NULL,
         JSON_FALSE,
-        JSON_TRUE,
-        JSON_NULL
+        JSON_TRUE
     };
     
     enum kind {
@@ -34,6 +34,7 @@ module JSON {
         ARRAY
     };
     
+    //@copy value can be any of the JSON types
     union value switch(kind) {
     case STRING:
         string s;
