@@ -15,7 +15,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -->
 <types xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xsi:noNamespaceSchemaLocation="/Applications/rti_connext_dds-5.2.0/bin/../resource/app/app_support/rtiddsgen/schema/rti_dds_topic_types.xsd">
+	xsi:noNamespaceSchemaLocation="https://community.rti.com/schema/5.2.0/rti_dds_topic_types.xsd">
 	<include file="json.xml" />
 	<module name="tutorial">
 		<const name="MAX_COLOR_LEN" type="long" value="128" />
