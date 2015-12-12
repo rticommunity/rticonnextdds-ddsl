@@ -379,8 +379,9 @@ tag2template = {
         if tag_handler then
           local xtype = tag_handler(child, template) -- change ns to this module
         else
-          log.error(tag.label, child.label, child.xarg.name,
-                    'IGNORING Unrecognized tag in module!')
+          -- Certain child tags (eg 'directive') don't require any processing
+          log.notice(tag.label, child.label, child.xarg.name, 
+                                'Ignoring: Nothing to do!')
         end
       end
     end
