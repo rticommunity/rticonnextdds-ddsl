@@ -163,7 +163,7 @@ particular:
 
 ## Getting Started
 
-- Minimum requirement: [Lua](http://www.lua.org) 5.1+
+- Minimum requirement: [Lua](http://www.lua.org) 5.2.4+
 
 ```bash
 # check the installed lua version
