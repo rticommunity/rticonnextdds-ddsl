@@ -1,7 +1,19 @@
-# DDSL - Data Domain Specific Language
+# [User's Manual](http://rticommunity.github.io/rticonnextdds-ddsl/)
+
+*New users*: Start with the [Getting Started Guide](#getting-started-guide),
+which embeds links to the specific sections of the [User's Manual](http://rticommunity.github.io/rticonnextdds-ddsl/), to get you started quickly.
+
+*All users*: Refer to the 
+[User's Manual](http://rticommunity.github.io/rticonnextdds-ddsl/) for a 
+comprehensive understanding of the concepts, conventions, philosophy, and for 
+a ready reference to the APIs and examples. The Getting Started 
+Guide is also embedded in the User's Manual.
+
+
+# Getting Started Guide
 
 - [Introduction](#introduction)
-- [Getting Started](#getting-started)
+- [Setting Up](#setting-up)
 - [Writing Apps](#writing-apps)
 - [Versioning](#versioning)
 - [Contributing Code](#contributing-code)
@@ -9,7 +21,8 @@
 
 ## Introduction
 
-DDSL makes it easy and fun to work with strongly typed data in [Lua](http://www.lua.org/about.html). Lua, like JavaScript and Python, is a dynamically typed language that does not enforce data structure constraints. DDSL is written in 
+DDSL makes it easy and fun to work with strongly typed data in [Lua](http://www.lua.org). Lua, like JavaScript and Python, is a dynamically typed language 
+that does not enforce data structure constraints. DDSL is written in 
 pure Lua.
 
 Describing the datatypes independently of the data allows more efficient sharing 
@@ -17,7 +30,10 @@ and storage of data. This is especially important for Industrial Internet of
 Things (IoT) applications that must deal with a large volume and variety of 
 constantly changing data. 
 
-Here is a quick illustration using a `ShapeType` datatype.
+Here is a quick illustration using a `ShapeType` datatype. For more details, 
+please refer to the 
+[User's Manual](http://rticommunity.github.io/rticonnextdds-ddsl/).
+
 
 IDL:
 ```idl
@@ -161,7 +177,7 @@ particular:
 ![Datatype Algebra Diagram](http://rticommunity.github.io/rticonnextdds-ddsl/topics/doc/datatype_algebra.svg "Datatype Algebra")
 
 
-## Getting Started
+## Setting Up
 
 - Minimum requirement: [Lua](http://www.lua.org) 5.2.4+
 
