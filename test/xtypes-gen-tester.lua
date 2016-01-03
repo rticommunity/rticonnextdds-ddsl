@@ -984,6 +984,74 @@ function Tester.test_scan()
   
 end
 
+Tester[#Tester+1] = 'test_concat'
+function Tester.test_concat()
+  
+  local answer = { 1, 3, 6, 10, 15, 21, 28, 36, 45, 55 }
+
+  local seg1 = Gen.inOrderGen({ 1, 3, 6, 10 })
+  local seg2 = Gen.inOrderGen({ 15, 21, 28, 36, 45, 55 })
+  local gen = seg1:concat(seg2)
+  
+  for i=1, #answer do
+    assert(answer[i] == gen:generate())
+  end
+  
+  local seg2 = Gen.inOrderGen(answer)
+  local gen = Gen.emptyGen():concat(seg2)
+  
+  for i=1, #answer do
+    assert(answer[i] == gen:generate())
+  end
+  
+  local seg1 = Gen.inOrderGen(answer)
+  local gen = seg1:concat(Gen.emptyGen())
+  
+  for i=1, #answer do
+    assert(answer[i] == gen:generate())
+  end
+  
+end
+
+Tester[#Tester+1] = 'test_concatAll'
+function Tester.test_concatAll()
+  
+  local answer = { 1, 3, 6, 10, 15, 21, 28, 36, 45, 55 }
+
+  local seg1 = Gen.inOrderGen({ 1, 3, 6 })
+  local seg2 = Gen.inOrderGen({ 10, 15, 21 })
+  local seg3 = Gen.inOrderGen({ 28, 36, 45 })
+  local seg4 = Gen.inOrderGen({ 55 })
+  local gen = Gen.concatAllGen(seg1, seg2, seg3, seg4)
+  
+  for i=1, #answer do
+    assert(answer[i] == gen:generate())
+  end
+ 
+  local gen = Gen.concatAllGen(Gen.emptyGen(), Gen.emptyGen())
+  assert(gen:generate() == nil)
+  
+end
+
+Tester[#Tester+1] = 'test_alternateGen'
+function Tester.test_alternateGen()
+  
+  local answer = { 1, 10, 28, 55, 3, 15, 36, 6, 21, 45 }
+
+  local seg1 = Gen.inOrderGen({  1,  3,  6 })
+  local seg2 = Gen.inOrderGen({ 10, 15, 21 })
+  local seg3 = Gen.inOrderGen({ 28, 36, 45 })
+  local seg4 = Gen.inOrderGen({ 55 })
+  local gen = Gen.alternateGen(seg1, seg2, seg3, seg4)
+  
+  for i=1, #answer do
+    assert(answer[i] == gen:generate())
+  end
+ 
+  assert(nil == Gen.alternateGen(Gen.emptyGen()):generate())
+ 
+end
+
 --
 -- print - helper method to print the IDL and the index for data definition
 function Tester.print(instance)

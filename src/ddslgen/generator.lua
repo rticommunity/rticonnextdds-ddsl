@@ -103,6 +103,10 @@ local xtypes = require ("ddsl.xtypes")
 -- Generator:flatMap
 -- Generator:zipMany
 -- Generator:amb
+-- Generator:scan
+-- Generator:take
+-- Generator:concat
+-- Generator:append
 -- Generator:generate
 local Generator = { }
 
@@ -182,7 +186,10 @@ Public = {
   --printableGen
   --stringGen
   --nonEmptyStringGen
+  
   --coroutineGen
+  --concatAllGen
+  --alternateGen
   
   --rangeGen
   --seqGen
@@ -359,6 +366,36 @@ function Generator:amb(otherGen)
   return Public.boolGen():flatMap(function (b) 
         return b and self or otherGen
       end)
+end
+
+--! @brief Same as Generator:concat
+--! @param[in] otherGen A generator 
+--! @return A new generator 
+
+function Generator:append(otherGen) 
+  return self:concat(otherGen)
+end
+
+--! @brief Creates a new generator that appends otherGen to this.
+--! @param[in] otherGen A generator 
+--! @return A new generator 
+
+function Generator:concat(otherGen) 
+  local first = true
+  return  Generator:new(function () 
+            if first then 
+              local value, valid = self:generate()
+              if valid then
+                return value, valid
+              else
+                first = false
+              end
+            end
+            
+            if first == false then
+              return otherGen:generate()
+            end
+          end)
 end
 
 --! @brief Creates a new generator that returns values produced by the 
@@ -830,6 +867,50 @@ function Public.coroutineGen(coro, ...)
             end
           end
          end)
+end
+
+--! @brief Creates a generator that concatinates all the input generators
+--! @param[in] A comma-separated list of generators
+function Public.concatAllGen(...)
+  local args = { ... }
+  
+  return Public.stepperGen(1, #args)
+               :flatMap(function (i)
+                          return args[i]
+                        end)
+end
+
+--! @brief Creates a generator that alternates between all the input generators
+--! @param[in] A comma-separated list of generators
+function Public.alternateGen(...)
+  local args = { ... }
+  local active = {}
+  local search = true
+  
+  for i = 1, #args do 
+    active[i] = true
+  end
+  
+  local stepper = Public.stepperGen(1, #args, 1, true)
+  
+  return Generator:new(function ()
+    if search then
+      search = false
+      for i = 1, #args do
+        local idx = stepper:generate()
+        if active[idx] then
+          local value, valid = args[idx]:generate()
+          if valid then
+            search = true
+            return value, valid
+          else
+            active[idx] = false
+          end
+        end
+      end
+    end
+    return nil, false
+  end)
 end
 
 --! @brief Creates a generator that produces structured type instances.
