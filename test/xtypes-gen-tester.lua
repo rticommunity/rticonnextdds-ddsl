@@ -1024,19 +1024,52 @@ function Tester.test_concatAll()
   local seg4 = Gen.inOrderGen({ 55 })
   local gen = Gen.concatAllGen(seg1, seg2, seg3, seg4)
   
-  for i=1, #answer do
+  for i=1, #answer+1 do
     assert(answer[i] == gen:generate())
   end
  
-  local gen = Gen.concatAllGen(Gen.emptyGen(), Gen.emptyGen())
-  assert(gen:generate() == nil)
+  assert(nil == Gen.concatAllGen(Gen.emptyGen(), Gen.emptyGen()):generate())
   
+end
+
+function inorder(node)
+  -- Function inspired by http://okmij.org/ftp/continuations/generators.html
+
+  if node then
+    return Gen.concatAllGen(Gen.deferredGen(function() return inorder(node.left) end), 
+                            Gen.singleGen(node.data), 
+                            Gen.deferredGen(function() return inorder(node.right) end))
+  end
+  return Gen.emptyGen()
+end
+
+Tester[#Tester+1] = 'test_inorderTraversal'
+function Tester.test_inorderTraversal()
+  -- Test inspired by http://okmij.org/ftp/continuations/generators.html
+  
+  local answer = { 3, 5, 6, 8, 10, 17, 21 }
+  local root = { data  = 10, 
+                 left  = { data  = 6, 
+                           left  = { data = 3, right = { data = 5 } },
+                           right = { data = 8 } 
+                         },
+                 right = { data  = 21, 
+                           left = { data = 17 },
+                         } 
+               }
+  
+  local gen = inorder(root)
+  
+  for i=1, #answer+1 do
+    assert(answer[i] == gen:generate())
+  end
+ 
 end
 
 Tester[#Tester+1] = 'test_alternateGen'
 function Tester.test_alternateGen()
   
-  local answer = { 1, 10, 28, 55, 3, 15, 36, 6, 21, 45 }
+  local answer = { 1, 10, 28, 55, 3, 15, 36, 6, 21, 45, nil }
 
   local seg1 = Gen.inOrderGen({  1,  3,  6 })
   local seg2 = Gen.inOrderGen({ 10, 15, 21 })
@@ -1044,7 +1077,7 @@ function Tester.test_alternateGen()
   local seg4 = Gen.inOrderGen({ 55 })
   local gen = Gen.alternateGen(seg1, seg2, seg3, seg4)
   
-  for i=1, #answer do
+  for i=1, #answer+1 do
     assert(answer[i] == gen:generate())
   end
  
