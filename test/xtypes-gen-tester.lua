@@ -1085,6 +1085,44 @@ function Tester.test_alternateGen()
  
 end
 
+Tester[#Tester+1] = 'test_toTable'
+function Tester.test_toTable()
+  
+  local answer = { 1, 10, 28, 55, 3, 15, 36, 6, 21, 45, nil }
+  local gen = Gen.inOrderGen(answer)
+  local all = gen:toTable();
+  
+  for i=1, #answer do
+    assert(answer[i] == all[i])
+  end
+ 
+  assert(nil == Gen.alternateGen(Gen.emptyGen()):generate())
+ 
+end
+
+Tester[#Tester+1] = 'test_where_filter'
+function Tester.test_where_filter()
+  
+  local data = { 1, 10, 28, 55, 3, 15, 36, 6, 21, 45 }
+  local even = { 10, 28, 36, 6, }
+  local odd  = { 1, 55, 3, 15, 21, 45 }
+  
+  local evenGen = Gen.inOrderGen(data)
+                     :where(function (i) return i % 2 == 0 end)
+  
+  local oddGen = Gen.inOrderGen(data)
+                    :filter(function (i) return i % 2 == 0 end)
+  
+  for i=1, #even do
+    assert(even[i] == evenGen:generate())
+  end
+ 
+  for i=1, #odd do
+    assert(odd[i] == oddGen:generate())
+  end
+ 
+end
+
 --
 -- print - helper method to print the IDL and the index for data definition
 function Tester.print(instance)

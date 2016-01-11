@@ -98,6 +98,7 @@ local xtypes = require ("ddsl.xtypes")
 --! The base \a interface for all pull-based generators.
 --! All methods of Generator are instance methods
 -- Generator:new
+-- Generator:generate
 -- Generator:kind
 -- Generator:map
 -- Generator:flatMap
@@ -107,7 +108,8 @@ local xtypes = require ("ddsl.xtypes")
 -- Generator:take
 -- Generator:concat
 -- Generator:append
--- Generator:generate
+-- Generator:where
+-- Generator:toTable
 local Generator = { }
 
 -- Generator package object exported outside
@@ -446,8 +448,61 @@ function Generator:scan(reducerFunc, init)
                        end)
 end
 
+--! @brief  Returns a table containing all the elements produced     
+--!         by the generator. Note that this function may not
+--!         return and may cause excessive memory consumption
+--!         if the underlying generator is very large or infinite.
+--! @return A table
+--! @post   If the function returns, the generator is completely
+--!         exhausted.
+function Generator:toTable()
+  local data = {}
+  
+  while true do
+    local value, valid = self:generate();
+    
+    if valid then
+      data[#data+1] = value
+    else
+      return data
+    end
+  end
+end
+
+--! @brief  Returns a generator that produces values for which
+--!         the predicate returns true. If the underlying generator 
+--!         is infinite and no value ever satisfies the predicate,
+--!         the function will block foreever.
+--! @return A new generator
+function Generator:where(predicate)
+  
+  return Generator:new(function()
+    local data, valid = self:generate()
+    
+    while valid and (predicate(data) == false) do
+      data, valid  = self:generate()  
+    end
+
+    if valid then
+      return data, true
+    else
+      return nil, false
+    end
+
+  end)
+end
+
+--! @brief  Returns a generator that produces values for which
+--!         the predicate returns false. If the underlying generator 
+--!         is infinite and no value ever satisfies the predicate,
+--!         the function will block foreever.
+--! @return A new generator
+function Generator:filter(predicate)
+  return self:where(function(i) return predicate(i) == false end)
+end
+
 ---------------------------------------------------
-------------------- Public --------------------
+------------------- Public ------------------------
 ---------------------------------------------------
 
 --! @brief Creates a single value generator.
