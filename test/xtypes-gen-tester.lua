@@ -984,6 +984,72 @@ function Tester.test_scan()
   
 end
 
+Tester[#Tester+1] = 'test_take'
+function Tester.test_take()
+  
+  local answer = { 1, 2, 3, 4, 5 }
+
+  local gen = Gen.stepperGen(1, 10)
+                 :take(5)
+  
+  for i=1, #answer do
+    assert(answer[i] == gen:generate())
+  end
+  
+  assert(nil == Gen.stepperGen(1, 10):take(0):generate())
+  
+end
+
+Tester[#Tester+1] = 'test_skip'
+function Tester.test_skip()
+  
+  local answer = { 1, 2, 3, 4, 5 }
+  local skip = 2
+  local gen = Gen.stepperGen(1, 5)
+                 :skip(skip)
+  
+  for i=1+skip, #answer do
+    assert(answer[i] == gen:generate())
+  end
+  
+  local gen = Gen.stepperGen(1, 5)
+                 :skip(0)
+  
+  for i=1, #answer do
+    assert(answer[i] == gen:generate())
+  end
+  
+  
+end
+
+Tester[#Tester+1] = 'test_last'
+function Tester.test_last()
+  
+  local answer = { 10, 20, 30, 40, 50 }
+  local last = 3
+  local gen = Gen.stepperGen(10, 50, 10)
+                 :last(last)
+  
+  for i=#answer-last+1, #answer do
+    local val = gen:generate()
+    assert(answer[i] == val)
+  end
+ 
+ 
+  local last = 7
+  local gen = Gen.stepperGen(10, 50, 10)
+                 :last(last)
+  
+  for i=1, #answer do
+    local val = gen:generate()
+    assert(answer[i] == val)
+  end
+
+  assert(nil == gen:generate())
+  assert(nil == gen:generate())
+  
+end
+
 Tester[#Tester+1] = 'test_concat'
 function Tester.test_concat()
   

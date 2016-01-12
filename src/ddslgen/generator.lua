@@ -106,6 +106,7 @@ local xtypes = require ("ddsl.xtypes")
 -- Generator:amb
 -- Generator:scan
 -- Generator:take
+-- Generator:skip
 -- Generator:concat
 -- Generator:append
 -- Generator:where
@@ -404,9 +405,10 @@ function Generator:concat(otherGen)
           end)
 end
 
---! @brief Creates a new generator that returns values produced by the 
---!        argument generators (self, otherGen) non-derministically.
---! @param[in] otherGen A generator 
+--! @brief Creates a new generator that returns only the first 
+--!        count values. For example,
+--!        Gen.inOrderGen({1,2,3,4,5}):take(2) produces 1 and 2.
+--! @param[in] count A positive number
 --! @return A new generator 
 
 function Generator:take(count) 
@@ -424,6 +426,86 @@ function Generator:take(count)
              end
            end
            return nil, false
+         end)
+end
+
+--! @brief Creates a new generator that skips the first 
+--!        count values. For example,
+--!        Gen.inOrderGen({1,2,3,4,5}):skip(3) produces 4 and 5.
+--! @param[in] count A positive number
+--! @return A new generator 
+
+function Generator:skip(count) 
+  if count < 0 then
+    error "Generator:skip: Invalid argument. Negative count" 
+  end
+
+  local i = -1
+ 
+  return Generator:new(function () 
+            local data, valid
+            
+            repeat
+              data, valid = self:generate()
+              if i < count then i = i + 1 end
+            until not (i < count and valid)
+            
+            if valid then 
+              return data, true
+            else
+              return nil, false
+            end
+         end)
+end
+
+--! @brief Creates a new generator that produces only the last 
+--!        (at most) count values. For example,
+--!        Gen.inOrderGen({1,2,3,4,5}):last(2) produces 4 and 5.
+--!        Gen.inOrderGen({1,2,3,4,5}):last(7) produces 1,2,3,4,5.
+--! @param[in] count A positive number
+--! @return A new generator 
+
+function Generator:last(count) 
+  if count < 0 then
+    error "Generator:skip: Invalid argument. Negative count" 
+  end
+
+  local i = 0
+  local plenty = 0
+  local storage = {}
+  local first = true
+  
+  if count == 0 then return Public.emptyGen() end
+  
+  return Generator:new(function () 
+            local data = nil
+            local valid = true
+
+            if first then
+              while valid do
+                data, valid = self:generate()
+                if valid then 
+                  if plenty < count then
+                    plenty = plenty + 1
+                  end
+                  storage[i] = data 
+                  i = (i + 1) % count
+                end
+              end
+              first = false
+              if plenty ~= count then
+                i = 0
+              end
+            end
+
+            if storage[i] then
+              local temp = storage[i]
+              storage[i] = nil
+              i = (i + 1) % count
+              return temp, true
+            end
+            
+            return nil, false
          end)
 end
 
