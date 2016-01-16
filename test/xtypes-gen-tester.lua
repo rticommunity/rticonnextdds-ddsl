@@ -1,8 +1,17 @@
 --[[
-  (c) 2005-2014 Copyright, Real-Time Innovations, All rights reserved.     
-                                                                           
-  Permission to modify and use for internal purposes granted.               
-  This software is provided "as is", without warranty, express or implied.
+Copyright (C) 2015 Real-Time Innovations, Inc.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
 --]]
 --[[
 -------------------------------------------------------------------------------
@@ -554,10 +563,11 @@ function Tester.test_struct_moderate()
     printv("#name.favorite = ", #name.favorite)
     for i=1, #name.favorite do
       assert(type(name.favorite[i]) == "number")
-      printv(string.format("name.favorite[%d] = %d", i, name.favorite[i]))
+      printv(string.format("name.favorite[%d] = %s", i, 
+                  Test.Color(name.favorite[i])))
     end
   else
-    printv("name.favorite = ", name.favorite)
+    printv("name.favorite = ", Test.Color(name.favorite))
   end
 
   printv("#trajectory = ", #name.trajectory)
@@ -596,7 +606,7 @@ function Tester.test_nested_struct_gen()
   Geometry[#Geometry+1] = 
     xtypes.struct {
       Test = {
-        { point  = { Geometry[1]  } }, -- = Geometry.Point
+        { point  = { Geometry.Point  } },
         { x      = { xtypes.float } },
       }
     }
@@ -627,7 +637,7 @@ function Tester.test_enum_gen()
       Test = {
         { s   = { xtypes.short  } },
         { d   = { xtypes.double } },
-        { day = { Geometry[1]   } } -- = Geometry.Days
+        { day = { Geometry.Days   } }
       }
     }
   
@@ -643,7 +653,7 @@ function Tester.test_enum_gen()
   assert(type(testObject.s) == "number")
   assert(type(testObject.d) == "number")
   assert(type(testObject.day) == "number")
-  printv(testObject.s, testObject.d, testObject.day)
+  printv(testObject.s, testObject.d, Geometry.Days(testObject.day))
 
 end
 
@@ -692,7 +702,7 @@ function Tester:test_array_gen()
   for i=1, #myStruct.days do
     for j=1, #myStruct.days[i] do
       assert(type(myStruct.days[i][j]) == "number")
-      io.write(string.format(myStruct.days[i][j] .. " "))
+      io.write(string.format(Test.Days(myStruct.days[i][j]) .. " "))
     end
     printv()
   end
