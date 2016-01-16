@@ -563,10 +563,11 @@ function Tester.test_struct_moderate()
     printv("#name.favorite = ", #name.favorite)
     for i=1, #name.favorite do
       assert(type(name.favorite[i]) == "number")
-      printv(string.format("name.favorite[%d] = %d", i, name.favorite[i]))
+      printv(string.format("name.favorite[%d] = %s", i, 
+                  Test.Color(name.favorite[i])))
     end
   else
-    printv("name.favorite = ", name.favorite)
+    printv("name.favorite = ", Test.Color(name.favorite))
   end
 
   printv("#trajectory = ", #name.trajectory)
@@ -605,7 +606,7 @@ function Tester.test_nested_struct_gen()
   Geometry[#Geometry+1] = 
     xtypes.struct {
       Test = {
-        { point  = { Geometry[1]  } }, -- = Geometry.Point
+        { point  = { Geometry.Point  } },
         { x      = { xtypes.float } },
       }
     }
@@ -636,7 +637,7 @@ function Tester.test_enum_gen()
       Test = {
         { s   = { xtypes.short  } },
         { d   = { xtypes.double } },
-        { day = { Geometry[1]   } } -- = Geometry.Days
+        { day = { Geometry.Days   } }
       }
     }
   
@@ -652,7 +653,7 @@ function Tester.test_enum_gen()
   assert(type(testObject.s) == "number")
   assert(type(testObject.d) == "number")
   assert(type(testObject.day) == "number")
-  printv(testObject.s, testObject.d, testObject.day)
+  printv(testObject.s, testObject.d, Geometry.Days(testObject.day))
 
 end
 
@@ -701,7 +702,7 @@ function Tester:test_array_gen()
   for i=1, #myStruct.days do
     for j=1, #myStruct.days[i] do
       assert(type(myStruct.days[i][j]) == "number")
-      io.write(string.format(myStruct.days[i][j] .. " "))
+      io.write(string.format(Test.Days(myStruct.days[i][j]) .. " "))
     end
     printv()
   end
