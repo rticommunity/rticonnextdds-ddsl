@@ -27,10 +27,9 @@ local Gen      = require("ddslgen.generator")
 local ReactGen = require("ddslgen.react-gen")
 
 local Tester = {}
-
-local verbose = true
-
+local verbose = false
 local printv = nil
+
 if tonumber(string.gmatch(_VERSION,"%d.%d")()) >= 5.3 then
   printv = function(...) if verbose then print(...) end end
 else
@@ -436,6 +435,7 @@ end
 
 Tester[#Tester+1] = "test_memory"
 function Tester.test_memory()
+  io.write("This is a long-running test. Patience is a virtue!\n")
   
   local sub1 = 
     ReactGen.toSubject(Gen.stepperGen(1, 1000, 1, true), false)
@@ -494,13 +494,15 @@ end
 --
 -- print - helper method to print the IDL and the index for data definition
 function Tester.print(instance)
-    -- print IDL
-    local idl = xutils.to_idl_string_table(instance, {'model (IDL):'})
-    print(table.concat(idl, '\n\t'))
+    if verbose then
+      -- print IDL
+      local idl = xutils.to_idl_string_table(instance, {'model (IDL):'})
+      print(table.concat(idl, '\n\t'))
     
-    -- print the result of visiting each field
-    local fields = xutils.to_instance_string_table(instance, {'instance:'})
-    print(table.concat(fields, '\n\t'))
+      -- print the result of visiting each field
+      local fields = xutils.to_instance_string_table(instance, {'instance:'})
+      print(table.concat(fields, '\n\t'))
+    end
 end
 
 ---
@@ -521,7 +523,7 @@ function Tester:main()
       print('\n--- Test ' .. k .. ' : ' .. v .. ' ---')
       if self[v] then self[v](self) end 
     end
-    print('\n All tests completed successfully!')
+    print('\nAll tests completed successfully!\nChange verbose=true for detailed output.')
   end
 end
 

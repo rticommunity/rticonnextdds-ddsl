@@ -25,7 +25,7 @@ local xtypes = require("ddsl.xtypes")
 local xutils = require("ddsl.xtypes.utils")
 local Gen    = require("ddslgen.generator")
 
-local verbose = true
+local verbose = false
 local printv = nil
 
 if tonumber(string.gmatch(_VERSION,"%d.%d")()) >= 5.3 then
@@ -175,17 +175,17 @@ function Tester:test_xml_advanced()
   
     xml.empty() -- empty the root module, to prevent collisions between files
     
-    print('========= ', file, ' begin ======')
+    if verbose then print('========= ', file, ' begin ======') end
     local ns = xml.file2xtypes(file)
     --Tester.print(ns)
     for i = 1, #ns do
       if ns[i][xtypes.KIND]() ~= "module" then
         local value = Gen.createGenerator(ns[i]):generate()
         assert(value ~= nil)
-        print_table_recursive(value, ns[i][xtypes.NAME])
+        if verbose then print_table_recursive(value, ns[i][xtypes.NAME]) end
       end
     end
-    print('--------- ', file, ' end --------')
+    if verbose then print('--------- ', file, ' end --------') end
     
   end
 end
@@ -549,11 +549,11 @@ function Tester.test_struct_moderate()
   end
   for i, arr in ipairs(name.multidim) do
     if #arr==0 then  
-      io.write("empty sequence") 
+      printv("empty sequence")
     end
 
     for j, val in ipairs(arr) do
-      io.write(string.format("%d ", val))
+      printv(string.format("%d ", val))
     end
     printv()
   end
@@ -695,14 +695,16 @@ function Tester:test_array_gen()
   assert(#myStruct.doubles == 3)
   for i=1, #myStruct.doubles do
     assert(type(myStruct.doubles[i]) == "number")
-    io.write(string.format(myStruct.doubles[i] .. " "))
+    if verbose then io.write(string.format(myStruct.doubles[i] .. " ")) end 
   end
   printv()
   assert(#myStruct.days == 9)
   for i=1, #myStruct.days do
     for j=1, #myStruct.days[i] do
       assert(type(myStruct.days[i][j]) == "number")
-      io.write(string.format(Test.Days(myStruct.days[i][j]) .. " "))
+      if verbose then 
+        io.write(string.format(Test.Days(myStruct.days[i][j]) .. " ")) 
+      end
     end
     printv()
   end
@@ -883,7 +885,7 @@ function Tester.test_fibonacciGen()
   for i=1,15 do 
     local value = fiboGen:generate()
     assert(value == answer[i])
-    io.write(string.format("%d ", value))
+    if verbose then io.write(string.format("%d ", value)) end
   end
   printv()
 end
@@ -897,7 +899,7 @@ function Tester.test_stepGen()
     local val, valid = gen:generate()
     if valid then
       assert(answer[i] == val)
-      io.write(string.format("%d ", val))
+      if versbose then io.write(string.format("%d ", val)) end
     end
   end
   printv()
@@ -914,7 +916,7 @@ function Tester.test_inOrderGen()
       local idx = i % #array
       if idx == 0 then idx = #array end 
       assert(val == array[idx])
-      io.write(string.format("%d ", val))
+      if verbose then io.write(string.format("%d ", val)) end
     end
   end
   printv()
@@ -1311,13 +1313,15 @@ end
 --
 -- print - helper method to print the IDL and the index for data definition
 function Tester.print(instance)
-    -- print IDL
-    local idl = xutils.to_idl_string_table(instance, {'model (IDL):'})
-    print(table.concat(idl, '\n\t'))
+    if verbose then
+      -- print IDL
+      local idl = xutils.to_idl_string_table(instance, {'model (IDL):'})
+      print(table.concat(idl, '\n\t'))
     
-    -- print the result of visiting each field
-    local fields = xutils.to_instance_string_table(instance, {'instance:'})
-    print(table.concat(fields, '\n\t'))
+      -- print the result of visiting each field
+      local fields = xutils.to_instance_string_table(instance, {'instance:'})
+      print(table.concat(fields, '\n\t'))
+    end
 end
 ---
 -- main() - run the list of tests passed on the command line
@@ -1337,7 +1341,7 @@ function Tester:main()
       print('\n--- Test ' .. k .. ' : ' .. v .. ' ---')
       if self[v] then self[v](self) end 
     end
-    print('\n All tests completed successfully!')
+    print('\nAll tests completed successfully!\nChange verbose=true for detailed output.')
   end
 end
 
