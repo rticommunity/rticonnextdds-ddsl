@@ -31,7 +31,7 @@ Created: Sumant Tambe, 2015 Jun 12
 --! Gen.initialize()
 --! 
 --! local dayOfWeek = { "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat" }
---! local dayGen = Gen.oneOf(dayOfWeek)
+--! local dayGen = Gen.oneOfGen(dayOfWeek)
 --!
 --! for i=1, 5 do 
 --!   print("dayGen produced ", dayGen:generate())
@@ -75,7 +75,7 @@ Created: Sumant Tambe, 2015 Jun 12
 --! \link zipMany \endlink is another combinator supported by generators. The 
 --! following example generates a random month in every year in the 20th century
 --! \code {.lua}
---! local monthGen = Gen.oneOf({ "Jan", "Feb", "Mar",  "Apr", "May", "Jun", 
+--! local monthGen = Gen.oneOfGen({ "Jan", "Feb", "Mar",  "Apr", "May", "Jun", 
 --!                              "Jul", "Aug", "Sept", "Oct", "Nov", "Dec" })
 --! local yearGen = Gen.stepperGen(1900, 1999)
 --! local seriesGen = yearGen:zipMany(monthGen, 
@@ -105,11 +105,14 @@ local xtypes = require ("ddsl.xtypes")
 -- Generator:zipMany
 -- Generator:amb
 -- Generator:scan
+-- Generator:reduce
 -- Generator:take
 -- Generator:skip
+-- Generator:last
 -- Generator:concat
 -- Generator:append
 -- Generator:where
+-- Generator:reject
 -- Generator:toTable
 local Generator = { }
 
@@ -160,7 +163,7 @@ Public = {
   --emptyGen
   --singleGen
   --constantGen
-  --oneOf
+  --oneOfGen
   --numGen
 
   --boolGen
@@ -203,7 +206,15 @@ Public = {
 
   --newGenerator
   --createGenerator
-  
+
+  --find
+  --every
+  --foreach
+  --sort
+  --sortBy
+  --groupBy
+  --lastN
+ 
   --initialize
 
 } -- Public
@@ -408,14 +419,17 @@ end
 --! @brief Creates a new generator that returns only the first 
 --!        count values. For example,
 --!        Gen.inOrderGen({1,2,3,4,5}):take(2) produces 1 and 2.
---! @param[in] count A positive number
+--! @param[in] count (optional) A positive number. If count is not
+--!            provided take has no effect.
 --! @return A new generator 
 
 function Generator:take(count) 
   if count < 0 then
     error "Generator:take: Invalid argument. Negative count" 
   end
-
+  
+  if count == nil then return self end
+  
   local i = 0
   return Generator:new(function () 
            if i < count then
@@ -432,7 +446,8 @@ end
 --! @brief Creates a new generator that skips the first 
 --!        count values. For example,
 --!        Gen.inOrderGen({1,2,3,4,5}):skip(3) produces 4 and 5.
---! @param[in] count A positive number
+--! @param[in] count (optional) A positive number. If count is
+--!            not provided, the resulting generator is empty.
 --! @return A new generator 
 
 function Generator:skip(count) 
@@ -440,6 +455,8 @@ function Generator:skip(count)
     error "Generator:skip: Invalid argument. Negative count" 
   end
 
+  if count == nil then return Public.emptyGen() end
+  
   local i = -1
  
   return Generator:new(function () 
@@ -462,10 +479,13 @@ end
 --!        (at most) count values. For example,
 --!        Gen.inOrderGen({1,2,3,4,5}):last(2) produces 4 and 5.
 --!        Gen.inOrderGen({1,2,3,4,5}):last(7) produces 1,2,3,4,5.
---! @param[in] count A positive number
+--! @param[in] count (optional) A positive number. If count is not
+--!            provided, it defaults to 1.
 --! @return A new generator 
 
 function Generator:last(count) 
+  count = count or 1
+  
   if count < 0 then
     error "Generator:skip: Invalid argument. Negative count" 
   end
@@ -510,24 +530,58 @@ function Generator:last(count)
 end
 
 --! @brief Creates a new generator that reduces values according
---!        to the reducer function 
+--!        to the reducer function. The resulting generator
+--!        produces as many values as in the source generator.
 --! @param reduderFunc [in] A function that reduces the sequence
 --!        produced by the generator. Takes two arguments and 
 --!        returns reduced value.
 --! @param init [in] initial state for the reducer function.
---! @return A new ReactGen.
+--! @return A new generator.
 function Generator:scan(reducerFunc, init)
-  local prev = self
-  local state = init
   return Generator:new(function ()
-                         local val, valid = prev:generate()
+                         local val, valid = self:generate()
                          if valid then 
-                           state = reducerFunc(state, val)
-                           return state, true
+                           init = reducerFunc(init, val)
+                           return init, true
                          else
                            return nil, false
                          end
                        end)
+end
+
+--! @brief Creates a new single value generator that reduces the 
+--!        values according to the reducer function. Expression
+--!        self:reduce(f, init) is equivalent to self:scan(f, init):last()
+--!        If the underlying generator is infinite, this function never
+--!        returns.
+--! @param reduderFunc [in] A function that reduces the sequence
+--!        produced by the generator. Takes two arguments and 
+--!        returns reduced value.
+--! @param init [in] initial state for the reducer function.
+--! @return A new generator.
+function Generator:reduce(reducerFunc, init)
+  local first = true
+  
+  --Alternative slightly inefficient implementation
+  --return self:scan(reducerFunc, init):last()
+  
+  return Generator:new(function ()
+                        if first then 
+                          repeat
+                            local value, valid = self:generate()
+                            if valid then 
+                              init = reducerFunc(init, value)
+                            end
+                          until valid == false 
+                        end
+                        
+                        if first then
+                          first = false
+                          return init, true
+                        else
+                           return nil, false
+                        end
+                      end)
 end
 
 --! @brief  Returns a table containing all the elements produced     
@@ -554,7 +608,7 @@ end
 --! @brief  Returns a generator that produces values for which
 --!         the predicate returns true. If the underlying generator 
 --!         is infinite and no value ever satisfies the predicate,
---!         the function will block foreever.
+--!         the function will block forever.
 --! @return A new generator
 function Generator:where(predicate)
   
@@ -574,12 +628,12 @@ function Generator:where(predicate)
   end)
 end
 
---! @brief  Returns a generator that produces values for which
---!         the predicate returns false. If the underlying generator 
+--! @brief  Returns a generator that rejects the values for which
+--!         the predicate returns true. If the underlying generator 
 --!         is infinite and no value ever satisfies the predicate,
 --!         the function will block foreever.
 --! @return A new generator
-function Generator:filter(predicate)
+function Generator:reject(predicate)
   return self:where(function(i) return predicate(i) == false end)
 end
 
@@ -623,7 +677,7 @@ end
 --! @param[in] array An array of values to choose from.
 --! @return A generator.
 
-function Public.oneOf(array)
+function Public.oneOfGen(array)
   local len = #array
   return Generator:new(function ()
                          if len == 0 then
@@ -1070,6 +1124,100 @@ function Public.deferredGen(thunk)
   return Public.singleGen(0xDEADBEEF):flatMap(thunk)
 end
 
+--! @brief  Returns the first value that satisfies the predicate. 
+--!         If the generator is infinite and no value ever satisfies 
+--!         the predicate, the function blocks forever. 
+--! @param[in] generator A generator
+--! @param[in] predicate A unary function that returns true/false.
+--! @return The value satisfying the predicate
+function Public.find(generator, predicate)
+  return generator:where(predicate):take(1):generate()
+end
+
+--! @brief  Returns true if every value produced by the generator 
+--!         satisfies the predicate. 
+--! @param[in] generator A generator
+--! @param[in] predicate A unary function that returns true/false.
+--! @return true/false
+function Public.every(generator, predicate)
+  return 
+    Public.find(generator, 
+                function(i) 
+                  return predicate(i) == false 
+                end) == nil
+end
+
+--! @brief  Invokes a function on every generated value
+--! @param[in] generator A generator
+--! @param[in] func A unary function
+function Public.foreach(generator, func)
+    repeat 
+      local data, valid = generator:generate()
+      if valid then func(data) end
+    until valid == false
+end
+
+--! @brief Sorts the values produced by the generator
+--! @param[in] generator A generator
+--! @param[in] func (optional) A binary comparator function
+--! @return A sorted table
+function Public.sort(generator, func)
+    local data = generator:toTable()
+    table.sort(data, func)
+    return data
+end
+
+--! @brief Sorts the values produced by the generator with 
+--!        object.property as key.
+--! @param[in] generator A generator
+--! @param[in] property A string. The algorithm uses object[property] to sort. 
+--!            For example, to sort with person.name, pass "name"
+--! @param[in] func (optional) A binary comparator function 
+--!            for property
+--! @return A sorted table
+function Public.sortBy(generator, property, func)
+    local data = generator:toTable()
+    if func then
+      table.sort(data,function (i, j) 
+                         return func(i[property], j[property])
+                      end)
+    else 
+      table.sort(data,function (i, j) 
+                         return i[property] < j[property]
+                      end)
+    end
+    return data
+end
+
+--! @brief Splits the values produced by the generator into buckets
+--!        determind by the groupingFunc. 
+--! @param[in] generator A generator
+--! @param[in] groupingFunc A unary function that identifies a bucket for 
+--!            input value. bucket is also a "key"
+--! @return A table of tables. The table contains buckets identified by
+--!         by the groupingFunc. Each bucket contains at least one element.
+function Public.groupBy(generator, groupingFunc)
+    local data = {}
+    Public.foreach(generator, 
+                   function (i) 
+                     local key = groupingFunc(i)
+                     data[key] = data[key] or {}
+                     local bucket = data[key]
+                     bucket[#bucket+1] = i 
+                   end)
+    return data
+end
+
+--! @brief Returns a table containing the last N generated values
+--! @param[in] generator A generator
+--! @param[in] (optional) count Last count values are returned. Default 1.
+--! @return A table containing last N values
+function Public.lastN(generator, count)
+    count = count or 1
+    return generator:last(count):toTable()
+end
+
+
 --! @brief Creates a generator that produces structured type instances.
 --! @param[in] aggregateType The \link xtypes \endlink type definition 
 --!        as per DDSL.
@@ -1164,7 +1312,7 @@ function Public.enumGen(enumtype, genLib, memoizeGen)
       local elem, value = next(enumtype[idx])
       ordinals[idx] = value
     end
-    local gen = Public.oneOf(ordinals)
+    local gen = Public.oneOfGen(ordinals)
     if memoizeGen then
       genLib.typeGenLib[typename] = gen
     end
@@ -1558,7 +1706,7 @@ function Private.zunionGen(unionType, genLib, memoizeGen)
   if genLib._d then
     memberGenTab._d = genLib._d
   else
-    memberGenTab._d = Public.oneOf(caseSeq)
+    memberGenTab._d = Public.oneOfGen(caseSeq)
     if memoizeGen then genLib._d = memberGenTab._d end
   end
   

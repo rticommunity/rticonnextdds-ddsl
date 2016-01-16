@@ -143,7 +143,7 @@ function Tester.test_struct_gen()
   local subject = ReactGen.toSubject(Gen.fibonacciGen())
   shapeGenLib.x          = subject
   shapeGenLib.y          = shapeGenLib.x:map(function (x) return 2*x end)
-  shapeGenLib.color      = Gen.oneOf({ "RED", "GREEN", "BLUE" })
+  shapeGenLib.color      = Gen.oneOfGen({ "RED", "GREEN", "BLUE" })
   shapeGenLib.shapesize  = Gen.rangeGen(20, 30)
 
   local reactiveShapeGen = ReactGen.aggregateGen(ShapeType, shapeGenLib)
@@ -209,7 +209,7 @@ function Tester.test_react_seq()
 
   shapeGenLib.x         = ReactGen.toSubject(Gen.rangeGen(0, 200))
   shapeGenLib.y         = shapeGenLib.x:map(function (x) return 2*x end)
-  shapeGenLib.color     = Gen.oneOf({ "RED", "GREEN", "BLUE" })
+  shapeGenLib.color     = Gen.oneOfGen({ "RED", "GREEN", "BLUE" })
   shapeGenLib.shapesize = Gen.rangeGen(20, 30)
 
   local reactiveShapeGen = ReactGen.aggregateGen(ShapeType, shapeGenLib)

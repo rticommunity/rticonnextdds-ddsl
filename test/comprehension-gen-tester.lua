@@ -81,7 +81,7 @@ function Tester.test_constrained_shape_y()
   end
 
   shapeGenLib.y         = Comprehension.parse(constraint, { xGen = shapeGenLib.x } ) 
-  shapeGenLib.color     = Gen.oneOf({ "RED", "GREEN", "BLUE" })
+  shapeGenLib.color     = Gen.oneOfGen({ "RED", "GREEN", "BLUE" })
   shapeGenLib.shapesize = Gen.constantGen(30)
 
   local shapeReactGen = ReactGen.aggregateGen(ShapeType, shapeGenLib)

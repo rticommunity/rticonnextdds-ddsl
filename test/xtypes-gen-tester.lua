@@ -353,7 +353,7 @@ function Tester.test_struct_gen()
 
   shapeGenLib.x         = Gen.rangeGen(xMin, xMax)
   shapeGenLib.y         = Gen.rangeGen(yMin, yMax)
-  shapeGenLib.color     = Gen.oneOf({ "RED", "GREEN", "BLUE" })
+  shapeGenLib.color     = Gen.oneOfGen({ "RED", "GREEN", "BLUE" })
   shapeGenLib.shapesize = Gen.rangeGen(sMin, sMax)
 
   local memoize = false 
@@ -921,7 +921,7 @@ function Tester.test_months()
  local array = { "Jan", "Feb", "Mar",  "Apr", "May", "Jun", 
                  "Jul", "Aug", "Sept", "Oct", "Nov", "Dec" }
  local set = Set(array)
- local monthGen = Gen.oneOf(array)
+ local monthGen = Gen.oneOfGen(array)
  local yearGen = Gen.stepperGen(1900, 1912)
  local seriesGen = yearGen:zipMany(monthGen, 
                                    function(year, month) 
@@ -1019,7 +1019,6 @@ function Tester.test_skip()
     assert(answer[i] == gen:generate())
   end
   
-  
 end
 
 Tester[#Tester+1] = 'test_last'
@@ -1049,6 +1048,27 @@ function Tester.test_last()
   assert(nil == gen:generate())
   
 end
+
+Tester[#Tester+1] = 'test_reduce'
+function Tester.test_reduce()
+  
+  local gen = Gen.stepperGen(1, 5)
+                 :reduce(function (sum, i) return sum+i end, 0)
+  
+  assert(gen:generate() == 15)
+
+  local gen  = Gen.stepperGen(1, 5)
+                  :reduce(function (sum, i) return sum+i end, 0)
+  local gen2 = Gen.stepperGen(1, 5)
+                  :scan(function (sum, i) return sum+i end, 0)
+                  :last()
+                  
+  assert(gen:generate() == gen2:generate())
+  assert(Gen.emptyGen():reduce():generate() == 
+         Gen:emptyGen():scan():last():generate())
+    
+end
+
 
 Tester[#Tester+1] = 'test_concat'
 function Tester.test_concat()
@@ -1166,8 +1186,8 @@ function Tester.test_toTable()
  
 end
 
-Tester[#Tester+1] = 'test_where_filter'
-function Tester.test_where_filter()
+Tester[#Tester+1] = 'test_where_reject_find_every'
+function Tester.test_where_reject_find_every()
   
   local data = { 1, 10, 28, 55, 3, 15, 36, 6, 21, 45 }
   local even = { 10, 28, 36, 6, }
@@ -1177,7 +1197,7 @@ function Tester.test_where_filter()
                      :where(function (i) return i % 2 == 0 end)
   
   local oddGen = Gen.inOrderGen(data)
-                    :filter(function (i) return i % 2 == 0 end)
+                    :reject(function (i) return i % 2 == 0 end)
   
   for i=1, #even do
     assert(even[i] == evenGen:generate())
@@ -1186,7 +1206,96 @@ function Tester.test_where_filter()
   for i=1, #odd do
     assert(odd[i] == oddGen:generate())
   end
- 
+
+  assert(Gen.find(Gen.inOrderGen(data),
+                  function (i) return i == 15 end) == 15)
+  
+  assert(Gen.find(Gen.inOrderGen(data),
+                  function (i) return i == -777 end) == nil)
+  
+  assert(Gen.every(Gen.inOrderGen(data),
+                   function (i) return i < 100 end))
+  
+  assert(Gen.every(Gen.inOrderGen(data),
+                   function (i) return i < 55 end) == false)
+  
+end
+
+Tester[#Tester+1] = 'test_sort'
+function Tester.test_sort()
+  
+  local data   = { 1, 10, 28, 55,  3, 15, 36,  6, 21, 45 }
+  local answer = { 1,  3,  6, 10, 15, 21, 28, 36, 45, 55 }
+  local sorted = Gen.sort(Gen.inOrderGen(data), 
+                          function (i,j) return i < j end)
+  
+  for i = 1, #answer do
+    assert(answer[i] == sorted[i])
+  end
+
+  local data   = { { name = "Z" },
+                   { name = "M" },
+                   { name = "P" },
+                   { name = "A" } }
+  
+  local answer = { { name = "A" },
+                   { name = "M" },
+                   { name = "P" },
+                   { name = "Z" } }
+  
+  local sorted = Gen.sortBy(Gen.inOrderGen(data), "name")
+  
+  for i = 1, #answer do
+    assert(answer[i].name == sorted[i].name)
+  end
+  
+end
+
+Tester[#Tester+1] = 'test_groupby'
+function Tester.test_groupby()
+  
+  local data   = { { age = 5,  name = "Z" },
+                   { age = 15, name = "M" },
+                   { age = 17, name = "P" },
+                   { age = 23, name = "A" } }
+  
+  local answer = { }
+  answer[10] = { {age =  5, name = "Z" } }
+  answer[20] = { {age = 15, name = "M" },
+                 {age = 17, name = "P" } }
+  answer[30] = { {age = 23, name = "A" } }
+  
+  local grouped = 
+    Gen.groupBy(Gen.inOrderGen(data), 
+                function(i) 
+                  if     i.age < 10 then return 10
+                  elseif i.age < 20 then return 20
+                  elseif i.age < 30 then return 30
+                  end
+                end)
+  
+  local bucket = 10
+  while bucket <= 30 do
+    for i = 1, #answer[bucket] do
+      assert(answer[bucket][i].name == grouped[bucket][i].name)
+    end
+    bucket = bucket + 10
+  end
+  
+end
+
+Tester[#Tester+1] = 'test_foreach'
+function Tester.test_foreach()
+  
+  local sum = 0
+  local data   = { 1, 10, 28, 55,  3, 15, 36,  6, 21, 45 }
+  Gen.foreach(Gen.inOrderGen(data), function (i) sum = sum + i end)  
+  
+  local total = 
+    Gen.inOrderGen(data):reduce(function (init, i) return init + i end, 0):generate()
+  
+  assert(sum == total)
+
 end
 
 --
