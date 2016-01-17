@@ -13,138 +13,115 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 --]]
---[[
------------------------------------
-Purpose: Pull-based data generators
-Created: Sumant Tambe, 2015 Jun 12
------------------------------------
---]]
 
 -------------------------------------------------------------
---! @file
---! @brief Pull-based Generators
---! 
---! The \a public functions in this module create generators
---! of various kinds. The \link Generator \endlink is the
---! prototype ("class") for all generator objects. Every 
---! generator has a method named \link generate \endlink 
---! (among others) that produces a new value. As generators
---! may be stateful, it is important to invoke 
---! methods on all generators using the ":" syntax.
---! 
---! Consider the following example that generates a random day 
---! of the week everytime generate is called.
---!
---! \code {.lua}
---! local Gen = require("generator")
---! Gen.initialize()
---! 
---! local dayOfWeek = { "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat" }
---! local dayGen = Gen.oneOfGen(dayOfWeek)
---!
---! for i=1, 5 do 
---!   print("dayGen produced ", dayGen:generate())
---! end
---! \endcode
---! 
---! Generators are designed for composibility from group up.
---! Complex generators can be easily created from basic, simpler
---! generators. As such, generators form an algebra with well-defined
---! operations such as map, flatMap, zipMany, amb (ambiguous), etc.
---! These operations are also known as \a combinators because 
---! use of these combinators always yields another generator.
---!
---! The example below shows how the above dayGen can be created 
---! using a more basic generator, such as a range generator.
---! I.e., xGen is a generator that produces values from 1 to 7. 
---! dayGen is a generator that maps the values produces
---! by xGen to the days of the week.
---!
---! \code {.lua}
---! local dayOfWeek = { "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat" }
---! local xGen = Gen.rangeGen(1,7)
---! local dayGen = xGen:map(function(i) 
---!                          return dayOfWeek[i]
---!                         end)
---! for i=1, 5 do 
---!   print("xGen produced ", xGen:generate())
---!   print("dayGen produced ", dayGen:generate())
---! end
---! \endcode
---! 
---! It turns out that the values produced by xGen don't correspond to
---! that of dayGen. That's an expected behavior. xGen has no relation 
---! to dayGen beyond basic reuse as seen above. Every time dayGen:generate()
---! is called, xGen:generate() is also called. As xGen has no memory, it
---! produces a new random number in the [1..7] range every time. Therefore, the
---! values of x and days don't correspond.  All the generators available
---! in this module are independent of each other. If you want to capture
---! value dependencies consider using \a reactive generators.
---! 
---! \link zipMany \endlink is another combinator supported by generators. The 
---! following example generates a random month in every year in the 20th century
---! \code {.lua}
---! local monthGen = Gen.oneOfGen({ "Jan", "Feb", "Mar",  "Apr", "May", "Jun", 
---!                              "Jul", "Aug", "Sept", "Oct", "Nov", "Dec" })
---! local yearGen = Gen.stepperGen(1900, 1999)
---! local seriesGen = yearGen:zipMany(monthGen, 
---!                                   function(year, month) 
---!                                     return year .. " " .. month
---!                                   end)
---! for i=1, 100 do 
---!   print(seriesGen:generate())
---! end
---! \endcode
---!
---! Public functions such as \link aggregateGen \endlink, 
---! \link enumGen \endlink depend on a type definition provided
---! by the Data Domain-Specific Modeling Language (DDSL).
+-- A library of **composable generators** of various kinds. 
+-- Generator is the prototype ("class") for all generator objects. 
+-- Every generator has a method named generate (among others) 
+-- that produces a new value. As most generators may be stateful, 
+-- it is important to invoke methods on all generators using 
+-- the ":" syntax.
+--
+-- **Examples**
+--
+-- Consider the following example that generates a random day 
+-- of the week everytime generate is called.
+--
+--     local Gen = require("generator")
+--     Gen.initialize()
+-- 
+--     local dayOfWeek = { "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat" }
+--     local dayGen = Gen.oneOfGen(dayOfWeek)
+--
+--     for i=1, 5 do 
+--       print("dayGen produced ", dayGen:generate())
+--     end
+-- 
+-- Generators are designed for composibility from group up.
+-- Complex generators can be easily created from basic, simpler
+-- generators. As such, generators form an *algebra* with well-defined
+-- operations such as map, flatMap, zipMany, append, etc.
+-- These operations are also known as *combinators* because 
+-- use of these combinators always yields another generator.
+--
+-- The example below shows how the above dayGen generator can be 
+-- created using a more basic generator, such as a range generator.
+-- I.e., xGen is a generator that produces values from 1 to 7. 
+-- dayGen is a generator that maps the values produces
+-- by xGen to the days of the week.
+--
+--     local dayOfWeek = { "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat" }
+--     local xGen = Gen.rangeGen(1,7)
+--     local dayGen = xGen:map(function(i) 
+--                               return dayOfWeek[i]
+--                             end)
+--     for i=1, 5 do 
+--       print("xGen produced ", xGen:generate())
+--       print("dayGen produced ", dayGen:generate())
+--     end
+-- 
+-- It turns out that the values produced by xGen don't correspond to
+-- that of dayGen. That's an expected behavior. xGen has no relation 
+-- to dayGen beyond basic reuse as seen above. Every time dayGen:generate()
+-- is called, xGen:generate() is also called. As xGen has no memory, it
+-- produces a new random number in the [1..7] range every time. 
+-- Therefore, the values of x and days don't correspond.  
+-- All the generators available in this module are independent 
+-- of each other. If you want to capture value dependencies 
+-- consider using the reactive generators in the 'react' module.
+-- 
+-- zipMany is another combinator supported by generators. The following 
+-- example generates a random month in every year in the 20th century
+-- 
+--     local monthGen = Gen.oneOfGen({ "Jan", "Feb", "Mar",  "Apr", "May", "Jun", 
+--                                     "Jul", "Aug", "Sept", "Oct", "Nov", "Dec" })
+--     local yearGen = Gen.stepperGen(1900, 1999)
+--     local seriesGen = yearGen:zipMany(monthGen, 
+--                                       function(year, month) 
+--                                         return year .. " " .. month
+--                                       end)
+--     for i=1, 100 do 
+--       print(seriesGen:generate())
+--     end
+--
+-- Public functions such as *aggregateGen*, *enumGen* 
+-- depend on a type definition provided
+-- by the Data Domain-Specific Modeling Language (DDSL).
+--
+-- @module generator
+-- @alias Public
+-- @author Sumant Tambe
 -------------------------------------------------------------
 
 --! The generator module depends on the "xtypes" module.
 local xtypes = require ("ddsl.xtypes")
 
---! The base \a interface for all pull-based generators.
---! All methods of Generator are instance methods
--- Generator:new
--- Generator:generate
--- Generator:kind
--- Generator:map
--- Generator:flatMap
--- Generator:zipMany
--- Generator:amb
--- Generator:scan
--- Generator:reduce
--- Generator:take
--- Generator:skip
--- Generator:last
--- Generator:concat
--- Generator:append
--- Generator:where
--- Generator:reject
--- Generator:toTable
-local Generator = { }
+local Public = {
 
--- Generator package object exported outside
-local Public;
-Public = {
-
-  -- Numeric limits
+  --- Max integer value of a byte
   MAX_BYTE    = 0xFF,
 
+  --- Max 16-bit integer value
   MAX_INT16   = 0x7FFF, 
+  --- Max 32-bit integer value
   MAX_INT32   = 0x7FFFFFFF, 
+  --- Max 64-bit integer value
   MAX_INT64   = 0x7FFFFFFFFFFFFFFF, 
 
+  --- Max 16-bit unsigned integer value
   MAX_UINT16  = 0xFFFF, 
+  --- Max 32-bit unsigned integer value
   MAX_UINT32  = 0xFFFFFFFF, 
+  --- Max 64-bit unsigned integer value
   MAX_UINT64  = 0x7FFFFFFFFFFFFFFF, 
 
+  --- Max value of a float (single precision)
   MAX_FLOAT   = 3.4028234 * math.pow(10,38),
+  --- Max value of a double (double precision)
   MAX_DOUBLE  = 1.7976931348623157 * math.pow(10, 308),
 
-  -- An object represeting no value was produced
-  -- by the underlying reactive generator.
+  --! An sentinel object represeting no value was 
+  --! produced by the underlying reactive generator.
   NO_PUSHED_VALUE = { }
 
   -- Built-in generator objects
@@ -177,6 +154,7 @@ Public = {
 
   --boolGen
   --charGen
+  --asciiGen
   --wcharGen
   --octetGen
   --shortGen
@@ -228,33 +206,57 @@ Public = {
 
 } -- Public
 
+--- Min value of a float (single precision)
 Public.MIN_FLOAT   = -Public.MAX_FLOAT
+--- Min value of a double (double precision)
 Public.MIN_DOUBLE  = -Public.MAX_DOUBLE
 
+--- Min value of a 16-bit integer
 Public.MIN_INT16   = -Public.MAX_INT16-1 
+--- Min value of a 32-bit integer
 Public.MIN_INT32   = -Public.MAX_INT32-1 
+--- Min value of a 32-bit integer
 Public.MIN_INT64   = -Public.MAX_INT64-1 
 
 setmetatable(Public.NO_PUSHED_VALUE, {
     __tostring = function () return "NO_PUSHED_VALUE" end
 })
 
+--- A Generator class. The base type for all pull-based generators.
+-- @type Generator
+local Generator = { }
+
+--! Generator:new
+--! Generator:generate
+--! Generator:kind
+--! Generator:map
+--! Generator:flatMap
+--! Generator:zipMany
+--! Generator:amb
+--! Generator:scan
+--! Generator:reduce
+--! Generator:take
+--! Generator:skip
+--! Generator:last
+--! Generator:concat
+--! Generator:append
+--! Generator:where
+--! Generator:reject
+--! Generator:toTable
+
+
 -- Only private methods/data
-local Private;
-Private = { 
+local Private = { 
   -- createMemberGenTab
   -- createGeneratorImpl
   -- seqParseGen
 }
 
-
------------------------------------------------------
--------------------- Generator ---------------------
------------------------------------------------------
+--==================================================--
+-- Generator member functions
 
 --! @brief Overrides __tostring for all Generators
 --! @return A string of the form "Generator: 0xaddress"
-
 function Generator:__tostringx ()
   Generator.__tostring = nil    
   local s = string.gsub(tostring(self), "table", "Generator")
@@ -264,12 +266,11 @@ end
 
 Generator.__tostring = Generator.__tostringx    
 
---! @brief Creates a new generator from an implementation of generate(). 
---! @param[in] generateFunc A function that implements generate(). 
---!        I.e., the function should accept no arguments and must return a value.
---! @return A new generator that uses the generateFunc to produce values.
---! @see   \link Public.newGenerator \endlink
-
+--! Creates a new generator from an implementation of generate(). 
+--!  @param[in] generateFunc A function that implements generate(). 
+--!         I.e., the function should accept no arguments and must return a value.
+--!  @return A new generator that uses the generateFunc to produce values.
+--!  @see   Public.newGenerator 
 function Generator:new(generateFunc)
   o = { genImpl = generateFunc }
   setmetatable(o, self)
@@ -277,26 +278,22 @@ function Generator:new(generateFunc)
   return o
 end
 
---! @brief Generates a new value.
---! @return A new value 
-
+--- Generates a new value or returns nil, false.
+--  @treturn generic A new value. It's valid only if the second 
+--  value is true. 
+--  @treturn bool True if generator has not finished. If the 
+--  second value is false, generator is complete. 
 function Generator:generate()
   return self.genImpl()
 end
 
---! @brief Determines the generator "kind". Either "pull" or "push"
---! @return A string. Either "pull" or "push"
-
-function Generator:kind()
-  return "pull"
-end
-
---! @brief Creates a new generator that applies the given function to each 
---!        value generated by the self generator. 
---! @param[in] func A function that transforms input value to an output value.
---!        I.e., the function should accept one argument and must return a value.
---! @return A new generator that generates the result of applying func.
-
+--- Creates a new generator that applies the given function 
+--  to each value generated by the self generator. 
+--  @tparam function func A function that transforms the input 
+--  value to an output value. I.e., the function must accept 
+--  one argument and must return a value.
+--  @treturn Generator A new generator that generates the result 
+--  of applying func.
 function Generator:map(func)
   return Generator:new(function () 
            local val, valid = self:generate()
@@ -308,105 +305,55 @@ function Generator:map(func)
          end)
 end
 
---! @brief Creates a new generator that applies the given function to each 
---!        value generated by the self generator and invokes generate() on 
---!        the return value. Effectively, it flattens Generator<Generator<T>> 
---!        to Generator<T>
---! @param[in] func A function that transforms the input value to a generator.
---!        I.e., the function should accept one argument and must return a generator.
---!        If func is missing, self must be a Generator<Generator<T>>. 
---! @return A new generator that returns the values generated by the generator 
---!         produced by func.
-
-function Generator:flatMap(func)
-  local nestedGen = nil
-  func = func or function(g) return g end
+--- Returns a generator that produces values for which
+--  the predicate returns true. If the underlying generator 
+--  is infinite and no value ever satisfies the predicate,
+--  the resulting generator will never produce any value
+--  and will block forever (when generate is called).
+--  @tparam function predicate A unary function that returns
+--  true for the "desirable" values. The values for which
+--  predicate returns false, are omitted from the resulting
+--  generator.
+--  @treturn Generator A new generator
+function Generator:where(predicate)
   
-  return Generator:new(function () 
-           while true do  
-             if nestedGen == nil then 
-               while true do
-                 local val, valid = self:generate()
-                 if valid then 
-                   nestedGen = func(val)
-                   break
-                 else
-                   return nil, false
-                 end 
-               end
-             end
+  return Generator:new(function()
+    local data, valid = self:generate()
+    
+    while valid and (predicate(data) == false) do
+      data, valid  = self:generate()  
+    end
 
-             local nested_val, nested_valid = nestedGen:generate()
-             if nested_valid then
-               return nested_val, true
-             else
-               nestedGen = nil
-             end
-           end
-         end)
+    if valid then
+      return data, true
+    else
+      return nil, false
+    end
+
+  end)
 end
 
---! @brief Creates a new generator that applies the given function to the values
---!        generated by the argument generators. This function accepts arbitrary
---!        number of geneators as arguments (including zero). The last argument 
---!        must be a function that accepts as many arguments as there are 
---!        generators (including self). 
---! @param[in] ... Zero or more generators separated by comma. Followed by a zipperFunc.
---! @param[in] zipperFunc A function that zips one or more values into one.
---!        I.e., the function should accept \a N arguments and must return a value.
---! @return A new generator that generates the result of applying the zipper function.
-
-function Generator:zipMany(...)
-  local argLen = select("#", ...)
-  local zipperFunc = select(argLen, ...)
-  
-  if type(zipperFunc) ~= "function" then
-    error "Error: zipMany: Invalid arguments"
-  end
-  
-  local genList = { self }
-
-  for i=1, argLen-1 do
-    genList[#genList+1] = select(i, ...)
-  end
-
-  return Generator:new(function () 
-           local tuple = {}
-           for i=1, argLen do
-              local ti, ti_valid = genList[i]:generate()
-              if ti_valid then
-                tuple[i] = ti
-              else
-                return nil, false
-              end
-           end
-           return zipperFunc(table.unpack(tuple)), true
-         end)
+--- Opposite of Generator:where. Returns a generator that 
+--  rejects the values for which the predicate returns true. 
+--  @tparam function predicate A unary function that returns
+--  true for the "undesirable" values. The values for which
+--  predicate returns true, are omitted from the resulting
+--  generator.
+--  @treturn Generator A new generator
+function Generator:reject(predicate)
+  return self:where(function(i) return predicate(i) == false end)
 end
 
---! @brief Creates a new generator that returns values produced by the 
---!        argument generators (self, otherGen) non-derministically.
---! @param[in] otherGen A generator 
---! @return A new generator 
-
-function Generator:amb(otherGen) 
-  return Public.boolGen():flatMap(function (b) 
-        return b and self or otherGen
-      end)
-end
-
---! @brief Same as Generator:concat
---! @param[in] otherGen A generator 
---! @return A new generator 
-
+--- Same as Generator:concat
+--  @tparam Generator otherGen A generator 
+--  @treturn Generator A new generator 
 function Generator:append(otherGen) 
   return self:concat(otherGen)
 end
 
---! @brief Creates a new generator that appends otherGen to this.
---! @param[in] otherGen A generator 
---! @return A new generator 
-
+--- Creates a new generator that appends otherGen to self.
+--  @tparam Generator otherGen A generator 
+--  @treturn Generator A new generator 
 function Generator:concat(otherGen) 
   local first = true
   return  Generator:new(function () 
@@ -425,13 +372,13 @@ function Generator:concat(otherGen)
           end)
 end
 
---! @brief Creates a new generator that returns only the first 
---!        count values. For example,
---!        Gen.inOrderGen({1,2,3,4,5}):take(2) produces 1 and 2.
---! @param[in] count (optional) A positive number. If count is not
---!            provided take has no effect.
---! @return A new generator 
-
+--- Creates a new generator that returns only the first 
+--  count values. For example,
+--    Gen.inOrderGen({1,2,3,4,5}):take(2) 
+--  returns a generator that produces 1 and 2.
+--  @tparam int count (optional) A positive number. If count is not
+--  provided take has no effect.
+--  @treturn Generator A new generator 
 function Generator:take(count) 
   if count < 0 then
     error "Generator:take: Invalid argument. Negative count" 
@@ -452,13 +399,13 @@ function Generator:take(count)
          end)
 end
 
---! @brief Creates a new generator that skips the first 
---!        count values. For example,
---!        Gen.inOrderGen({1,2,3,4,5}):skip(3) produces 4 and 5.
---! @param[in] count (optional) A positive number. If count is
---!            not provided, the resulting generator is empty.
---! @return A new generator 
-
+--- Creates a new generator that skips the first 
+--  count values. For example,
+--    Gen.inOrderGen({1,2,3,4,5}):skip(3) 
+--  return a generator that produces 4 and 5.
+--  @tparam int count (optional) A positive number. If count is
+--  not provided, the resulting generator is empty.
+--  @treturn Generator A new generator 
 function Generator:skip(count) 
   if count < 0 then
     error "Generator:skip: Invalid argument. Negative count" 
@@ -484,14 +431,14 @@ function Generator:skip(count)
          end)
 end
 
---! @brief Creates a new generator that produces only the last 
---!        (at most) count values. For example,
---!        Gen.inOrderGen({1,2,3,4,5}):last(2) produces 4 and 5.
---!        Gen.inOrderGen({1,2,3,4,5}):last(7) produces 1,2,3,4,5.
---! @param[in] count (optional) A positive number. If count is not
---!            provided, it defaults to 1.
---! @return A new generator 
-
+--- Creates a new generator that produces only the last 
+--  (at most) count values. For example,
+--    Gen.inOrderGen({1,2,3,4,5}):last(2) 
+--    Gen.inOrderGen({1,2,3,4,5}):last(7) 
+--  return generators that produce [4,5] and [1,2,3,4,5] respectively.
+--  @tparam int count (optional) A positive number. If count is not
+--  provided, it defaults to 1.
+--  @treturn Generator A new generator 
 function Generator:last(count) 
   count = count or 1
   
@@ -538,14 +485,108 @@ function Generator:last(count)
          end)
 end
 
---! @brief Creates a new generator that reduces values according
---!        to the reducer function. The resulting generator
---!        produces as many values as in the source generator.
---! @param reduderFunc [in] A function that reduces the sequence
---!        produced by the generator. Takes two arguments and 
---!        returns reduced value.
---! @param init [in] initial state for the reducer function.
---! @return A new generator.
+--- Creates a new generator that applies the given function to each 
+--  value generated by the self generator and invokes generate() on 
+--  the return value till it ends. Effectively, it flattens 
+--  Generator[Generator[T]] to Generator[T]
+--  @tparam function func A function that transforms the input value to 
+--  a generator. I.e., the function should accept one argument and must 
+--  return a generator. If func is missing, self must be a 
+--  Generator[Generator[T]]. 
+--  @treturn Generator A new generator that returns the values generated 
+--  by the generator produced by func.
+function Generator:flatMap(func)
+  local nestedGen = nil
+  func = func or function(g) return g end
+  
+  return Generator:new(function () 
+           while true do  
+             if nestedGen == nil then 
+               while true do
+                 local val, valid = self:generate()
+                 if valid then 
+                   nestedGen = func(val)
+                   break
+                 else
+                   return nil, false
+                 end 
+               end
+             end
+
+             local nested_val, nested_valid = nestedGen:generate()
+             if nested_valid then
+               return nested_val, true
+             else
+               nestedGen = nil
+             end
+           end
+         end)
+end
+
+--- Creates a new generator that applies the given function to the values
+--  generated by the argument generators. This function accepts arbitrary
+--  number of geneators as arguments (including zero). The last argument 
+--  must be a function that accepts as many arguments as there are 
+--  generators (including self). 
+--  @tparam Generator ... Zero or more generators separated by comma. 
+--  @tparam function zipperFunc A function that aggregates one or more values 
+--  into one. I.e., the function should accept as many arguments as there are 
+--  generators and must return a value. The value generated by the self generator
+--  is the first value passed to the function.
+--  @treturn Generator A new generator that generates the result of applying 
+--  the zipper function.
+function Generator:zipMany(...)
+  local argLen = select("#", ...)
+  local zipperFunc = select(argLen, ...)
+  
+  if type(zipperFunc) ~= "function" then
+    error "Error: zipMany: Invalid arguments"
+  end
+  
+  local genList = { self }
+
+  for i=1, argLen-1 do
+    genList[#genList+1] = select(i, ...)
+  end
+
+  return Generator:new(function () 
+           local tuple = {}
+           for i=1, argLen do
+              local ti, ti_valid = genList[i]:generate()
+              if ti_valid then
+                tuple[i] = ti
+              else
+                return nil, false
+              end
+           end
+           return zipperFunc(table.unpack(tuple)), true
+         end)
+end
+
+--- Creates a new generator that returns the values produced by the 
+--  argument generators (self and otherGen) non-derministically.
+--  amb stands for ambiguous.
+--  @tparam Generator otherGen A generator 
+--  @treturn Generator A new generator 
+function Generator:amb(otherGen) 
+  return Public.boolGen():flatMap(function (b) 
+        return b and self or otherGen
+      end)
+end
+
+--- Creates a new generator that reduces values according
+--  to the reducer function. The resulting generator
+--  produces as many values as in the source generator.
+--  For example,
+--    Gen.inOrderGen({1,2,3,4,5})
+--       :scan(function (sum, i) return sum+i end, 0) 
+--  returns a generator that produces [1,3,6,10,15].
+--  @tparam function reducerFunc A function that reduces the 
+--  sequence produced by the generator. Takes two arguments and 
+--  returns the reduced value. The first argument is the accumulated
+--  value, which is same as init for the first call.
+--  @param init initial state for the reducer function.
+--  @treturn Generator A new generator.
 function Generator:scan(reducerFunc, init)
   return Generator:new(function ()
                          local val, valid = self:generate()
@@ -558,21 +599,24 @@ function Generator:scan(reducerFunc, init)
                        end)
 end
 
---! @brief Creates a new single value generator that reduces the 
---!        values according to the reducer function. Expression
---!        self:reduce(f, init) is equivalent to self:scan(f, init):last()
---!        If the underlying generator is infinite, this function never
---!        returns.
---! @param reduderFunc [in] A function that reduces the sequence
---!        produced by the generator. Takes two arguments and 
---!        returns reduced value.
---! @param init [in] initial state for the reducer function.
---! @return A new generator.
+--- Creates a new single value generator that reduces the 
+--  values according to the reducer function. Given
+--  a generator self and reducer function f, the following
+--  two expressions are equivalent.
+--    self:reduce(f, init) 
+--    self:scan(f, init):last()
+--  If self is infinite, this function never returns.
+--  @tparam function reducerFunc A function that reduces the sequence
+--  produced by the generator. Takes two arguments and 
+--  returns the reduced value. The first argument is the accumulated
+--  value, which is same as init for the first call.
+--  @param init The initial state for the reducer function.
+--  @treturn Generator A new generator.
 function Generator:reduce(reducerFunc, init)
   local first = true
   
-  --Alternative slightly inefficient implementation
-  --return self:scan(reducerFunc, init):last()
+  --! Alternative slightly inefficient implementation
+  --! return self:scan(reducerFunc, init):last()
   
   return Generator:new(function ()
                         if first then 
@@ -593,13 +637,20 @@ function Generator:reduce(reducerFunc, init)
                       end)
 end
 
---! @brief  Returns a table containing all the elements produced     
---!         by the generator. Note that this function may not
---!         return and may cause excessive memory consumption
---!         if the underlying generator is very large or infinite.
---! @return A table
---! @post   If the function returns, the generator is completely
---!         exhausted.
+--- Returns the generator kind (either "pull" or "push").
+--  @treturn string Either "pull" or "push"
+function Generator:kind()
+  return "pull"
+end
+
+--- Returns a table containing all the elements produced
+--  by the generator. Note that this function may not
+--  return and may cause excessive memory consumption
+--  if the underlying generator is very large or infinite.
+--  If the function returns, the generator is completely
+--  exhausted.
+--  @treturn table A table containing all the values
+--  produced by the generator.
 function Generator:toTable()
   local data = {}
   
@@ -614,46 +665,13 @@ function Generator:toTable()
   end
 end
 
---! @brief  Returns a generator that produces values for which
---!         the predicate returns true. If the underlying generator 
---!         is infinite and no value ever satisfies the predicate,
---!         the function will block forever.
---! @return A new generator
-function Generator:where(predicate)
-  
-  return Generator:new(function()
-    local data, valid = self:generate()
-    
-    while valid and (predicate(data) == false) do
-      data, valid  = self:generate()  
-    end
+--- Generator factory functions
+-- @section FactoryFunctions
 
-    if valid then
-      return data, true
-    else
-      return nil, false
-    end
-
-  end)
-end
-
---! @brief  Returns a generator that rejects the values for which
---!         the predicate returns true. If the underlying generator 
---!         is infinite and no value ever satisfies the predicate,
---!         the function will block foreever.
---! @return A new generator
-function Generator:reject(predicate)
-  return self:where(function(i) return predicate(i) == false end)
-end
-
----------------------------------------------------
-------------------- Public ------------------------
----------------------------------------------------
-
---! @brief Creates a single value generator.
---! @param[in] val A value/object
---! @return A single value generator
-
+--- Creates a single value generator.
+--  @param val A value
+--  @treturn Generator A single value generator that
+--  produces val.
 function Public.singleGen(val)
   local done = false
   return Generator:new(function () 
@@ -666,26 +684,26 @@ function Public.singleGen(val)
                        end)
 end
 
---! @brief Creates a never-ending constant value generator.
---! @param[in] val A value/object
---! @return A constant value generator
-
+--- Creates a infinite constant-value generator.
+--  @param val A value
+--  @return A constant value generator that produces
+--  val infinitely.
 function Public.constantGen(val)
   return Generator:new(function () return val, true end)
 end
 
---! @brief Creates an empty generator.
---! @return An empty generator
-
+--- Creates an empty generator.
+--  @treturn Generator An empty generator. 
 function Public.emptyGen()
   return Generator:new(function () return nil, false end)
 end
 
---! @brief Creates a generator that produces one of the
---!        items specified in the input array.
---! @param[in] array An array of values to choose from.
---! @return A generator.
-
+--- Creates a generator that produces one of the
+--  items specified in the input array. If the input
+--  array is empty, the resulting generator is empty.
+--  Otherwise, the resulting generator is infinite.
+--  @tparam array array An array of values to choose from.
+--  @treturn Generator A generator.
 function Public.oneOfGen(array)
   local len = #array
   return Generator:new(function ()
@@ -697,20 +715,18 @@ function Public.oneOfGen(array)
                        end)
 end
 
---! @brief Creates a generator that produces positive integers.
---! @return A generator 
-
+--- Creates a generator that produces positive integers in
+--  range 1 to Public.MAX_INT32.
+--  @treturn int A generator that produces positive integers.
 function Public.numGen()
   return Generator:new(function () 
     return math.random(Public.MAX_INT32), true
   end)
 end
   
---! @brief Creates a generator that produces integers
---!        in the range of \link MIN_INT16 \endlink and 
---!        \link MAX_INT16 \endlink.
---! @return A generator of integers.
-
+--- Creates a generator that produces integers
+--  in the range of Public.MIN_INT16 and Public.MAX_INT16.
+--  @return A generator of integers.
 function Public.int16Gen()
   return Generator:new(function () 
     return math.random(Public.MIN_INT16, 
@@ -718,11 +734,9 @@ function Public.int16Gen()
   end)
 end
 
---! @brief Creates a generator that produces integers
---!        in the range of \link MIN_INT32 \endlink and 
---!        \link MAX_INT32 \endlink.
---! @return A generator of integers.
-  
+--- Creates a generator that produces integers
+--  in the range of Public.MIN_INT32 and Public.MAX_INT32.
+--  @treturn Generator A generator of integers.
 function Public.int32Gen()
   return Generator:new(function () 
     return math.random(Public.MIN_INT32, 
@@ -730,11 +744,9 @@ function Public.int32Gen()
   end)
 end
   
---! @brief Creates a generator that produces integers
---!        in the range of \link MIN_INT64/4 \endlink and 
---!        \link MAX_INT64/4 \endlink.
---! @return A generator of integers.
-
+--- Creates a generator that produces integers
+--  in the range of Public.MIN_INT64/4 and Public.MAX_INT64/4.
+--  @treturn Generator A generator of integers.
 function Public.int64Gen()
   return Generator:new(function () 
     return math.random(Public.MIN_INT64/4, 
@@ -742,42 +754,38 @@ function Public.int64Gen()
   end)
 end
   
---! @brief Creates a generator that produces positive integers
---!        no larger than \link MAX_UINT16 \endlink.
---! @return A generator of integers.
-
+--- Creates a generator that produces positive integers
+--  no larger than Public.MAX_UINT16.
+--  @treturn Generator A generator of integers.
 function Public.uint16Gen()
   return Generator:new(function () 
     return math.random(0, Public.MAX_UINT16), true
   end)
 end
 
---! @brief Creates a generator that produces positive integers
---!        no larger than \link MAX_UINT32 \endlink.
---! @return A generator of integers.
-
+--- Creates a generator that produces positive integers
+--  no larger than Public.MAX_UINT32.
+--  @treturn Generator A generator of integers.
 function Public.uint32Gen()
   return Generator:new(function () 
     return math.random(0, Public.MAX_UINT32), true
   end)
 end
   
---! @brief Creates a generator that produces positive integers
---!        no larger than \link MAX_UINT64 \endlink.
---! @return A generator of integers.
-
+--- Creates a generator that produces positive integers
+--  no larger than Public.MAX_UINT64.
+--  @treturn Generator A generator of integers.
 function Public.uint64Gen()
   return Generator:new(function () 
     return math.random(0, Public.MAX_UINT64), true
   end)
 end
   
---! @brief Creates a generator that produces integer values 
---!        in the specified range (inclusive).
---! @param[in] loInt The lower integer
---! @param[in] hiInt The higher integer
---! @return A generator of integers.
-
+--- Creates a generator that produces integer values 
+--  in the specified range (inclusive).
+--  @tparam int loInt The lower integer
+--  @tparam int hiInt The higher integer
+--  @treturn Generator A generator of integers.
 function Public.rangeGen(loInt, hiInt)
   if hiInt < loInt then
     return Public.emptyGen();
@@ -788,73 +796,71 @@ function Public.rangeGen(loInt, hiInt)
   end
 end
 
---! @brief Creates a generator that produces boolean
---!        values non-deterministically.
---! @return A generator of booleans.
-
+--- Creates a generator that produces boolean
+--  values non-deterministically.
+--  @treturn Generator A generator of booleans.
 function Public.boolGen()
   return Generator:new(function () 
     return math.random(2) > 1, true;
   end)
 end
 
---! @brief Creates a generator that produces integer values 
---!        in the range of 0 and \link MAX_BYTE \endlink
---! @return A generator of integers
+--- Creates a generator that produces integer values 
+--  in the range of 0 and 127 (inclusive).
+--  @treturn Generator A generator of integers
+function Public.asciiGen()
+  return Public.rangeGen(0, 127)
+end
 
+--- Creates a generator that produces integer values 
+--  in the range of 0 and Public.MAX_BYTE.
+--  @treturn Generator A generator of integers
 function Public.charGen()
   return Public.rangeGen(0, Public.MAX_BYTE)
 end
 
---! @brief Creates a generator that produces integer values 
---!        in the range of 0 and \link MAX_INT16 \endlink
---! @return A generator of integers
-
+--- Creates a generator that produces integer values 
+--  in the range of 0 and Public.MAX_INT16.
+--  @treturn Generator A generator of integers
 function Public.wcharGen()
   return Public.rangeGen(0, Public.MAX_INT16)
 end
 
---! @brief Creates a generator that produces integer values 
---!        in the range of 0 and \link MAX_BYTE \endlink
---! @return A generator of integers.
-
+--- Creates a generator that produces integer values 
+--  in the range of 0 and Public.MAX_BYTE.
+--  @treturn Generator A generator of integers.
 function Public.octetGen()
   return Public.rangeGen(0, Public.MAX_BYTE)
 end
 
---! @brief Creates a generator that produces integers
---!        in the range of \link MIN_INT16 \endlink and 
---!        \link MAX_INT16 \endlink.
---! @return A generator of integers.
-
+--- Creates a generator that produces integers
+--  in the range of Public.MIN_INT16 and Public.MAX_INT16.
+--  @treturn Generator A generator of integers.
 function Public.shortGen()
   return Public.int16Gen()
 end
 
---! @brief Creates a generator that produces positive floating
---!         point numbers in the range of 0 and \link MAX_INT16 \endlink
---! @return A generator of floating point numbers.
-
+--- Creates a generator that produces positive floating
+--  point numbers in the range of 0 and Public.MAX_INT16
+--  @treturn Generator A generator of floating point numbers.
 function Public.posFloatGen()
   return Generator:new(function()
            return math.random() * math.random(0, Public.MAX_INT16), true
          end)
 end
 
---! @brief Creates a generator that produces positive floating 
---!         point numbersin the range of 0 and \link MAX_INT32 \endlink
---! @return A generator of floating point numbers.
-
+--- Creates a generator that produces positive floating 
+--  point numbersin the range of 0 and Public.MAX_INT32.
+--  @treturn Generator A generator of floating point numbers.
 function Public.posDoubleGen()
   return Generator:new(function()
            return math.random() * math.random(0, Public.MAX_INT32), true
          end)
 end
 
---! @brief Creates a generator that produces floating point numbers
---!        in the range of negative \link MAX_INT16 and \link MAX_INT16 \endlink
---! @return A generator of floating point numbers.
-
+--- Creates a generator that produces floating point numbers
+--  in the range of negative Public.MAX_INT16 and Public.MAX_INT16.
+--  @treturn Generator A generator of floating point numbers.
 function Public.floatGen()
   return Public.boolGen():map(function(b)
            local num = math.random() * math.random(0, Public.MAX_INT16)
@@ -866,10 +872,9 @@ function Public.floatGen()
          end)
 end
 
---! @brief Creates a generator that produces floating point numbers
---!        in the range of negative \link MAX_INT32 and \link MAX_INT32 \endlink
---! @return A generator of floating point numbers.
-
+--- Creates a generator that produces floating point numbers
+--  in the range of negative Public.MAX_INT32 Public.MAX_INT32.
+--  @treturn Generator A generator of floating point numbers.
 function Public.doubleGen()
   return Public.boolGen():map(function(b)
            local num = math.random() * math.random(0, Public.MAX_INT32)         
@@ -881,35 +886,31 @@ function Public.doubleGen()
          end)
 end
 
---! @brief Creates a generator that produces lowercase alphabets
---! @return A generator of integers
-
+--- Creates a generator that produces lowercase alphabets
+--  @treturn Generator A generator of integers
 function Public.lowercaseGen()
   local a = 97
   local z = 122
   return Public.rangeGen(a, z)
 end
 
---! @brief Creates a generator that produces uppercase alphabets
---! @return A generator of integers
-
+--- Creates a generator that produces uppercase alphabets
+--  @treturn Generator A generator of integers
 function Public.uppercaseGen()
   local A = 65
   local Z = 90
   return Public.rangeGen(A, Z)
 end
 
---! @brief Creates a generator that produces lowercase and uppercase alphabets
---! @return A generator of integers
-
+--- Creates a generator that produces lowercase and uppercase alphabets
+--  @treturn Generator A generator of integers
 function Public.alphaGen()
   return Public.lowercaseGen():amb(
             Public.uppercaseGen())
 end
 
---! @brief Creates a generator that produces alphabets and digits
---! @return A generator of integers
-
+--- Creates a generator that produces alphabets and digits
+--  @treturn Generator A generator of integers
 function Public.alphaNumGen()
   local zero = 48
   local nine = 57
@@ -917,49 +918,46 @@ function Public.alphaNumGen()
             Public.rangeGen(zero, nine))
 end
 
---! @brief Creates a generator that produces printable characters
---! @return A generator of integers
-
+--- Creates a generator that produces printable characters
+--  @treturn Generator A generator of integers
 function Public.printableGen()
   local space = 32
   local tilde = 126
   return Public.rangeGen(space, tilde)
 end
 
---! @brief Creates a generator that produces a sequence  
---!        no larger than maxLength containing elements
---!        generated by the input generator. Possibly empty.
---! @param[in] elemGen An element generator
---! @param[in] maxLength Maximum size of the sequence.
---! @return A generator of sequences. 
-
+--- Creates a generator that produces a sequence  
+--  no larger than maxLength containing elements
+--  generated by the input generator. Possibly empty.
+--  @tparam Generator elemGen An element generator
+--  @tparam int maxLength Maximum size of the sequence.
+--  @treturn Generator A generator of sequences. 
 function Public.seqGen(elemGen, maxLength)
-  elemGen = elemGen or Public.singleGen("unknown ")
+  elemGen = elemGen or Public.constantGen("unknown ")
   maxLength = maxLength or Public.MAX_BYTE+1
  
   return 
     Public.rangeGen(0, maxLength)
-             :map(function (length) 
-                    local arr = {}
-                    for i=1,length do
-                      local arr_i, valid = elemGen:generate()
-                      if valid then
-                        arr[i] = arr_i
-                      else
-                        return nil, false
-                      end
-                    end
-                    return arr, true
-                  end)
+          :map(function (length) 
+                 local arr = {}
+                 for i=1,length do
+                   local arr_i, valid = elemGen:generate()
+                   if valid then
+                     arr[i] = arr_i
+                    else
+                     return nil, false
+                   end
+                 end
+                 return arr, true
+               end)
 end
 
---! @brief Creates a generator that produces an array  
---!        of exactly length elements generated by the
---!        input generator. 
---! @param[in] elemGen An element generator
---! @param[in] length The size of the array.
---! @return A generator of arrays. 
-
+--- Creates a generator that produces an array  
+--  of exactly length elements generated by the
+--  input generator. 
+--  @tparam Generator elemGen An element generator
+--  @tparam int length The size of the array.
+--  @treturn Generator A generator of arrays. 
 function Public.arrayGen(elemGen, length)
   elemGen = elemGen or Public.constantGen("unknown ")
 
@@ -982,12 +980,11 @@ function Public.arrayGen(elemGen, length)
                   end)
 end
 
---! @brief Creates a generator that produces non-empty strings
---! @param[in] maxLength (optional) The maximum length of the string. 256 by default
---! @param[in] charGen (optional) A generator for characters.
---!        By default \link printableGen() \endlink generator.
---! @return A generator of non-empty strings. 
-
+--- Creates a generator that produces non-empty strings
+--  @tparam int maxLength (optional) The maximum length of the string. 256 by default
+--  @tparam Generator charGen (optional) A generator for characters.
+--  By default Public.printableGen() generator.
+--  @treturn Generator A generator of non-empty strings. 
 function Public.nonEmptyStringGen(maxLength, charGen)
   charGen = charGen or Public.printableGen()
   maxLength = maxLength or Public.MAX_BYTE+1
@@ -1008,15 +1005,14 @@ function Public.nonEmptyStringGen(maxLength, charGen)
                   end)
 end
 
---! @brief Creates a generator that produces (possibly empty) strings
---! @param[in] maxLength (optional) The maximum length of the string. 256 by default
---! @param[in] charGen (optional) A generator for characters.
---!            By default \link printableGen() \endlink generator.
---! @param[in] emptyPeriod (optional) Indicates the desirable frequency of 
---!            empty strings. 1 out of every emptyPeriod strings shall be
---!            empty (distributed unformly). Default 10
---! @return A generator of possibly empty strings.
- 
+--- Creates a generator that produces (possibly empty) strings
+--  @tparam int maxLength (optional) The maximum length of the string. 256 by default
+--  @tparam Generator charGen (optional) A generator for characters.
+--  By default Public.printableGen() generator.
+--  @tparam int emptyPeriod (optional) Indicates the desirable frequency of 
+--  empty strings. 1 out of every emptyPeriod strings shall be
+--  empty (distributed uniformly). Default 10
+--  @treturn Generator A generator of possibly empty strings.
 function Public.stringGen(maxLength, charGen, emptyPeriod)
   charGen     = charGen or Public.printableGen()
   maxLength   = maxLength or Public.MAX_BYTE+1
@@ -1024,28 +1020,28 @@ function Public.stringGen(maxLength, charGen, emptyPeriod)
 
   return 
     Public.rangeGen(1, maxLength)
-             :map(function (length) 
-                    local arr = {}
-                    local nonempty = math.random(1, emptyPeriod) > 1
-                    if nonempty then
-                      for i=1,length do
-                        local arr_i, valid = charGen:generate()
-                        if valid then
-                          arr[i] = string.char(arr_i)
-                        else
-                          return nil, false
-                        end
-                      end
+         :map(function (length) 
+                local arr = {}
+                local nonempty = math.random(1, emptyPeriod) > 1
+                if nonempty then
+                  for i=1,length do
+                    local arr_i, valid = charGen:generate()
+                    if valid then
+                      arr[i] = string.char(arr_i)
+                    else
+                      return nil, false
                     end
-                    return table.concat(arr), true
-                  end)
+                  end
+                end
+                return table.concat(arr), true
+              end)
 end
 
---! @brief Creates a generator from a Lua coroutine. 
---! @param[in] coro A coroutine. Any arguments after coro are passed 
---!            to the coroutine at the first resume.
---! @return A generator that uses the input coroutine as the true
---!         source of data.
+--- Creates a generator from a Lua coroutine. 
+--  @tparam lua-coroutine coro A coroutine. Any arguments after 
+--  coro are passed to the coroutine at the first resume.
+--  @treturn Generator A generator that uses the input coroutine 
+--  as the true source of data.
 function Public.coroutineGen(coro, ...)
   local args = { ... }
   local first = true
@@ -1075,9 +1071,9 @@ function Public.coroutineGen(coro, ...)
          end)
 end
 
---! @brief Creates a generator that concatinates all the input generators
---! @param[in] A comma-separated list of generators
---! @return A generator that concatenates all the input generators.
+--- Creates a generator that concatinates all the input generators
+--  @tparam Generator ... A comma-separated list of generators
+--  @treturn Generator A generator that concatenates all the input generators.
 function Public.concatAllGen(...)
   local args = { ... }
   
@@ -1087,9 +1083,9 @@ function Public.concatAllGen(...)
                         end)
 end
 
---! @brief Creates a generator that alternates sequentially between all the input generators
---! @param[in] A comma-separated list of generators
---! @return A generator that alternates sequentially between the input generators.
+--- Creates a generator that alternates sequentially between all the input generators
+--  @tparam Generator ... A comma-separated list of generators
+--  @treturn Generator A generator that alternates sequentially between the input generators.
 function Public.alternateGen(...)
   local args = { ... }
   local active = {}
@@ -1121,33 +1117,152 @@ function Public.alternateGen(...)
   end)
 end
 
---! @brief Creates a generator that is equivalent to the generator returned 
---!        by the thunk function. The objective of deferredGen is to delay
---!        the invocation of the thunk until absolutely needed. In a way,
---!        it supports lazy evaluation.
---! @param[in] thunk A zero-argument function that returns a generator. This is 
---!            generally expected to be a small function with a single statement 
---!            that returns a generator. 
---! @return A new generator 
+--- Creates a lazy generator that is equivalent to the generator returned 
+--  by the thunk function. The objective of deferredGen is to delay
+--  the invocation of the thunk until absolutely needed. In a way,
+--  it supports lazy evaluation.
+--  @tparam function thunk A zero-argument function that returns a generator. 
+--  This is generally expected to be a small function with a single statement 
+--  that returns a generator. 
+--  @treturn Generator A new generator 
 function Public.deferredGen(thunk)
   return Public.singleGen(0xDEADBEEF):flatMap(thunk)
 end
 
---! @brief  Returns the first value that satisfies the predicate. 
---!         If the generator is infinite and no value ever satisfies 
---!         the predicate, the function blocks forever. 
---! @param[in] generator A generator
---! @param[in] predicate A unary function that returns true/false.
---! @return The value satisfying the predicate
+--- Creates a new generator from a user-supplied implementation of generate function 
+--  @tparam function generateFunc A function that implements generate(). 
+--  I.e., the function should accept no arguments and must return a value.
+--  @treturn Generator A new generator that uses the generateFunc to produce values.
+function Public.newGenerator(generateFunc)
+  return Generator:new(generateFunc)
+end
+
+--- Creates a new generator of fibonacci numbers
+--  @treturn Generator A new generator of fibonacci numbers
+function Public.fibonacciGen()
+  local a = 0
+  local b = 1
+  return Generator:new(function ()
+           local c = a;
+           a = b
+           b = c+b
+           return c, true
+         end)
+end  
+
+--- Creates a stepper generator, which generates numbers in a sequence. 
+--  It behaves much like a for loop.
+--  @tparam int start (optinoal) The beginning value. Default=1
+--  @tparam int max   (optional) The maximum value. Default=math.huge
+--  @tparam int step  (optional) The step size. default=1
+--  @tparam bool cycle (optional) Whether to repeat the numbers cyclically. Default=false
+--  @treturn Generator A new generator that generates numbers in steps.
+function Public.stepperGen(start, max, step, cycle)
+  start = start or 1
+  max   = max   or math.huge
+  step  = step  or 1
+  cycle = cycle or false
+  
+  if step >= 0 then
+    if start > max then
+      return Public.emptyGen();
+    end
+  else
+    if start < max then
+      return Public.emptyGen();
+    end
+  end
+
+  local current = start
+  local init = false
+
+  return Generator:new(function ()
+           if init==false then 
+             init = true
+           else
+             if step >= 0 then
+               if current + step <= max then 
+                  current = current + step
+               else
+                 if cycle then 
+                   current = start 
+                 else
+                   return nil, false
+                 end
+               end
+             else
+               if current + step >= max then 
+                  current = current + step
+               else
+                 if cycle then 
+                   current = start 
+                 else
+                   return nil, false
+                 end
+               end
+             end
+           end
+           return current, true 
+         end)
+end  
+
+--- Creates a generator that produces values from the input array in order.
+--  @tparam array array The array containing values. Must be non-empty
+--  @tparam bool cycle (optional) Whether to repeat the values cyclically. Default=false
+--  @treturn Generator A new generator that produces values from the input array.
+function Public.inOrderGen(array, cycle)
+  if #array == 0 then error "Error: Empty sequence" end
+  cycle = cycle or false
+
+  return Public.stepperGen(1, #array, 1, cycle)
+               :map(function (i)
+                      return array[i]
+                    end)
+end
+
+--! Convert a reactive generator to a pull-based generator
+--!  @param reactGen The input reactive generator
+--!  @param subjectGroup A group of subjects that when pushed produce
+--!  a single value through the reactive generator.
+--!  @return A pair of pull-based generator and a disposable.
+function Public.toGenerator(reactGen, subjectGroup)
+  local ret = Public.NO_PUSHED_VALUE
+  
+  local disposable = 
+    reactGen:listen(function (val) ret = val end)
+
+  local gen = Generator:new(function ()
+          if disposable:isDisposed() then
+            return nil, false
+          end
+          ret = Public.NO_PUSHED_VALUE
+          subjectGroup:push()
+          -- ret should be updated by now.
+          -- If not, you get NO_PUSHED_VALUE!"
+          return ret, true
+      end)
+
+  return gen, disposable
+end
+
+--- Generator algorithm functions
+-- @section AlgorithmFunctions
+
+--- Returns the first value that satisfies the predicate. 
+--  If the generator is infinite and no value ever satisfies 
+--  the predicate, the function blocks forever. 
+--  @tparam Generator generator Input generator
+--  @tparam function predicate A unary function that returns true/false.
+--  @return The first value satisfying the predicate
 function Public.find(generator, predicate)
   return generator:where(predicate):take(1):generate()
 end
 
---! @brief  Returns true if every value produced by the generator 
---!         satisfies the predicate. 
---! @param[in] generator A generator
---! @param[in] predicate A unary function that returns true/false.
---! @return true/false
+--- Returns true if every value produced by the generator 
+--  satisfies the predicate. 
+--  @tparam Generator generator Input generator
+--  @tparam function predicate A unary function that returns true/false.
+--  @return true/false
 function Public.every(generator, predicate)
   return 
     Public.find(generator, 
@@ -1156,9 +1271,9 @@ function Public.every(generator, predicate)
                 end) == nil
 end
 
---! @brief  Invokes a function on every generated value
---! @param[in] generator A generator
---! @param[in] func A unary function
+--- Invokes a function on every generated value
+--  @tparam Generator generator Input generator
+--  @tparam function func A unary function
 function Public.foreach(generator, func)
     repeat 
       local data, valid = generator:generate()
@@ -1166,24 +1281,24 @@ function Public.foreach(generator, func)
     until valid == false
 end
 
---! @brief Sorts the values produced by the generator
---! @param[in] generator A generator
---! @param[in] func (optional) A binary comparator function
---! @return A sorted table
+--- Sorts the values produced by the generator
+--  @tparam Generator generator Input generator
+--  @tparam function func (optional) A binary comparator function
+--  @treturn table A sorted table of generated values.
 function Public.sort(generator, func)
     local data = generator:toTable()
     table.sort(data, func)
     return data
 end
 
---! @brief Sorts the values produced by the generator with 
---!        object.property as key.
---! @param[in] generator A generator
---! @param[in] property A string. The algorithm uses object[property] to sort. 
---!            For example, to sort with person.name, pass "name"
---! @param[in] func (optional) A binary comparator function 
---!            for property
---! @return A sorted table
+--- Sorts the values produced by the generator with 
+--  object.property as key.
+--  @tparam Generator generator Input generator
+--  @tparam string property The algorithm uses object[property] to sort. 
+--  For example, to sort with person.name, pass "name"
+--  @tparam function func (optional) A binary comparator function 
+--  for property
+--  @treturn table A sorted table
 function Public.sortBy(generator, property, func)
     local data = generator:toTable()
     if func then
@@ -1198,13 +1313,13 @@ function Public.sortBy(generator, property, func)
     return data
 end
 
---! @brief Splits the values produced by the generator into buckets
---!        determind by the groupingFunc. 
---! @param[in] generator A generator
---! @param[in] groupingFunc A unary function that identifies a bucket for 
---!            input value. bucket is also a "key"
---! @return A table of tables. The table contains buckets identified by
---!         by the groupingFunc. Each bucket contains at least one element.
+--- Splits the values produced by the generator into buckets
+--  determind by the groupingFunc. 
+--  @tparam Generator generator Input generator
+--  @tparam function groupingFunc A unary function that identifies 
+--  a bucket for input value. bucket is also a "key"
+--  @treturn table A table of tables. The table contains buckets identified by
+--  by the groupingFunc. Each bucket contains at least one element.
 function Public.groupBy(generator, groupingFunc)
     local data = {}
     Public.foreach(generator, 
@@ -1217,26 +1332,37 @@ function Public.groupBy(generator, groupingFunc)
     return data
 end
 
---! @brief Returns a table containing the last N generated values
---! @param[in] generator A generator
---! @param[in] (optional) count Last count values are returned. Default 1.
---! @return A table containing last N values
+--- Returns a table containing the last N generated values
+--  @tparam Generator generator Input generator
+--  @tparam int count (optional) Last count values are returned. Default 1.
+--  @treturn table A table containing last N values
 function Public.lastN(generator, count)
     count = count or 1
     return generator:last(count):toTable()
 end
 
+--- Initialize the generator library. 
+--  @tparam int seed (optional) The seed for the random number generator
+--  @return The generator module reference.
+function Public.initialize(seed)
+  seed = seed or os.time()
+  math.randomseed(seed)
+  return Public
+end
 
---! @brief Creates a generator that produces structured type instances.
---! @param[in] aggregateType The \link xtypes \endlink type definition 
---!        as per DDSL.
---! @param[in,out] genLib (optional) A library of generators for members and types.
---!        I.e., if aggregateType contains a member named "x", genLib.x generator
---!        is used if it exists. 
---! @param[in] memoizeGen (optional) true if the member-specific generators should
---!            be cached in genLib. false otherwise.
---! @return A generator of values of structured types.
+--- Generator factory functions for DDSL types
+-- @section DDSLFunctions
 
+--- Creates a generator that produces structured type instances conforming
+--  the aggregateType defined using DDSL.
+--  @tparam xtemplate aggregateType The xtypes type definition as per DDSL.
+--  @tparam GeneratorLin genLib (optional) A library of generators for members 
+--  and types. I.e., if aggregateType contains a member named "x", genLib[x] 
+--  generator is used if it exists. If genLib[x] does not exist and x has type
+--  T, then genLib.typeGenLib[T] is used if it exists.
+--  @tparam bool memoizeGen (optional) true if the member-specific generators 
+--  should  be cached in genLib. false otherwise.
+--  @treturn Generator A generator of values of structured types.
 function Public.aggregateGen(aggregateType, genLib, memoizeGen)
 
   genLib = genLib or { }
@@ -1275,14 +1401,12 @@ function Public.aggregateGen(aggregateType, genLib, memoizeGen)
   return gen
 end
 
---! @brief Creates a generator from a typedef definition.
---! @param[in] typedef The \link xtypes \endlink typedef definition 
---!        as per DDSL.
---! @param[in,out] genLib (optional) A library of generators for members and types.
---! @param[in] memoizeGen (optional) true if the member-specific generators should
---!            be cached in genLib. false otherwise.
---! @return A generator of values of the typedef type.
-
+--- Creates a generator from an xtypes typedef definition.
+--  @tparam xtemplate typedef A xtypes typedef definition as per DDSL.
+--  @tparam GeneratorLib genLib (optional) A library of generators for members and types.
+--  @tparam bool memoizeGen (optional) true if the member-specific generators should
+--  be cached in genLib. false otherwise.
+--  @treturn Generator A generator of values of the typedef type.
 function Public.typedefGen(typedef, genLib, memoizeGen)
     local typename = typedef[xtypes.NAME]
     genLib = genLib or { }
@@ -1299,15 +1423,13 @@ function Public.typedefGen(typedef, genLib, memoizeGen)
     end
 end
 
---! @brief Creates a generator for enumerations
---! @param[in] enumtype The \link xtypes \endlink type definition of enumeration
---!        as per DDSL.
---! @param[in,out] genLib (optional) A library of generators for members and types.
---!            If a generator exists in the library, it will be used.
---! @param[in] memoizeGen (optional) true if the member-specific generators should
---!            be cached in genLib. false otherwise.
---! @return A generator of enumeration values.
-
+--- Creates a generator for enumerations
+--  @tparam xtemplate enumtype An xtypes type definition of enumeration as per DDSL.
+--  @tparam GeneratorLib genLib (optional) A library of generators for members and types.
+--  If a generator exists in the library, it will be used.
+--  @tparam bool memoizeGen (optional) true if the member-specific generators should
+--  be cached in genLib. false otherwise.
+--  @treturn Generator A generator of enumeration values.
 function Public.enumGen(enumtype, genLib, memoizeGen)
   local typename = enumtype[xtypes.NAME]
   genLib = genLib or { }
@@ -1329,14 +1451,13 @@ function Public.enumGen(enumtype, genLib, memoizeGen)
   end
 end
 
---! @brief Creates a generator from role definition as per DDSL
---! @param[in] roledef The role definition as per DDSL
---! @param[in,out] genLib (optional) A library of generators for members and types.
---!            If a generator exists in the library, it will be used.
---! @param[in] memoizeGen (optional) true if the member-specific generators should
---!        be cached in genLib. false otherwise.
---! @return A generator of values of type defined in roledef.
-
+--- Creates a generator from role definition as per DDSL
+--  @tparam xtemplate roledef Any role definition as per DDSL
+--  @tparam GeneratorLib genLib (optional) A library of generators for members and types.
+--  If a generator exists in the library, it will be used.
+--  @tparam bool memoizeGen (optional) true if the member-specific generators should
+--  be cached in genLib. false otherwise.
+--  @treturn Generator A generator of values of type defined in roledef.
 function Public.createGenerator(roledef, genLib, memoizeGen)
   local typename = roledef[xtypes.NAME]
   genLib = genLib or {}
@@ -1353,15 +1474,14 @@ function Public.createGenerator(roledef, genLib, memoizeGen)
   end
 end
 
---! @brief Returns a generator for the specified primitive type.
---! @param[in] ptype The name of the primitive type in string format.
---!        E.g., "boolean", "char", "long_double", "string", "string<128>", etc.
---! @param[in,out] genLib (optional) A library of generators for members and types.
---!            If a generator exists in the library, it will be used.
---! @param[in] memoizeGen (optional) true if the member-specific generators should
---!        be cached in genLib. false otherwise.
---! @return A generator of primitives.
-
+--- Returns a generator for the specified primitive type.
+--  @tparam string ptype The name of the primitive type in string format.
+--  E.g., "boolean", "char", "long_double", "string", "string<128>", etc.
+--  @tparam GeneratorLib genLib (optional) A library of generators for members and types.
+--  If a generator exists in the library, it will be used.
+--  @tparam bool memoizeGen (optional) true if the member-specific generators should
+--  be cached in genLib. false otherwise.
+--  @treturn Generator A generator of primitives.
 function Public.getPrimitiveGen(ptype, genLib, memoizeGen)
   genLib = genLib or {}
   genLib.typeGenLib = genLib.typeGenLib or {}
@@ -1433,137 +1553,6 @@ function Public.getPrimitiveGen(ptype, genLib, memoizeGen)
     return gen
 
   end
-end
-
---! @brief Creates a new generator from an implementation of generate(). 
---! @param[in] generateFunc A function that implements generate(). 
---!        I.e., the function should accept no arguments and must return a value.
---! @return A new generator that uses the generateFunc to produce values.
---! @see   \link Generator.new \endlink
-
-function Public.newGenerator(generateFunc)
-  return Generator:new(generateFunc)
-end
-
---! @brief Creates a new generator of fibonacci numbers
---! @return A new generator of fibonacci numbers
-
-function Public.fibonacciGen()
-  local a = 0
-  local b = 1
-  return Generator:new(function ()
-           local c = a;
-           a = b
-           b = c+b
-           return c, true
-         end)
-end  
-
---! @brief Creates a stepper generator, which generates numbers in a sequence. 
---!        It behaves much like a for loop.
---! @param[in] start (optinoal) The beginning value. Default=1
---! @param[in] max   (optional) The maximum value. Default=math.huge
---! @param[in] step  (optional) The step size. default=1
---! @param[in] cycle (optional) Whether to repeat the numbers cyclically. Default=false
---! @return A new generator that generates numbers in steps.
-
-function Public.stepperGen(start, max, step, cycle)
-  start = start or 1
-  max   = max   or math.huge
-  step  = step  or 1
-  cycle = cycle or false
-  
-  if step >= 0 then
-    if start > max then
-      return Public.emptyGen();
-    end
-  else
-    if start < max then
-      return Public.emptyGen();
-    end
-  end
-
-  local current = start
-  local init = false
-
-  return Generator:new(function ()
-           if init==false then 
-             init = true
-           else
-             if step >= 0 then
-               if current + step <= max then 
-                  current = current + step
-               else
-                 if cycle then 
-                   current = start 
-                 else
-                   return nil, false
-                 end
-               end
-             else
-               if current + step >= max then 
-                  current = current + step
-               else
-                 if cycle then 
-                   current = start 
-                 else
-                   return nil, false
-                 end
-               end
-             end
-           end
-           return current, true 
-         end)
-end  
-
---! @brief Creates a generator that produces values from the input array in order.
---! @param[in] array The array containing values. Must be non-empty
---! @param[in] cycle (optional) Whether to repeat the values cyclically. Default=false
---! @return A new generator that produces values from the input array.
-
-function Public.inOrderGen(array, cycle)
-  if #array == 0 then error "Error: Empty sequence" end
-  cycle = cycle or false
-
-  return Public.stepperGen(1, #array, 1, cycle)
-               :map(function (i)
-                      return array[i]
-                    end)
-end
-
---! @brief Initialize the generator library. 
---! @param[in] seed (optional) The seed for the random number generator
---! @return Nothing
-
-function Public.initialize(seed)
-  seed = seed or os.time()
-  math.randomseed(seed)
-end
-
---! @brief Convert a reactive generator to a pull-based generator
---! @param[in] reactGen The input reactive generator
---! @param[in] subjectGroup A group of subjects that when pushed produce
---!        a single value through the reactive generator.
---! @return A pair of pull-based generator and a disposable.
-
-function Public.toGenerator(reactGen, subjectGroup)
-  local ret = Public.NO_PUSHED_VALUE
-  
-  local disposable = 
-    reactGen:listen(function (val) ret = val end)
-
-  local gen = Generator:new(function ()
-          if disposable:isDisposed() then
-            return nil, false
-          end
-          ret = Public.NO_PUSHED_VALUE
-          subjectGroup:push()
-          -- ret should be updated by now.
-          -- If not, you get NO_PUSHED_VALUE!"
-          return ret, true
-      end)
-
-  return gen, disposable
 end
 
 function Private.zcreateMemberGenTab(structtype, genLib, memoizeGen)
