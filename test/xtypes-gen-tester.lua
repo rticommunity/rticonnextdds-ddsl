@@ -25,7 +25,7 @@ local xtypes = require("ddsl.xtypes")
 local xutils = require("ddsl.xtypes.utils")
 local Gen    = require("ddslgen.generator")
 
-local verbose = false
+local verbose = false 
 local printv = nil
 
 if tonumber(string.gmatch(_VERSION,"%d.%d")()) >= 5.3 then
@@ -146,6 +146,7 @@ function Tester:test_const()
   
   assert(Gen.createGenerator(Test.FLOAT):generate() == 3.14)
   assert(Gen.createGenerator(Test.DOUBLE):generate() == 3.14 * 3.14)
+  assert(Gen.createGenerator(Test.LDOUBLE):generate() == 3.14 * 3.14 * 3.14)
   assert(Gen.createGenerator(Test.STRING):generate() == "String Constant")
   assert(Gen.createGenerator(Test.BOOL):generate() == true)
   assert(Gen.createGenerator(Test.FLOAT):generate() == 3.14)
@@ -850,26 +851,38 @@ end
 
 Tester[#Tester+1] = 'test_primitive_gen'
 function Tester.test_primitive_gen() 
-  numGen      = Gen.numGen()
-  boolGen     = Gen.boolGen()
-  charGen     = Gen.charGen()
-  alphaNumGen = Gen.alphaNumGen()
-  stringGen   = Gen.stringGen()
+  numGen        = Gen.numGen()
+  floatGen      = Gen.floatGen()
+  doubleGen     = Gen.doubleGen()
+  longDoubleGen = Gen.longDoubleGen()
+  boolGen       = Gen.boolGen()
+  charGen       = Gen.charGen()
+  alphaNumGen   = Gen.alphaNumGen()
+  stringGen     = Gen.stringGen()
 
   math.randomseed(os.time())
 
   for i=1,5 do 
     local num = numGen:generate() 
+    local float = floatGen:generate() 
+    local double = doubleGen:generate() 
+    local ldouble = longDoubleGen:generate() 
     local bool = boolGen:generate() 
     local c = alphaNumGen:generate();
     local str = stringGen:generate() 
 
     assert(type(num) == "number")
+    assert(type(float) == "number")
+    assert(type(double) == "number")
+    assert(type(ldouble) == "number")
     assert(type(bool) == "boolean")
     assert(type(c) == "number")
     assert(type(str) == "string")
 
     printv(num) 
+    printv(float) 
+    printv(double) 
+    printv(ldouble) 
     printv(bool) 
     printv(string.format("%d:'%c'", c, c))
     printv(str) 
@@ -1263,6 +1276,7 @@ function Tester.test_sort()
   
 end
 
+--[[
 Tester[#Tester+1] = 'test_groupby'
 function Tester.test_groupby()
   
@@ -1295,6 +1309,7 @@ function Tester.test_groupby()
   end
   
 end
+]]
 
 Tester[#Tester+1] = 'test_foreach'
 function Tester.test_foreach()
@@ -1308,6 +1323,45 @@ function Tester.test_foreach()
   
   assert(sum == total)
 
+end
+
+Tester[#Tester+1] = 'test_typeGenLib'
+function Tester.test_typeGenLib()
+  local ShapeType = xtypes.struct{
+    ShapeType = {
+      { x = { xtypes.long } },
+      { y = { xtypes.long } },
+      { shapesize = { xtypes.long } },
+      { color = { xtypes.string(128), xtypes.Key } },
+    }
+  }
+  Tester.print(ShapeType)
+  
+  assert('x'         == ShapeType.x)
+  assert('y'         == ShapeType.y)
+  assert('shapesize' == ShapeType.shapesize)
+  assert('color'     == ShapeType.color)   
+
+  local shapeGenLib = { typeGenLib = {} }
+  local min, max = 0, 200
+
+  shapeGenLib.typeGenLib.long = Gen.rangeGen(min, max)
+  shapeGenLib.color           = Gen.oneOfGen({ "RED", "GREEN", "BLUE" })
+
+  local ShapeTypeGen = Gen.aggregateGen(ShapeType, shapeGenLib)
+  local shape = ShapeTypeGen:generate()
+
+  assert(shape.x >= min and shape.x <= max)
+  assert(shape.y >= min and shape.y <= max)
+  assert(shape.color == "RED" or shape.color == "GREEN" or shape.color == "BLUE")
+  assert(shape.shapesize >= min and shape.shapesize <= max)
+
+  printv("shape.x = " .. shape.x)
+  printv("shape.y = " .. shape.y)
+  printv("shape.color = " .. shape.color)
+  printv("shape.shapesize = " .. shape.shapesize)
+
+  return ShapeTypeGen
 end
 
 --

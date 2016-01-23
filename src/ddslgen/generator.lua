@@ -15,37 +15,123 @@ limitations under the License.
 --]]
 
 -------------------------------------------------------------
--- A library of **composable generators** of various kinds. 
--- Generator is the prototype ("class") for all generator objects. 
--- Every generator has a method named generate (among others) 
--- that produces a new value. As most generators may be stateful, 
--- it is important to invoke methods on all generators using 
--- the ":" syntax.
---
--- **Examples**
---
--- Consider the following example that generates a random day 
--- of the week everytime generate is called.
---
---     local Gen = require("generator")
---     Gen.initialize()
+-- Generator is a library for generating synthetic data.
 -- 
---     local dayOfWeek = { "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat" }
---     local dayGen = Gen.oneOfGen(dayOfWeek)
---
---     for i=1, 5 do 
---       print("dayGen produced ", dayGen:generate())
---     end
+-- Using the Generator library is a simple two step process.
+-- The first step is to provide a "description" of what should be
+-- generated. Often times the description is just a `ddsl` type 
+-- definition (a ddsl template). Given a description, the 
+-- generator library provides a new "generator" object. 
+-- The second step is to call the `Generator:generate` method to 
+-- obtain an object containing data that fits the descriptions. 
 -- 
+-- An example is in order.
+--     local Gen = require("ddslgen.generator").initialize()
+-- 
+--     local ShapeType = ddsl.xtypes.struct {
+--       ShapeType = {
+--         { x = { xtypes.long } },
+--         { y = { xtypes.long } },
+--         { shapesize = { xtypes.long } },
+--         { color = { xtypes.string(128), xtypes.Key } },
+--       }
+--     }
+--     
+--     local shapeTypeGen = Gen.aggregateGen(ShapeType)
+-- 
+--     local aShape = shapeTypeGen:generate()
+--
+-- In the example above, `ShapeType` is a DDSL datatype describing
+-- the canonical ShapeType. The `Gen.aggregateGen` function accepts 
+-- the `ShapeType` datatype and produces a generator of ShapeTypes.
+-- Finally, `shapeTypeGen:generate()` produces a randomly generated
+-- ShapeType. 
+--
+-- Using the Generator library you can create geneators 
+-- for the entire gamut of types supported by DDSL. I.e., you can
+-- use the Generator library for primitives, structures, unions,
+-- sequences, arrays, typedefs, and more. 
+--
+-- **Controling Generators** 
+--
+-- You might be wondering how does the Generator library know
+-- what data to produce. By default, the Generator library produces
+-- random data. I.e., in the ShapeType example above, the values
+-- of `x`, `y`, `shapesize`, and `color` are random. The only thing
+-- it knows about these members are the types of these members. 
+-- Therefore, `x`, `y`, and `shapesize` are random integers and
+-- `color` is a non-empty random string of up to 128 characters.
+-- 
+-- That does not sound too useful. Therefore the Generator library
+-- provides very powerful ways to control how to produce data. In
+-- fact the bulk of the library is about "controling" generators
+-- rather than actual production. Afterall, all you need to do
+-- given a generator is call `Generator:generate`. 
+--
+-- **Providing A Collection of Generators**
+--
+-- The Generator library allows you to specify one or more "smaller"
+-- generators to create a large generator. If you don't like the 
+-- default choice, you can specify a generator you want used. For
+-- example, 
+-- 
+--      local memberGenLib = {}
+--    
+--      memberGenLib.x         = Gen.rangeGen(100, 200)
+--      memberGenLib.y         = Gen.stepperGen(0, 50, 5, true)
+--      memberGenLib.color     = Gen.oneOfGen({ "RED", "GREEN", "BLUE" })
+--      memberGenLib.shapesize = Gen.constantGen(30)
+--    
+--      local shapeTypeGen2 = Gen.aggregateGen(ShapeType, memberGenLib)
+--
+-- `membeGenLib` is a library of generators. In fact, it contains a 
+-- generator for every member in `ShapeType`. The generator
+-- for `x` is a "range" genrerator that will always produce a random 
+-- number in the specified range (inclusive). `stepperGen` produces
+-- a generator that will produce values from 0 to 50 in the increments  
+-- of 5. After producing 50, it will cycle back to 0 (hence the
+-- last argument cycle=true). `oneOfGen` gives a generator that 
+-- uses one of the available choices. Finally, `constantGen` produces
+-- the given constant everytime. 
+-- 
+-- The `aggregateGen` function the uses `memberGenLib` and produces
+-- a generator that uses the specified generators where needed. As a 
+-- consequence, the shape objects produced by the new generator 
+-- (`shapetypeGen2`) always satisfy the constraints on member values.
+-- 
+-- **Providing a Collection of Generators for Members and Types**
+-- 
+-- A generator library can store not only member-specific generators
+-- but also type-specific generators. For instance, the following 
+-- example a "stepper generator" for both `x` and `y` because both
+-- are longs. 
+-- 
+--      local memberGenLib = { typeGenLib = {} }
+--    
+--      memberGenLib.typeGenLib.long = Gen.stepperGen(1, 100, 1, true)
+--      memberGenLib.color           = Gen.oneOfGen({ "RED", "GREEN", "BLUE" })
+--      memberGenLib.shapesize       = Gen.constantGen(30)
+--    
+--      local shapeTypeGen3 = Gen.aggregateGen(ShapeType, memberGenLib)
+--
+-- **Advanced Composition of Generators**
+--
 -- Generators are designed for composibility from group up.
 -- Complex generators can be easily created from basic, simpler
 -- generators. As such, generators form an *algebra* with well-defined
--- operations such as map, flatMap, zipMany, append, etc.
+-- operations such as map, flatMap, where, zipMany, append, etc.
 -- These operations are also known as *combinators* because 
 -- use of these combinators always yields another generator.
+-- 
+-- Generators support *serial* and *parallel* composition. The 
+-- examples we've seen so far show parallel composition as one or
+-- more member generators are composed to create a composite generator.
+-- Next, we'll see some examples of serial composition. Most
+-- member function available in the `Generator` interface 
+-- support serial composition.
 --
--- The example below shows how the above dayGen generator can be 
--- created using a more basic generator, such as a range generator.
+-- The next example shows how the `dayGen` generator can be 
+-- created using basic generators, such as a range generator.
 -- I.e., xGen is a generator that produces values from 1 to 7. 
 -- dayGen is a generator that maps the values produces
 -- by xGen to the days of the week.
@@ -56,22 +142,33 @@ limitations under the License.
 --                               return dayOfWeek[i]
 --                             end)
 --     for i=1, 5 do 
---       print("xGen produced ", xGen:generate())
 --       print("dayGen produced ", dayGen:generate())
 --     end
 -- 
--- It turns out that the values produced by xGen don't correspond to
--- that of dayGen. That's an expected behavior. xGen has no relation 
--- to dayGen beyond basic reuse as seen above. Every time dayGen:generate()
--- is called, xGen:generate() is also called. As xGen has no memory, it
--- produces a new random number in the [1..7] range every time. 
--- Therefore, the values of x and days don't correspond.  
--- All the generators available in this module are independent 
--- of each other. If you want to capture value dependencies 
--- consider using the reactive generators in the 'react' module.
+-- Every time dayGen:generate() is called, xGen:generate() is 
+-- also called. `xGen` produces a new random number in the [1..7] 
+-- range every time. `dayGen` *maps* the value produced by `xGen`
+-- to a day of the week via the function passed to `map`.
 -- 
--- zipMany is another combinator supported by generators. The following 
--- example generates a random month in every year in the 20th century
+-- `where` and `concat` are commonly needed functions. 
+-- `where` selects the values that satsify a given predicate.
+-- `concat` simply concatenates two generators. For instance,
+-- the following program prints all even numbers between 0..99 
+-- followed by the odd numbers in the same range.
+--
+--     local evenGen = Gen.stepperGen(0, 99)
+--                        :where(function(i) return i % 2 == 0 end)
+--     local oddGen = Gen.stepperGen(0, 99)
+--                       :where(function(i) return i % 2 == 1 end)
+--     local allGen = evenGen:concat(oddGen)
+--  
+--     for i=1, 100 do 
+--       print(allGen:generate())
+--     end
+-- 
+-- zipMany is another function supported by generators. 
+-- The following example generates a random month in every year 
+-- in the 20th century. 
 -- 
 --     local monthGen = Gen.oneOfGen({ "Jan", "Feb", "Mar",  "Apr", "May", "Jun", 
 --                                     "Jul", "Aug", "Sept", "Oct", "Nov", "Dec" })
@@ -84,9 +181,60 @@ limitations under the License.
 --       print(seriesGen:generate())
 --     end
 --
--- Public functions such as *aggregateGen*, *enumGen* 
--- depend on a type definition provided
--- by the Data Domain-Specific Modeling Language (DDSL).
+-- `zipMany` is the most general version of parallel composition.
+--
+-- These examples barely scratch the surface of what's possible using
+-- generators. There are limitless ways how you can combine and
+-- transform generators. 
+-- 
+-- **Lazy/Eager Evaluation, Infinite Sequences, and Limits**
+--
+-- One of the salient features of generators is that they are evalutated 
+-- lazily. When a generator object is created, it's essentially a 
+-- description of what has to be generated. No data is actually produced
+-- until `generate()` is called. Each call to `generate()` advances the
+-- generator just one step. A generator does not know how many elements
+-- it might generate. As a matter of fact many generators are infinite.
+-- We've seen many infinite generators already. For instance, `oneOfGen`,
+-- `stepperGen` with `cycle=true`, are fundamentally infinite. 
+--
+-- It is very easy to limit an inifite generator to produce only a certain
+-- number of elements. Use `Generator:take` and specify how many elements
+-- you need. It's a way to transform infinite generators into finite ones.
+--
+-- Most example above used a for loop with limited number of iterations to 
+-- produce new values. Alternatively, you can check the validity of the
+-- return value, which is indicated by the second value returned by the 
+-- `generate()` function. You may know already that Lua functions can return 
+-- more than one values.
+-- 
+-- For example, the following program prints all the months once.
+--
+--     local monthGen = Gen.inOrderGen({ "Jan", "Feb", "Mar",  
+--                                       "Apr", "May", "Jun", 
+--                                       "Jul", "Aug", "Sept", 
+--                                       "Oct", "Nov", "Dec" })
+--     local data, valid = nil, true
+--     
+--     while valid do
+--       data, valid = monthGen:generate()
+--       if valid then 
+--         print(data)
+--       end
+--     end
+--
+-- **Other API Features**
+--
+-- Generators can be forced to evaluate eagerly via the `Generator:toTable`
+-- function. It returns a Lua table containing all the values of the generator
+-- Needless to say, calling `toTable()` on an infinite generator will block
+-- the caller forever and the process will likely run out of memory.
+--
+-- Stateful computations can be performed during generator evaluation using
+-- `Generator:scan` method. It allows programmers to start with an "initial"
+-- state and accumulate arbitrary modifications to the state as long as the 
+-- generator proceeds.
+--
 --
 -- @module generator
 -- @alias Public
@@ -98,26 +246,26 @@ local xtypes = require ("ddsl.xtypes")
 
 local Public = {
 
-  --- Max integer value of a byte
+  --- Max integer value of a byte (0xFF).
   MAX_BYTE    = 0xFF,
 
-  --- Max 16-bit integer value
+  --- Max 16-bit integer value (0x7FFF).
   MAX_INT16   = 0x7FFF, 
-  --- Max 32-bit integer value
+  --- Max 32-bit integer value (0x7FFFFFFF).
   MAX_INT32   = 0x7FFFFFFF, 
-  --- Max 64-bit integer value
+  --- Max 64-bit integer value (0x7FFFFFFFFFFFFFFF).
   MAX_INT64   = 0x7FFFFFFFFFFFFFFF, 
 
-  --- Max 16-bit unsigned integer value
+  --- Max 16-bit unsigned integer value (0xFFFF).
   MAX_UINT16  = 0xFFFF, 
-  --- Max 32-bit unsigned integer value
+  --- Max 32-bit unsigned integer value (0xFFFFFFFF).
   MAX_UINT32  = 0xFFFFFFFF, 
-  --- Max 64-bit unsigned integer value
+  --- Max 64-bit unsigned integer value (0x7FFFFFFFFFFFFFFF)
   MAX_UINT64  = 0x7FFFFFFFFFFFFFFF, 
 
-  --- Max value of a float (single precision)
+  --- Max value of a float (single precision) (approximately 3.40 * 10^^38)
   MAX_FLOAT   = 3.4028234 * math.pow(10,38),
-  --- Max value of a double (double precision)
+  --- Max value of a double (double precision) (approximately 1.79 * 10^^308)
   MAX_DOUBLE  = 1.7976931348623157 * math.pow(10, 308),
 
   --! An sentinel object represeting no value was 
@@ -199,30 +347,30 @@ local Public = {
   --foreach
   --sort
   --sortBy
-  --groupBy
+  --partition
   --lastN
  
   --initialize
 
 } -- Public
 
---- Min value of a float (single precision)
+--- Min value of a float (single precision) (negative `MAX_FLOAT`)
 Public.MIN_FLOAT   = -Public.MAX_FLOAT
---- Min value of a double (double precision)
+--- Min value of a double (double precision) (negative `MAX_DOUBLE`)
 Public.MIN_DOUBLE  = -Public.MAX_DOUBLE
 
---- Min value of a 16-bit integer
+--- Min value of a 16-bit integer. (-`MAX_INT16`-1) 
 Public.MIN_INT16   = -Public.MAX_INT16-1 
---- Min value of a 32-bit integer
+--- Min value of a 32-bit integer. (-`MAX_INT32`-1)
 Public.MIN_INT32   = -Public.MAX_INT32-1 
---- Min value of a 32-bit integer
+--- Min value of a 32-bit integer. (-`MAX_INT64`-1)
 Public.MIN_INT64   = -Public.MAX_INT64-1 
 
 setmetatable(Public.NO_PUSHED_VALUE, {
     __tostring = function () return "NO_PUSHED_VALUE" end
 })
 
---- A Generator class. The base type for all pull-based generators.
+--- The Generator "interface". The base interface for all pull-based generators.
 -- @type Generator
 local Generator = { }
 
@@ -287,8 +435,9 @@ function Generator:generate()
   return self.genImpl()
 end
 
---- Creates a new generator that applies the given function 
---  to each value generated by the self generator. 
+--- Creates a new generator that "applies" the given function 
+--  to each value generated by the self generator. The resulting
+--  generator produces the values returned by the argument function.
 --  @tparam function func A function that transforms the input 
 --  value to an output value. I.e., the function must accept 
 --  one argument and must return a value.
@@ -865,23 +1014,37 @@ function Public.floatGen()
   return Public.boolGen():map(function(b)
            local num = math.random() * math.random(0, Public.MAX_INT16)
            if b then
-             return num, true
+             return num
            else
-             return -num, true
+             return -num
            end
          end)
 end
 
 --- Creates a generator that produces floating point numbers
---  in the range of negative Public.MAX_INT32 Public.MAX_INT32.
+--  in the range of negative Public.MAX_INT32 to Public.MAX_INT32.
 --  @treturn Generator A generator of floating point numbers.
 function Public.doubleGen()
   return Public.boolGen():map(function(b)
            local num = math.random() * math.random(0, Public.MAX_INT32)         
            if b then
-             return num, true
+             return num
            else
-             return -num, true
+             return -num
+           end
+         end)
+end
+
+--- Creates a generator that produces floating point numbers
+--  in the range of negative Public.MAX_INT64 to Public.MAX_INT64.
+--  @treturn Generator A generator of floating point numbers.
+function Public.longDoubleGen()
+  return Public.boolGen():map(function(b)
+           local num = math.random() * math.random(0, Public.MAX_INT64)         
+           if b then
+             return num
+           else
+             return -num
            end
          end)
 end
@@ -1320,7 +1483,7 @@ end
 --  a bucket for input value. bucket is also a "key"
 --  @treturn table A table of tables. The table contains buckets identified by
 --  by the groupingFunc. Each bucket contains at least one element.
-function Public.groupBy(generator, groupingFunc)
+function Public.partition(generator, groupingFunc)
     local data = {}
     Public.foreach(generator, 
                    function (i) 
@@ -1474,9 +1637,11 @@ function Public.createGenerator(roledef, genLib, memoizeGen)
   end
 end
 
---- Returns a generator for the specified primitive type.
+--- Returns a generator for the specified primitive type as 
+--  specified in the `BuiltinGenerators` section.
 --  @tparam string ptype The name of the primitive type in string format.
---  E.g., "boolean", "char", "long_double", "string", "string<128>", etc.
+--  E.g., "boolean", "char", "long double", "long_double", "string", 
+--  "string<128>", etc.
 --  @tparam GeneratorLib genLib (optional) A library of generators for members and types.
 --  If a generator exists in the library, it will be used.
 --  @tparam bool memoizeGen (optional) true if the member-specific generators should
@@ -1492,7 +1657,9 @@ function Public.getPrimitiveGen(ptype, genLib, memoizeGen)
   if genLib.typeGenLib[ptype] then
     return genLib.typeGenLib[ptype]
   else
-    if ptype=="boolean" then
+    if ptype=="bool" then
+      gen = Public.Bool
+    elseif ptype=="boolean" then
       gen = Public.Bool
     elseif ptype=="octet" then
       gen = Public.Octet
@@ -1726,20 +1893,64 @@ function Private.zunionGen(unionType, genLib, memoizeGen)
          end)
 end
 
+--- Builtin generators
+-- @section BuiltinGenerators 
+
+--- A random boolean generator with 50-50 probability.
 Public.Bool       = Public.boolGen()
+
+--- A generator of uniformly distributed integers in
+--  range 0 to Public.MAX_BYTE (inclusive)
 Public.Octet      = Public.octetGen()
-Public.Char       = Public.charGen()
+
+--- A generator of printable characters in range 
+-- 32 (i.e, space) and 126 (i.e., tilde) (inclusive).
+Public.Char       = Public.printableGen()
+
+--- A generator that produces integer values in the
+--  range of 0 and Public.MAX_INT16 (inclusive).
 Public.WChar      = Public.wcharGen()
+
+--- A generator that produces floating point numbers in the 
+--  range of negative Public.MAX_INT16 and Public.MAX_INT16 (inclusive).
 Public.Float      = Public.floatGen()
-Public.Double     = Public.doubleGen()
-Public.LongDouble = Public.doubleGen()
+
+--- A generator that produces floating point numbers in the 
+--  range of negative Public.MAX_INT32 and Public.MAX_INT32 (inclusive).
+Public.Double = Public.doubleGen()
+
+--- A generator that produces floating point numbers in the 
+--  range of negative Public.MAX_INT64 and Public.MAX_INT64 (inclusive).
+Public.LongDouble = Public.longDoubleGen()
+
+--- A generator that produces integers in the range of 
+--  Public.MIN_INT16 and Public.MAX_INT16 (inclusive).
 Public.Short      = Public.int16Gen()
+
+--- A generator that produces integers in the range of 
+--  Public.MIN_INT32 and Public.MAX_INT32 (inclusive).
 Public.Long       = Public.int32Gen()
+
+--- A generator that produces integers in the range of 
+--  Public.MIN_INT64 and Public.MAX_INT64 (inclusive).
 Public.LongLong   = Public.int64Gen()
+
+--- A generator that produces unsigned integers in the range of 
+--  0 and Public.MAX_UINT16 (inclusive).
 Public.UShort     = Public.uint16Gen()
+
+--- A generator that produces unsigned integers in the range of 
+--  0 and Public.MAX_UINT32 (inclusive).
 Public.ULong      = Public.uint32Gen()
+
+--- A generator that produces unsigned integers in the range of 
+--  0 and Public.MAX_UINT64 (inclusive).
 Public.ULongLong  = Public.uint64Gen()
+
+--- A generator of non-empty strings. Maximum length 256.
 Public.String     = Public.nonEmptyStringGen()
+
+--- A generator of non-empty strings. Maximum length 256.
 Public.WString    = Public.nonEmptyStringGen()
 
 Public.Generator  = Generator

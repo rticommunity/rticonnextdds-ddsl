@@ -59,7 +59,7 @@ file = {
     '../src/ddsl/xtypes/utils', 
     '../src/ddsl/xtypes/xml', 
     
-    '../src/ddslgen/generator.lua',
+    '../src/ddslgen/generator.lua', 
 
     '../src/logger.lua',
     
