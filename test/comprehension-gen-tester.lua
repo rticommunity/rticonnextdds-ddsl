@@ -27,8 +27,9 @@ end
 
 Tester = {}
 
-local verbose = true
+local verbose = false
 local printv = nil
+
 if tonumber(string.gmatch(_VERSION,"%d.%d")()) >= 5.3 then
   printv = function(...) if verbose then print(...) end end
 else
@@ -97,7 +98,7 @@ function Tester.test_constrained_shape_y()
   end
 
   shapeGenLib.y         = Comprehension.parse(constraint, { xGen = shapeGenLib.x } ) 
-  shapeGenLib.color     = Gen.oneOf({ "RED", "GREEN", "BLUE" })
+  shapeGenLib.color     = Gen.oneOfGen({ "RED", "GREEN", "BLUE" })
   shapeGenLib.shapesize = Gen.constantGen(30)
 
   local shapeReactGen = ReactGen.aggregateGen(ShapeType, shapeGenLib)
@@ -196,7 +197,7 @@ function Tester:main()
       print('\n--- Test ' .. k .. ' : ' .. v .. ' ---')
       if self[v] then self[v](self) end 
     end
-    print('\n All tests completed successfully!')
+    print('\nAll tests completed successfully!\nChange verbose=true for detailed output.')
   end
 end
 

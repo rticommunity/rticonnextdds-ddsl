@@ -25,7 +25,7 @@ local xtypes = require("ddsl.xtypes")
 local xutils = require("ddsl.xtypes.utils")
 local Gen    = require("ddslgen.generator")
 
-local verbose = true
+local verbose = false 
 local printv = nil
 
 if tonumber(string.gmatch(_VERSION,"%d.%d")()) >= 5.3 then
@@ -146,6 +146,7 @@ function Tester:test_const()
   
   assert(Gen.createGenerator(Test.FLOAT):generate() == 3.14)
   assert(Gen.createGenerator(Test.DOUBLE):generate() == 3.14 * 3.14)
+  assert(Gen.createGenerator(Test.LDOUBLE):generate() == 3.14 * 3.14 * 3.14)
   assert(Gen.createGenerator(Test.STRING):generate() == "String Constant")
   assert(Gen.createGenerator(Test.BOOL):generate() == true)
   assert(Gen.createGenerator(Test.FLOAT):generate() == 3.14)
@@ -175,17 +176,17 @@ function Tester:test_xml_advanced()
   
     xml.empty() -- empty the root module, to prevent collisions between files
     
-    print('========= ', file, ' begin ======')
+    if verbose then print('========= ', file, ' begin ======') end
     local ns = xml.file2xtypes(file)
     --Tester.print(ns)
     for i = 1, #ns do
       if ns[i][xtypes.KIND]() ~= "module" then
         local value = Gen.createGenerator(ns[i]):generate()
         assert(value ~= nil)
-        print_table_recursive(value, ns[i][xtypes.NAME])
+        if verbose then print_table_recursive(value, ns[i][xtypes.NAME]) end
       end
     end
-    print('--------- ', file, ' end --------')
+    if verbose then print('--------- ', file, ' end --------') end
     
   end
 end
@@ -362,7 +363,7 @@ function Tester.test_struct_gen()
 
   shapeGenLib.x         = Gen.rangeGen(xMin, xMax)
   shapeGenLib.y         = Gen.rangeGen(yMin, yMax)
-  shapeGenLib.color     = Gen.oneOf({ "RED", "GREEN", "BLUE" })
+  shapeGenLib.color     = Gen.oneOfGen({ "RED", "GREEN", "BLUE" })
   shapeGenLib.shapesize = Gen.rangeGen(sMin, sMax)
 
   local memoize = false 
@@ -549,11 +550,11 @@ function Tester.test_struct_moderate()
   end
   for i, arr in ipairs(name.multidim) do
     if #arr==0 then  
-      io.write("empty sequence") 
+      printv("empty sequence")
     end
 
     for j, val in ipairs(arr) do
-      io.write(string.format("%d ", val))
+      printv(string.format("%d ", val))
     end
     printv()
   end
@@ -695,14 +696,16 @@ function Tester:test_array_gen()
   assert(#myStruct.doubles == 3)
   for i=1, #myStruct.doubles do
     assert(type(myStruct.doubles[i]) == "number")
-    io.write(string.format(myStruct.doubles[i] .. " "))
+    if verbose then io.write(string.format(myStruct.doubles[i] .. " ")) end 
   end
   printv()
   assert(#myStruct.days == 9)
   for i=1, #myStruct.days do
     for j=1, #myStruct.days[i] do
       assert(type(myStruct.days[i][j]) == "number")
-      io.write(string.format(Test.Days(myStruct.days[i][j]) .. " "))
+      if verbose then 
+        io.write(string.format(Test.Days(myStruct.days[i][j]) .. " ")) 
+      end
     end
     printv()
   end
@@ -848,26 +851,38 @@ end
 
 Tester[#Tester+1] = 'test_primitive_gen'
 function Tester.test_primitive_gen() 
-  numGen      = Gen.numGen()
-  boolGen     = Gen.boolGen()
-  charGen     = Gen.charGen()
-  alphaNumGen = Gen.alphaNumGen()
-  stringGen   = Gen.stringGen()
+  numGen        = Gen.numGen()
+  floatGen      = Gen.floatGen()
+  doubleGen     = Gen.doubleGen()
+  longDoubleGen = Gen.longDoubleGen()
+  boolGen       = Gen.boolGen()
+  charGen       = Gen.charGen()
+  alphaNumGen   = Gen.alphaNumGen()
+  stringGen     = Gen.stringGen()
 
   math.randomseed(os.time())
 
   for i=1,5 do 
     local num = numGen:generate() 
+    local float = floatGen:generate() 
+    local double = doubleGen:generate() 
+    local ldouble = longDoubleGen:generate() 
     local bool = boolGen:generate() 
     local c = alphaNumGen:generate();
     local str = stringGen:generate() 
 
     assert(type(num) == "number")
+    assert(type(float) == "number")
+    assert(type(double) == "number")
+    assert(type(ldouble) == "number")
     assert(type(bool) == "boolean")
     assert(type(c) == "number")
     assert(type(str) == "string")
 
     printv(num) 
+    printv(float) 
+    printv(double) 
+    printv(ldouble) 
     printv(bool) 
     printv(string.format("%d:'%c'", c, c))
     printv(str) 
@@ -883,7 +898,7 @@ function Tester.test_fibonacciGen()
   for i=1,15 do 
     local value = fiboGen:generate()
     assert(value == answer[i])
-    io.write(string.format("%d ", value))
+    if verbose then io.write(string.format("%d ", value)) end
   end
   printv()
 end
@@ -897,7 +912,7 @@ function Tester.test_stepGen()
     local val, valid = gen:generate()
     if valid then
       assert(answer[i] == val)
-      io.write(string.format("%d ", val))
+      if versbose then io.write(string.format("%d ", val)) end
     end
   end
   printv()
@@ -914,7 +929,7 @@ function Tester.test_inOrderGen()
       local idx = i % #array
       if idx == 0 then idx = #array end 
       assert(val == array[idx])
-      io.write(string.format("%d ", val))
+      if verbose then io.write(string.format("%d ", val)) end
     end
   end
   printv()
@@ -931,7 +946,7 @@ function Tester.test_months()
  local array = { "Jan", "Feb", "Mar",  "Apr", "May", "Jun", 
                  "Jul", "Aug", "Sept", "Oct", "Nov", "Dec" }
  local set = Set(array)
- local monthGen = Gen.oneOf(array)
+ local monthGen = Gen.oneOfGen(array)
  local yearGen = Gen.stepperGen(1900, 1912)
  local seriesGen = yearGen:zipMany(monthGen, 
                                    function(year, month) 
@@ -994,16 +1009,373 @@ function Tester.test_scan()
   
 end
 
+Tester[#Tester+1] = 'test_take'
+function Tester.test_take()
+  
+  local answer = { 1, 2, 3, 4, 5 }
+
+  local gen = Gen.stepperGen(1, 10)
+                 :take(5)
+  
+  for i=1, #answer do
+    assert(answer[i] == gen:generate())
+  end
+  
+  assert(nil == Gen.stepperGen(1, 10):take(0):generate())
+  
+end
+
+Tester[#Tester+1] = 'test_skip'
+function Tester.test_skip()
+  
+  local answer = { 1, 2, 3, 4, 5 }
+  local skip = 2
+  local gen = Gen.stepperGen(1, 5)
+                 :skip(skip)
+  
+  for i=1+skip, #answer do
+    assert(answer[i] == gen:generate())
+  end
+  
+  local gen = Gen.stepperGen(1, 5)
+                 :skip(0)
+  
+  for i=1, #answer do
+    assert(answer[i] == gen:generate())
+  end
+  
+end
+
+Tester[#Tester+1] = 'test_last'
+function Tester.test_last()
+  
+  local answer = { 10, 20, 30, 40, 50 }
+  local last = 3
+  local gen = Gen.stepperGen(10, 50, 10)
+                 :last(last)
+  
+  for i=#answer-last+1, #answer do
+    local val = gen:generate()
+    assert(answer[i] == val)
+  end
+ 
+ 
+  local last = 7
+  local gen = Gen.stepperGen(10, 50, 10)
+                 :last(last)
+  
+  for i=1, #answer do
+    local val = gen:generate()
+    assert(answer[i] == val)
+  end
+
+  assert(nil == gen:generate())
+  assert(nil == gen:generate())
+  
+end
+
+Tester[#Tester+1] = 'test_reduce'
+function Tester.test_reduce()
+  
+  local gen = Gen.stepperGen(1, 5)
+                 :reduce(function (sum, i) return sum+i end, 0)
+  
+  assert(gen:generate() == 15)
+
+  local gen  = Gen.stepperGen(1, 5)
+                  :reduce(function (sum, i) return sum+i end, 0)
+  local gen2 = Gen.stepperGen(1, 5)
+                  :scan(function (sum, i) return sum+i end, 0)
+                  :last()
+                  
+  assert(gen:generate() == gen2:generate())
+  assert(Gen.emptyGen():reduce():generate() == 
+         Gen:emptyGen():scan():last():generate())
+    
+end
+
+
+Tester[#Tester+1] = 'test_concat'
+function Tester.test_concat()
+  
+  local answer = { 1, 3, 6, 10, 15, 21, 28, 36, 45, 55 }
+
+  local seg1 = Gen.inOrderGen({ 1, 3, 6, 10 })
+  local seg2 = Gen.inOrderGen({ 15, 21, 28, 36, 45, 55 })
+  local gen = seg1:concat(seg2)
+  
+  for i=1, #answer do
+    assert(answer[i] == gen:generate())
+  end
+  
+  local seg2 = Gen.inOrderGen(answer)
+  local gen = Gen.emptyGen():concat(seg2)
+  
+  for i=1, #answer do
+    assert(answer[i] == gen:generate())
+  end
+  
+  local seg1 = Gen.inOrderGen(answer)
+  local gen = seg1:concat(Gen.emptyGen())
+  
+  for i=1, #answer do
+    assert(answer[i] == gen:generate())
+  end
+  
+end
+
+Tester[#Tester+1] = 'test_concatAll'
+function Tester.test_concatAll()
+  
+  local answer = { 1, 3, 6, 10, 15, 21, 28, 36, 45, 55 }
+
+  local seg1 = Gen.inOrderGen({ 1, 3, 6 })
+  local seg2 = Gen.inOrderGen({ 10, 15, 21 })
+  local seg3 = Gen.inOrderGen({ 28, 36, 45 })
+  local seg4 = Gen.inOrderGen({ 55 })
+  local gen = Gen.concatAllGen(seg1, seg2, seg3, seg4)
+  
+  for i=1, #answer+1 do
+    assert(answer[i] == gen:generate())
+  end
+ 
+  assert(nil == Gen.concatAllGen(Gen.emptyGen(), Gen.emptyGen()):generate())
+  
+end
+
+function inorder(node)
+  -- Function inspired by http://okmij.org/ftp/continuations/generators.html
+
+  if node then
+    return Gen.concatAllGen(Gen.deferredGen(function() return inorder(node.left) end), 
+                            Gen.singleGen(node.data), 
+                            Gen.deferredGen(function() return inorder(node.right) end))
+  end
+  return Gen.emptyGen()
+end
+
+Tester[#Tester+1] = 'test_inorderTraversal'
+function Tester.test_inorderTraversal()
+  -- Test inspired by http://okmij.org/ftp/continuations/generators.html
+  
+  local answer = { 3, 5, 6, 8, 10, 17, 21 }
+  local root = { data  = 10, 
+                 left  = { data  = 6, 
+                           left  = { data = 3, right = { data = 5 } },
+                           right = { data = 8 } 
+                         },
+                 right = { data  = 21, 
+                           left = { data = 17 },
+                         } 
+               }
+  
+  local gen = inorder(root)
+  
+  for i=1, #answer+1 do
+    assert(answer[i] == gen:generate())
+  end
+ 
+end
+
+Tester[#Tester+1] = 'test_alternateGen'
+function Tester.test_alternateGen()
+  
+  local answer = { 1, 10, 28, 55, 3, 15, 36, 6, 21, 45, nil }
+
+  local seg1 = Gen.inOrderGen({  1,  3,  6 })
+  local seg2 = Gen.inOrderGen({ 10, 15, 21 })
+  local seg3 = Gen.inOrderGen({ 28, 36, 45 })
+  local seg4 = Gen.inOrderGen({ 55 })
+  local gen = Gen.alternateGen(seg1, seg2, seg3, seg4)
+  
+  for i=1, #answer+1 do
+    assert(answer[i] == gen:generate())
+  end
+ 
+  assert(nil == Gen.alternateGen(Gen.emptyGen()):generate())
+ 
+end
+
+Tester[#Tester+1] = 'test_toTable'
+function Tester.test_toTable()
+  
+  local answer = { 1, 10, 28, 55, 3, 15, 36, 6, 21, 45, nil }
+  local gen = Gen.inOrderGen(answer)
+  local all = gen:toTable();
+  
+  for i=1, #answer do
+    assert(answer[i] == all[i])
+  end
+ 
+  assert(nil == Gen.alternateGen(Gen.emptyGen()):generate())
+ 
+end
+
+Tester[#Tester+1] = 'test_where_reject_find_every'
+function Tester.test_where_reject_find_every()
+  
+  local data = { 1, 10, 28, 55, 3, 15, 36, 6, 21, 45 }
+  local even = { 10, 28, 36, 6, }
+  local odd  = { 1, 55, 3, 15, 21, 45 }
+  
+  local evenGen = Gen.inOrderGen(data)
+                     :where(function (i) return i % 2 == 0 end)
+  
+  local oddGen = Gen.inOrderGen(data)
+                    :reject(function (i) return i % 2 == 0 end)
+  
+  for i=1, #even do
+    assert(even[i] == evenGen:generate())
+  end
+ 
+  for i=1, #odd do
+    assert(odd[i] == oddGen:generate())
+  end
+
+  assert(Gen.find(Gen.inOrderGen(data),
+                  function (i) return i == 15 end) == 15)
+  
+  assert(Gen.find(Gen.inOrderGen(data),
+                  function (i) return i == -777 end) == nil)
+  
+  assert(Gen.every(Gen.inOrderGen(data),
+                   function (i) return i < 100 end))
+  
+  assert(Gen.every(Gen.inOrderGen(data),
+                   function (i) return i < 55 end) == false)
+  
+end
+
+Tester[#Tester+1] = 'test_sort'
+function Tester.test_sort()
+  
+  local data   = { 1, 10, 28, 55,  3, 15, 36,  6, 21, 45 }
+  local answer = { 1,  3,  6, 10, 15, 21, 28, 36, 45, 55 }
+  local sorted = Gen.sort(Gen.inOrderGen(data), 
+                          function (i,j) return i < j end)
+  
+  for i = 1, #answer do
+    assert(answer[i] == sorted[i])
+  end
+
+  local data   = { { name = "Z" },
+                   { name = "M" },
+                   { name = "P" },
+                   { name = "A" } }
+  
+  local answer = { { name = "A" },
+                   { name = "M" },
+                   { name = "P" },
+                   { name = "Z" } }
+  
+  local sorted = Gen.sortBy(Gen.inOrderGen(data), "name")
+  
+  for i = 1, #answer do
+    assert(answer[i].name == sorted[i].name)
+  end
+  
+end
+
+--[[
+Tester[#Tester+1] = 'test_groupby'
+function Tester.test_groupby()
+  
+  local data   = { { age = 5,  name = "Z" },
+                   { age = 15, name = "M" },
+                   { age = 17, name = "P" },
+                   { age = 23, name = "A" } }
+  
+  local answer = { }
+  answer[10] = { {age =  5, name = "Z" } }
+  answer[20] = { {age = 15, name = "M" },
+                 {age = 17, name = "P" } }
+  answer[30] = { {age = 23, name = "A" } }
+  
+  local grouped = 
+    Gen.groupBy(Gen.inOrderGen(data), 
+                function(i) 
+                  if     i.age < 10 then return 10
+                  elseif i.age < 20 then return 20
+                  elseif i.age < 30 then return 30
+                  end
+                end)
+  
+  local bucket = 10
+  while bucket <= 30 do
+    for i = 1, #answer[bucket] do
+      assert(answer[bucket][i].name == grouped[bucket][i].name)
+    end
+    bucket = bucket + 10
+  end
+  
+end
+]]
+
+Tester[#Tester+1] = 'test_foreach'
+function Tester.test_foreach()
+  
+  local sum = 0
+  local data   = { 1, 10, 28, 55,  3, 15, 36,  6, 21, 45 }
+  Gen.foreach(Gen.inOrderGen(data), function (i) sum = sum + i end)  
+  
+  local total = 
+    Gen.inOrderGen(data):reduce(function (init, i) return init + i end, 0):generate()
+  
+  assert(sum == total)
+
+end
+
+Tester[#Tester+1] = 'test_typeGenLib'
+function Tester.test_typeGenLib()
+  local ShapeType = xtypes.struct{
+    ShapeType = {
+      { x = { xtypes.long } },
+      { y = { xtypes.long } },
+      { shapesize = { xtypes.long } },
+      { color = { xtypes.string(128), xtypes.Key } },
+    }
+  }
+  Tester.print(ShapeType)
+  
+  assert('x'         == ShapeType.x)
+  assert('y'         == ShapeType.y)
+  assert('shapesize' == ShapeType.shapesize)
+  assert('color'     == ShapeType.color)   
+
+  local shapeGenLib = { typeGenLib = {} }
+  local min, max = 0, 200
+
+  shapeGenLib.typeGenLib.long = Gen.rangeGen(min, max)
+  shapeGenLib.color           = Gen.oneOfGen({ "RED", "GREEN", "BLUE" })
+
+  local ShapeTypeGen = Gen.aggregateGen(ShapeType, shapeGenLib)
+  local shape = ShapeTypeGen:generate()
+
+  assert(shape.x >= min and shape.x <= max)
+  assert(shape.y >= min and shape.y <= max)
+  assert(shape.color == "RED" or shape.color == "GREEN" or shape.color == "BLUE")
+  assert(shape.shapesize >= min and shape.shapesize <= max)
+
+  printv("shape.x = " .. shape.x)
+  printv("shape.y = " .. shape.y)
+  printv("shape.color = " .. shape.color)
+  printv("shape.shapesize = " .. shape.shapesize)
+
+  return ShapeTypeGen
+end
+
 --
 -- print - helper method to print the IDL and the index for data definition
 function Tester.print(instance)
-    -- print IDL
-    local idl = xutils.to_idl_string_table(instance, {'model (IDL):'})
-    print(table.concat(idl, '\n\t'))
+    if verbose then
+      -- print IDL
+      local idl = xutils.to_idl_string_table(instance, {'model (IDL):'})
+      print(table.concat(idl, '\n\t'))
     
-    -- print the result of visiting each field
-    local fields = xutils.to_instance_string_table(instance, {'instance:'})
-    print(table.concat(fields, '\n\t'))
+      -- print the result of visiting each field
+      local fields = xutils.to_instance_string_table(instance, {'instance:'})
+      print(table.concat(fields, '\n\t'))
+    end
 end
 ---
 -- main() - run the list of tests passed on the command line
@@ -1023,7 +1395,7 @@ function Tester:main()
       print('\n--- Test ' .. k .. ' : ' .. v .. ' ---')
       if self[v] then self[v](self) end 
     end
-    print('\n All tests completed successfully!')
+    print('\nAll tests completed successfully!\nChange verbose=true for detailed output.')
   end
 end
 
