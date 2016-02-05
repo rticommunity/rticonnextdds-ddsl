@@ -18,7 +18,10 @@
 #          can be location independent
 #
 # Usage:
-#         run <lua_script> <lua_script_args>
+#         run [options] <lua_script> <lua_script_args>
+#
+# Valid options:
+#         -wait         - Wait before exiting script after execution
 #
 #         e.g.
 #               run xml2ddsl <file.xml>
@@ -51,11 +54,40 @@
 # Created: Rajive Joshi, 2015 Jun 26
 #-------------------------------------------------------------------------------
 
+printHelp() {
+    echo "Usage: run [options] <lua_script> <lua_script_args>"
+    echo "Valid options are:"
+    echo "   -h | --help    show this help"
+    echo "   -wait          ask user to press enter after termination"
+    echo "Where <lua_script> is a .lua or .lc file in: ., bin/, lib/, or src/"
+    exit 0
+}
+
 if [ $# -lt 1 ]; then
-	echo "Usage: run <lua_script> <lua_script_args>"
-	echo "   <lua_script> is a .lua|.lc file in: ., bin/, lib/, or src/"
-	exit 0
+    printHelp
 fi
+
+waitOnExit=false
+
+opt="$1"
+while test ${opt:0:1} = '-'; do
+    case "$opt" in
+        -h | --help)
+            printHelp
+            ;;
+
+        -wait)
+            waitOnExit=true
+            ;;
+
+        *)
+            echo "Invalid argument; $opt"
+            exit 1
+            ;;
+    esac
+    shift
+    opt="$1"
+done
 
 MY_HOME=$(cd $(dirname "$0")/..; pwd -P)
 
@@ -83,7 +115,7 @@ LD_LIBRARY_PATH=${MY_HOME}/lib:${MY_LIB_ARCH}:${LD_LIBRARY_PATH}
 DYLD_LIBRARY_PATH=${MY_HOME}/lib:${MY_LIB_ARCH}:${DYLD_LIBRARY_PATH}
 
 # build the lua command path
-LUA_CMD=$1; shift
+LUA_CMD=$opt; shift
 if [ -r ${LUA_CMD}.lua ]; then
 	LUA_CMD_PATH=${LUA_CMD}.lua                # use it, if valid as specified
 elif [ -r ${MY_HOME}/src/${LUA_CMD}.lua ]; then
@@ -103,6 +135,8 @@ fi
 
 # invoke the lua interpreter
 env lua ${LUA_CMD_PATH} $*
+
+$waitOnExit && /bin/echo -n "Press ENTER to terminate" && read
 
 #echo MY_HOME=${MY_HOME}
 #echo MY_BIN_ARCH=${MY_BIN_ARCH}
