@@ -98,6 +98,7 @@ end
 -- @treturn table table containing the equivalent Lua table representation
 -- @function xmlstring2table
 local function collect(s)
+  s=s:gsub("<!--.-->", "")
   local stack = {}
   local top = {}
   table.insert(stack, top)
