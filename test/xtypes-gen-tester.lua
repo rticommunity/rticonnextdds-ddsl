@@ -1352,7 +1352,7 @@ end
 
 Tester[#Tester+1] = 'test_groupby_infinite'
 function Tester.test_groupby_infinite()
-  local groups = 20000
+  local groups = Gen.rangeGen(1, 20000):generate()
   local gop = Gen.stepperGen() -- infinite
                  :groupBy(function (x) return x % groups end)
   local innerGenArr = {}
@@ -1370,7 +1370,31 @@ function Tester.test_groupby_infinite()
     assert(val > innerGenLastValue[j])
     innerGenLastValue[j] = val
   end
+end
+
+Tester[#Tester+1] = 'test_groupby_inf_alternate'
+function Tester.test_groupby_inf_alternate()
+  local groups = Gen.rangeGen(1, 20000):generate()
   
+  local tableoftable = 
+      Gen.stepperGen() -- infinite
+         :groupBy(function (x) return x % groups end)
+         :take(groups)
+         :reduce(function(tab, innerGen) 
+                   tab[#tab+1] = innerGen
+                   return tab
+                 end, {})
+         :toTable()
+
+  local allInnerGenTab = tableoftable[1]
+  
+  local j = 1
+  local altGen = Gen.alternateGen(table.unpack(allInnerGenTab))
+  for i = 1, 1000*1000 do  
+    local val = altGen:generate()
+    assert((val % groups) == j) 
+    j = (j + 1) % groups
+  end
 end
 
 Tester[#Tester+1] = 'test_foreach'
