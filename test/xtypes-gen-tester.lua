@@ -1283,19 +1283,26 @@ function Tester.test_groupby1()
   local data   = { 1,2,3,4,5,6,7,8,9,10 }
   local gop = Gen.inOrderGen(data)
                  :groupBy(function (x) return x % 2 end)
-  
+                   
   local g1 = gop:generate()
   local g2 = gop:generate()
   local g3 = gop:generate()
-  
-  assert(g1 ~= nil)
+
+  assert(gop.kind() == "pull")  
+
+  assert(g1 ~= nil) 
+  assert(g1.kind() == "pull")
+  assert(g1.getKey() == 1)
+
   assert(g2 ~= nil)
+  assert(g2.kind() == "pull")
+  assert(g2.getKey() == 0)
+
   assert(g3 == nil)
   
   for i = 1, #data/2 do
     local value = g1:generate()
     assert((value % 2) == 1) 
-
   end 
   
   for i = 1, #data/2 do
@@ -1313,9 +1320,12 @@ function Tester.test_groupby2()
   local data   = { 1,2,3,4,5,6,7,8,9,10 }
   local gop = Gen.inOrderGen(data)
                  :groupBy(function (x) return x % 2 end)
+  assert(gop.kind() == "pull")
   
   local g1 = gop:generate()
   assert(g1 ~= nil)
+  assert(g1.kind() == "pull")
+  assert(g1.getKey() == 1)
   
   for i = 1, #data/2 do
     local value = g1:generate()
@@ -1326,6 +1336,8 @@ function Tester.test_groupby2()
 
   local g2 = gop:generate()
   assert(g2 ~= nil)
+  assert(g2.kind() == "pull")
+  assert(g2.getKey() == 0)  
   
   for i = 1, #data/2 do
     local value = g2:generate()
@@ -1336,6 +1348,29 @@ function Tester.test_groupby2()
   
   local g3 = gop:generate()
   assert(g3 == nil)
+end
+
+Tester[#Tester+1] = 'test_groupby_infinite'
+function Tester.test_groupby_infinite()
+  local groups = 20000
+  local gop = Gen.stepperGen() -- infinite
+                 :groupBy(function (x) return x % groups end)
+  local innerGenArr = {}
+  local innerGenLastValue = {}
+  
+  for j = 1, groups do
+    innerGenArr[j] = gop:generate()
+    innerGenLastValue[j] = 0
+  end
+  
+  local rangeGen = Gen.rangeGen(1, groups)
+  for i = 1, 1000*1000 do
+    local j = rangeGen:generate()  
+    local val = innerGenArr[j]:generate()
+    assert(val > innerGenLastValue[j])
+    innerGenLastValue[j] = val
+  end
+  
 end
 
 Tester[#Tester+1] = 'test_foreach'

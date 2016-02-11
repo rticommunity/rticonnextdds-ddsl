@@ -403,9 +403,6 @@ local Private = {
 -- A queue implementation
 local Queue = {}
   
--- GroupByOp class
-local GroupByOp = {}
-
 --==================================================--
 -- Generator member functions
 
@@ -792,112 +789,6 @@ function Generator:reduce(reducerFunc, init)
                       end)
 end
 
-function GroupByOp:new(srcGen, keySelector)
-  o = { srcGen      = srcGen, 
-        keySelector = keySelector,
-        queues      = {}, 
-        innerGenTab = {},
-        innerGenQ   = Queue:new() }
-  setmetatable(o, self)
-  self.__index = self
-  return o
-end 
-
---! GroupByOp.generate returns true if it is able to generate something
---! meaningful. The function operates in two modes depending
---! upon how it is called. Two modes use the same function because
---! largrly same things need to happen in both cases. 
---! The mode determines when the while loop ends.
---! 
---! Mode1: matchKey == nil
---! First, when the outermost generator invokes GroupByOp.generate, 
---! it does not pass matchKey. In this case, GroupByOpgenerate function 
---! is looking for the next *group*.
---!
---! Mode1: matchKey ~= nil
---! Second, when an inner generator invokes generate, it passes a matchKey. 
---! because the inner generator is looking for a value matching a specific key.
---! 
---! In both cases, the source generator usually advances and may hit
---! the end. As the source generator is producing values, they must be
---! put into right buckets. 
---!
---! The while loop ends only when there's something meaningful to return
---! or the source generator ends. Whether there's something meaningful
---! to return depends on the *mode*. I.e., when matchKey is non-nil,
---! the while loop checks in a key-specific queue otherwise it checks
---! in the generator queue.
---!
---! Finally, the last return statement depends on the *mode* and return
---! true if the function was successful in producing something that the 
---! mode wanted.
-function GroupByOp.generate(gop, matchKey)
-  local data, valid = nil, true
-
-  while (valid and matchKey and gop.queues[matchKey]:isEmpty()) or 
-        (valid and gop.innerGenQ:isEmpty()) do
-  
-    data, valid = gop.srcGen:generate()
-    
-    if valid then
-      local key = gop.keySelector(data)
-      
-      if key == nil then 
-        error("groupBy: key can't be nil") 
-      end
-      
-      if gop.queues[key] == nil then
-        gop.queues[key] = Queue:new()
-      end
-      
-      gop.queues[key]:pushRight(data)
-
-      if gop.innerGenTab[key] == nil then
-        gop.innerGenTab[key] = Generator:new(function()
-          return gop:generateGroupMember(key)
-        end)
-        
-        gop.innerGenQ:pushRight(gop.innerGenTab[key])
-      end
-    end
-  end
-
-  if matchKey then
-    return not gop.queues[matchKey]:isEmpty()
-  else
-    return not gop.innerGenQ:isEmpty()
-  end
-  
-end  
-
---! Invoke GroupByOp.generate in Mode 2
-function GroupByOp.generateGroupMember(gop, key)
-  if gop:generate(key) then
-    return gop.queues[key]:popLeft(), true
-  else
-    gop.queues[key] = nil
-    gop.innerGenTab[key] = nil
-    return nil, false
-  end
-end
-
---! Invoke GroupByOp.generate in Mode 1
-function GroupByOp.generateGroup(gop)
-  if gop:generate() then
-    return gop.innerGenQ:popLeft(), true
-  else
-    return nil, false
-  end
-end
-
-function Generator:groupBy(keySelector)
-  local gop = GroupByOp:new(self, keySelector)
-  
-  return Generator:new(function()
-    return gop:generateGroup()
-  end)
-end
-
 --- Returns the generator kind (either "pull" or "push").
 --  @treturn string Either "pull" or "push"
 function Generator:kind()
@@ -924,6 +815,130 @@ function Generator:toTable()
       return data
     end
   end
+end
+
+-- GroupByOp class
+local GroupByOp = Generator:new()
+
+function GroupByOp:new(srcGen, keySelector)
+  local gop = { srcGen      = srcGen,
+                keySelector = keySelector,
+                queues      = {},
+                innerGenTab = {},
+                innerGenQ   = Queue:new()
+              }
+  gop.genImpl = function() return gop:generateGroup() end
+  setmetatable(gop, self)
+  self.__index = self
+  return gop
+end 
+
+--! GroupByOp.generateCommon returns true if it is able to produce something
+--! meaningful. The function operates in two modes depending
+--! upon how it is called. Two modes use the same function because
+--! largrly same things need to happen in both cases. 
+--! The mode determines when the while loop ends.
+--! 
+--! Mode1: matchKey == nil
+--! First, when the outermost generator invokes GroupByOp.generateCommon, 
+--! it does not pass matchKey. In this case, GroupByOpgenerate function 
+--! is looking for the next *group*.
+--!
+--! Mode1: matchKey ~= nil
+--! Second, when an inner generator invokes generateCommon, it passes a matchKey. 
+--! because the inner generator is looking for a value matching a specific key.
+--! 
+--! In both cases, the source generator usually advances and may hit
+--! the end. As the source generator is producing values, they must be
+--! put into right buckets. 
+--!
+--! The while loop ends only when there's something meaningful to return
+--! or the source generator ends. Whether there's something meaningful
+--! to return depends on the *mode*. I.e., when matchKey is non-nil,
+--! the while loop checks in a key-specific queue otherwise it checks
+--! in the generator queue.
+--!
+--! Finally, the last return statement depends on the *mode* and return
+--! true if the function was successful in producing something that the 
+--! mode wanted.
+function GroupByOp.generateCommon(gop, matchKey)
+  local data, valid = nil, true
+
+  while (valid and     matchKey and gop.queues[matchKey]:isEmpty()) or 
+        (valid and not matchKey and gop.innerGenQ:isEmpty()) do
+  
+    data, valid = gop.srcGen:generate()
+    
+    if valid then
+      local key = gop.keySelector(data)
+      
+      if key == nil then 
+        error("groupBy: key can't be nil") 
+      end
+      
+      if gop.queues[key] == nil then
+        gop.queues[key] = Queue:new()
+      end
+      
+      gop.queues[key]:pushRight(data)
+
+      if gop.innerGenTab[key] == nil then
+        gop.innerGenTab[key] = Generator:new(function()
+          return gop:generateGroupMember(key)
+        end)
+        
+        gop.innerGenTab[key].getKey = 
+          function() return key end
+          
+        gop.innerGenQ:pushRight(gop.innerGenTab[key])
+      end
+    end
+  end
+
+  if matchKey then
+    return not gop.queues[matchKey]:isEmpty()
+  else
+    return not gop.innerGenQ:isEmpty()
+  end
+  
+end  
+
+--! Invoke GroupByOp.generateCommon in Mode 2
+function GroupByOp.generateGroupMember(gop, key)
+  if gop:generateCommon(key) then
+    return gop.queues[key]:popLeft(), true
+  else
+    gop.queues[key] = nil
+    gop.innerGenTab[key] = nil
+    return nil, false
+  end
+end
+
+--! Invoke GroupByOp.generateCommon in Mode 1
+function GroupByOp.generateGroup(gop)
+  if gop:generateCommon() then
+    return gop.innerGenQ:popLeft(), true
+  else
+    return nil, false
+  end
+end
+
+--- Creates a generator of "keyed generators" according to a keySelector function.
+--  Each keyed-generator, as the name suggests, is itself a Generator. 
+--  Each keyed-generator produces one or more values of the same "key" in the order
+--  they appear in the source generator. The key can be obtained by calling
+--  getKey() on the keyed-generator.
+--  This method is implemented by using deferred execution. The immediate return value 
+--  is a Generator that stores all the information that is required to perform the action. 
+--  The keyed-generator objects are produced in an order based on the order of the elements 
+--  in source that produced the first key of each keyed-generator. Elements in a grouping 
+--  are produced in the order they appear in the source.
+--  The groupBy combinator has some limitations when used with infinite generators. 
+--  @tparam function keySelector A unary function that return the "key" part of each
+--         object produced by the source generator.
+--  @treturn Generator A generator of keyed-generators.   
+function Generator:groupBy(keySelector)
+  return GroupByOp:new(self, keySelector)
 end
 
 --- Generator factory functions
