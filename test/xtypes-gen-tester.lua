@@ -1276,40 +1276,67 @@ function Tester.test_sort()
   
 end
 
---[[
-Tester[#Tester+1] = 'test_groupby'
-function Tester.test_groupby()
+
+Tester[#Tester+1] = 'test_groupby1'
+function Tester.test_groupby1()
   
-  local data   = { { age = 5,  name = "Z" },
-                   { age = 15, name = "M" },
-                   { age = 17, name = "P" },
-                   { age = 23, name = "A" } }
+  local data   = { 1,2,3,4,5,6,7,8,9,10 }
+  local gop = Gen.inOrderGen(data)
+                 :groupBy(function (x) return x % 2 end)
   
-  local answer = { }
-  answer[10] = { {age =  5, name = "Z" } }
-  answer[20] = { {age = 15, name = "M" },
-                 {age = 17, name = "P" } }
-  answer[30] = { {age = 23, name = "A" } }
+  local g1 = gop:generate()
+  local g2 = gop:generate()
+  local g3 = gop:generate()
   
-  local grouped = 
-    Gen.groupBy(Gen.inOrderGen(data), 
-                function(i) 
-                  if     i.age < 10 then return 10
-                  elseif i.age < 20 then return 20
-                  elseif i.age < 30 then return 30
-                  end
-                end)
+  assert(g1 ~= nil)
+  assert(g2 ~= nil)
+  assert(g3 == nil)
   
-  local bucket = 10
-  while bucket <= 30 do
-    for i = 1, #answer[bucket] do
-      assert(answer[bucket][i].name == grouped[bucket][i].name)
-    end
-    bucket = bucket + 10
-  end
+  for i = 1, #data/2 do
+    local value = g1:generate()
+    assert((value % 2) == 1) 
+
+  end 
   
+  for i = 1, #data/2 do
+    local value = g2:generate()
+    assert((value % 2) == 0) 
+  end 
+  
+  assert(g1:generate() == nil)
+  assert(g2:generate() == nil)
 end
-]]
+
+Tester[#Tester+1] = 'test_groupby2'
+function Tester.test_groupby2()
+  
+  local data   = { 1,2,3,4,5,6,7,8,9,10 }
+  local gop = Gen.inOrderGen(data)
+                 :groupBy(function (x) return x % 2 end)
+  
+  local g1 = gop:generate()
+  assert(g1 ~= nil)
+  
+  for i = 1, #data/2 do
+    local value = g1:generate()
+    assert((value % 2) == 1) 
+  end 
+
+  assert(g1:generate() == nil)
+
+  local g2 = gop:generate()
+  assert(g2 ~= nil)
+  
+  for i = 1, #data/2 do
+    local value = g2:generate()
+    assert((value % 2) == 0) 
+  end 
+ 
+  assert(g2:generate() == nil)
+  
+  local g3 = gop:generate()
+  assert(g3 == nil)
+end
 
 Tester[#Tester+1] = 'test_foreach'
 function Tester.test_foreach()

@@ -400,6 +400,12 @@ local Private = {
   -- seqParseGen
 }
 
+-- A queue implementation
+local Queue = {}
+  
+-- GroupByOp class
+local GroupByOp = {}
+
 --==================================================--
 -- Generator member functions
 
@@ -784,6 +790,112 @@ function Generator:reduce(reducerFunc, init)
                            return nil, false
                         end
                       end)
+end
+
+function GroupByOp:new(srcGen, keySelector)
+  o = { srcGen      = srcGen, 
+        keySelector = keySelector,
+        queues      = {}, 
+        innerGenTab = {},
+        innerGenQ   = Queue:new() }
+  setmetatable(o, self)
+  self.__index = self
+  return o
+end 
+
+--! GroupByOp.generate returns true if it is able to generate something
+--! meaningful. The function operates in two modes depending
+--! upon how it is called. Two modes use the same function because
+--! largrly same things need to happen in both cases. 
+--! The mode determines when the while loop ends.
+--! 
+--! Mode1: matchKey == nil
+--! First, when the outermost generator invokes GroupByOp.generate, 
+--! it does not pass matchKey. In this case, GroupByOpgenerate function 
+--! is looking for the next *group*.
+--!
+--! Mode1: matchKey ~= nil
+--! Second, when an inner generator invokes generate, it passes a matchKey. 
+--! because the inner generator is looking for a value matching a specific key.
+--! 
+--! In both cases, the source generator usually advances and may hit
+--! the end. As the source generator is producing values, they must be
+--! put into right buckets. 
+--!
+--! The while loop ends only when there's something meaningful to return
+--! or the source generator ends. Whether there's something meaningful
+--! to return depends on the *mode*. I.e., when matchKey is non-nil,
+--! the while loop checks in a key-specific queue otherwise it checks
+--! in the generator queue.
+--!
+--! Finally, the last return statement depends on the *mode* and return
+--! true if the function was successful in producing something that the 
+--! mode wanted.
+function GroupByOp.generate(gop, matchKey)
+  local data, valid = nil, true
+
+  while (valid and matchKey and gop.queues[matchKey]:isEmpty()) or 
+        (valid and gop.innerGenQ:isEmpty()) do
+  
+    data, valid = gop.srcGen:generate()
+    
+    if valid then
+      local key = gop.keySelector(data)
+      
+      if key == nil then 
+        error("groupBy: key can't be nil") 
+      end
+      
+      if gop.queues[key] == nil then
+        gop.queues[key] = Queue:new()
+      end
+      
+      gop.queues[key]:pushRight(data)
+
+      if gop.innerGenTab[key] == nil then
+        gop.innerGenTab[key] = Generator:new(function()
+          return gop:generateGroupMember(key)
+        end)
+        
+        gop.innerGenQ:pushRight(gop.innerGenTab[key])
+      end
+    end
+  end
+
+  if matchKey then
+    return not gop.queues[matchKey]:isEmpty()
+  else
+    return not gop.innerGenQ:isEmpty()
+  end
+  
+end  
+
+--! Invoke GroupByOp.generate in Mode 2
+function GroupByOp.generateGroupMember(gop, key)
+  if gop:generate(key) then
+    return gop.queues[key]:popLeft(), true
+  else
+    gop.queues[key] = nil
+    gop.innerGenTab[key] = nil
+    return nil, false
+  end
+end
+
+--! Invoke GroupByOp.generate in Mode 1
+function GroupByOp.generateGroup(gop)
+  if gop:generate() then
+    return gop.innerGenQ:popLeft(), true
+  else
+    return nil, false
+  end
+end
+
+function Generator:groupBy(keySelector)
+  local gop = GroupByOp:new(self, keySelector)
+  
+  return Generator:new(function()
+    return gop:generateGroup()
+  end)
 end
 
 --- Returns the generator kind (either "pull" or "push").
@@ -1892,6 +2004,48 @@ function Private.zunionGen(unionType, genLib, memoizeGen)
           end
          end)
 end
+
+function Queue:new ()
+  o =  {first = 0, last = -1}
+  setmetatable(o, self)
+  self.__index = self
+  return o
+end
+
+function Queue:pushLeft (value)
+  local first = self.first - 1
+  self.first = first
+  self[first] = value
+end
+
+function Queue:pushRight (value)
+  local last = self.last + 1
+  self.last = last
+  self[last] = value
+end
+
+function Queue:popLeft ()
+  local first = self.first
+  if first > self.last then error("Queue.popLeft: Queue is empty") end
+  local value = self[first]
+  self[first] = nil        -- to allow garbage collection
+  self.first = first + 1
+  return value
+end
+
+function Queue:popRight ()
+  local last = self.last
+  if self.first > last then error("Queue.popRight: Queue is empty") end
+  local value = self[last]
+  self[last] = nil         -- to allow garbage collection
+  self.last = last - 1
+  return value
+end
+    
+function Queue:isEmpty ()
+  return self.first > self.last
+end
+
 
 --- Builtin generators
 -- @section BuiltinGenerators 
