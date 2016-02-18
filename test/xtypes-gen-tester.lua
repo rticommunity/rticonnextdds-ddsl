@@ -24,6 +24,7 @@ package.path = '../src/?.lua;../src/?/init.lua;' .. package.path
 local xtypes = require("ddsl.xtypes")
 local xutils = require("ddsl.xtypes.utils")
 local Gen    = require("ddslgen.generator")
+local bit    = require("bit32")
 
 local verbose = false 
 local printv = nil
@@ -1469,6 +1470,44 @@ function Tester.test_typeGenLib()
   printv("shape.shapesize = " .. shape.shapesize)
 
   return ShapeTypeGen
+end
+
+function Tester.makePowerSetGen(src)
+  return Gen.stepperGen(0, math.pow(2, #src)-1)
+            :map(function(n)
+                  local set = {}
+                  local i = 1
+                  while n > 0 do
+                    if bit.band(n, 1) > 0 then
+                      set[#set+1] = src[i]
+                    end
+                    i = i + 1;
+                    n = bit.rshift(n, 1)
+                  end
+                  
+                  return set
+                 end)
+end
+
+Tester[#Tester+1] = 'test_powerset'
+function Tester.test_powerset()
+  local src = { "Generators", "are", "kind", "of", "awesome" }
+  local powersetGen = Tester.makePowerSetGen(src)
+  
+  local data, valid = nil, true
+  local i = 0;
+
+  while valid do
+    data, valid = powersetGen:generate()
+
+    if valid then i = i + 1 end
+
+    if valid and verbose then 
+      print_table_recursive(data, "A powerset member") 
+    end
+  end
+
+  assert(i == math.pow(2, #src))
 end
 
 --
