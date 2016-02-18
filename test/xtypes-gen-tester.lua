@@ -1528,9 +1528,8 @@ function Tester.test_powerset()
   
   local data, valid = nil, true
   local i = 0
-  verbose = true
 
-  for g = 2, #powersetGen do
+  for g = 1, #powersetGen do
     while valid do
       data, valid = powersetGen[g]:generate()
 
