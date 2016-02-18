@@ -1513,11 +1513,14 @@ function Public.stepperGen(start, max, step, cycle)
 end  
 
 --- Creates a generator that produces values from the input array in order.
---  @tparam array array The array containing values. Must be non-empty
+--  @tparam array array The array containing values. May be empty.
 --  @tparam bool cycle (optional) Whether to repeat the values cyclically. Default=false
 --  @treturn Generator A new generator that produces values from the input array.
 function Public.inOrderGen(array, cycle)
-  if #array == 0 then error "Error: Empty sequence" end
+  if #array == 0 then
+    return Public.emptyGen()
+  end
+
   cycle = cycle or false
 
   return Public.stepperGen(1, #array, 1, cycle)

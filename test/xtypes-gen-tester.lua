@@ -1489,25 +1489,60 @@ function Tester.makePowerSetGen(src)
                  end)
 end
 
+function head(tab)
+  return tab[1]
+end
+
+function tail(tab)
+  return { table.unpack(tab, 2, #tab) }
+end
+
+function Tester.makePowerSetGenRecursive(src)
+-- This implemenation is inspired by the following Haskell implemenation
+-- powerset :: [a] -> [[a]]
+-- powerset [] = [[]]
+-- powerset (x:xs) = xss ++ map (x:) xss
+--                   where xss = powerset xs
+
+  if #src == 0 then
+    return Gen.singleGen({}) 
+  end
+  
+  return Gen.concatAllGen(
+            Tester.makePowerSetGenRecursive(tail(src)),
+            Tester.makePowerSetGenRecursive(tail(src))
+                  :map(function(s)
+                         s[#s+1] = head(src)
+                         return s
+                       end))
+end
+
 Tester[#Tester+1] = 'test_powerset'
 function Tester.test_powerset()
   local src = { "Generators", "are", "kind", "of", "awesome" }
-  local powersetGen = Tester.makePowerSetGen(src)
+  local powerSetSize = math.pow(2, #src)
+  
+  local powersetGen = {}
+  powersetGen[1] = Tester.makePowerSetGen(src)
+  powersetGen[2] = Tester.makePowerSetGenRecursive(src)
   
   local data, valid = nil, true
-  local i = 0;
+  local i = 0
+  verbose = true
 
-  while valid do
-    data, valid = powersetGen:generate()
+  for g = 2, #powersetGen do
+    while valid do
+      data, valid = powersetGen[g]:generate()
 
-    if valid then i = i + 1 end
+      if valid then i = i + 1 end
 
-    if valid and verbose then 
-      print_table_recursive(data, "A powerset member") 
+      if valid and verbose then 
+        print_table_recursive(data, "A powerset member") 
+      end
     end
+ 
+    assert(i == powerSetSize)
   end
-
-  assert(i == math.pow(2, #src))
 end
 
 --
