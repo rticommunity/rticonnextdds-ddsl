@@ -1544,6 +1544,53 @@ function Tester.test_powerset()
   end
 end
 
+function math.fact(n)
+  if n == 0 then
+    return 1
+  else
+    return n * math.fact(n-1)
+  end
+end
+
+function Tester.swap(tab, i, j)
+  local temp = tab[i]
+  tab[i] = tab[j]
+  tab[j] = temp
+end
+
+function Tester.permute(src, b, N)
+  if b > N then
+    coroutine.yield(src)
+  else
+    for i = b, N do
+      Tester.swap(src, i, b)
+      Tester.permute(src, b+1, N)
+      Tester.swap(src, i, b)
+    end
+  end
+end
+
+Tester[#Tester+1] = 'test_permutations'
+function Tester.test_permutations()
+  local src = { 1,2,3,4 }
+
+  local permGen = 
+    Gen.coroutineGen(coroutine.create(function()
+      Tester.permute(src, 1, #src)
+    end))
+
+  local data, valid, i  = nil, true, 0
+
+  while valid do
+    data, valid = permGen:generate()
+    if valid then 
+      i = i + 1
+      printv(table.unpack(data)) 
+    end
+  end
+  
+  assert(i == math.fact(#src))
+end
 --
 -- print - helper method to print the IDL and the index for data definition
 function Tester.print(instance)
