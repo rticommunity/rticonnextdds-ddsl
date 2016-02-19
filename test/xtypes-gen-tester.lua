@@ -1552,32 +1552,10 @@ function math.fact(n)
   end
 end
 
-function Tester.swap(tab, i, j)
-  local temp = tab[i]
-  tab[i] = tab[j]
-  tab[j] = temp
-end
-
-function Tester.permute(src, b, N)
-  if b > N then
-    coroutine.yield(src)
-  else
-    for i = b, N do
-      Tester.swap(src, i, b)
-      Tester.permute(src, b+1, N)
-      Tester.swap(src, i, b)
-    end
-  end
-end
-
 Tester[#Tester+1] = 'test_permutations'
 function Tester.test_permutations()
-  local src = { 1,2,3,4 }
-
-  local permGen = 
-    Gen.coroutineGen(coroutine.create(function()
-      Tester.permute(src, 1, #src)
-    end))
+  local src = { 1, 2, 3, 4 }
+  local permGen = Gen.permutationGen(src)
 
   local data, valid, i  = nil, true, 0
 
@@ -1591,7 +1569,35 @@ function Tester.test_permutations()
   
   assert(i == math.fact(#src))
 end
---
+
+Tester[#Tester+1] = 'test_repeat'
+function Tester.test_repeat()
+  local src = { 1, 2, 3, 4 }
+  local repeatGen = Gen.inOrderGen(src):repeatAll()
+  local stepperGen = Gen.stepperGen(1, 4, 1, true)
+  
+  for i = 1, 8 do
+    assert(repeatGen:generate() == stepperGen:generate())
+  end
+  
+  assert(Gen.emptyGen():repeatAll():generate() == nil)
+end
+
+Tester[#Tester+1] = 'test_dowhile'
+function Tester.test_dowhile()
+  local count = 10
+  local srcGen = Gen.stepperGen()
+  local condGen = Gen.stepperGen():take(count)
+  local dowhileGen = Gen.doWhileGen(srcGen, condGen)
+  
+  for i = 1, count do
+    assert(dowhileGen:generate() == i)
+  end
+  
+  assert(dowhileGen:generate() == nil)
+  
+end
+
 -- print - helper method to print the IDL and the index for data definition
 function Tester.print(instance)
     if verbose then

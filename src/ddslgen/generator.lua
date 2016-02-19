@@ -929,6 +929,35 @@ function Generator:groupBy(keySelector)
   return GroupByOp:new(self, keySelector)
 end
 
+--- Returns a generator that repeats the objects produced by the source generator
+--  after the source generator ends. If the source is empty, the resulting genrator 
+--  is also empty.
+--  @treturn Generator A generator that repeats the objects produced by the source 
+--  generator
+function Generator:repeatAll()
+  local buf = {}
+  local done = false
+  local i = 0
+  
+  return Generator:new(function()
+    if not done then    
+      local data, valid = self:generate()
+      if valid then 
+        buf[#buf+1] = data
+        return data, true
+      end
+      done = true
+    end
+    
+    if #buf == 0 then
+      return nil, false
+    else
+      i = (i % #buf) + 1
+      return buf[i], true
+    end
+  end)
+end
+
 --- Returns the generator kind (either "pull" or "push").
 --  @treturn string Either "pull" or "push"
 function Generator:kind()
@@ -1512,6 +1541,29 @@ function Public.stepperGen(start, max, step, cycle)
          end)
 end  
 
+--- Creates a generator that produces all the permutations of the values  
+--  in the input array. When the generator ends, the input array is
+--  back to its original state.
+--  @tparam array src The array containing values. May be empty.
+--  @treturn Generator A new generator that produces all permutations.
+function Public.permutationGen(src)
+  return Public.coroutineGen(coroutine.create(function()
+           Private.permute(src, 1, #src)
+         end))
+end
+
+--- Returns a generator that produces objects from the source generator 
+--  as long as the conditionGen generator produces objects.
+--  @tparam Generator srcGen The source generator
+--  @tparam Generator conditionGen The "condition" generator. 
+--  @treturn Generator A generator that produces objects from the source 
+--  generator as long as the conditionGen generator produces objects.
+function Public.doWhileGen(srcGen, conditionGen)
+  return conditionGen:flatMap(function(c)
+            return srcGen:take(1)
+          end)
+end
+
 --- Creates a generator that produces values from the input array in order.
 --  @tparam array array The array containing values. May be empty.
 --  @tparam bool cycle (optional) Whether to repeat the values cyclically. Default=false
@@ -2037,6 +2089,24 @@ function Private.zunionGen(unionType, genLib, memoizeGen)
             return nil, false
           end
          end)
+end
+
+function Private.swap(tab, i, j)
+  local temp = tab[i]
+  tab[i] = tab[j]
+  tab[j] = temp
+end
+
+function Private.permute(src, b, N)
+  if b > N then
+    coroutine.yield(src)
+  else
+    for i = b, N do
+      Private.swap(src, i, b)
+      Private.permute(src, b+1, N)
+      Private.swap(src, i, b)
+    end
+  end
 end
 
 function Queue:new ()
