@@ -1570,17 +1570,17 @@ function Tester.test_permutations()
   assert(i == math.fact(#src))
 end
 
-Tester[#Tester+1] = 'test_repeat'
-function Tester.test_repeat()
+Tester[#Tester+1] = 'test_repeatMany'
+function Tester.test_repeatMany()
   local src = { 1, 2, 3, 4 }
-  local repeatGen = Gen.inOrderGen(src):repeatAll()
+  local repeatGen = Gen.inOrderGen(src):repeatMany()
   local stepperGen = Gen.stepperGen(1, 4, 1, true)
   
   for i = 1, 8 do
     assert(repeatGen:generate() == stepperGen:generate())
   end
   
-  assert(Gen.emptyGen():repeatAll():generate() == nil)
+  assert(Gen.emptyGen():repeatMany():generate() == nil)
 end
 
 Tester[#Tester+1] = 'test_dowhile'

@@ -350,6 +350,8 @@ local Public = {
   --sortBy
   --partition
   --lastN
+  --permutationGen
+  --doWhileGen
  
   --initialize
 
@@ -392,6 +394,9 @@ local Generator = { }
 --! Generator:append
 --! Generator:where
 --! Generator:reject
+--! Generator:groupBy
+--! Generator:tap
+--! Generator:repeatMany
 --! Generator:toTable
 
 
@@ -932,12 +937,16 @@ end
 --- Returns a generator that repeats the objects produced by the source generator
 --  after the source generator ends. If the source is empty, the resulting genrator 
 --  is also empty.
+--  @tparam number count The number of times to repeat the source after it's over. 
+--  Count is optional. When not provided, it defaults to `Public.MAX_DOUBLE`.
 --  @treturn Generator A generator that repeats the objects produced by the source 
---  generator
-function Generator:repeatAll()
+--  generator.
+function Generator:repeatMany(count)
+  count = count or Public.MAX_DOUBLE
   local buf = {}
   local done = false
-  local i = 0
+  local i = 1
+  local c = 0
   
   return Generator:new(function()
     if not done then    
@@ -949,13 +958,33 @@ function Generator:repeatAll()
       done = true
     end
     
-    if #buf == 0 then
+    if (#buf == 0) or (count == 0) then
       return nil, false
     else
-      i = (i % #buf) + 1
-      return buf[i], true
+      if c < count then 
+        if i < #buf then
+          i = i + 1
+          return buf[i-1], true
+        else
+          i = 1
+          c = c + 1
+          return buf[#buf], true
+        end
+      else
+        return nil, false
+      end
     end
   end)
+end
+
+--- Returns a generator that invokes the given function on every 
+--  value produced by the source generator. This is not the 
+--  same as `Generator:map` because tap ignores the return value 
+--  of the function.
+--  @tparam function func A single argument function 
+--  @treturn Generator A generator identical to the source.
+function Generator:tap(func)
+  return self:map(function(i) func(i) return i end)
 end
 
 --- Returns the generator kind (either "pull" or "push").
@@ -1553,16 +1582,36 @@ function Public.permutationGen(src)
 end
 
 --- Returns a generator that produces objects from the source generator 
---  as long as the conditionGen generator produces objects.
+--  as long as the conditionGen generator produces objects. If any of the
+--  argument generators end, the resulting generator ends.
 --  @tparam Generator srcGen The source generator
---  @tparam Generator conditionGen The "condition" generator. 
+--  @tparam Generator conditionGen The "condition" generator. Does not 
+--  have to be a boolean generator.
 --  @treturn Generator A generator that produces objects from the source 
 --  generator as long as the conditionGen generator produces objects.
 function Public.doWhileGen(srcGen, conditionGen)
-  return conditionGen:map(function(c)
-            local data, valid = srcGen:generate()
-            return data
-          end)
+  local srcEnd = false
+  local condEnd = false
+  
+  return Generator:new(function()
+      if srcEnd or condEnd then
+        return nil, false
+      else
+        local srcData, srcValid = srcGen:generate()
+        if srcValid then 
+          local condData, condValid = conditionGen:generate()
+          if condValid then
+            return srcData, true
+          else
+            condEnd = true
+          end 
+        else
+          srcEnd = true
+        end
+      end
+      
+      return nil, false
+    end)
 end
 
 --- Creates a generator that produces values from the input array in order.
