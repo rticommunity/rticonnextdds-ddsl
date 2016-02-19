@@ -34,7 +34,6 @@ limitations under the License.
 			<enumerator name="OBJECT" />
 			<enumerator name="ARRAY" />
 		</enum>
-		<
 		<directive kind="copy"> value can be any of the JSON types</directive>
 		<union name="value">
 			<discriminator type="nonBasic" nonBasicTypeName="JSON::kind" />
