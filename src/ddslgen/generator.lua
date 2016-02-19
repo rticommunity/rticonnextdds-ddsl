@@ -1559,8 +1559,9 @@ end
 --  @treturn Generator A generator that produces objects from the source 
 --  generator as long as the conditionGen generator produces objects.
 function Public.doWhileGen(srcGen, conditionGen)
-  return conditionGen:flatMap(function(c)
-            return srcGen:take(1)
+  return conditionGen:map(function(c)
+            local data, valid = srcGen:generate()
+            return data
           end)
 end
 
