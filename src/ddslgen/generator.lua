@@ -244,6 +244,7 @@ limitations under the License.
 
 --! The generator module depends on the "xtypes" module.
 local xtypes = require ("ddsl.xtypes")
+local bit    = require("bit32")
 
 local Public = {
 
@@ -333,6 +334,9 @@ local Public = {
   --concatAllGen
   --alternateGen
   --deferredGen
+  --permutationGen
+  --doWhileGen
+  --powersetGen
   
   --rangeGen
   --seqGen
@@ -350,8 +354,6 @@ local Public = {
   --sortBy
   --partition
   --lastN
-  --permutationGen
-  --doWhileGen
  
   --initialize
 
@@ -1614,6 +1616,28 @@ function Public.doWhileGen(srcGen, conditionGen)
     end)
 end
 
+--- Returns a generator that produces every member of the powerset
+--  of src. Powerset is a set of all subsets including the empty subset.
+--  @tparam array src The source array to compute the powerset of
+--  @treturn Generator A new generator that produces every element
+--  in the powerset.
+function Public.powersetGen(src)
+  return Public.stepperGen(0, math.pow(2, #src)-1)
+                :map(function(n)
+                      local set = {}
+                      local i = 1
+                      while n > 0 do
+                        if bit.band(n, 1) > 0 then
+                          set[#set+1] = src[i]
+                        end
+                        i = i + 1;
+                        n = bit.rshift(n, 1)
+                      end
+                      
+                      return set
+                     end)
+end
+
 --- Creates a generator that produces values from the input array in order.
 --  @tparam array array The array containing values. May be empty.
 --  @tparam bool cycle (optional) Whether to repeat the values cyclically. Default=false
@@ -2016,6 +2040,8 @@ function Private.zcreateGeneratorImpl(roledef, genLib, memoizeGen)
       gen = Public.aggregateGen(roledef, genLib, memoizeGen)
     elseif kind == "typedef" then 
       gen = Public.typedefGen(roledef, genLib, memoizeGen)
+    elseif kind == "module" then
+      error "Error: xtypes.KIND \"module\" has no generator."
     else
       error "Error: Unsupported xtypes.KIND"
     end

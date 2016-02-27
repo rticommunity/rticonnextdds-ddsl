@@ -1472,23 +1472,6 @@ function Tester.test_typeGenLib()
   return ShapeTypeGen
 end
 
-function Tester.makePowerSetGen(src)
-  return Gen.stepperGen(0, math.pow(2, #src)-1)
-            :map(function(n)
-                  local set = {}
-                  local i = 1
-                  while n > 0 do
-                    if bit.band(n, 1) > 0 then
-                      set[#set+1] = src[i]
-                    end
-                    i = i + 1;
-                    n = bit.rshift(n, 1)
-                  end
-                  
-                  return set
-                 end)
-end
-
 function head(tab)
   return tab[1]
 end
@@ -1523,7 +1506,7 @@ function Tester.test_powerset()
   local powerSetSize = math.pow(2, #src)
   
   local powersetGen = {}
-  powersetGen[1] = Tester.makePowerSetGen(src)
+  powersetGen[1] = Gen.powersetGen(src)
   powersetGen[2] = Tester.makePowerSetGenRecursive(src)
   
   local data, valid = nil, true
