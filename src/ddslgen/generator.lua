@@ -243,8 +243,10 @@ limitations under the License.
 -------------------------------------------------------------
 
 --! The generator module depends on the "xtypes" module.
-local xtypes = require ("ddsl.xtypes")
+local xtypes = require("ddsl.xtypes")
 local bit    = require("bit32")
+local Queue  = require("ddslgen.queue")
+local Heap   = require("ddslgen.heap")
 
 local Public = {
 
@@ -408,10 +410,7 @@ local Private = {
   -- createGeneratorImpl
   -- seqParseGen
 }
-
--- A queue implementation
-local Queue = {}
-  
+ 
 --==================================================--
 -- Generator member functions
 
@@ -2184,48 +2183,6 @@ function Private.permute(src, b, N)
     end
   end
 end
-
-function Queue:new ()
-  o =  {first = 0, last = -1}
-  setmetatable(o, self)
-  self.__index = self
-  return o
-end
-
-function Queue:pushLeft (value)
-  local first = self.first - 1
-  self.first = first
-  self[first] = value
-end
-
-function Queue:pushRight (value)
-  local last = self.last + 1
-  self.last = last
-  self[last] = value
-end
-
-function Queue:popLeft ()
-  local first = self.first
-  if first > self.last then error("Queue.popLeft: Queue is empty") end
-  local value = self[first]
-  self[first] = nil        -- to allow garbage collection
-  self.first = first + 1
-  return value
-end
-
-function Queue:popRight ()
-  local last = self.last
-  if self.first > last then error("Queue.popRight: Queue is empty") end
-  local value = self[last]
-  self[last] = nil         -- to allow garbage collection
-  self.last = last - 1
-  return value
-end
-    
-function Queue:isEmpty ()
-  return self.first > self.last
-end
-
 
 --- Builtin generators
 -- @section BuiltinGenerators 
