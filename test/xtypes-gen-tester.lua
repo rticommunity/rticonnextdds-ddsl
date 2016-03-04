@@ -1581,6 +1581,65 @@ function Tester.test_dowhile()
   
 end
 
+Tester[#Tester+1] = 'test_lua2json'
+function Tester.test_lua2json()
+  JSON = assert(loadfile "JSON.lua")()
+  local json_str = JSON:encode({ abcd = "pqrs" })
+  printv(json_str)
+end
+
+function recurse_module(moduledef, print_json)
+  local module_name = moduledef[xtypes.NAME]
+  printv()
+  printv("Entering module " .. module_name)
+        
+  for k, role in ipairs(moduledef) do
+    if role[xtypes.KIND]() == "module" then
+      recurse_module(role, print_json)
+    else
+      local value = Gen.createGenerator(role):generate()
+      assert(value ~= nil)
+      local typename = role[xtypes.NAME]
+      if verbose and type(value) == "table" then 
+        if print_json then
+          printv(module_name .. "." .. typename)
+          printv(JSON:encode_pretty(value))
+        else
+          print_table_recursive(value, module_name .. "." .. typename) 
+        end
+      else
+        printv(module_name .. "." .. typename .. " = " .. tostring(value))
+      end
+    end
+  end  
+end
+
+function file_exists(name)
+   local f=io.open(name,"r")
+   if f~=nil then io.close(f) return true else return false end
+end
+
+Tester[#Tester+1] = 'test_nested_modules'
+function Tester:test_nested_modules()
+  local filename = "DDS_TestReport.xml"
+
+  if file_exists(filename) then
+    local ns = xml.file2xtypes(filename)
+    local print_json = true
+    
+    if verbose then 
+      Tester.print(ns) 
+    end 
+    
+    for i = 1, #ns do
+      recurse_module(ns[i], print_json)
+    end
+  else
+    printv("Where is " .. filename .. "? Do you know?")
+  end
+  
+end
+
 -- print - helper method to print the IDL and the index for data definition
 function Tester.print(instance)
     if verbose then

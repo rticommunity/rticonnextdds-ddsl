@@ -246,7 +246,6 @@ limitations under the License.
 local xtypes = require("ddsl.xtypes")
 local bit    = require("bit32")
 local Queue  = require("ddslgen.queue")
-local Heap   = require("ddslgen.heap")
 
 local Public = {
 
