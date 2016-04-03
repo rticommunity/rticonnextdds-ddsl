@@ -338,6 +338,7 @@ local Public = {
   --permutationGen
   --doWhileGen
   --powersetGen
+  --dataReaderGen
   
   --rangeGen
   --seqGen
@@ -1635,6 +1636,46 @@ function Public.powersetGen(src)
                       return set
                      end)
 end
+
+--- Returns a generator that produces valid data from a DataReader. 
+--  The objects from the DataReader can be optionally mapped to Lua tables
+--  using a mapper function. See mapFunc.
+--  @tparam dataReader DataReader obtained using RTI Connext prototyper API for Lua.
+--  If the dataReader has no samples, the generate function will block forever.
+--  @mapFunc function (optional) A unary function that maps a sample to a Lua table.
+--  @treturn Generator A new generator that takes samples from the underlying
+--  DataReader and produces only valid data.
+function Public.dataReaderGen(dataReader, mapFunc)
+  local i = 0
+  local finished = false
+  mapFunc = mapFunc or function (i) return i end
+  
+  return Public.newGenerator(function ()
+    if finished then
+      return nil, false
+    else
+      while true do
+        if i == 0 then
+          dataReader:take()
+        end
+        if i < #dataReader.samples then
+          i = i + 1
+          local obj = nil
+          if dataReader.infos[i].valid_data then
+            obj = mapFunc(dataReader.samples[i])
+          end
+          if i == #dataReader.samples then
+            i = 0
+          end
+          if obj ~= nil then
+            return obj, true
+          end
+        end
+      end
+    end
+  end)
+end
+
 
 --- Creates a generator that produces values from the input array in order.
 --  @tparam array array The array containing values. May be empty.

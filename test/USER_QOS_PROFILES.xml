@@ -1,0 +1,202 @@
+
+<!--
+RTI Data Distribution Service Deployment
+-->
+<dds xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+     xsi:noNamespaceSchemaLocation="http://community.rti.com/schema/5.2.0/rti_dds_profiles.xsd"
+     version="5.2.0">
+    <!-- Qos Library -->
+	<qos_library name="QosLibrary">
+		<qos_profile name="DefaultProfile" is_default_qos="true">
+			<participant_qos>
+				<transport_builtin>
+					<mask>UDPV4 | SHMEM</mask>
+				</transport_builtin>
+
+				<!-- Turn on monitoring -->
+				<!-- Begin Monitoring 
+				<property>
+					<value>
+						<element>
+							<name>rti.monitor.library</name>
+							<value>rtimonitoring</value>
+						</element>
+						<element>
+							<name>rti.monitor.create_function_ptr</name>
+							<value>$(NDDS_MONITOR)</value>
+						</element>
+					</value>
+				</property>
+				 End Monitoring -->
+			</participant_qos>
+		</qos_profile>
+	</qos_library>
+
+    <!-- types -->
+    <types>
+         <const name="MAX_COLOR_LEN" type="long" value="128"/>
+
+         <struct name="ShapeType">
+             <member name="color"  key="true"
+                     type="string"  stringMaxLength="MAX_COLOR_LEN"/>
+             <member name="x" type="long"/>
+             <member name="y" type="long"/>
+             <member name="shapesize" type="long"/>
+         </struct>
+    </types>
+    
+    
+    <!-- Domain Library -->
+    <domain_library name="MyDomainLibrary">
+
+        <domain name="ShapeDomain" domain_id="0">
+            <register_type name="ShapeType" kind="dynamicData"
+                           type_ref="ShapeType" />                         
+
+            <topic name="Square"   register_type_ref="ShapeType"/>
+            <topic name="Circle"   register_type_ref="ShapeType"/>
+            <topic name="Triangle" register_type_ref="ShapeType"/>
+            
+        </domain>
+    </domain_library>
+
+
+    <!-- Participant library -->
+    <participant_library name="MyParticipantLibrary">
+
+
+		<!-- ShapePublisher: Publishes Square, Circle, Triangle -->
+		<domain_participant name="ShapePublisher"
+			domain_ref="MyDomainLibrary::ShapeDomain">
+	
+			<participant_qos base_name="QosLibrary::DefaultProfile">
+				<property>
+					<value>
+					    <!-- Use command line options to override these settings -->
+						<element>
+							<name>lua.file<!-- option: -luaFile --></name>
+                           	<value>shapes/ShapePublisher.lua</value>
+						</element>
+	
+						<!-- Timer Driven -->
+						<element>
+							<name>lua.onData<!-- option: -luaOnData --></name>
+							<value>FALSE</value>
+						</element>
+						<element>
+					        <name>lua.onPeriod<!-- option: -luaOnPeriod --></name>
+                            <value>TRUE<!-- default --></value>
+                        </element>
+						<element>
+							<name>lua.onStart<!-- option: -luaOnStart --></name>
+							<value>TRUE</value>
+						</element>
+						<element>
+							<name>lua.onStop<!-- option: -luaOnStop --></name>
+							<value>TRUE</value>
+						</element>
+					</value>
+				</property>
+			</participant_qos>
+	
+			<publisher name="MyPublisher">
+				<data_writer name="MySquareWriter" topic_ref="Square" />
+				<data_writer name="MyCircleWriter" topic_ref="Circle" />
+				<data_writer name="MyTriangleWriter" topic_ref="Triangle" />
+			</publisher>
+		</domain_participant>
+
+
+
+        <!-- ShapeSubscriber: Subscribes to Square, Circle, and Triangle -->
+		<domain_participant name="ShapeSubscriber"
+			domain_ref="MyDomainLibrary::ShapeDomain">
+		
+			<participant_qos base_name="QosLibrary::DefaultProfile">
+				<property>
+                    <value>
+                        <!-- Use command line options to override these settings -->
+                        <element>
+                            <name>lua.file<!-- option: -luaFile --></name>
+                            <value>shapes/ShapeSubscriber.lua</value>
+                        </element>
+    
+                        <!-- Data Driven -->
+                        <element>
+                            <name>lua.onData<!-- option: -luaOnData --></name>
+                            <value>TRUE<!-- default --></value>
+                        </element>
+                        <element>
+                            <name>lua.onPeriod<!-- option: -luaOnPeriod --></name>
+                            <value>FALSE</value>
+                        </element>
+                        <element>
+                            <name>lua.onStart<!-- option: -luaOnStart --></name>
+                            <value>TRUE</value>
+                        </element>
+                        <element>
+                            <name>lua.onStop<!-- option: -luaOnStop --></name>
+                            <value>TRUE</value>
+                        </element>
+                    </value>
+				</property>
+			</participant_qos>
+		
+			<subscriber name="MySubscriber">
+				<data_reader name="MySquareReader" topic_ref="Square" />
+				<data_reader name="MyCircleReader" topic_ref="Circle" />
+				<data_reader name="MyTriangleReader" topic_ref="Triangle" />
+			</subscriber>
+		</domain_participant>
+
+
+
+		<!-- ShapePubSub: Publishes & Subscribes Square, Circle, Triangle -->
+		<domain_participant name="ShapePubSub"
+			domain_ref="MyDomainLibrary::ShapeDomain">
+		
+			<participant_qos base_name="QosLibrary::DefaultProfile">
+				<property>
+                    <value>
+                        <!-- Use command line options to override these settings -->
+                        <element>
+                            <name>lua.file<!-- option: -luaFile --></name>
+                            <value>shapes/ShapePubSub.lua</value>
+                        </element>
+    
+                        <!-- Data and Timer Driven -->
+                        <element>
+                            <name>lua.onData<!-- option: -luaOnData --></name>
+                            <value>TRUE<!-- default --></value>
+                        </element>
+                        <element>
+                            <name>lua.onPeriod<!-- option: -luaOnPeriod --></name>
+                            <value>TRUE<!-- default --></value>
+                        </element>
+                        <element>
+                            <name>lua.onStart<!-- option: -luaOnStart --></name>
+                            <value>TRUE</value>
+                        </element>
+                        <element>
+                            <name>lua.onStop<!-- option: -luaOnStop --></name>
+                            <value>TRUE</value>
+                        </element>
+                    </value>
+				</property>
+			</participant_qos>
+		
+			<publisher name="MyPublisher">
+				<data_writer name="MySquareWriter" topic_ref="Square" />
+				<data_writer name="MyCircleWriter" topic_ref="Circle" />
+				<data_writer name="MyTriangleWriter" topic_ref="Triangle" />
+			</publisher>
+		
+			<subscriber name="MySubscriber">
+				<data_reader name="MySquareReader" topic_ref="Square" />
+				<data_reader name="MyCircleReader" topic_ref="Circle" />
+				<data_reader name="MyTriangleReader" topic_ref="Triangle" />
+			</subscriber>
+		</domain_participant>
+   
+    </participant_library>
+</dds>
