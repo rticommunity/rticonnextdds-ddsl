@@ -24,6 +24,7 @@ package.path = '../src/?.lua;../src/?/init.lua;' .. package.path
 local xtypes = require("ddsl.xtypes")
 local xutils = require("ddsl.xtypes.utils")
 local Gen    = require("ddslgen.generator")
+local bit    = require("bit32")
 
 local verbose = false 
 local printv = nil
@@ -1276,40 +1277,147 @@ function Tester.test_sort()
   
 end
 
---[[
-Tester[#Tester+1] = 'test_groupby'
-function Tester.test_groupby()
+
+Tester[#Tester+1] = 'test_groupby1'
+function Tester.test_groupby1()
   
-  local data   = { { age = 5,  name = "Z" },
-                   { age = 15, name = "M" },
-                   { age = 17, name = "P" },
-                   { age = 23, name = "A" } }
+  local data   = { 1,2,3,4,5,6,7,8,9,10 }
+  local gop = Gen.inOrderGen(data)
+                 :groupBy(function (x) return x % 2 end)
+                   
+  local g1 = gop:generate()
+  local g2 = gop:generate()
+  local g3 = gop:generate()
+
+  assert(gop.kind() == "pull")  
+
+  assert(g1 ~= nil) 
+  assert(g1.kind() == "pull")
+  assert(g1.getKey() == 1)
+
+  assert(g2 ~= nil)
+  assert(g2.kind() == "pull")
+  assert(g2.getKey() == 0)
+
+  assert(g3 == nil)
   
-  local answer = { }
-  answer[10] = { {age =  5, name = "Z" } }
-  answer[20] = { {age = 15, name = "M" },
-                 {age = 17, name = "P" } }
-  answer[30] = { {age = 23, name = "A" } }
+  for i = 1, #data/2 do
+    local value = g1:generate()
+    assert((value % 2) == 1) 
+  end 
   
-  local grouped = 
-    Gen.groupBy(Gen.inOrderGen(data), 
-                function(i) 
-                  if     i.age < 10 then return 10
-                  elseif i.age < 20 then return 20
-                  elseif i.age < 30 then return 30
-                  end
-                end)
+  for i = 1, #data/2 do
+    local value = g2:generate()
+    assert((value % 2) == 0) 
+  end 
   
-  local bucket = 10
-  while bucket <= 30 do
-    for i = 1, #answer[bucket] do
-      assert(answer[bucket][i].name == grouped[bucket][i].name)
-    end
-    bucket = bucket + 10
+  assert(g1:generate() == nil)
+  assert(g2:generate() == nil)
+end
+
+Tester[#Tester+1] = 'test_groupby2'
+function Tester.test_groupby2()
+  
+  local data   = { 1,2,3,4,5,6,7,8,9,10 }
+  local gop = Gen.inOrderGen(data)
+                 :groupBy(function (x) return x % 2 end)
+  assert(gop.kind() == "pull")
+  
+  local g1 = gop:generate()
+  assert(g1 ~= nil)
+  assert(g1.kind() == "pull")
+  assert(g1.getKey() == 1)
+  
+  for i = 1, #data/2 do
+    local value = g1:generate()
+    assert((value % 2) == 1) 
+  end 
+
+  assert(g1:generate() == nil)
+
+  local g2 = gop:generate()
+  assert(g2 ~= nil)
+  assert(g2.kind() == "pull")
+  assert(g2.getKey() == 0)  
+  
+  for i = 1, #data/2 do
+    local value = g2:generate()
+    assert((value % 2) == 0) 
+  end 
+ 
+  assert(g2:generate() == nil)
+  
+  local g3 = gop:generate()
+  assert(g3 == nil)
+end
+
+Tester[#Tester+1] = 'test_groupby_infinite'
+function Tester.test_groupby_infinite()
+  local groups = Gen.rangeGen(1, 20000):generate()
+  local gop = Gen.stepperGen() -- infinite
+                 :groupBy(function (x) return x % groups end)
+  local innerGenArr = {}
+  local innerGenLastValue = {}
+  
+  for j = 1, groups do
+    innerGenArr[j] = gop:generate()
+    innerGenLastValue[j] = 0
   end
   
+  local rangeGen = Gen.rangeGen(1, groups)
+  for i = 1, 1000*1000 do
+    local j = rangeGen:generate()  
+    local val = innerGenArr[j]:generate()
+    assert(val > innerGenLastValue[j])
+    innerGenLastValue[j] = val
+  end
 end
-]]
+
+Tester[#Tester+1] = 'test_groupby_inf_alternate'
+function Tester.test_groupby_inf_alternate()
+  local groups = Gen.rangeGen(1, 20000):generate()
+  
+  local allInnerGenTab = 
+      Gen.stepperGen() -- infinite
+         :groupBy(function (x) return x % groups end)
+         :take(groups)
+         :toTable()
+
+  local j = 1
+  local altGen = Gen.alternateGen(table.unpack(allInnerGenTab))
+  for i = 1, 1000*1000 do  
+    local val = altGen:generate()
+    assert((val % groups) == j) 
+    j = (j + 1) % groups
+  end
+end
+
+Tester[#Tester+1] = 'test_groupby_inf_sequence_limited'
+function Tester.test_groupby_inf_sequence_limited()
+  local groups = Gen.rangeGen(1, 20000):generate()
+  local limit = Gen.rangeGen(1, 200):generate()
+
+  printv("Testing with " .. groups .. 
+         " groups of " .. limit .. " size each.")
+
+  local dataGen = 
+      Gen.stepperGen() -- infinite
+         :groupBy(function (x) return x % groups end)
+         :map(function(grp) return grp:take(limit) end)
+         :flatMap()
+         :take(groups * limit)
+
+  local mod = 1
+  for i = 1, groups do  
+    for j = 1, limit do
+      local val = dataGen:generate()
+      assert((val % groups) == mod) 
+    end
+    mod = (mod + 1) % groups
+  end
+
+  assert(dataGen:generate() == nil)
+end
 
 Tester[#Tester+1] = 'test_foreach'
 function Tester.test_foreach()
@@ -1364,7 +1472,210 @@ function Tester.test_typeGenLib()
   return ShapeTypeGen
 end
 
+function head(tab)
+  return tab[1]
+end
+
+function tail(tab)
+  return { table.unpack(tab, 2, #tab) }
+end
+
+function Tester.makePowerSetGenRecursive(src)
+-- This implemenation is inspired by the following Haskell implemenation
+-- powerset :: [a] -> [[a]]
+-- powerset [] = [[]]
+-- powerset (x:xs) = xss ++ map (x:) xss
+--                   where xss = powerset xs
+
+  if #src == 0 then
+    return Gen.singleGen({}) 
+  end
+  
+  return Gen.concatAllGen(
+            Tester.makePowerSetGenRecursive(tail(src)),
+            Tester.makePowerSetGenRecursive(tail(src))
+                  :map(function(s)
+                         s[#s+1] = head(src)
+                         return s
+                       end))
+end
+
+Tester[#Tester+1] = 'test_powerset'
+function Tester.test_powerset()
+  local src = { "Generators", "are", "kind", "of", "awesome" }
+  local powerSetSize = math.pow(2, #src)
+  
+  local powersetGen = {}
+  powersetGen[1] = Gen.powersetGen(src)
+  powersetGen[2] = Tester.makePowerSetGenRecursive(src)
+  
+  local data, valid = nil, true
+  local i = 0
+
+  for g = 1, #powersetGen do
+    while valid do
+      data, valid = powersetGen[g]:generate()
+
+      if valid then i = i + 1 end
+
+      if valid and verbose then 
+        print_table_recursive(data, "A powerset member") 
+      end
+    end
+ 
+    assert(i == powerSetSize)
+  end
+end
+
+function math.fact(n)
+  if n == 0 then
+    return 1
+  else
+    return n * math.fact(n-1)
+  end
+end
+
+Tester[#Tester+1] = 'test_permutations'
+function Tester.test_permutations()
+  local src = { 1, 2, 3, 4 }
+  local permGen = Gen.permutationGen(src)
+
+  local data, valid, i  = nil, true, 0
+
+  while valid do
+    data, valid = permGen:generate()
+    if valid then 
+      i = i + 1
+      printv(table.unpack(data)) 
+    end
+  end
+  
+  assert(i == math.fact(#src))
+end
+
+-- This implementation is inspired by the Sieve of Eratosthenes algorithm.
+-- According to Wikipedia, the following is "Incremental Sieve" algorithm 
+-- based on the widely known 1975 functional code by David Turner.
+-- sieve (p:xs) = p : sieve [x | x <- xs, rem x p > 0]; primes = sieve [2..]
 --
+-- For every prime number generated by this implementation of the Sieve
+-- algorithm, a reject combinator is appended to the nums generator. 
+-- I.e., the nums generator has (N-1) back-to-back reject stages when it
+-- generates the Nth prime. Equivalently, it has O(N) space complexity
+-- for generating Nth prime, which is optimal. 
+function sieve(nums) 
+  local head = nums:generate()
+  local primes = 
+  Gen.concatAllGen(
+      Gen.singleGen(head),
+      Gen.deferredGen(
+        function() 
+          return sieve(nums:reject(function(i) 
+                                     return (i % head) == 0 
+                                   end))
+        end))
+
+  return primes
+end
+
+Tester[#Tester+1] = 'test_sieve'
+function Tester.test_sieve()
+  local primes = { 2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31 } 
+  local nums = Gen.stepperGen(2)
+  local primeGen = sieve(nums)
+
+  for i = 1, #primes do
+    assert(primeGen:generate() == primes[i])
+  end  
+end
+
+Tester[#Tester+1] = 'test_repeatMany'
+function Tester.test_repeatMany()
+  local src = { 1, 2, 3, 4 }
+  local repeatGen = Gen.inOrderGen(src):repeatMany()
+  local stepperGen = Gen.stepperGen(1, 4, 1, true)
+  
+  for i = 1, 8 do
+    assert(repeatGen:generate() == stepperGen:generate())
+  end
+  
+  assert(Gen.emptyGen():repeatMany():generate() == nil)
+end
+
+Tester[#Tester+1] = 'test_dowhile'
+function Tester.test_dowhile()
+  local count = 10
+  local srcGen = Gen.stepperGen()
+  local condGen = Gen.stepperGen():take(count)
+  local dowhileGen = Gen.doWhileGen(srcGen, condGen)
+  
+  for i = 1, count do
+    assert(dowhileGen:generate() == i)
+  end
+  
+  assert(dowhileGen:generate() == nil)
+  
+end
+
+Tester[#Tester+1] = 'test_lua2json'
+function Tester.test_lua2json()
+  JSON = assert(loadfile "JSON.lua")()
+  local json_str = JSON:encode({ abcd = "pqrs" })
+  printv(json_str)
+end
+
+function recurse_module(moduledef, print_json)
+  local module_name = moduledef[xtypes.NAME]
+  printv()
+  printv("Entering module " .. module_name)
+        
+  for k, role in ipairs(moduledef) do
+    if role[xtypes.KIND]() == "module" then
+      recurse_module(role, print_json)
+    else
+      local value = Gen.createGenerator(role):generate()
+      assert(value ~= nil)
+      local typename = role[xtypes.NAME]
+      if verbose and type(value) == "table" then 
+        if print_json then
+          printv(module_name .. "." .. typename)
+          printv(JSON:encode_pretty(value))
+        else
+          print_table_recursive(value, module_name .. "." .. typename) 
+        end
+      else
+        printv(module_name .. "." .. typename .. " = " .. tostring(value))
+      end
+    end
+  end  
+end
+
+function file_exists(name)
+   local f=io.open(name,"r")
+   if f~=nil then io.close(f) return true else return false end
+end
+
+Tester[#Tester+1] = 'test_nested_modules'
+function Tester:test_nested_modules()
+  local filename = "DDS_TestReport.xml"
+
+  if file_exists(filename) then
+    local ns = xml.file2xtypes(filename)
+    local print_json = true
+    
+    if verbose then 
+      Tester.print(ns) 
+    end 
+    
+    for i = 1, #ns do
+      recurse_module(ns[i], print_json)
+    end
+  else
+    printv("Where is " .. filename .. "? Do you know?")
+  end
+  
+end
+
 -- print - helper method to print the IDL and the index for data definition
 function Tester.print(instance)
     if verbose then
